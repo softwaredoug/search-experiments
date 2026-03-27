@@ -10,6 +10,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "flake8>=7.1.0",
     "pytest>=8.4.1",
 ]
 
