@@ -1,9 +1,17 @@
+import argparse
+
 import pandas as pd
 
 from cheat_at_search import wands_data
 from cheat_at_search.search import ndcgs, run_strategy
 
 from prf.strategies.bm25 import BM25Strategy
+from prf.strategies.prf import PRFStrategy
+
+STRATEGIES = {
+    "bm25": BM25Strategy,
+    "prf": PRFStrategy,
+}
 
 
 def _report_ndcgs(ndcg_series: pd.Series) -> None:
@@ -20,10 +28,20 @@ def _report_ndcgs(ndcg_series: pd.Series) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run PRF lexical strategies.")
+    parser.add_argument(
+        "--strategy",
+        required=True,
+        choices=sorted(STRATEGIES.keys()),
+        help="Strategy to run.",
+    )
+    args = parser.parse_args()
+
     corpus = wands_data.corpus
     judgments = wands_data.judgments
 
-    strategy = BM25Strategy(corpus)
+    strategy_cls = STRATEGIES[args.strategy]
+    strategy = strategy_cls(corpus)
     graded = run_strategy(strategy, judgments)
     ndcg_series = ndcgs(graded)
     _report_ndcgs(ndcg_series)
