@@ -66,6 +66,11 @@ def _print_ndcg_diff(
     df.index.name = "query_id"
     df["query"] = df.index.map(query_text.get)
     df = df.reset_index()
+    df = df[df["diff"] != 0]
+
+    if df.empty:
+        print("No NDCG differences found.")
+        return
 
     if sort_by == "query":
         df = df.sort_values(by=["query", "diff"], ascending=[True, False])
@@ -78,6 +83,12 @@ def _print_ndcg_diff(
     print("Summary:")
     print(f"mean_diff={df['diff'].mean():.4f}")
     print(f"median_diff={df['diff'].median():.4f}")
+    print("")
+    print("Strategy summaries:")
+    print(f"mean_ndcg_a={df['ndcg_a'].mean():.4f}")
+    print(f"median_ndcg_a={df['ndcg_a'].median():.4f}")
+    print(f"mean_ndcg_b={df['ndcg_b'].mean():.4f}")
+    print(f"median_ndcg_b={df['ndcg_b'].median():.4f}")
 
 
 def main() -> None:
