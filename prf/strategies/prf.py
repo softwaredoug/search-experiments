@@ -1,10 +1,14 @@
-from collections import Counter
-
 import numpy as np
 from searcharray import SearchArray
 
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
+from .bm25_vect import bm25_prf_vect, query_vector
+
+
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 
 
 class PRFStrategy(SearchStrategy):
@@ -13,6 +17,9 @@ class PRFStrategy(SearchStrategy):
         corpus,
         title_boost=9.3,
         description_boost=4.1,
+        top_n_terms=10,
+        top_n_candidates=50,
+        lambd=0.5,
         top_k=10,
         workers=1,
     ):
@@ -20,6 +27,9 @@ class PRFStrategy(SearchStrategy):
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost
+        self.top_n_terms = top_n_terms
+        self.top_n_candidates = top_n_candidates
+        self.lambd = lambd
 
         if "title_snowball" not in self.index and "title" in corpus:
             self.index["title_snowball"] = SearchArray.index(
@@ -30,45 +40,49 @@ class PRFStrategy(SearchStrategy):
                 corpus["description"], snowball_tokenizer
             )
 
-    def search(self, query, k=10):
-        tokenized = snowball_tokenizer(query)
-        bm25_scores = np.zeros(len(self.index))
-        if "title_snowball" in self.index:
-            for token in tokenized:
-                bm25_scores += (
-                    self.index["title_snowball"].array.score(token) * self.title_boost
-                )
-        if "description_snowball" in self.index:
-            for token in tokenized:
-                bm25_scores += (
-                    self.index["description_snowball"].array.score(token)
-                    * self.description_boost
-                )
-
-        top_k_candidates = np.argsort(-bm25_scores)[:50]
-        non_zero = bm25_scores[top_k_candidates] > 0
-        filtered_candidates = top_k_candidates[non_zero]
-        titles = []
-        if "title" in self.index and len(filtered_candidates) > 0:
-            titles = (
-                self.index.iloc[filtered_candidates]["title"]
-                .fillna("")
-                .astype(str)
-                .tolist()
+        if 'category_snowball' not in self.index and 'category' in corpus:
+            self.index['category_snowball'] = SearchArray.index(
+                corpus['category'], snowball_tokenizer
             )
 
-        title_text = " ".join(titles)
-        prf_tokens = snowball_tokenizer(title_text)
-        token_counts = Counter(prf_tokens)
-        top_tokens = token_counts.most_common(10)
+    def _prf_field_query(self, field, query, boost):
+        arr = self.index[field].array
+        query_vect = query_vector(query, snowball_tokenizer, arr)
+        # Add b25 score of each term in query_vec, weighed by query_vec weight
+        field_scores = np.zeros(len(self.index))
+        for term, p_q in query_vect.items():
+            scores = arr.score(term)
+            field_scores += (scores * boost)
 
-        print(f"PRF tokens for query: {query}")
-        if top_tokens:
-            for token, count in top_tokens:
-                print(f"{token}: {count}")
-        else:
-            print("No PRF tokens found.")
+        top_n = np.argsort(-field_scores)[:self.top_n_candidates]
+        top_n_scores = field_scores[top_n]
+        # Thought, this will not take into account whether these are objectively relevant
+        as_probabilities = softmax(top_n_scores)
+        all_terms, vects = bm25_prf_vect(arr, top_n, mu=1000)
+        # Multiply through as_probabilities into all_terms to weigh them
+        term_relevances = as_probabilities @ vects  # The relevance model of RM3
+        # Add query term relevances into term_relevances
+        for term, p_q in query_vect.items():
+            if term in all_terms:
+                idx = all_terms.index(term)
+                term_relevances[idx] = (1 - self.lambd) * p_q + (self.lambd * term_relevances[idx])
+
+        # Multiply back into vects matrix to weigh the documents by the relevance model
+        doc_scores = np.log(term_relevances) @ vects.T
+        doc_scores += doc_scores.min() + 0.0001  # Shift to be positive
+        field_scores = 0.0 * field_scores  # Zero out original scores, but keep shape
+        field_scores[top_n] = doc_scores
+
+        return field_scores
+
+    def search(self, query, k=10):
+        bm25_scores = self._prf_field_query("title_snowball", query, self.title_boost)
+
+        desc_prf = self._prf_field_query("description_snowball", query, self.description_boost)
+        bm25_scores += desc_prf
 
         top_k = np.argsort(-bm25_scores)[:k]
         scores = bm25_scores[top_k]
         return top_k, scores
+
+        # Doc these two together
