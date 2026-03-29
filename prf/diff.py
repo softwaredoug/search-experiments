@@ -63,7 +63,9 @@ def _print_ndcg_diff(
     query_text = _query_text_map(judgments)
     df = pd.DataFrame({"ndcg_a": ndcg_a, "ndcg_b": ndcg_b})
     df["diff"] = df["ndcg_a"] - df["ndcg_b"]
+    df.index.name = "query_id"
     df["query"] = df.index.map(query_text.get)
+    df = df.reset_index()
 
     if sort_by == "query":
         df = df.sort_values(by=["query", "diff"], ascending=[True, False])
@@ -71,7 +73,7 @@ def _print_ndcg_diff(
         df = df.sort_values(by=["diff", "query"], ascending=[False, True])
 
     print("Per-query NDCG differences (A - B):")
-    print(df[["query", "ndcg_a", "ndcg_b", "diff"]].to_string())
+    print(df[["query_id", "query", "ndcg_a", "ndcg_b", "diff"]].to_string())
     print("")
     print("Summary:")
     print(f"mean_diff={df['diff'].mean():.4f}")
