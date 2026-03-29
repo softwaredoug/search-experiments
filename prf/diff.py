@@ -55,12 +55,20 @@ def _print_query_results(
 
 
 def _print_ndcg_diff(
-    ndcg_a: pd.Series, ndcg_b: pd.Series, judgments: pd.DataFrame
+    ndcg_a: pd.Series,
+    ndcg_b: pd.Series,
+    judgments: pd.DataFrame,
+    sort_by: str,
 ) -> None:
     query_text = _query_text_map(judgments)
     df = pd.DataFrame({"ndcg_a": ndcg_a, "ndcg_b": ndcg_b})
     df["diff"] = df["ndcg_a"] - df["ndcg_b"]
     df["query"] = df.index.map(query_text.get)
+
+    if sort_by == "query":
+        df = df.sort_values(by=["query", "diff"], ascending=[True, False])
+    else:
+        df = df.sort_values(by=["diff", "query"], ascending=[False, True])
 
     print("Per-query NDCG differences (A - B):")
     print(df[["query", "ndcg_a", "ndcg_b", "diff"]].to_string())
@@ -94,6 +102,12 @@ def main() -> None:
         default=10,
         help="Number of results to show for single-query diff.",
     )
+    parser.add_argument(
+        "--sort",
+        choices=["delta", "query"],
+        default="delta",
+        help="Sort per-query diff output.",
+    )
     args = parser.parse_args()
 
     corpus = wands_data.corpus
@@ -116,7 +130,7 @@ def main() -> None:
     graded_b = run_strategy(strategy_b, judgments)
     ndcg_a = ndcgs(graded_a)
     ndcg_b = ndcgs(graded_b)
-    _print_ndcg_diff(ndcg_a, ndcg_b, judgments)
+    _print_ndcg_diff(ndcg_a, ndcg_b, judgments, args.sort)
 
 
 if __name__ == "__main__":
