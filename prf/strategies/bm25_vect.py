@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Optional
 
 import numpy as np
@@ -50,29 +50,75 @@ def query_vector(query: str, tokenizer, arr: SearchArray) -> Counter:
     return vector
 
 
-def bm25_prf_vect(
+# low profile loveseat recliner
+from cheat_at_search.wands_data import corpus
+
+
+def bm25_rm3_expansion(
     arr: SearchArray,
-    top_n: NDArray[np.int_],
-    mu=0
+    doc_weights: NDArray[np.float64],
+    binary_relevance=True,
+    query_terms: Optional[list[str]] = None,
+    mu=0,
+    top_docs=50
 ):
-    """Get BM25 vector for all matches=True."""
+    """Compute sparse vector of the corpus based on terms in the top_n.
+
+    Return a per-document vector representing the probability of the terms in the top_n for that document.
+    """
     # Score term in every
+    top_n = np.argsort(-doc_weights)[:top_docs]
+    top_n_weights = doc_weights[top_n]
     doclens = arr.doclengths()
     num_docs = len(arr)
     all_terms = []
-    vectors = []
-    for terms in arr[top_n]:
+    expanded_doc_vects = []
+    expanded_top_ns = []
+    term_pwcs = {}
+    term_to_importance = defaultdict(list)
+    for terms, term_importance in zip(arr[top_n], top_n_weights):
         for term, _ in terms.terms():
-            if term in all_terms:
-                continue
-            pwc = arr.docfreq(term) / num_docs
-            bm25_vectors = (arr.termfreqs(term) + mu * pwc) / (doclens + mu)
-            vectors.append(bm25_vectors[top_n])
-            all_terms.append(term)
-    return all_terms, np.stack(vectors, axis=1)
+            term_to_importance[term].append(term_importance)
+    # Collapse to mean
+    original_query_weight = 1
+    for term in term_to_importance:
+        term_to_importance[term] = np.mean(term_to_importance[term])
+        if term in query_terms:
+            term_to_importance[term] *= original_query_weight
 
+    for term, term_importance in term_to_importance.items():
+        # Term prob in collection (an approximate prior compatible with binary relevance)
+        df = arr.docfreq(term)
+        # pwc = arr.docfreq(term) / num_docs
+        tfs = arr.termfreqs(term)  # Term freqs in each document
+        pwc = np.sum(tfs) / np.sum(doclens)
+        if binary_relevance:
+            tfs = np.minimum(tfs, 1)
+        # With binary relevance this is dominated by pwc and doclen
+        rm3_vectors = (tfs + mu * pwc) / (doclens + mu)  # Term prob in each document with Dirichlet smoothing
+        term_pwcs[term] = pwc
 
-from cheat_at_search.wands_data import corpus
+        # This essentially defines the foreground
+        rm3_vectors *= doc_weights  # Weight by document relevance
+
+        rm3_vectors *= np.log(term_importance + 1)    # Weight by query relevance
+        # Original results with this term
+        sorted_docs = np.argsort(-rm3_vectors)
+
+        expanded_top_ns.append(sorted_docs)
+        expanded_doc_vects.append(rm3_vectors[sorted_docs])
+
+        # Add to results
+        all_terms.append(term)
+
+    term_importances = sorted(list(term_to_importance.items()), key=lambda x: -x[1])
+    term_weights = np.sum(np.stack(expanded_doc_vects), axis=1)
+    num_docs_with_term = np.sum([np.sum(vect > 0) for vect in expanded_doc_vects])
+    term_weights /= num_docs_with_term if num_docs_with_term > 0 else 1
+    weights = sorted(list(zip(all_terms, term_weights)), key=lambda x: -x[1])
+    pwcs = sorted(term_pwcs.items(), key=lambda x: -x[1])
+    # low profile loveseat recliner
+    return all_terms, expanded_doc_vects, expanded_top_ns
 
 
 def bm25_doc_vects(

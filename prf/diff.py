@@ -26,6 +26,19 @@ def _query_text_map(judgments: pd.DataFrame) -> dict:
     return {}
 
 
+def _ndcg_for_query(strategy, judgments: pd.DataFrame, query: str) -> float | None:
+    if "query" not in judgments.columns:
+        return None
+    subset = judgments[judgments["query"] == query]
+    if subset.empty:
+        return None
+    graded = run_strategy(strategy, subset)
+    series = ndcgs(graded)
+    if series.empty:
+        return None
+    return float(series.iloc[0])
+
+
 def _print_query_results(
     label: str,
     query: str,
@@ -52,6 +65,11 @@ def _print_query_results(
         score = row.get("score", 0)
         grade = grades.get(doc_id, "")
         print(f"{doc_id}\t{score:.4f}\t{grade}\t{title}")
+    ndcg_value = _ndcg_for_query(strategy, judgments, query)
+    if ndcg_value is None:
+        print("NDCG: unavailable")
+    else:
+        print(f"NDCG: {ndcg_value:.4f}")
 
 
 def _print_ndcg_diff(
@@ -59,14 +77,19 @@ def _print_ndcg_diff(
     ndcg_b: pd.Series,
     judgments: pd.DataFrame,
     sort_by: str,
+    name_a: str,
+    name_b: str,
 ) -> None:
     query_text = _query_text_map(judgments)
-    df = pd.DataFrame({"ndcg_a": ndcg_a, "ndcg_b": ndcg_b})
-    df["diff"] = df["ndcg_a"] - df["ndcg_b"]
-    df.index.name = "query_id"
-    df["query"] = df.index.map(query_text.get)
-    df = df.reset_index()
-    df = df[df["diff"] != 0]
+    col_a = f"ndcg_{name_a}"
+    col_b = f"ndcg_{name_b}"
+    df_all = pd.DataFrame({col_a: ndcg_a, col_b: ndcg_b})
+    df_all["diff"] = df_all[col_b] - df_all[col_a]
+    df_all.index.name = "query_id"
+    df_all["query"] = df_all.index.map(query_text.get)
+    df_all = df_all.reset_index()
+
+    df = df_all[df_all["diff"] != 0]
 
     if df.empty:
         print("No NDCG differences found.")
@@ -77,18 +100,18 @@ def _print_ndcg_diff(
     else:
         df = df.sort_values(by=["diff", "query"], ascending=[False, True])
 
-    print("Per-query NDCG differences (A - B):")
-    print(df[["query_id", "query", "ndcg_a", "ndcg_b", "diff"]].to_string())
+    print(f"Per-query NDCG differences ({name_b} - {name_a}):")
+    print(df[["query_id", "query", col_a, col_b, "diff"]].to_string())
     print("")
     print("Summary:")
     print(f"mean_diff={df['diff'].mean():.4f}")
     print(f"median_diff={df['diff'].median():.4f}")
     print("")
     print("Strategy summaries:")
-    print(f"mean_ndcg_a={df['ndcg_a'].mean():.4f}")
-    print(f"median_ndcg_a={df['ndcg_a'].median():.4f}")
-    print(f"mean_ndcg_b={df['ndcg_b'].mean():.4f}")
-    print(f"median_ndcg_b={df['ndcg_b'].median():.4f}")
+    print(f"mean_{col_a}={df_all[col_a].mean():.4f}")
+    print(f"median_{col_a}={df_all[col_a].median():.4f}")
+    print(f"mean_{col_b}={df_all[col_b].mean():.4f}")
+    print(f"median_{col_b}={df_all[col_b].median():.4f}")
 
 
 def main() -> None:
@@ -132,10 +155,20 @@ def main() -> None:
     if args.query:
         print(f"Query: {args.query}")
         _print_query_results(
-            "Strategy A", args.query, corpus, judgments, strategy_a, args.k
+            f"{args.strategy_a}",
+            args.query,
+            corpus,
+            judgments,
+            strategy_a,
+            args.k,
         )
         _print_query_results(
-            "Strategy B", args.query, corpus, judgments, strategy_b, args.k
+            f"{args.strategy_b}",
+            args.query,
+            corpus,
+            judgments,
+            strategy_b,
+            args.k,
         )
         return
 
@@ -143,7 +176,14 @@ def main() -> None:
     graded_b = run_strategy(strategy_b, judgments)
     ndcg_a = ndcgs(graded_a)
     ndcg_b = ndcgs(graded_b)
-    _print_ndcg_diff(ndcg_a, ndcg_b, judgments, args.sort)
+    _print_ndcg_diff(
+        ndcg_a,
+        ndcg_b,
+        judgments,
+        args.sort,
+        args.strategy_a,
+        args.strategy_b,
+    )
 
 
 if __name__ == "__main__":
