@@ -77,16 +77,18 @@ def bm25_rm3_expansion(
     term_pwcs = {}
     term_to_importance = defaultdict(list)
     timp_log = defaultdict(list)
+    weight_sum = np.sum(top_n_weights)
     for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
         for term, _ in terms.terms():
-            term_to_importance[term].append(term_importance)
-            timp_log[term].append((term_importance, doc_id))
+            weight = term_importance / weight_sum if weight_sum > 0 else 0
+            term_to_importance[term].append(weight)
+            timp_log[term].append((weight, doc_id))
     # Collapse to mean
     original_query_weight = 1
     for term in term_to_importance:
         term_to_importance[term] = np.sum(term_to_importance[term])
         if term in query_terms:
-            term_to_importance[term] *= original_query_weight
+            term_to_importance[term] += original_query_weight
 
     for term, term_importance in term_to_importance.items():
         # Term prob in collection (an approximate prior compatible with binary relevance)
@@ -109,7 +111,7 @@ def bm25_rm3_expansion(
 
 
         # light and navy blue decorative pillow
-        rm3_vectors *= np.log(term_importance + 1)    # Weight by query relevance
+        rm3_vectors *= term_importance
         sorted_docs = np.argsort(-rm3_vectors)
 
         expanded_top_ns.append(sorted_docs)
