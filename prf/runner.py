@@ -35,6 +35,17 @@ def main() -> None:
         choices=sorted(STRATEGIES.keys()),
         help="Strategy to run.",
     )
+    parser.add_argument(
+        "--num-queries",
+        type=int,
+        help="Number of queries to sample for evaluation.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for query sampling.",
+    )
     args = parser.parse_args()
 
     corpus = wands_data.corpus
@@ -42,7 +53,12 @@ def main() -> None:
 
     strategy_cls = STRATEGIES[args.strategy]
     strategy = strategy_cls(corpus)
-    graded = run_strategy(strategy, judgments)
+    graded = run_strategy(
+        strategy,
+        judgments,
+        num_queries=args.num_queries,
+        seed=args.seed,
+    )
     ndcg_series = ndcgs(graded)
     _report_ndcgs(ndcg_series)
 

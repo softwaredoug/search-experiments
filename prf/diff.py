@@ -1,5 +1,6 @@
 import argparse
 
+import numpy as np
 import pandas as pd
 
 from cheat_at_search import wands_data
@@ -156,6 +157,9 @@ def main() -> None:
         help="Sort per-query diff output.",
     )
     args = parser.parse_args()
+
+    if args.seed is not None:
+        np.random.seed(args.seed)
 
     corpus = wands_data.corpus
     judgments = wands_data.judgments
