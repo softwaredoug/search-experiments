@@ -139,6 +139,17 @@ def main() -> None:
         help="Number of results to show for single-query diff.",
     )
     parser.add_argument(
+        "--num-queries",
+        type=int,
+        help="Number of queries to sample for comparison.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for query sampling.",
+    )
+    parser.add_argument(
         "--sort",
         choices=["delta", "query"],
         default="delta",
@@ -172,8 +183,18 @@ def main() -> None:
         )
         return
 
-    graded_a = run_strategy(strategy_a, judgments)
-    graded_b = run_strategy(strategy_b, judgments)
+    graded_a = run_strategy(
+        strategy_a,
+        judgments,
+        num_queries=args.num_queries,
+        seed=args.seed,
+    )
+    graded_b = run_strategy(
+        strategy_b,
+        judgments,
+        num_queries=args.num_queries,
+        seed=args.seed,
+    )
     ndcg_a = ndcgs(graded_a)
     ndcg_b = ndcgs(graded_b)
     _print_ndcg_diff(
