@@ -4,6 +4,7 @@ from searcharray import SearchArray
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
 from .bm25_vect import bm25_rm3_expansion, query_vector
+from collections import defaultdict
 
 
 def softmax(x):
@@ -55,18 +56,17 @@ class PRFStrategy(SearchStrategy):
                                                               mu=10)
         # Score by summing the frequency of top_ns
         all_top_n_scores = np.zeros(len(self.index))
-        traces = {
-            5368: [],
-            24183: [],
-        }
+        traces = defaultdict(list)
         all_together = zip(all_terms, exp_vects, exp_top_ns)
         # Double counts original currently
         for (term, exp_doc_vect, exp_top_ns) in all_together:
             for doc_weight, top_n in zip(exp_doc_vect, exp_top_ns):
                 all_top_n_scores[top_n] += doc_weight
-                if top_n in traces:
+                if doc_weight > 0:
                     traces[top_n].append((term, doc_weight))
         # Convert to numpy array of len(ccorpus)
+        traces = {doc_id: sorted(term_weights, key=lambda x: -x[1]) for doc_id, term_weights in traces.items()}
+        best_expanded = np.argsort(-all_top_n_scores)[:10]
         return all_top_n_scores
 
     def _rm3_field_query(self, field, query, boost):
@@ -112,21 +112,23 @@ class PRFStrategy(SearchStrategy):
         for token in tokenized:
             matches = np.zeros(len(self.index), dtype=bool)
             if "title_snowball" in self.index:
+                term_match = self.index["title_snowball"].array.score(token)
                 bm25_scores += (
-                    self.index["title_snowball"].array.score(token) * self.title_boost
+                    term_match * self.title_boost
                 )
-                matches = bm25_scores > 0
+                matches |= term_match > 0
 
             if "description_snowball" in self.index:
+                term_match = self.index["description_snowball"].array.score(token)
                 bm25_scores += (
-                    self.index["description_snowball"].array.score(token)
+                    term_match
                     * self.description_boost
                 )
-                matches |= bm25_scores > 0
+                matches |= term_match > 0
             num_matches += matches.astype(int)
-        #all_terms_match = num_matches == len(tokenized)
+        all_terms_match = num_matches == len(tokenized)
         doc_weight = bm25_scores.copy()
-        #doc_weight[~all_terms_match] = 0
+        doc_weight[~all_terms_match] = 0
 
         bm25_scores +=  self._rm3_expansion(tokenized,
                                             doc_weight,

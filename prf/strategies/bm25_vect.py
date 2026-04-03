@@ -76,13 +76,15 @@ def bm25_rm3_expansion(
     expanded_top_ns = []
     term_pwcs = {}
     term_to_importance = defaultdict(list)
-    for terms, term_importance in zip(arr[top_n], top_n_weights):
+    timp_log = defaultdict(list)
+    for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
         for term, _ in terms.terms():
             term_to_importance[term].append(term_importance)
+            timp_log[term].append((term_importance, doc_id))
     # Collapse to mean
     original_query_weight = 1
     for term in term_to_importance:
-        term_to_importance[term] = np.mean(term_to_importance[term])
+        term_to_importance[term] = np.sum(term_to_importance[term])
         if term in query_terms:
             term_to_importance[term] *= original_query_weight
 
@@ -98,11 +100,16 @@ def bm25_rm3_expansion(
         rm3_vectors = (tfs + mu * pwc) / (doclens + mu)  # Term prob in each document with Dirichlet smoothing
         term_pwcs[term] = pwc
 
+        sorted_docs = np.argsort(-rm3_vectors)
+        # Original results with this term
         # This essentially defines the foreground
         rm3_vectors *= doc_weights  # Weight by document relevance
 
+        # 203
+
+
+        # light and navy blue decorative pillow
         rm3_vectors *= np.log(term_importance + 1)    # Weight by query relevance
-        # Original results with this term
         sorted_docs = np.argsort(-rm3_vectors)
 
         expanded_top_ns.append(sorted_docs)
@@ -118,6 +125,7 @@ def bm25_rm3_expansion(
     weights = sorted(list(zip(all_terms, term_weights)), key=lambda x: -x[1])
     pwcs = sorted(term_pwcs.items(), key=lambda x: -x[1])
     # low profile loveseat recliner
+
     return all_terms, expanded_doc_vects, expanded_top_ns
 
 
