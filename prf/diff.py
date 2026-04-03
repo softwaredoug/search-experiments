@@ -151,6 +151,12 @@ def main() -> None:
         help="Random seed for query sampling.",
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of worker processes for indexing/search.",
+    )
+    parser.add_argument(
         "--sort",
         choices=["delta", "query"],
         default="delta",
@@ -164,8 +170,8 @@ def main() -> None:
     corpus = wands_data.corpus
     judgments = wands_data.judgments
 
-    strategy_a = STRATEGIES[args.strategy_a](corpus)
-    strategy_b = STRATEGIES[args.strategy_b](corpus)
+    strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
+    strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)
 
     if args.query:
         print(f"Query: {args.query}")

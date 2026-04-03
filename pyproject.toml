@@ -13,6 +13,7 @@ dev = [
     "flake8>=7.1.0",
     "ipython>=9.3.0",
     "pytest>=8.4.1",
+    "snakeviz>=2.2.2",
 ]
 
 [project.scripts]

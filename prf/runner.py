@@ -46,13 +46,19 @@ def main() -> None:
         default=42,
         help="Random seed for query sampling.",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of worker processes for indexing/search.",
+    )
     args = parser.parse_args()
 
     corpus = wands_data.corpus
     judgments = wands_data.judgments
 
     strategy_cls = STRATEGIES[args.strategy]
-    strategy = strategy_cls(corpus)
+    strategy = strategy_cls(corpus, workers=args.workers)
     graded = run_strategy(
         strategy,
         judgments,
