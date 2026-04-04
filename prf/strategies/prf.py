@@ -5,6 +5,7 @@ from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
 from .bm25_vect import bm25_rm3_expansion, query_vector
 from collections import defaultdict
+from time import perf_counter
 
 
 def softmax(x):
@@ -53,57 +54,13 @@ class PRFStrategy(SearchStrategy):
 
         all_terms, exp_vects, exp_top_ns = bm25_rm3_expansion(arr, doc_weights,
                                                               query_terms=query_terms,
-                                                              mu=10)
+                                                              mu=1000)
         # Score by summing the frequency of top_ns
         all_top_n_scores = np.zeros(len(self.index))
-        traces = defaultdict(list)
         all_together = zip(all_terms, exp_vects, exp_top_ns)
-        # Double counts original currently
         for (term, exp_doc_vect, exp_top_ns) in all_together:
-            for doc_weight, top_n in zip(exp_doc_vect, exp_top_ns):
-                all_top_n_scores[top_n] += doc_weight
-                if doc_weight > 0:
-                    traces[top_n].append((term, doc_weight))
-        # Convert to numpy array of len(ccorpus)
-        traces = {doc_id: sorted(term_weights, key=lambda x: -x[1]) for doc_id, term_weights in traces.items()}
-        best_expanded = np.argsort(-all_top_n_scores)[:10]
+            all_top_n_scores[exp_top_ns] += exp_doc_vect
         return all_top_n_scores
-
-    def _rm3_field_query(self, field, query, boost):
-        arr = self.index[field].array
-        query_vect = query_vector(query, snowball_tokenizer, arr)
-        # Add b25 score of each term in query_vec, weighed by query_vec weight
-        field_scores = np.zeros(len(self.index))
-        for term, p_q in query_vect.items():
-            scores = arr.score(term)
-            if not self.weigh_query_terms:
-                p_q = 1.0
-            field_scores += (scores * boost * p_q)
-
-        top_n = np.argsort(-field_scores)[:self.top_n_candidates]
-        top_n_scores = field_scores[top_n]
-        # Thought, this will not take into account whether these are objectively relevant
-        as_probabilities = softmax(top_n_scores)
-        all_terms, doc_vects, top_ns = bm25_rm3_expansion(arr, top_n, mu=100)
-        # Multiply through as_probabilities into all_terms to weigh them
-        term_relevances = as_probabilities @ vects  # The relevance model of RM3
-        # Add query term relevances into term_relevances
-        new_top_ns = []
-        for term, p_q in query_vect.items():
-            more_docs_scores = arr.score(term)
-            new_top_n = np.argsort(-more_docs_scores)[:10]
-            new_top_ns.append(new_top_n)
-            if term in all_terms:
-                idx = all_terms.index(term)
-                term_relevances[idx] = (1 - self.lambd) * p_q + (self.lambd * term_relevances[idx])
-
-        # Multiply back into vects matrix to weigh the documents by the relevance model
-        doc_scores = term_relevances @ np.log(vects.T)
-        doc_scores += np.abs(doc_scores.min()) + 0.0001  # Shift to be positive
-        field_scores = 0.0 * field_scores  # Zero out original scores, but keep shape
-        field_scores[top_n] = doc_scores
-
-        return field_scores
 
     def search(self, query, k=10):
         tokenized = snowball_tokenizer(query)
@@ -130,9 +87,9 @@ class PRFStrategy(SearchStrategy):
         doc_weight = bm25_scores.copy()
         doc_weight[~all_terms_match] = 0
 
-        bm25_scores +=  self._rm3_expansion(tokenized,
-                                            doc_weight,
-                                            "title_snowball")
+        bm25_scores += self._rm3_expansion(tokenized,
+                                           doc_weight,
+                                           "title_snowball")
 
         # desc_prf = self._prf_field_query("description_snowball", query, self.description_boost)
         # bm25_scores += desc_prf
