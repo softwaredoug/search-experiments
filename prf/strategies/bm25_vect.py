@@ -12,7 +12,8 @@ def rm3_expansion(
     binary_relevance=True,
     query_terms: Optional[list[str]] = None,
     mu=0,
-    top_docs=50
+    top_docs=50,
+    debug_terms: Optional[set[str]] = None,
 ):
     """Compute sparse vector of the corpus based on terms in the top_n.
 
@@ -46,6 +47,7 @@ def rm3_expansion(
         if term in query_terms:
             term_to_importance[term] += original_query_weight
 
+    debug_info = {} if debug_terms else None
     for term, term_importance in term_to_importance.items():
         # pwc = arr.docfreq(term) / num_docs
         tfs = arr.termfreqs(term)  # Term freqs in each document
@@ -53,13 +55,15 @@ def rm3_expansion(
         if binary_relevance:
             tfs = np.minimum(tfs, 1)
         # With binary relevance this is dominated by pwc and doclen
-        rm3_vectors = (tfs + mu * pwc) / (doclens + mu)  # Term prob in each document with Dirichlet smoothing
+        rm3_raw = (tfs + mu * pwc) / (
+            doclens + mu
+        )  # Term prob in each document with Dirichlet smoothing
         term_pwcs[term] = pwc
 
-        sorted_docs = np.argsort(-rm3_vectors)
+        sorted_docs = np.argsort(-rm3_raw)
         # Original results with this term
         # This essentially defines the foreground
-        rm3_vectors *= doc_weights  # Weight by document relevance
+        rm3_vectors = rm3_raw * doc_weights  # Weight by document relevance
 
         # light and navy blue decorative pillow
         rm3_vectors *= term_importance
@@ -71,4 +75,14 @@ def rm3_expansion(
         # Add to results
         all_terms.append(term)
 
-    return all_terms, expanded_doc_vects, expanded_top_ns
+        if debug_terms is not None and term in debug_terms:
+            debug_info[term] = {
+                "term": term,
+                "term_importance": float(term_importance),
+                "pwc": float(pwc),
+                "rm3_raw": rm3_raw,
+                "rm3_after_importance": rm3_raw * term_importance,
+                "rm3_after_doc_weights": rm3_raw * term_importance * doc_weights,
+            }
+
+    return all_terms, expanded_doc_vects, expanded_top_ns, debug_info

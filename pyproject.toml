@@ -20,6 +20,7 @@ dev = [
 prf = "prf.runner:main"
 prf-query = "prf.query_runner:main"
 prf-diff = "prf.diff:main"
+prf-vectors = "prf.vectors_runner:main"
 
 [build-system]
 requires = ["hatchling>=1.24.2"]
