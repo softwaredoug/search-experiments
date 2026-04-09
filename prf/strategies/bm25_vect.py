@@ -5,8 +5,6 @@ import numpy as np
 from numpy.typing import NDArray
 from searcharray import SearchArray
 
-from time import perf_counter
-
 
 def rm3_expansion(
     arr: SearchArray,
@@ -21,7 +19,6 @@ def rm3_expansion(
     Return a per-document vector representing the probability of the terms in the top_n for that document.
     """
     # Score term in every
-    start = perf_counter()
     top_n = np.argsort(-doc_weights)[:top_docs]
     top_n_weights = doc_weights[top_n]
     doclens = arr.doclengths()
@@ -49,9 +46,6 @@ def rm3_expansion(
         if term in query_terms:
             term_to_importance[term] += original_query_weight
 
-    term_weights_took = perf_counter() - start
-    print(f"Term weights took {term_weights_took:.4f} seconds")
-
     for term, term_importance in term_to_importance.items():
         # pwc = arr.docfreq(term) / num_docs
         tfs = arr.termfreqs(term)  # Term freqs in each document
@@ -76,8 +70,5 @@ def rm3_expansion(
 
         # Add to results
         all_terms.append(term)
-
-    scored_docs_took = perf_counter() - start
-    print(f"Scoring docs took {scored_docs_took:.4f} seconds")
 
     return all_terms, expanded_doc_vects, expanded_top_ns

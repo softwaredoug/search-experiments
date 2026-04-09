@@ -3,9 +3,7 @@ from searcharray import SearchArray
 
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
-from .bm25_vect import bm25_rm3_expansion, query_vector
-from collections import defaultdict
-from time import perf_counter
+from .bm25_vect import rm3_expansion
 
 
 def softmax(x):
@@ -49,12 +47,14 @@ class PRFStrategy(SearchStrategy):
                 corpus['category'], snowball_tokenizer
             )
 
-    def _rm3_expansion(self, query_terms, doc_weights, field):
+    def _rm3_expansion(self, query_terms, doc_weights, field,
+                       binary_relevance=True):
         arr = self.index[field].array
 
-        all_terms, exp_vects, exp_top_ns = bm25_rm3_expansion(arr, doc_weights,
-                                                              query_terms=query_terms,
-                                                              mu=1000)
+        all_terms, exp_vects, exp_top_ns = rm3_expansion(arr, doc_weights,
+                                                         query_terms=query_terms,
+                                                         binary_relevance=binary_relevance,
+                                                         mu=10)
         # Score by summing the frequency of top_ns
         all_top_n_scores = np.zeros(len(self.index))
         all_together = zip(all_terms, exp_vects, exp_top_ns)
@@ -89,10 +89,11 @@ class PRFStrategy(SearchStrategy):
 
         bm25_scores += self._rm3_expansion(tokenized,
                                            doc_weight,
-                                           "title_snowball")
-
-        # desc_prf = self._prf_field_query("description_snowball", query, self.description_boost)
-        # bm25_scores += desc_prf
+                                           "title_snowball")  # 0.5605
+        bm25_scores += self._rm3_expansion(tokenized,
+                                           doc_weight,
+                                           "description_snowball",
+                                           binary_relevance=False)
 
         top_k = np.argsort(-bm25_scores)[:k]
         scores = bm25_scores[top_k]
