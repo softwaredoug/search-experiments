@@ -6,48 +6,45 @@ from numpy.typing import NDArray
 from searcharray import SearchArray
 
 
-def rm3_expansion(
+def _compute_term_importances(
     arr: SearchArray,
     doc_weights: NDArray[np.float64],
-    binary_relevance=True,
-    query_terms: Optional[list[str]] = None,
-    mu=0,
-    top_docs=50,
-    debug_terms: Optional[set[str]] = None,
-):
-    """Compute sparse vector of the corpus based on terms in the top_n.
-
-    Return a per-document vector representing the probability of the terms in the top_n for that document.
-    """
-    # Score term in every
+    query_terms: Optional[list[str]],
+    top_docs: int,
+) -> dict[str, float]:
     top_n = np.argsort(-doc_weights)[:top_docs]
     top_n_weights = doc_weights[top_n]
-    doclens = arr.doclengths()
 
-    all_terms = []
-    expanded_doc_vects = []
-    expanded_top_ns = []
-    term_pwcs = {}
     term_to_importance = defaultdict(list)
-    timp_log = defaultdict(list)
-    # First we iterate the forward index of the top_n
-    # to get the importance of each term in the top_n
-    # The sum of all the doc weights (BM25 scores) it occurs in
     weight_sum = np.sum(top_n_weights)
-    for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
+    for terms, term_importance in zip(arr[top_n], top_n_weights):
         for term, _ in terms.terms():
             weight = term_importance / weight_sum if weight_sum > 0 else 0
             term_to_importance[term].append(weight)
-            timp_log[term].append((weight, doc_id))
 
-    # Collapse to mean
     original_query_weight = 1
     for term in term_to_importance:
         term_to_importance[term] = np.sum(term_to_importance[term])
-        if term in query_terms:
+        if query_terms and term in query_terms:
             term_to_importance[term] += original_query_weight
 
+    return term_to_importance
+
+
+def _compute_rm3_vectors(
+    arr: SearchArray,
+    doc_weights: NDArray[np.float64],
+    term_to_importance: dict[str, float],
+    binary_relevance: bool,
+    mu: int,
+    debug_terms: Optional[set[str]] = None,
+):
+    doclens = arr.doclengths()
+    all_terms = []
+    expanded_doc_vects = []
+    expanded_top_ns = []
     debug_info = {} if debug_terms else None
+
     for term, term_importance in term_to_importance.items():
         # pwc = arr.docfreq(term) / num_docs
         tfs = arr.termfreqs(term)  # Term freqs in each document
@@ -58,9 +55,7 @@ def rm3_expansion(
         rm3_raw = (tfs + mu * pwc) / (
             doclens + mu
         )  # Term prob in each document with Dirichlet smoothing
-        term_pwcs[term] = pwc
 
-        sorted_docs = np.argsort(-rm3_raw)
         # Original results with this term
         # This essentially defines the foreground
         rm3_vectors = rm3_raw * doc_weights  # Weight by document relevance
@@ -86,3 +81,29 @@ def rm3_expansion(
             }
 
     return all_terms, expanded_doc_vects, expanded_top_ns, debug_info
+
+
+def rm3_expansion(
+    arr: SearchArray,
+    doc_weights: NDArray[np.float64],
+    binary_relevance=True,
+    query_terms: Optional[list[str]] = None,
+    mu=0,
+    top_docs=50,
+    debug_terms: Optional[set[str]] = None,
+):
+    """Compute sparse vector of the corpus based on terms in the top_n.
+
+    Return a per-document vector representing the probability of the terms in the top_n for that document.
+    """
+    term_to_importance = _compute_term_importances(
+        arr, doc_weights, query_terms, top_docs
+    )
+    return _compute_rm3_vectors(
+        arr,
+        doc_weights,
+        term_to_importance,
+        binary_relevance,
+        mu,
+        debug_terms,
+    )
