@@ -3,7 +3,7 @@ from searcharray import SearchArray
 
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
-from .bm25_vect import rm3_expansion
+from .bm25_vect import rm3_top_terms
 
 
 def softmax(x):
@@ -63,45 +63,27 @@ class PRFStrategy(SearchStrategy):
             )
         return list(dict.fromkeys(rm3_fields))
 
-    def _rm3_expansion(
+    def expansion_terms(
         self,
         query_terms,
         doc_weights,
         field,
         binary_relevance=True,
         return_vectors=False,
-        debug_terms=None,
     ):
         arr = self.index[field].array
 
-        all_terms, exp_vects, exp_top_ns, debug_info = rm3_expansion(
+        return rm3_top_terms(
             arr,
             doc_weights,
-            query_terms=query_terms,
+            query_terms if self.weigh_query_terms else None,
+            top_docs=self.top_n_candidates,
+            originalQueryWeight=1 - self.lambd,
+            num_terms=self.top_n_terms,
             binary_relevance=binary_relevance,
-            mu=10,
-            debug_terms=debug_terms,
         )
-        # Score by summing the frequency of top_ns
-        all_top_n_scores = np.zeros(len(self.index))
-        doc_vectors = {} if return_vectors else None
-        all_together = zip(all_terms, exp_vects, exp_top_ns)
-        for term, exp_doc_vect, exp_top_ns in all_together:
-            all_top_n_scores[exp_top_ns] += exp_doc_vect
-            if return_vectors:
-                for doc_id, score in zip(exp_top_ns, exp_doc_vect):
-                    if score == 0:
-                        continue
-                    doc_vector = doc_vectors.get(doc_id)
-                    if doc_vector is None:
-                        doc_vector = {}
-                        doc_vectors[doc_id] = doc_vector
-                    doc_vector[term] = doc_vector.get(term, 0.0) + float(score)
-        if return_vectors:
-            return all_top_n_scores, doc_vectors, debug_info
-        return all_top_n_scores, debug_info
 
-    def _search(self, query, k=10, return_vectors=False, debug_terms=None):
+    def search(self, query, k=10):
         tokenized = snowball_tokenizer(query)
         bm25_scores = np.zeros(len(self.index))
         num_matches = np.zeros(len(self.index))
@@ -121,51 +103,19 @@ class PRFStrategy(SearchStrategy):
         doc_weight = bm25_scores.copy()
         doc_weight[~all_terms_match] = 0
 
-        if return_vectors:
-            doc_vectors = {}
-            field_debug_info = {} if debug_terms else None
-            for field in self.rm3_fields:
-                scores, field_vectors, debug_info = self._rm3_expansion(
-                    tokenized,
-                    doc_weight,
-                    f"{field}_snowball",
-                    binary_relevance=field != "description",
-                    return_vectors=True,
-                    debug_terms=debug_terms,
-                )
-                bm25_scores += scores
-                if field_debug_info is not None:
-                    field_debug_info[field] = debug_info
-                for doc_id, term_scores in field_vectors.items():
-                    doc_vector = doc_vectors.get(doc_id)
-                    if doc_vector is None:
-                        doc_vectors[doc_id] = term_scores
-                        continue
-                    for term, score in term_scores.items():
-                        doc_vector[term] = doc_vector.get(term, 0.0) + score
-        else:
-            for field in self.rm3_fields:
-                scores, _ = self._rm3_expansion(
-                    tokenized,
-                    doc_weight,
-                    f"{field}_snowball",
-                    binary_relevance=field != "description",
-                    debug_terms=debug_terms,
-                )
-                bm25_scores += scores
+        rm3_scores = np.zeros(len(self.index))
 
-        top_k = np.argsort(-bm25_scores)[:k]
-        scores = bm25_scores[top_k]
-        if return_vectors:
-            if debug_terms:
-                return doc_vectors, top_k, scores, field_debug_info
-            return doc_vectors, top_k, scores
+        for field in ['description']:
+            weighed_terms = self.expansion_terms(
+                tokenized,
+                doc_weight,
+                f"{field}_snowball",
+                binary_relevance=field != "description",
+            )
+            for term, weight in weighed_terms.items():
+                if f"{field}_snowball" in self.index:
+                    rm3_scores += self.index[f"{field}_snowball"].array.score(term) * weight
+
+        top_k = np.argsort(-rm3_scores)[:k]
+        scores = rm3_scores[top_k]
         return top_k, scores
-
-    def search(self, query, k=10):
-        return self._search(query, k=k)
-
-    def vectors(self, query, k=10, debug_terms=None):
-        return self._search(query, k=k, return_vectors=True, debug_terms=debug_terms)
-
-        # Doc these two together
