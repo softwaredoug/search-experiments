@@ -1,4 +1,10 @@
+import pickle
+from pathlib import Path
+
+from searcharray import SearchArray
+
 from cheat_at_search import esci_data, msmarco_data, wands_data
+from cheat_at_search.tokenizers import snowball_tokenizer
 
 DATASETS = {
     "esci": esci_data,
@@ -6,9 +12,50 @@ DATASETS = {
     "wands": wands_data,
 }
 
+SNOWBALL_FIELDS = ("title", "description", "category")
+CACHE_ROOT = Path.home() / ".search-experiments" / "searcharray"
 
-def get_dataset(name: str):
+
+def _cache_path(dataset_name: str, field: str) -> Path:
+    return CACHE_ROOT / dataset_name / f"{field}_snowball.pkl"
+
+
+def _load_cached_index(path: Path):
+    if not path.exists():
+        return None
     try:
-        return DATASETS[name]
+        with path.open("rb") as handle:
+            return pickle.load(handle)
+    except (OSError, pickle.UnpicklingError):
+        return None
+
+
+def _save_cached_index(path: Path, index: SearchArray) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as handle:
+        pickle.dump(index, handle)
+
+
+def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) -> None:
+    snowball_field = f"{field}_snowball"
+    if snowball_field in corpus or field not in corpus:
+        return
+
+    cache_path = _cache_path(dataset_name, field)
+    cached = _load_cached_index(cache_path)
+    if cached is None:
+        cached = SearchArray.index(corpus[field], snowball_tokenizer, workers=workers)
+        _save_cached_index(cache_path, cached)
+    corpus[snowball_field] = cached
+
+
+def get_dataset(name: str, workers: int = 1):
+    try:
+        dataset = DATASETS[name]
     except KeyError as exc:
         raise ValueError(f"Unknown dataset: {name}") from exc
+
+    corpus = dataset.corpus
+    for field in SNOWBALL_FIELDS:
+        _ensure_cached_field(corpus, name, field, workers)
+    return dataset

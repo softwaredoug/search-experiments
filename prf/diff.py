@@ -172,7 +172,7 @@ def main() -> None:
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    dataset = get_dataset(args.dataset)
+    dataset = get_dataset(args.dataset, workers=args.workers)
     corpus = dataset.corpus
     judgments = dataset.judgments
 

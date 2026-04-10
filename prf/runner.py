@@ -59,7 +59,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    dataset = get_dataset(args.dataset)
+    dataset = get_dataset(args.dataset, workers=args.workers)
     corpus = dataset.corpus
     judgments = dataset.judgments
 
