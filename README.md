@@ -19,30 +19,30 @@ uv sync --extra dev
 Run benchmarks:
 
 ```bash
-uv run prf --strategy bm25
-uv run prf --strategy prf
+uv run prf --strategy bm25 --dataset wands
+uv run prf --strategy prf --dataset esci
 ```
 
 Run a single query:
 
 ```bash
-uv run prf-query --strategy bm25 --query "salon chair"
-uv run prf-query --strategy prf --query "salon chair" --k 10
+uv run prf-query --strategy bm25 --dataset wands --query "salon chair"
+uv run prf-query --strategy prf --dataset msmarco --query "salon chair" --k 10
 ```
 
 Run diffing tools:
 
 ```bash
-uv run prf-diff --strategy bm25
-uv run prf-diff --strategy prf
+uv run prf-diff --strategy bm25 --dataset wands
+uv run prf-diff --strategy prf --dataset esci
 ```
 
 Inspect PRF RM3 vectors:
 
 ```bash
-uv run prf-vectors --query "salon chair" --k 10
-uv run prf-vectors --query "salon chair" --fields title,description,category --k 10
-uv run prf-vectors --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
+uv run prf-vectors --dataset wands --query "salon chair" --k 10
+uv run prf-vectors --dataset esci --query "salon chair" --fields title,description,category --k 10
+uv run prf-vectors --dataset msmarco --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
 ```
 
 ## Lint

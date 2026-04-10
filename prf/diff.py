@@ -2,10 +2,9 @@ import argparse
 
 import numpy as np
 import pandas as pd
-
-from cheat_at_search import wands_data
 from cheat_at_search.search import ndcgs, run_strategy
 
+from prf.datasets import get_dataset
 from prf.runner import STRATEGIES
 
 
@@ -130,6 +129,12 @@ def main() -> None:
         help="Second strategy to compare.",
     )
     parser.add_argument(
+        "--dataset",
+        choices=["esci", "msmarco", "wands"],
+        default="wands",
+        help="Dataset to run against.",
+    )
+    parser.add_argument(
         "--query",
         help="Optional query string to inspect.",
     )
@@ -167,8 +172,9 @@ def main() -> None:
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    corpus = wands_data.corpus
-    judgments = wands_data.judgments
+    dataset = get_dataset(args.dataset)
+    corpus = dataset.corpus
+    judgments = dataset.judgments
 
     strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
     strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)

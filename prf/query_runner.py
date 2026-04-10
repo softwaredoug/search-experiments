@@ -1,7 +1,6 @@
 import argparse
 
-from cheat_at_search import wands_data
-
+from prf.datasets import get_dataset
 from prf.runner import STRATEGIES
 
 
@@ -12,6 +11,12 @@ def main() -> None:
         required=True,
         choices=sorted(STRATEGIES.keys()),
         help="Strategy to run.",
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["esci", "msmarco", "wands"],
+        default="wands",
+        help="Dataset to run against.",
     )
     parser.add_argument(
         "--query",
@@ -26,7 +31,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    corpus = wands_data.corpus
+    dataset = get_dataset(args.dataset)
+    corpus = dataset.corpus
     strategy_cls = STRATEGIES[args.strategy]
     strategy = strategy_cls(corpus)
 

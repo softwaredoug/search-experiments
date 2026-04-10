@@ -1,8 +1,7 @@
 import argparse
-
-from cheat_at_search import wands_data
 from cheat_at_search.tokenizers import snowball_tokenizer
 
+from prf.datasets import get_dataset
 from prf.strategies.prf import PRFStrategy
 
 
@@ -29,6 +28,12 @@ def main() -> None:
         help="Number of results to return.",
     )
     parser.add_argument(
+        "--dataset",
+        choices=["esci", "msmarco", "wands"],
+        default="wands",
+        help="Dataset to run against.",
+    )
+    parser.add_argument(
         "--fields",
         default="title,description",
         help="Comma-separated RM3 fields (title, description, category).",
@@ -50,7 +55,8 @@ def main() -> None:
             debug_terms.append(debug_tokens[0] if debug_tokens else raw_term)
     debug_terms_set = set(debug_terms)
 
-    corpus = wands_data.corpus
+    dataset = get_dataset(args.dataset)
+    corpus = dataset.corpus
     strategy = PRFStrategy(corpus, rm3_fields=rm3_fields)
 
     if debug_terms:

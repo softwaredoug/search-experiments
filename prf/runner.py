@@ -1,10 +1,9 @@
 import argparse
 
 import pandas as pd
-
-from cheat_at_search import wands_data
 from cheat_at_search.search import ndcgs, run_strategy
 
+from prf.datasets import get_dataset
 from prf.strategies.bm25 import BM25Strategy
 from prf.strategies.prf import PRFStrategy
 
@@ -36,6 +35,12 @@ def main() -> None:
         help="Strategy to run.",
     )
     parser.add_argument(
+        "--dataset",
+        choices=["esci", "msmarco", "wands"],
+        default="wands",
+        help="Dataset to run against.",
+    )
+    parser.add_argument(
         "--num-queries",
         type=int,
         help="Number of queries to sample for evaluation.",
@@ -54,8 +59,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    corpus = wands_data.corpus
-    judgments = wands_data.judgments
+    dataset = get_dataset(args.dataset)
+    corpus = dataset.corpus
+    judgments = dataset.judgments
 
     strategy_cls = STRATEGIES[args.strategy]
     strategy = strategy_cls(corpus, workers=args.workers)
