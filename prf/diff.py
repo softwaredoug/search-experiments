@@ -2,10 +2,21 @@ import argparse
 
 import numpy as np
 import pandas as pd
-from cheat_at_search.search import ndcgs, run_strategy
+from cheat_at_search.search import run_strategy
 
-from prf.datasets import get_dataset
+from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
+from prf.metrics import metric_for_dataset
 from prf.runner import STRATEGIES
+
+
+def _display_title(row: pd.Series) -> str:
+    title = row.get("title", "")
+    if isinstance(title, str) and title.strip():
+        return title
+    if title:
+        return str(title)
+    description = row.get("description", "")
+    return description if isinstance(description, str) else str(description)
 
 
 def _grade_column(judgments: pd.DataFrame) -> str | None:
@@ -26,17 +37,47 @@ def _query_text_map(judgments: pd.DataFrame) -> dict:
     return {}
 
 
-def _ndcg_for_query(strategy, judgments: pd.DataFrame, query: str) -> float | None:
+def _metric_for_query(
+    strategy, judgments: pd.DataFrame, query: str, metric_fn
+) -> float | None:
     if "query" not in judgments.columns:
         return None
     subset = judgments[judgments["query"] == query]
     if subset.empty:
         return None
     graded = run_strategy(strategy, subset)
-    series = ndcgs(graded)
+    series = metric_fn(graded)
     if series.empty:
         return None
     return float(series.iloc[0])
+
+
+def _graded_for_strategy(
+    strategy_name: str,
+    strategy,
+    judgments: pd.DataFrame,
+    dataset_name: str,
+    num_queries: int | None,
+    seed: int | None,
+) -> pd.DataFrame:
+    if strategy_name != "bm25":
+        return run_strategy(
+            strategy,
+            judgments,
+            num_queries=num_queries,
+            seed=seed,
+        )
+    cached = load_bm25_cache(dataset_name, num_queries, seed)
+    if cached is not None:
+        return cached
+    graded = run_strategy(
+        strategy,
+        judgments,
+        num_queries=num_queries,
+        seed=seed,
+    )
+    save_bm25_cache(dataset_name, num_queries, seed, graded)
+    return graded
 
 
 def _print_query_results(
@@ -46,6 +87,8 @@ def _print_query_results(
     judgments: pd.DataFrame,
     strategy,
     k: int,
+    metric_name: str,
+    metric_fn,
 ) -> None:
     top_k, scores = strategy.search(query, k=k)
     results = corpus.iloc[top_k].copy()
@@ -61,29 +104,31 @@ def _print_query_results(
     print(f"{label} results:")
     for _, row in results.iterrows():
         doc_id = row.get("doc_id", "")
-        title = row.get("title", "")
+        title = _display_title(row)
         score = row.get("score", 0)
         grade = grades.get(doc_id, "")
         print(f"{doc_id}\t{score:.4f}\t{grade}\t{title}")
-    ndcg_value = _ndcg_for_query(strategy, judgments, query)
-    if ndcg_value is None:
-        print("NDCG: unavailable")
+    metric_value = _metric_for_query(strategy, judgments, query, metric_fn)
+    if metric_value is None:
+        print(f"{metric_name}: unavailable")
     else:
-        print(f"NDCG: {ndcg_value:.4f}")
+        print(f"{metric_name}: {metric_value:.4f}")
 
 
-def _print_ndcg_diff(
-    ndcg_a: pd.Series,
-    ndcg_b: pd.Series,
+def _print_metric_diff(
+    metric_name: str,
+    metric_a: pd.Series,
+    metric_b: pd.Series,
     judgments: pd.DataFrame,
     sort_by: str,
     name_a: str,
     name_b: str,
 ) -> None:
     query_text = _query_text_map(judgments)
-    col_a = f"ndcg_{name_a}"
-    col_b = f"ndcg_{name_b}"
-    df_all = pd.DataFrame({col_a: ndcg_a, col_b: ndcg_b})
+    metric_key = metric_name.lower()
+    col_a = f"{metric_key}_{name_a}"
+    col_b = f"{metric_key}_{name_b}"
+    df_all = pd.DataFrame({col_a: metric_a, col_b: metric_b})
     df_all["diff"] = df_all[col_b] - df_all[col_a]
     df_all.index.name = "query_id"
     df_all["query"] = df_all.index.map(query_text.get)
@@ -92,7 +137,7 @@ def _print_ndcg_diff(
     df = df_all[df_all["diff"] != 0]
 
     if df.empty:
-        print("No NDCG differences found.")
+        print(f"No {metric_name} differences found.")
         return
 
     if sort_by == "query":
@@ -100,7 +145,7 @@ def _print_ndcg_diff(
     else:
         df = df.sort_values(by=["diff", "query"], ascending=[False, True])
 
-    print(f"Per-query NDCG differences ({name_b} - {name_a}):")
+    print(f"Per-query {metric_name} differences ({name_b} - {name_a}):")
     print(df[["query_id", "query", col_a, col_b, "diff"]].to_string())
     print("")
     print("Summary:")
@@ -175,6 +220,7 @@ def main() -> None:
     dataset = get_dataset(args.dataset, workers=args.workers)
     corpus = dataset.corpus
     judgments = dataset.judgments
+    metric_name, metric_fn = metric_for_dataset(args.dataset)
 
     strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
     strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)
@@ -188,6 +234,8 @@ def main() -> None:
             judgments,
             strategy_a,
             args.k,
+            metric_name,
+            metric_fn,
         )
         _print_query_results(
             f"{args.strategy_b}",
@@ -196,26 +244,33 @@ def main() -> None:
             judgments,
             strategy_b,
             args.k,
+            metric_name,
+            metric_fn,
         )
         return
 
-    graded_a = run_strategy(
+    graded_a = _graded_for_strategy(
+        args.strategy_a,
         strategy_a,
         judgments,
-        num_queries=args.num_queries,
-        seed=args.seed,
+        args.dataset,
+        args.num_queries,
+        args.seed,
     )
-    graded_b = run_strategy(
+    graded_b = _graded_for_strategy(
+        args.strategy_b,
         strategy_b,
         judgments,
-        num_queries=args.num_queries,
-        seed=args.seed,
+        args.dataset,
+        args.num_queries,
+        args.seed,
     )
-    ndcg_a = ndcgs(graded_a)
-    ndcg_b = ndcgs(graded_b)
-    _print_ndcg_diff(
-        ndcg_a,
-        ndcg_b,
+    metric_a = metric_fn(graded_a)
+    metric_b = metric_fn(graded_b)
+    _print_metric_diff(
+        metric_name,
+        metric_a,
+        metric_b,
         judgments,
         args.sort,
         args.strategy_a,

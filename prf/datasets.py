@@ -1,6 +1,7 @@
 import pickle
 from pathlib import Path
 
+import pandas as pd
 from searcharray import SearchArray
 
 from cheat_at_search import esci_data, msmarco_data, wands_data
@@ -14,6 +15,7 @@ DATASETS = {
 
 SNOWBALL_FIELDS = ("title", "description", "category")
 CACHE_ROOT = Path.home() / ".search-experiments" / "searcharray"
+BM25_CACHE_ROOT = Path.home() / ".search-experiments" / "bm25"
 
 
 def _cache_path(dataset_name: str, field: str) -> Path:
@@ -47,6 +49,43 @@ def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) ->
         cached = SearchArray.index(corpus[field], snowball_tokenizer, workers=workers)
         _save_cached_index(cache_path, cached)
     corpus[snowball_field] = cached
+
+
+def _bm25_cache_path(
+    dataset_name: str, num_queries: int | None, seed: int | None
+) -> Path:
+    num_queries_label = num_queries if num_queries is not None else "all"
+    seed_label = seed if seed is not None else "none"
+    filename = f"graded_bm25_n{num_queries_label}_seed{seed_label}.pkl"
+    return BM25_CACHE_ROOT / dataset_name / filename
+
+
+def load_bm25_cache(
+    dataset_name: str, num_queries: int | None, seed: int | None
+) -> pd.DataFrame | None:
+    cache_path = _bm25_cache_path(dataset_name, num_queries, seed)
+    if not cache_path.exists():
+        return None
+    try:
+        graded = pd.read_pickle(cache_path)
+    except (OSError, pickle.UnpicklingError):
+        return None
+    if "doc_id" not in graded.columns:
+        return None
+    if "mrr" not in graded.columns:
+        return None
+    return graded
+
+
+def save_bm25_cache(
+    dataset_name: str,
+    num_queries: int | None,
+    seed: int | None,
+    graded: pd.DataFrame,
+) -> None:
+    cache_path = _bm25_cache_path(dataset_name, num_queries, seed)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    graded.to_pickle(cache_path)
 
 
 def get_dataset(name: str, workers: int = 1):

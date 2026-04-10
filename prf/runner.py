@@ -1,9 +1,10 @@
 import argparse
 
 import pandas as pd
-from cheat_at_search.search import ndcgs, run_strategy
+from cheat_at_search.search import run_strategy
 
-from prf.datasets import get_dataset
+from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
+from prf.metrics import metric_for_dataset
 from prf.strategies.bm25 import BM25Strategy
 from prf.strategies.prf import PRFStrategy
 
@@ -13,17 +14,18 @@ STRATEGIES = {
 }
 
 
-def _report_ndcgs(ndcg_series: pd.Series) -> None:
-    if ndcg_series.empty:
-        print("No NDCG results to report.")
+def _report_metric(metric_name: str, metric_series: pd.Series) -> None:
+    metric_key = metric_name.lower()
+    if metric_series.empty:
+        print(f"No {metric_name} results to report.")
         return
 
-    print("Per-query NDCG:")
-    print(ndcg_series.to_string())
+    print(f"Per-query {metric_name}:")
+    print(metric_series.to_string())
     print("")
     print("Summary:")
-    print(f"mean_ndcg={ndcg_series.mean():.4f}")
-    print(f"median_ndcg={ndcg_series.median():.4f}")
+    print(f"mean_{metric_key}={metric_series.mean():.4f}")
+    print(f"median_{metric_key}={metric_series.median():.4f}")
 
 
 def main() -> None:
@@ -64,15 +66,22 @@ def main() -> None:
     judgments = dataset.judgments
 
     strategy_cls = STRATEGIES[args.strategy]
-    strategy = strategy_cls(corpus, workers=args.workers)
-    graded = run_strategy(
-        strategy,
-        judgments,
-        num_queries=args.num_queries,
-        seed=args.seed,
-    )
-    ndcg_series = ndcgs(graded)
-    _report_ndcgs(ndcg_series)
+    graded = None
+    if args.strategy == "bm25":
+        graded = load_bm25_cache(args.dataset, args.num_queries, args.seed)
+    if graded is None:
+        strategy = strategy_cls(corpus, workers=args.workers)
+        graded = run_strategy(
+            strategy,
+            judgments,
+            num_queries=args.num_queries,
+            seed=args.seed,
+        )
+        if args.strategy == "bm25":
+            save_bm25_cache(args.dataset, args.num_queries, args.seed, graded)
+    metric_name, metric_fn = metric_for_dataset(args.dataset)
+    metric_series = metric_fn(graded)
+    _report_metric(metric_name, metric_series)
 
 
 if __name__ == "__main__":
