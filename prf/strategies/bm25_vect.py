@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Optional
 
 import numpy as np
@@ -11,9 +11,16 @@ def _compute_term_importances(
     doc_weights: NDArray[np.float64],
     query_terms: Optional[list[str]],
     top_docs: int,
+    originalQueryWeight: float = 0.5,
+    num_terms: int = 10,
 ) -> dict[str, float]:
     top_n = np.argsort(-doc_weights)[:top_docs]
     top_n_weights = doc_weights[top_n]
+
+    # Difference from anserini:
+    # Anserini takes tf out of norms to also weigh the terms
+    # by their importance by doc. Here we weigh basically by
+    # proportion of total BM25 score in the doc_weights
 
     term_to_importance = defaultdict(list)
     weight_sum = np.sum(top_n_weights)
@@ -22,13 +29,27 @@ def _compute_term_importances(
             weight = term_importance / weight_sum if weight_sum > 0 else 0
             term_to_importance[term].append(weight)
 
-    original_query_weight = 1
+    scored_terms = Counter()
+    sum_squares = 0
     for term in term_to_importance:
-        term_to_importance[term] = np.sum(term_to_importance[term])
+        scored_terms[term] = np.sum(term_to_importance[term])
+        p_query_term = 0
         if query_terms and term in query_terms:
-            term_to_importance[term] += original_query_weight
+            p_query_term = 1 / len(query_terms)
+        scored_terms[term] = ((originalQueryWeight * p_query_term) +
+                              (1 - originalQueryWeight) * scored_terms[term])
+        sum_squares += scored_terms[term] ** 2
 
-    return term_to_importance
+    # L2 normalize
+    l2_norm = np.sqrt(sum_squares)
+    for term in scored_terms:
+        if sum_squares > 0:
+            scored_terms[term] /= l2_norm
+
+    if num_terms is None:
+        return scored_terms
+    top_terms = scored_terms.most_common(num_terms)
+    return {term: importance for term, importance in top_terms}
 
 
 def _compute_rm3_vectors(
