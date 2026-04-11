@@ -107,3 +107,4 @@ Keep changes small, testable, and aligned with existing patterns.
 - Avoid modifying unrelated files.
 - Update tests if behavior changes.
 - Prefer `apply_patch` for small edits and new files.
+- When creating git commits, include a `Co-authored-by:` trailer indicating the model used in the work.
