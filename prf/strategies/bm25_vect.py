@@ -11,6 +11,7 @@ def _compute_term_importances(
     doc_weights: NDArray[np.float64],
     query_terms: Optional[list[str]],
     top_docs: int,
+    num_terms: int = 10,
 ) -> dict[str, float]:
     top_n = np.argsort(-doc_weights)[:top_docs]
     top_n_weights = doc_weights[top_n]
@@ -32,6 +33,7 @@ def _compute_term_importances(
     # With just the
     if term_to_importance:
         term_to_importance = Counter(term_to_importance)
+        term_to_importance = dict(term_to_importance.most_common(num_terms))
     return term_to_importance
 
 
@@ -42,31 +44,35 @@ def _compute_rm3_vectors(
     binary_relevance: bool,
     mu: int,
     debug_terms: Optional[set[str]] = None,
+    num_docs: Optional[int] = None,
 ):
     doclens = arr.doclengths()
     all_terms = []
     expanded_doc_vects = []
     expanded_top_ns = []
     debug_info = {} if debug_terms else None
-
+    # 7298534
     for term, term_importance in term_to_importance.items():
         # pwc = arr.docfreq(term) / num_docs
         tfs = arr.termfreqs(term)  # Term freqs in each document
+
+        # Essentialyl the background probability of the term in the corpus
         pwc = np.sum(tfs) / np.sum(doclens)
         if binary_relevance:
             tfs = np.minimum(tfs, 1)
+        # The foreground essentially
         # With binary relevance this is dominated by pwc and doclen
         rm3_raw = (tfs + mu * pwc) / (
             doclens + mu
         )  # Term prob in each document with Dirichlet smoothing
 
-        # Original results with this term
-        # This essentially defines the foreground
-        rm3_vectors = rm3_raw * doc_weights  # Weight by document relevance
+        # Essentially makes this a reranker
+        rm3_vectors = rm3_raw * doc_weights
 
         # light and navy blue decorative pillow
         rm3_vectors *= term_importance
-        sorted_docs = np.argsort(-rm3_vectors)
+
+        sorted_docs = np.argsort(-rm3_vectors)[:num_docs]
 
         expanded_top_ns.append(sorted_docs)
         expanded_doc_vects.append(rm3_vectors[sorted_docs])

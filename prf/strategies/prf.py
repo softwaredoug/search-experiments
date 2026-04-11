@@ -19,6 +19,7 @@ class PRFStrategy(SearchStrategy):
         title_boost=9.3,
         description_boost=4.1,
         rm3_fields=None,
+        binary_relevance_fields=None,
         top_n_terms=10,
         top_n_candidates=50,
         lambd=0.1,
@@ -31,6 +32,9 @@ class PRFStrategy(SearchStrategy):
         self.title_boost = title_boost
         self.description_boost = description_boost
         self.rm3_fields = self._normalize_rm3_fields(rm3_fields)
+        self.binary_relevance_fields = self._normalize_binary_relevance_fields(
+            binary_relevance_fields
+        )
         self.top_n_terms = top_n_terms
         self.top_n_candidates = top_n_candidates
         self.lambd = lambd
@@ -63,6 +67,30 @@ class PRFStrategy(SearchStrategy):
                 f"Unknown RM3 fields: {unknown_fields_str}. Allowed: {allowed_fields_str}"
             )
         return list(dict.fromkeys(rm3_fields))
+
+    def _normalize_binary_relevance_fields(self, binary_relevance_fields):
+        if binary_relevance_fields is None:
+            return None
+        allowed_fields = {"title", "description", "category"}
+        if isinstance(binary_relevance_fields, str):
+            binary_relevance_fields = [
+                field.strip()
+                for field in binary_relevance_fields.split(",")
+                if field.strip()
+            ]
+        if not binary_relevance_fields:
+            raise ValueError("Binary relevance fields cannot be empty")
+        unknown_fields = [
+            field for field in binary_relevance_fields if field not in allowed_fields
+        ]
+        if unknown_fields:
+            unknown_fields_str = ", ".join(sorted(unknown_fields))
+            allowed_fields_str = ", ".join(sorted(allowed_fields))
+            raise ValueError(
+                "Unknown binary relevance fields: "
+                f"{unknown_fields_str}. Allowed: {allowed_fields_str}"
+            )
+        return set(binary_relevance_fields)
 
     def _rm3_expansion(
         self,
@@ -138,7 +166,7 @@ class PRFStrategy(SearchStrategy):
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",
-                    binary_relevance=True,  # field != "description",
+                    binary_relevance=self._binary_relevance_for_field(field),
                     return_vectors=True,
                     debug_terms=debug_terms,
                 )
@@ -158,7 +186,7 @@ class PRFStrategy(SearchStrategy):
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",
-                    binary_relevance=True,  # field != "description",
+                    binary_relevance=self._binary_relevance_for_field(field),
                     debug_terms=debug_terms,
                 )
                 bm25_scores += scores
@@ -176,5 +204,10 @@ class PRFStrategy(SearchStrategy):
 
     def vectors(self, query, k=10, debug_terms=None):
         return self._search(query, k=k, return_vectors=True, debug_terms=debug_terms)
+
+    def _binary_relevance_for_field(self, field):
+        if self.binary_relevance_fields is None:
+            return field != "description"
+        return field in self.binary_relevance_fields
 
         # Doc these two together
