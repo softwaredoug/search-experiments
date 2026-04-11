@@ -2,6 +2,7 @@ import numpy as np
 from searcharray import SearchArray
 
 from cheat_at_search.strategy import SearchStrategy
+from searcharray.similarity import compute_idf
 from cheat_at_search.tokenizers import snowball_tokenizer
 from .bm25_vect import rm3_expansion
 
@@ -79,7 +80,7 @@ class PRFStrategy(SearchStrategy):
             doc_weights,
             query_terms=query_terms,
             binary_relevance=binary_relevance,
-            mu=10,
+            mu=1000,
             debug_terms=debug_terms,
         )
         # Score by summing the frequency of top_ns
@@ -105,21 +106,29 @@ class PRFStrategy(SearchStrategy):
         tokenized = snowball_tokenizer(query)
         bm25_scores = np.zeros(len(self.index))
         num_matches = np.zeros(len(self.index))
+        df_weights = np.zeros(len(self.index))
         for token in tokenized:
             matches = np.zeros(len(self.index), dtype=bool)
+            df_title = 0
+            df_description = 0
             if "title_snowball" in self.index:
                 term_match = self.index["title_snowball"].array.score(token)
                 bm25_scores += term_match * self.title_boost
                 matches |= term_match > 0
+                df_title = self.index["title_snowball"].array.docfreq(token)
 
             if "description_snowball" in self.index:
                 term_match = self.index["description_snowball"].array.score(token)
                 bm25_scores += term_match * self.description_boost
                 matches |= term_match > 0
+                df_description = self.index["description_snowball"].array.docfreq(token)
+            df = max(df_title, df_description)
+            df_weights[matches] += compute_idf(len(self.index), df)
             num_matches += matches.astype(int)
         all_terms_match = num_matches == len(tokenized)
         doc_weight = bm25_scores.copy()
-        doc_weight[~all_terms_match] = 0
+        doc_weight *= df_weights
+        # doc_weight[~all_terms_match] = 0
 
         if return_vectors:
             doc_vectors = {}
@@ -129,7 +138,7 @@ class PRFStrategy(SearchStrategy):
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",
-                    binary_relevance=field != "description",
+                    binary_relevance=True,  # field != "description",
                     return_vectors=True,
                     debug_terms=debug_terms,
                 )
@@ -149,7 +158,7 @@ class PRFStrategy(SearchStrategy):
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",
-                    binary_relevance=field != "description",
+                    binary_relevance=True,  # field != "description",
                     debug_terms=debug_terms,
                 )
                 bm25_scores += scores

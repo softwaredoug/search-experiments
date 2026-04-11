@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Optional
 
 import numpy as np
@@ -28,6 +28,10 @@ def _compute_term_importances(
         if query_terms and term in query_terms:
             term_to_importance[term] += original_query_weight
 
+    # va has more BM25 than champlain?
+    # With just the
+    if term_to_importance:
+        term_to_importance = Counter(term_to_importance)
     return term_to_importance
 
 
@@ -90,6 +94,7 @@ def rm3_expansion(
     query_terms: Optional[list[str]] = None,
     mu=0,
     top_docs=50,
+    top_terms=10,
     debug_terms: Optional[set[str]] = None,
 ):
     """Compute sparse vector of the corpus based on terms in the top_n.
@@ -99,6 +104,10 @@ def rm3_expansion(
     term_to_importance = _compute_term_importances(
         arr, doc_weights, query_terms, top_docs
     )
+    term_to_importance = dict(
+        sorted(term_to_importance.items(), key=lambda item: item[1], reverse=True)[:top_terms]
+    )
+
     return _compute_rm3_vectors(
         arr,
         doc_weights,
