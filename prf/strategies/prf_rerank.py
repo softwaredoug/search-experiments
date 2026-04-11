@@ -4,7 +4,7 @@ from searcharray import SearchArray
 from cheat_at_search.strategy import SearchStrategy
 from searcharray.similarity import compute_idf
 from cheat_at_search.tokenizers import snowball_tokenizer
-from .bm25_vect import top_n_term_strengths
+from .prf_rerank_terms import top_n_term_strengths, weighed_bm25_search
 
 
 class PRFRerankStrategy(SearchStrategy):
@@ -127,30 +127,14 @@ class PRFRerankStrategy(SearchStrategy):
 
     def _search(self, query, k=10, return_vectors=False, debug_terms=None):
         tokenized = snowball_tokenizer(query)
-        bm25_scores = np.zeros(len(self.index))
-        num_matches = np.zeros(len(self.index))
-        df_weights = np.zeros(len(self.index))
-        for token in tokenized:
-            matches = np.zeros(len(self.index), dtype=bool)
-            df_title = 0
-            df_description = 0
-            if "title_snowball" in self.index:
-                term_match = self.index["title_snowball"].array.score(token)
-                bm25_scores += term_match * self.title_boost
-                matches |= term_match > 0
-                df_title = self.index["title_snowball"].array.docfreq(token)
-
-            if "description_snowball" in self.index:
-                term_match = self.index["description_snowball"].array.score(token)
-                bm25_scores += term_match * self.description_boost
-                matches |= term_match > 0
-                df_description = self.index["description_snowball"].array.docfreq(token)
-            df = max(df_title, df_description)
-            df_weights[matches] += compute_idf(len(self.index), df)
-            num_matches += matches.astype(int)
-        doc_weight = bm25_scores.copy()
-        doc_weight *= df_weights
-        # doc_weight[~all_terms_match] = 0
+        bm25_scores, doc_weight = weighed_bm25_search(
+            corpus=self.corpus,
+            fields={
+                "title": self.title_boost,
+                "description": self.description_boost
+            },
+            query_terms=tokenized,
+        )
 
         if return_vectors:
             doc_vectors = {}

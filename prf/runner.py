@@ -6,7 +6,7 @@ from cheat_at_search.search import run_strategy
 from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
 from prf.metrics import metric_for_dataset
 from prf.strategies.bm25 import BM25Strategy
-from prf.strategies.prf import PRFRerankStrategy
+from prf.strategies.prf_rerank import PRFRerankStrategy
 
 STRATEGIES = {
     "bm25": BM25Strategy,

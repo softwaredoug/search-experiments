@@ -2,7 +2,7 @@ import argparse
 from cheat_at_search.tokenizers import snowball_tokenizer
 
 from prf.datasets import get_dataset
-from prf.strategies.prf import PRFRerankStrategy
+from prf.strategies.prf_rerank import PRFRerankStrategy
 
 
 def _display_title(row) -> str:

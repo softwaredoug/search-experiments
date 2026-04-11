@@ -3,6 +3,7 @@ from searcharray import SearchArray
 
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
+from prf.strategies.prf_rerank_terms import weighed_bm25_search
 
 
 class BM25Strategy(SearchStrategy):
@@ -30,18 +31,11 @@ class BM25Strategy(SearchStrategy):
 
     def search(self, query, k=10):
         tokenized = snowball_tokenizer(query)
-        bm25_scores = np.zeros(len(self.index))
-        if "title_snowball" in self.index:
-            for token in tokenized:
-                bm25_scores += (
-                    self.index["title_snowball"].array.score(token) * self.title_boost
-                )
-        if "description_snowball" in self.index:
-            for token in tokenized:
-                bm25_scores += (
-                    self.index["description_snowball"].array.score(token)
-                    * self.description_boost
-                )
+        fields = {
+            "title": self.title_boost,
+            "description": self.description_boost,
+        }
+        bm25_scores, _ = weighed_bm25_search(self.index, fields, tokenized)
         top_k = np.argsort(-bm25_scores)[:k]
         scores = bm25_scores[top_k]
         return top_k, scores

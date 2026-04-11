@@ -1,9 +1,40 @@
 from collections import defaultdict, Counter
-from typing import Optional
+from typing import Optional, Tuple
+from searcharray.similarity import compute_idf
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from searcharray import SearchArray
+
+
+def weighed_bm25_search(
+    corpus: pd.DataFrame,
+    fields: dict[str, float],
+    query_terms: list[str]
+) -> Tuple[NDArray[float], NDArray[float]]:
+    """BM25 scores over a list of fields, with weighting based on IDF and number of matches."""
+
+    bm25_scores = np.zeros(len(corpus))
+    num_matches = np.zeros(len(corpus))
+    df_weights = np.zeros(len(corpus))
+    for token in query_terms:
+        matches = np.zeros(len(corpus), dtype=bool)
+        field_dfs = []
+        for field, boost in fields.items():
+            field_snowball = f"{field}_snowball"
+            if field_snowball in corpus:
+                term_match = corpus[field_snowball].array.score(token)
+                bm25_scores += term_match * boost
+                matches |= term_match > 0
+                field_df = corpus["title_snowball"].array.docfreq(token)
+                field_dfs.append(field_df)
+        df = max(field_dfs) if field_dfs else 0
+        df_weights[matches] += compute_idf(len(corpus), df)
+        num_matches += matches.astype(int)
+    doc_weight = bm25_scores.copy()
+    doc_weight *= df_weights
+    return bm25_scores, doc_weight
 
 
 def _compute_term_importances(
@@ -111,7 +142,9 @@ def top_n_term_strengths(
         arr, doc_weights, query_terms, top_docs
     )
     term_to_importance = dict(
-        sorted(term_to_importance.items(), key=lambda item: item[1], reverse=True)[:top_terms]
+        sorted(term_to_importance.items(), key=lambda item: item[1], reverse=True)[
+            :top_terms
+        ]
     )
 
     return _rel_term_strengths(
