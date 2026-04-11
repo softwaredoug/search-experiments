@@ -8,16 +8,15 @@ from numpy.typing import NDArray
 from searcharray import SearchArray
 
 
-def weighed_bm25_search(
+def _bm25_search_stats(
     corpus: pd.DataFrame,
     fields: dict[str, float],
-    query_terms: list[str]
-) -> Tuple[NDArray[float], NDArray[float]]:
-    """BM25 scores over a list of fields, with weighting based on IDF and number of matches."""
-
+    query_terms: list[str],
+) -> Tuple[NDArray[float], NDArray[float], NDArray[float], dict[str, int]]:
     bm25_scores = np.zeros(len(corpus))
     num_matches = np.zeros(len(corpus))
     df_weights = np.zeros(len(corpus))
+    term_dfs: dict[str, int] = {}
     for token in query_terms:
         matches = np.zeros(len(corpus), dtype=bool)
         field_dfs = []
@@ -27,14 +26,33 @@ def weighed_bm25_search(
                 term_match = corpus[field_snowball].array.score(token)
                 bm25_scores += term_match * boost
                 matches |= term_match > 0
-                field_df = corpus["title_snowball"].array.docfreq(token)
+                field_df = corpus[field_snowball].array.docfreq(token)
                 field_dfs.append(field_df)
         df = max(field_dfs) if field_dfs else 0
+        term_dfs[token] = df
         df_weights[matches] += compute_idf(len(corpus), df)
         num_matches += matches.astype(int)
     doc_weight = bm25_scores.copy()
     doc_weight *= df_weights
+    return bm25_scores, doc_weight, num_matches, term_dfs
+
+
+def weighed_bm25_search(
+    corpus: pd.DataFrame,
+    fields: dict[str, float],
+    query_terms: list[str],
+) -> Tuple[NDArray[float], NDArray[float]]:
+    """BM25 scores over a list of fields, with weighting based on IDF and number of matches."""
+    bm25_scores, doc_weight, _, _ = _bm25_search_stats(corpus, fields, query_terms)
     return bm25_scores, doc_weight
+
+
+def bm25_search_details(
+    corpus: pd.DataFrame,
+    fields: dict[str, float],
+    query_terms: list[str],
+) -> Tuple[NDArray[float], NDArray[float], NDArray[float], dict[str, int]]:
+    return _bm25_search_stats(corpus, fields, query_terms)
 
 
 def _compute_term_importances(

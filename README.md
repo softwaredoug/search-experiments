@@ -45,6 +45,13 @@ uv run prf-rerank-debug --dataset esci --query "salon chair" --fields title,desc
 uv run prf-rerank-debug --dataset msmarco --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
 ```
 
+Inspect BM25 debug output:
+
+```bash
+uv run bm25-debug --dataset wands --query "salon chair" --k 10
+uv run bm25-debug --dataset wands --query "salon chair" --debug-terms chair,stool
+```
+
 ## Lint
 
 ```bash
