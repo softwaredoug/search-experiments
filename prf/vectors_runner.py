@@ -5,6 +5,16 @@ from prf.datasets import get_dataset
 from prf.strategies.prf import PRFStrategy
 
 
+def _display_title(row) -> str:
+    title = row.get("title", "")
+    if isinstance(title, str) and title.strip():
+        return title
+    if title:
+        return str(title)
+    description = row.get("description", "")
+    return description if isinstance(description, str) else str(description)
+
+
 def _format_vector(term_scores: dict[str, float]) -> str:
     if not term_scores:
         return ""
@@ -39,6 +49,13 @@ def main() -> None:
         help="Comma-separated RM3 fields (title, description, category).",
     )
     parser.add_argument(
+        "--binary-relevance",
+        help=(
+            "Comma-separated fields to use binary relevance in PRF "
+            "(title, description, category)."
+        ),
+    )
+    parser.add_argument(
         "--debug-terms",
         help="Comma-separated terms to trace RM3 scoring details.",
     )
@@ -57,7 +74,11 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
-    strategy = PRFStrategy(corpus, rm3_fields=rm3_fields)
+    strategy = PRFStrategy(
+        corpus,
+        rm3_fields=rm3_fields,
+        binary_relevance_fields=args.binary_relevance,
+    )
 
     if debug_terms:
         doc_vectors, top_k, scores, debug_info = strategy.vectors(
@@ -71,7 +92,7 @@ def main() -> None:
     print(f"Query: {args.query}")
     for row_index, row in results.iterrows():
         doc_id = row.get("doc_id", "")
-        title = row.get("title", "")
+        title = _display_title(row)
         score = row.get("score", 0)
         vector = _format_vector(doc_vectors.get(row_index, {}))
         print(f"{doc_id}\t{score:.4f}\t{title}")
@@ -99,13 +120,14 @@ def main() -> None:
                 ("After term importance", "rm3_after_importance"),
                 ("After doc weights", "rm3_after_doc_weights"),
             ):
+                print("------------------------------------")
                 print(label)
                 header = "doc_id\t" + "\t".join(debug_terms) + "\ttitle"
                 print(header)
                 for doc_index in top_k:
                     row = corpus.iloc[doc_index]
                     doc_id = row.get("doc_id", "")
-                    title = row.get("title", "")
+                    title = _display_title(row)
                     scores = []
                     for term in debug_terms:
                         term_info = field_info.get(term)

@@ -52,6 +52,11 @@ def _metric_for_query(
     return float(series.iloc[0])
 
 
+# MSMarco, binary_relevance
+# mean_mrr_prf=0.1913
+# mean_mrr_prf=0.2025
+
+
 def _graded_for_strategy(
     strategy_name: str,
     strategy,
@@ -212,6 +217,13 @@ def main() -> None:
         default="delta",
         help="Sort per-query diff output.",
     )
+    parser.add_argument(
+        "--binary-relevance",
+        help=(
+            "Comma-separated fields to use binary relevance in PRF "
+            "(title, description, category)."
+        ),
+    )
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -222,8 +234,22 @@ def main() -> None:
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(args.dataset)
 
-    strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
-    strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)
+    if args.strategy_a == "prf":
+        strategy_a = STRATEGIES[args.strategy_a](
+            corpus,
+            workers=args.workers,
+            binary_relevance_fields=args.binary_relevance,
+        )
+    else:
+        strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
+    if args.strategy_b == "prf":
+        strategy_b = STRATEGIES[args.strategy_b](
+            corpus,
+            workers=args.workers,
+            binary_relevance_fields=args.binary_relevance,
+        )
+    else:
+        strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)
 
     if args.query:
         print(f"Query: {args.query}")

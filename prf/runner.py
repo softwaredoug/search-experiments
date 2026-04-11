@@ -59,6 +59,13 @@ def main() -> None:
         default=1,
         help="Number of worker processes for indexing/search.",
     )
+    parser.add_argument(
+        "--binary-relevance",
+        help=(
+            "Comma-separated fields to use binary relevance in PRF "
+            "(title, description, category)."
+        ),
+    )
     args = parser.parse_args()
 
     dataset = get_dataset(args.dataset, workers=args.workers)
@@ -70,7 +77,14 @@ def main() -> None:
     if args.strategy == "bm25":
         graded = load_bm25_cache(args.dataset, args.num_queries, args.seed)
     if graded is None:
-        strategy = strategy_cls(corpus, workers=args.workers)
+        if args.strategy == "prf":
+            strategy = strategy_cls(
+                corpus,
+                workers=args.workers,
+                binary_relevance_fields=args.binary_relevance,
+            )
+        else:
+            strategy = strategy_cls(corpus, workers=args.workers)
         graded = run_strategy(
             strategy,
             judgments,
