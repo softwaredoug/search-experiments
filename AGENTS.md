@@ -10,8 +10,8 @@ Keep changes small, testable, and aligned with existing patterns.
 - Python: >= 3.11
 - Package manager: uv
 - Entrypoints:
-  - `prf` (benchmarks)
-  - `prf-query` (single query debug)
+- `run` (benchmarks)
+- `query` (single query debug)
 
 ## Setup / Install
 
@@ -23,12 +23,12 @@ Keep changes small, testable, and aligned with existing patterns.
 ## Run Commands
 
 - Run BM25 benchmark:
-  - `uv run prf --strategy bm25`
+- `uv run run --strategy bm25`
 - Run PRF benchmark:
-  - `uv run prf --strategy prf`
+- `uv run run --strategy prf_rerank`
 - Run a single query:
-  - `uv run prf-query --strategy bm25 --query "salon chair"`
-  - `uv run prf-query --strategy prf --query "salon chair" --k 10`
+- `uv run query --strategy bm25 --query "salon chair"`
+- `uv run query --strategy prf_rerank --query "salon chair" --k 10`
 
 ## Lint / Format
 

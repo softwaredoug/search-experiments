@@ -37,7 +37,7 @@ def _compute_term_importances(
     return term_to_importance
 
 
-def _compute_rm3_vectors(
+def _rel_term_strengths(
     arr: SearchArray,
     doc_weights: NDArray[np.float64],
     term_to_importance: dict[str, float],
@@ -93,7 +93,7 @@ def _compute_rm3_vectors(
     return all_terms, expanded_doc_vects, expanded_top_ns, debug_info
 
 
-def rm3_expansion(
+def top_n_term_strengths(
     arr: SearchArray,
     doc_weights: NDArray[np.float64],
     binary_relevance=True,
@@ -114,7 +114,7 @@ def rm3_expansion(
         sorted(term_to_importance.items(), key=lambda item: item[1], reverse=True)[:top_terms]
     )
 
-    return _compute_rm3_vectors(
+    return _rel_term_strengths(
         arr,
         doc_weights,
         term_to_importance,

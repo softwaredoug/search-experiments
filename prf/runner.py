@@ -6,11 +6,11 @@ from cheat_at_search.search import run_strategy
 from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
 from prf.metrics import metric_for_dataset
 from prf.strategies.bm25 import BM25Strategy
-from prf.strategies.prf import PRFStrategy
+from prf.strategies.prf import PRFRerankStrategy
 
 STRATEGIES = {
     "bm25": BM25Strategy,
-    "prf": PRFStrategy,
+    "prf_rerank": PRFRerankStrategy,
 }
 
 
@@ -77,7 +77,7 @@ def main() -> None:
     if args.strategy == "bm25":
         graded = load_bm25_cache(args.dataset, args.num_queries, args.seed)
     if graded is None:
-        if args.strategy == "prf":
+        if args.strategy == "prf_rerank":
             strategy = strategy_cls(
                 corpus,
                 workers=args.workers,

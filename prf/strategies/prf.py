@@ -4,15 +4,10 @@ from searcharray import SearchArray
 from cheat_at_search.strategy import SearchStrategy
 from searcharray.similarity import compute_idf
 from cheat_at_search.tokenizers import snowball_tokenizer
-from .bm25_vect import rm3_expansion
+from .bm25_vect import top_n_term_strengths
 
 
-def softmax(x):
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
-
-
-class PRFStrategy(SearchStrategy):
+class PRFRerankStrategy(SearchStrategy):
     def __init__(
         self,
         corpus,
@@ -92,7 +87,7 @@ class PRFStrategy(SearchStrategy):
             )
         return set(binary_relevance_fields)
 
-    def _rm3_expansion(
+    def _prf_rerank_scores(
         self,
         query_terms,
         doc_weights,
@@ -103,7 +98,7 @@ class PRFStrategy(SearchStrategy):
     ):
         arr = self.index[field].array
 
-        all_terms, exp_vects, exp_top_ns, debug_info = rm3_expansion(
+        all_terms, exp_vects, exp_top_ns, debug_info = top_n_term_strengths(
             arr,
             doc_weights,
             query_terms=query_terms,
@@ -153,7 +148,6 @@ class PRFStrategy(SearchStrategy):
             df = max(df_title, df_description)
             df_weights[matches] += compute_idf(len(self.index), df)
             num_matches += matches.astype(int)
-        all_terms_match = num_matches == len(tokenized)
         doc_weight = bm25_scores.copy()
         doc_weight *= df_weights
         # doc_weight[~all_terms_match] = 0
@@ -162,7 +156,7 @@ class PRFStrategy(SearchStrategy):
             doc_vectors = {}
             field_debug_info = {} if debug_terms else None
             for field in self.rm3_fields:
-                scores, field_vectors, debug_info = self._rm3_expansion(
+                scores, field_vectors, debug_info = self._prf_rerank_scores(
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",
@@ -182,7 +176,7 @@ class PRFStrategy(SearchStrategy):
                         doc_vector[term] = doc_vector.get(term, 0.0) + score
         else:
             for field in self.rm3_fields:
-                scores, _ = self._rm3_expansion(
+                scores, _ = self._prf_rerank_scores(
                     tokenized,
                     doc_weight,
                     f"{field}_snowball",

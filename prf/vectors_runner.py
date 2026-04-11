@@ -2,7 +2,7 @@ import argparse
 from cheat_at_search.tokenizers import snowball_tokenizer
 
 from prf.datasets import get_dataset
-from prf.strategies.prf import PRFStrategy
+from prf.strategies.prf import PRFRerankStrategy
 
 
 def _display_title(row) -> str:
@@ -74,7 +74,7 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
-    strategy = PRFStrategy(
+    strategy = PRFRerankStrategy(
         corpus,
         rm3_fields=rm3_fields,
         binary_relevance_fields=args.binary_relevance,

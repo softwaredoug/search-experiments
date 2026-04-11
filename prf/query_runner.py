@@ -51,7 +51,7 @@ def main() -> None:
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
     strategy_cls = STRATEGIES[args.strategy]
-    if args.strategy == "prf":
+    if args.strategy == "prf_rerank":
         strategy = strategy_cls(
             corpus,
             binary_relevance_fields=args.binary_relevance,

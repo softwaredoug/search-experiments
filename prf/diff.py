@@ -234,7 +234,7 @@ def main() -> None:
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(args.dataset)
 
-    if args.strategy_a == "prf":
+    if args.strategy_a == "prf_rerank":
         strategy_a = STRATEGIES[args.strategy_a](
             corpus,
             workers=args.workers,
@@ -242,7 +242,7 @@ def main() -> None:
         )
     else:
         strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
-    if args.strategy_b == "prf":
+    if args.strategy_b == "prf_rerank":
         strategy_b = STRATEGIES[args.strategy_b](
             corpus,
             workers=args.workers,
