@@ -4,7 +4,12 @@ import numpy as np
 import pandas as pd
 from cheat_at_search.search import run_strategy
 
-from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
+from prf.datasets import (
+    bm25_params_for_dataset,
+    get_dataset,
+    load_bm25_cache,
+    save_bm25_cache,
+)
 from prf.metrics import metric_for_dataset
 from prf.runner import STRATEGIES
 
@@ -72,7 +77,9 @@ def _graded_for_strategy(
             num_queries=num_queries,
             seed=seed,
         )
-    cached = load_bm25_cache(dataset_name, num_queries, seed)
+    cached = load_bm25_cache(
+        dataset_name, num_queries, seed, strategy.bm25_k1, strategy.bm25_b
+    )
     if cached is not None:
         return cached
     graded = run_strategy(
@@ -81,7 +88,9 @@ def _graded_for_strategy(
         num_queries=num_queries,
         seed=seed,
     )
-    save_bm25_cache(dataset_name, num_queries, seed, graded)
+    save_bm25_cache(
+        dataset_name, num_queries, seed, strategy.bm25_k1, strategy.bm25_b, graded
+    )
     return graded
 
 
@@ -233,23 +242,38 @@ def main() -> None:
     corpus = dataset.corpus
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(args.dataset)
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
 
     if args.strategy_a == "prf_rerank":
         strategy_a = STRATEGIES[args.strategy_a](
             corpus,
             workers=args.workers,
             binary_relevance_fields=args.binary_relevance,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
         )
     else:
-        strategy_a = STRATEGIES[args.strategy_a](corpus, workers=args.workers)
+        strategy_a = STRATEGIES[args.strategy_a](
+            corpus,
+            workers=args.workers,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
+        )
     if args.strategy_b == "prf_rerank":
         strategy_b = STRATEGIES[args.strategy_b](
             corpus,
             workers=args.workers,
             binary_relevance_fields=args.binary_relevance,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
         )
     else:
-        strategy_b = STRATEGIES[args.strategy_b](corpus, workers=args.workers)
+        strategy_b = STRATEGIES[args.strategy_b](
+            corpus,
+            workers=args.workers,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
+        )
 
     if args.query:
         print(f"Query: {args.query}")

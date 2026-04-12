@@ -58,18 +58,28 @@ def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) ->
 
 
 def _bm25_cache_path(
-    dataset_name: str, num_queries: int | None, seed: int | None
+    dataset_name: str,
+    num_queries: int | None,
+    seed: int | None,
+    bm25_k1: float,
+    bm25_b: float,
 ) -> Path:
     num_queries_label = num_queries if num_queries is not None else "all"
     seed_label = seed if seed is not None else "none"
-    filename = f"graded_bm25_n{num_queries_label}_seed{seed_label}.pkl"
+    filename = (
+        f"graded_bm25_n{num_queries_label}_seed{seed_label}_k1{bm25_k1}_b{bm25_b}.pkl"
+    )
     return BM25_CACHE_ROOT / dataset_name / filename
 
 
 def load_bm25_cache(
-    dataset_name: str, num_queries: int | None, seed: int | None
+    dataset_name: str,
+    num_queries: int | None,
+    seed: int | None,
+    bm25_k1: float,
+    bm25_b: float,
 ) -> pd.DataFrame | None:
-    cache_path = _bm25_cache_path(dataset_name, num_queries, seed)
+    cache_path = _bm25_cache_path(dataset_name, num_queries, seed, bm25_k1, bm25_b)
     if not cache_path.exists():
         return None
     try:
@@ -87,9 +97,11 @@ def save_bm25_cache(
     dataset_name: str,
     num_queries: int | None,
     seed: int | None,
+    bm25_k1: float,
+    bm25_b: float,
     graded: pd.DataFrame,
 ) -> None:
-    cache_path = _bm25_cache_path(dataset_name, num_queries, seed)
+    cache_path = _bm25_cache_path(dataset_name, num_queries, seed, bm25_k1, bm25_b)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     graded.to_pickle(cache_path)
 

@@ -85,7 +85,13 @@ def main() -> None:
     strategy_cls = STRATEGIES[args.strategy]
     graded = None
     if args.strategy == "bm25":
-        graded = load_bm25_cache(args.dataset, args.num_queries, args.seed)
+        graded = load_bm25_cache(
+            args.dataset,
+            args.num_queries,
+            args.seed,
+            bm25_k1,
+            bm25_b,
+        )
     if graded is None:
         if args.strategy == "prf_rerank":
             strategy = strategy_cls(
@@ -109,7 +115,14 @@ def main() -> None:
             seed=args.seed,
         )
         if args.strategy == "bm25":
-            save_bm25_cache(args.dataset, args.num_queries, args.seed, graded)
+            save_bm25_cache(
+                args.dataset,
+                args.num_queries,
+                args.seed,
+                bm25_k1,
+                bm25_b,
+                graded,
+            )
     metric_name, metric_fn = metric_for_dataset(args.dataset)
     metric_series = metric_fn(graded)
     _report_metric(metric_name, metric_series)

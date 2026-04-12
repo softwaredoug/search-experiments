@@ -7,6 +7,8 @@ import numpy as np
 from cheat_at_search.tokenizers import snowball_tokenizer
 from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.strategies.bm25 import BM25Strategy
+from prf.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
+from prf.strategies.reweighed_bm25 import ReweighedBM25Strategy
 from searcharray.similarity import compute_idf
 from prf.strategies.prf_rerank_terms import bm25_search_details
 
@@ -64,6 +66,12 @@ def main() -> None:
         help="Dataset to run against.",
     )
     parser.add_argument(
+        "--strategy",
+        choices=["bm25", "doubleidf", "reweighed"],
+        default="bm25",
+        help="Ranking strategy to use.",
+    )
+    parser.add_argument(
         "--debug-terms",
         help="Comma-separated query terms to show df columns.",
     )
@@ -82,7 +90,12 @@ def main() -> None:
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
-    strategy = BM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+    if args.strategy == "doubleidf":
+        strategy = DoubleIDFBM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+    elif args.strategy == "reweighed":
+        strategy = ReweighedBM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+    else:
+        strategy = BM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
 
     tokenized = snowball_tokenizer(args.query)
     fields = {
@@ -93,6 +106,7 @@ def main() -> None:
         strategy.index,
         fields,
         tokenized,
+        double_idf=args.strategy == "doubleidf",
         bm25_k1=bm25_k1,
         bm25_b=bm25_b,
     )
@@ -101,7 +115,8 @@ def main() -> None:
     if args.debug_terms:
         debug_terms = _normalize_debug_terms(args.debug_terms, tokenized)
 
-    top_k = np.argsort(-bm25_scores)[: args.k]
+    rank_scores = doc_weight if args.strategy == "reweighed" else bm25_scores
+    top_k = np.argsort(-rank_scores)[: args.k]
     results = corpus.iloc[top_k].copy()
     results["bm25_score"] = bm25_scores[top_k]
     results["doc_weight"] = doc_weight[top_k]
