@@ -13,6 +13,8 @@ class PRFRerankStrategy(SearchStrategy):
         corpus,
         title_boost=9.3,
         description_boost=4.1,
+        bm25_k1=1.2,
+        bm25_b=0.75,
         rm3_fields=None,
         binary_relevance_fields=None,
         top_n_terms=10,
@@ -26,6 +28,8 @@ class PRFRerankStrategy(SearchStrategy):
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost
+        self.bm25_k1 = bm25_k1
+        self.bm25_b = bm25_b
         self.rm3_fields = self._normalize_rm3_fields(rm3_fields)
         self.binary_relevance_fields = self._normalize_binary_relevance_fields(
             binary_relevance_fields
@@ -129,11 +133,10 @@ class PRFRerankStrategy(SearchStrategy):
         tokenized = snowball_tokenizer(query)
         bm25_scores, doc_weight = weighed_bm25_search(
             corpus=self.corpus,
-            fields={
-                "title": self.title_boost,
-                "description": self.description_boost
-            },
+            fields={"title": self.title_boost, "description": self.description_boost},
             query_terms=tokenized,
+            bm25_k1=self.bm25_k1,
+            bm25_b=self.bm25_b,
         )
 
         if return_vectors:

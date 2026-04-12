@@ -1,7 +1,7 @@
 import argparse
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-from prf.datasets import get_dataset
+from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.strategies.prf_rerank import PRFRerankStrategy
 
 
@@ -74,8 +74,11 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     strategy = PRFRerankStrategy(
         corpus,
+        bm25_k1=bm25_k1,
+        bm25_b=bm25_b,
         rm3_fields=rm3_fields,
         binary_relevance_fields=args.binary_relevance,
     )

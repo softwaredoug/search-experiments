@@ -3,13 +3,22 @@ import argparse
 import pandas as pd
 from cheat_at_search.search import run_strategy
 
-from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
+from prf.datasets import (
+    bm25_params_for_dataset,
+    get_dataset,
+    load_bm25_cache,
+    save_bm25_cache,
+)
 from prf.metrics import metric_for_dataset
 from prf.strategies.bm25 import BM25Strategy
+from prf.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
+from prf.strategies.reweighed_bm25 import ReweighedBM25Strategy
 from prf.strategies.prf_rerank import PRFRerankStrategy
 
 STRATEGIES = {
     "bm25": BM25Strategy,
+    "bm25_doubleidf": DoubleIDFBM25Strategy,
+    "bm25_reweighed": ReweighedBM25Strategy,
     "prf_rerank": PRFRerankStrategy,
 }
 
@@ -71,6 +80,7 @@ def main() -> None:
     dataset = get_dataset(args.dataset, workers=args.workers)
     corpus = dataset.corpus
     judgments = dataset.judgments
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
 
     strategy_cls = STRATEGIES[args.strategy]
     graded = None
@@ -81,10 +91,17 @@ def main() -> None:
             strategy = strategy_cls(
                 corpus,
                 workers=args.workers,
+                bm25_k1=bm25_k1,
+                bm25_b=bm25_b,
                 binary_relevance_fields=args.binary_relevance,
             )
         else:
-            strategy = strategy_cls(corpus, workers=args.workers)
+            strategy = strategy_cls(
+                corpus,
+                workers=args.workers,
+                bm25_k1=bm25_k1,
+                bm25_b=bm25_b,
+            )
         graded = run_strategy(
             strategy,
             judgments,

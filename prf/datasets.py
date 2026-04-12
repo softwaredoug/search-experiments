@@ -13,6 +13,12 @@ DATASETS = {
     "wands": wands_data,
 }
 
+BM25_PARAMS = {
+    "msmarco": {"k1": 0.9, "b": 0.4},
+}
+
+DEFAULT_BM25_PARAMS = {"k1": 1.2, "b": 0.75}
+
 SNOWBALL_FIELDS = ("title", "description", "category")
 CACHE_ROOT = Path.home() / ".search-experiments" / "searcharray"
 BM25_CACHE_ROOT = Path.home() / ".search-experiments" / "bm25"
@@ -98,3 +104,8 @@ def get_dataset(name: str, workers: int = 1):
     for field in SNOWBALL_FIELDS:
         _ensure_cached_field(corpus, name, field, workers)
     return dataset
+
+
+def bm25_params_for_dataset(name: str) -> tuple[float, float]:
+    params = BM25_PARAMS.get(name, DEFAULT_BM25_PARAMS)
+    return params["k1"], params["b"]

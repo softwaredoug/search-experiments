@@ -12,6 +12,8 @@ class BM25Strategy(SearchStrategy):
         corpus,
         title_boost=9.3,
         description_boost=4.1,
+        bm25_k1=1.2,
+        bm25_b=0.75,
         top_k=10,
         workers=1,
     ):
@@ -19,6 +21,8 @@ class BM25Strategy(SearchStrategy):
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost
+        self.bm25_k1 = bm25_k1
+        self.bm25_b = bm25_b
 
         if "title_snowball" not in self.index and "title" in corpus:
             self.index["title_snowball"] = SearchArray.index(
@@ -35,7 +39,13 @@ class BM25Strategy(SearchStrategy):
             "title": self.title_boost,
             "description": self.description_boost,
         }
-        bm25_scores, _ = weighed_bm25_search(self.index, fields, tokenized)
+        bm25_scores, _ = weighed_bm25_search(
+            self.index,
+            fields,
+            tokenized,
+            bm25_k1=self.bm25_k1,
+            bm25_b=self.bm25_b,
+        )
         top_k = np.argsort(-bm25_scores)[:k]
         scores = bm25_scores[top_k]
         return top_k, scores

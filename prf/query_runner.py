@@ -1,6 +1,6 @@
 import argparse
 
-from prf.datasets import get_dataset
+from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.runner import STRATEGIES
 
 
@@ -50,14 +50,21 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     strategy_cls = STRATEGIES[args.strategy]
     if args.strategy == "prf_rerank":
         strategy = strategy_cls(
             corpus,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
             binary_relevance_fields=args.binary_relevance,
         )
     else:
-        strategy = strategy_cls(corpus)
+        strategy = strategy_cls(
+            corpus,
+            bm25_k1=bm25_k1,
+            bm25_b=bm25_b,
+        )
 
     top_k, scores = strategy.search(args.query, k=args.k)
     results = corpus.iloc[top_k].copy()

@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from prf.datasets import get_dataset
+from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.strategies.bm25 import BM25Strategy
 from searcharray.similarity import compute_idf
 from prf.strategies.prf_rerank_terms import bm25_search_details
@@ -81,7 +81,8 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
-    strategy = BM25Strategy(corpus)
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
+    strategy = BM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
 
     tokenized = snowball_tokenizer(args.query)
     fields = {
@@ -92,6 +93,8 @@ def main() -> None:
         strategy.index,
         fields,
         tokenized,
+        bm25_k1=bm25_k1,
+        bm25_b=bm25_b,
     )
 
     debug_terms = []
