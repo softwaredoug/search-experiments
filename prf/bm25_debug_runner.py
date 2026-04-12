@@ -46,6 +46,25 @@ def _term_matches(index, fields: dict[str, float], term: str) -> np.ndarray:
     return matches
 
 
+def _grade_column(judgments) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _grades_for_query(judgments, query: str) -> tuple[str | None, dict]:
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return None, {}
+    if "query" not in judgments.columns or "doc_id" not in judgments.columns:
+        return None, {}
+    match = judgments[judgments["query"] == query]
+    if match.empty:
+        return None, {}
+    return grade_col, dict(zip(match["doc_id"], match[grade_col]))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run BM25 and print debug columns.")
     parser.add_argument(
@@ -118,9 +137,12 @@ def main() -> None:
     rank_scores = doc_weight if args.strategy == "reweighed" else bm25_scores
     top_k = np.argsort(-rank_scores)[: args.k]
     results = corpus.iloc[top_k].copy()
+    grade_col, grades = _grades_for_query(dataset.judgments, args.query)
     results["bm25_score"] = bm25_scores[top_k]
     results["doc_weight"] = doc_weight[top_k]
     results["num_matches"] = num_matches[top_k]
+    if grade_col and "doc_id" in results.columns:
+        results["grade"] = results["doc_id"].map(grades).fillna("na")
     if args.proportion:
         top_10 = np.argsort(-bm25_scores)[:10]
         bm25_sum = bm25_scores[top_10].sum()
@@ -139,6 +161,8 @@ def main() -> None:
     columns = ["bm25_score", "doc_weight", "num_matches"]
     if args.proportion:
         columns.extend(["bm25_prop", "doc_weight_prop"])
+    if grade_col and "grade" in results.columns:
+        columns.append("grade")
     for term in debug_terms:
         columns.append(f"{term}_df")
         columns.append(f"{term}_idf")
@@ -156,6 +180,8 @@ def main() -> None:
             if args.proportion:
                 values.append(f"{row['bm25_prop']:.6f}")
                 values.append(f"{row['doc_weight_prop']:.6f}")
+            if grade_col and "grade" in results.columns:
+                values.append(str(row["grade"]))
             for term in debug_terms:
                 values.append(str(int(row[f"{term}_df"])))
                 values.append(f"{row[f'{term}_idf']:.6f}")
@@ -165,6 +191,8 @@ def main() -> None:
         totals = [f"{total_bm25:.4f}", f"{total_doc_weight:.4f}", ""]
         if args.proportion:
             totals.extend(["", ""])
+        if grade_col and "grade" in results.columns:
+            totals.append("")
         for _ in debug_terms:
             totals.extend(["", ""])
         writer.writerow(["TOTAL", *totals, ""])
@@ -185,6 +213,8 @@ def main() -> None:
         if args.proportion:
             values.append(f"{row['bm25_prop']:.6f}")
             values.append(f"{row['doc_weight_prop']:.6f}")
+        if grade_col and "grade" in results.columns:
+            values.append(str(row["grade"]))
         for term in debug_terms:
             values.append(str(int(row[f"{term}_df"])))
             values.append(f"{row[f'{term}_idf']:.6f}")

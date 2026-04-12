@@ -153,6 +153,8 @@ def _rel_term_strengths(
         # light and navy blue decorative pillow
         rm3_vectors *= term_importance
 
+        # This is the bottleneck, gets top N per term
+        # In a real search system, this would be done much more efficently
         sorted_docs = np.argsort(-rm3_vectors)[:num_docs]
 
         expanded_top_ns.append(sorted_docs)

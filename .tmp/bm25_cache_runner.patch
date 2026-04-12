@@ -1,0 +1,38 @@
+diff --git a/prf/runner.py b/prf/runner.py
+index ecb3bb3..9d42a4a 100644
+--- a/prf/runner.py
++++ b/prf/runner.py
+@@ -3,9 +3,9 @@ import argparse
+ import pandas as pd
+ from cheat_at_search.search import ndcgs, run_strategy
+ 
+-from prf.datasets import get_dataset
++from prf.datasets import get_dataset, load_bm25_cache, save_bm25_cache
+ from prf.strategies.bm25 import BM25Strategy
+ from prf.strategies.prf import PRFStrategy
+@@ -65,12 +65,19 @@ def main() -> None:
+     judgments = dataset.judgments
+ 
+     strategy_cls = STRATEGIES[args.strategy]
+-    strategy = strategy_cls(corpus, workers=args.workers)
+-    graded = run_strategy(
+-        strategy,
+-        judgments,
+-        num_queries=args.num_queries,
+-        seed=args.seed,
+-    )
++    graded = None
++    if args.strategy == "bm25":
++        graded = load_bm25_cache(args.dataset, args.num_queries, args.seed)
++    if graded is None:
++        strategy = strategy_cls(corpus, workers=args.workers)
++        graded = run_strategy(
++            strategy,
++            judgments,
++            num_queries=args.num_queries,
++            seed=args.seed,
++        )
++        if args.strategy == "bm25":
++            save_bm25_cache(args.dataset, args.num_queries, args.seed, graded)
+     ndcg_series = ndcgs(graded)
+     _report_ndcgs(ndcg_series)

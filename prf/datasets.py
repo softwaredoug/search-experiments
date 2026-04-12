@@ -14,7 +14,7 @@ DATASETS = {
 }
 
 BM25_PARAMS = {
-    "msmarco": {"k1": 0.9, "b": 0.4},
+    "msmarco": {"k1": 0.6, "b": 0.62},
 }
 
 DEFAULT_BM25_PARAMS = {"k1": 1.2, "b": 0.75}
