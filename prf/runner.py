@@ -13,12 +13,14 @@ from prf.metrics import metric_for_dataset
 from prf.strategies.bm25 import BM25Strategy
 from prf.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
 from prf.strategies.reweighed_bm25 import ReweighedBM25Strategy
+from prf.strategies.prf_expand import PRFExpand
 from prf.strategies.prf_rerank import PRFRerankStrategy
 
 STRATEGIES = {
     "bm25": BM25Strategy,
     "bm25_doubleidf": DoubleIDFBM25Strategy,
     "bm25_reweighed": ReweighedBM25Strategy,
+    "prf_expand": PRFExpand,
     "prf_rerank": PRFRerankStrategy,
 }
 
