@@ -22,6 +22,25 @@ def _format_vector(term_scores: dict[str, float]) -> str:
     return ", ".join(f"{term}={score:.4f}" for term, score in sorted_terms)
 
 
+def _grade_column(judgments) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _grades_for_query(judgments, query: str) -> tuple[str | None, dict]:
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return None, {}
+    if "query" not in judgments.columns or "doc_id" not in judgments.columns:
+        return None, {}
+    match = judgments[judgments["query"] == query]
+    if match.empty:
+        return None, {}
+    return grade_col, dict(zip(match["doc_id"], match[grade_col]))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run a single query and print RM3 vectors."
@@ -74,6 +93,7 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
+    grade_col, grades = _grades_for_query(dataset.judgments, args.query)
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     strategy = PRFRerankStrategy(
         corpus,
@@ -98,7 +118,11 @@ def main() -> None:
         title = _display_title(row)
         score = row.get("score", 0)
         vector = _format_vector(doc_vectors.get(row_index, {}))
-        print(f"{doc_id}\t{score:.4f}\t{title}")
+        grade = grades.get(doc_id, "na") if grade_col else ""
+        if grade_col:
+            print(f"{doc_id}\t{score:.4f}\t{grade}\t{title}")
+        else:
+            print(f"{doc_id}\t{score:.4f}\t{title}")
         if vector:
             print(f"RM3: {vector}")
 
@@ -125,7 +149,10 @@ def main() -> None:
             ):
                 print("------------------------------------")
                 print(label)
-                header = "doc_id\t" + "\t".join(debug_terms) + "\ttitle"
+                if grade_col:
+                    header = "doc_id\t" + "\t".join(debug_terms) + "\tgrade\ttitle"
+                else:
+                    header = "doc_id\t" + "\t".join(debug_terms) + "\ttitle"
                 print(header)
                 for doc_index in top_k:
                     row = corpus.iloc[doc_index]
@@ -140,7 +167,11 @@ def main() -> None:
                         vector = term_info[vector_key]
                         scores.append(f"{vector[doc_index]:.6f}")
                     scores_str = "\t".join(scores)
-                    print(f"{doc_id}\t{scores_str}\t{title}")
+                    grade = grades.get(doc_id, "na") if grade_col else ""
+                    if grade_col:
+                        print(f"{doc_id}\t{scores_str}\t{grade}\t{title}")
+                    else:
+                        print(f"{doc_id}\t{scores_str}\t{title}")
 
 
 if __name__ == "__main__":
