@@ -107,18 +107,17 @@ def compute_bm25_matrix(
     for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
         for term, _ in terms.terms():
             term_df = arr.docfreq(term)
-            if term_df > 5 and len(term) > 2:
-                weight = _compute_bm25(
-                    tf=1,
-                    doclen=arr.doclengths().mean(),
-                    df=term_df,
-                    num_docs=len(arr),
-                    k1=1.2,
-                    b=0.75,
-                )
-                orig_bm25_weight = term_importance / weight_sum if weight_sum > 0 else 0
-                weight = orig_bm25_weight * weight
-                term_to_importance[term].append((doc_id, weight))
+            weight = _compute_bm25(
+                tf=1,
+                doclen=arr.doclengths().mean(),
+                df=term_df,
+                num_docs=len(arr),
+                k1=1.2,
+                b=0.75,
+            )
+            orig_bm25_weight = term_importance / weight_sum if weight_sum > 0 else 0
+            weight = (orig_bm25_weight ** 2) * weight
+            term_to_importance[term].append((doc_id, weight))
     return term_to_importance
 
 

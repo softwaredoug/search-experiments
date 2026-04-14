@@ -1,5 +1,6 @@
 import numpy as np
 from searcharray import SearchArray
+from collections import Counter
 
 from cheat_at_search.strategy import SearchStrategy
 from searcharray.similarity import compute_idf
@@ -112,10 +113,10 @@ class PRFRerankStrategy(SearchStrategy):
         )
         # Score by summing the frequency of top_ns
         all_top_n_scores = np.zeros(len(self.index))
-        doc_vectors = {} if return_vectors else None
+        doc_vectors = {}
         all_together = zip(all_terms, exp_vects, exp_top_ns)
+        doc_sums = Counter()
         for term, exp_doc_vect, exp_top_ns in all_together:
-            all_top_n_scores[exp_top_ns] += exp_doc_vect
             if return_vectors:
                 for doc_id, score in zip(exp_top_ns, exp_doc_vect):
                     if score == 0:
@@ -125,6 +126,13 @@ class PRFRerankStrategy(SearchStrategy):
                         doc_vector = {}
                         doc_vectors[doc_id] = doc_vector
                     doc_vector[term] = doc_vector.get(term, 0.0) + float(score)
+                    doc_sums[doc_id] += float(score)
+        for doc_id, doc_vector in doc_vectors.items():
+            doc_sum = doc_sums[doc_id]
+            if doc_sum > 0:
+                for term in doc_vector:
+                    doc_vector[term] /= doc_sum
+            all_top_n_scores[exp_top_ns] = doc_sum
         if return_vectors:
             return all_top_n_scores, doc_vectors, debug_info
         return all_top_n_scores, debug_info
@@ -139,6 +147,7 @@ class PRFRerankStrategy(SearchStrategy):
             bm25_b=self.bm25_b,
         )
 
+        exp_scores = np.zeros(len(self.index))
         if return_vectors:
             doc_vectors = {}
             field_debug_info = {} if debug_terms else None
@@ -151,7 +160,7 @@ class PRFRerankStrategy(SearchStrategy):
                     return_vectors=True,
                     debug_terms=debug_terms,
                 )
-                bm25_scores += scores
+                exp_scores += scores
                 if field_debug_info is not None:
                     field_debug_info[field] = debug_info
                 for doc_id, term_scores in field_vectors.items():
@@ -170,9 +179,9 @@ class PRFRerankStrategy(SearchStrategy):
                     binary_relevance=self._binary_relevance_for_field(field),
                     debug_terms=debug_terms,
                 )
-                bm25_scores += scores
+                exp_scores += scores
 
-        top_k = np.argsort(-bm25_scores)[:k]
+        top_k = np.argsort(-exp_scores)[:k]
         scores = bm25_scores[top_k]
         if return_vectors:
             if debug_terms:

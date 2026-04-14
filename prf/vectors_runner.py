@@ -125,6 +125,7 @@ def main() -> None:
             print(f"{doc_id}\t{score:.4f}\t{title}")
         if vector:
             print(f"RM3: {vector}")
+            print()
 
     if debug_terms:
         print("")

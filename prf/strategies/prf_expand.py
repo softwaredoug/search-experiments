@@ -61,12 +61,12 @@ class PRFExpand(SearchStrategy):
             doc_weights=bm25_scores,
             top_docs=self.top_n_candidates,
         )
-        _, eigenvectors = term_space_eigenvectors(
+        eigenvalues, eigenvectors = term_space_eigenvectors(
             matrix,
             top_r=self.top_n_eigenvectors,
         )
         exp_scores = np.zeros_like(bm25_scores)
-        for eigenvector in eigenvectors:
+        for eigenvalue, eigenvector in zip(eigenvalues, eigenvectors):
             if not eigenvector:
                 continue
             top_terms = sorted(
@@ -74,11 +74,15 @@ class PRFExpand(SearchStrategy):
                 key=lambda item: abs(item[1]),
                 reverse=True,
             )[: self.top_terms_per_eigenvector]
+            top_terms = [(term, abs(weight)) for term, weight in top_terms]
             for term, weight in top_terms:
                 term_scores = self.corpus["description_snowball"].array.score(term)
-                exp_scores += term_scores * weight
+                exp_scores += term_scores * weight * eigenvalue
+                print(term, weight, np.sqrt(eigenvalue))
+            print("--")
+        import pdb; pdb.set_trace()
         top_k = np.argsort(-exp_scores)[:k]
-        scores = bm25_scores[top_k]
+        scores = exp_scores[top_k]
         return top_k, scores
 
     def search(self, query, k=10):
