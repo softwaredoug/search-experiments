@@ -94,19 +94,16 @@ def _compute_bm25(tf, doclen, df, num_docs, k1=1.2, b=0.75):
     return norm_tf * idf
 
 
-def _compute_term_importances(
+def compute_bm25_matrix(
     arr: SearchArray,
     doc_weights: NDArray[np.float64],
-    query_terms: Optional[list[str]],
     top_docs: int,
-    num_terms: int = 10,
-) -> dict[str, float]:
+) -> dict[str, list[tuple[int, float]]]:
     top_n = np.argsort(-doc_weights)[:top_docs]
     top_n_weights = doc_weights[top_n]
 
     term_to_importance = defaultdict(list)
     weight_sum = np.sum(top_n_weights)
-    sum_bm25s = 0
     for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
         for term, _ in terms.terms():
             term_df = arr.docfreq(term)
@@ -120,23 +117,8 @@ def _compute_term_importances(
                     b=0.75,
                 )
                 orig_bm25_weight = term_importance / weight_sum if weight_sum > 0 else 0
-                sum_bm25s += weight
                 weight = orig_bm25_weight * weight
                 term_to_importance[term].append((doc_id, weight))
-
-    for term, weighed_docs in term_to_importance.items():
-        weights = [weighed_doc[1] for weighed_doc in weighed_docs]
-        term_to_importance[term] = np.sum(weights)
-        term_to_importance[term] /= sum_bm25s
-
-    if term_to_importance:
-        required_in_result = {}
-        for term in query_terms or []:
-            if term in term_to_importance:
-                required_in_result[term] = term_to_importance[term]
-        term_to_importance = Counter(term_to_importance)
-        term_to_importance = dict(term_to_importance.most_common(num_terms))
-        term_to_importance.update(required_in_result)
     return term_to_importance
 
 
@@ -184,9 +166,30 @@ def term_space_eigenvectors(
 
 
 def topn_sparse(arr, doc_weights, query_terms=None, top_docs=50, top_terms=40):
-    term_to_importance = _compute_term_importances(
-        arr, doc_weights, query_terms, top_docs, num_terms=top_terms
-    )
+    sparse_terms = compute_bm25_matrix(arr, doc_weights, top_docs)
+    if not sparse_terms:
+        return {}
+
+    term_to_importance = {}
+    sum_bm25s = 0.0
+    for weighed_docs in sparse_terms.values():
+        for _, weight in weighed_docs:
+            sum_bm25s += weight
+    for term, weighed_docs in sparse_terms.items():
+        weights = [weighed_doc[1] for weighed_doc in weighed_docs]
+        term_weight = np.sum(weights)
+        if sum_bm25s > 0:
+            term_weight /= sum_bm25s
+        term_to_importance[term] = term_weight
+
+    if term_to_importance:
+        required_in_result = {}
+        for term in query_terms or []:
+            if term in term_to_importance:
+                required_in_result[term] = term_to_importance[term]
+        term_to_importance = Counter(term_to_importance)
+        term_to_importance = dict(term_to_importance.most_common(top_terms))
+        term_to_importance.update(required_in_result)
     return l1_normalize(term_to_importance)
 
 
@@ -271,10 +274,13 @@ def top_n_term_strengths(
 
     Return a per-document vector representing the probability of the terms in the top_n for that document.
     """
-    term_to_importance = _compute_term_importances(
-        arr, doc_weights, query_terms, top_docs, num_terms=top_terms
+    term_to_importance = topn_sparse(
+        arr,
+        doc_weights,
+        query_terms=query_terms,
+        top_docs=top_docs,
+        top_terms=top_terms,
     )
-    term_to_importance = l1_normalize(term_to_importance)
 
     return _rel_term_strengths(
         arr,

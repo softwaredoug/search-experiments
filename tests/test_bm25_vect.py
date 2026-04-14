@@ -15,7 +15,7 @@ def test_prf_rerank_terms_wands_titles_non_empty():
 
     doc_weights = matches.astype(float)
     terms, scores, _, _ = top_n_term_strengths(
-        indexed.array,
+        indexed,
         doc_weights,
         top_docs=10,
         top_terms=5,
