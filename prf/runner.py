@@ -3,26 +3,9 @@ import argparse
 import pandas as pd
 from cheat_at_search.search import run_strategy
 
-from prf.datasets import (
-    bm25_params_for_dataset,
-    get_dataset,
-    load_bm25_cache,
-    save_bm25_cache,
-)
+from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.metrics import metric_for_dataset
-from prf.strategies.bm25 import BM25Strategy
-from prf.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
-from prf.strategies.reweighed_bm25 import ReweighedBM25Strategy
-from prf.strategies.prf_expand import PRFExpand
-from prf.strategies.prf_rerank import PRFRerankStrategy
-
-STRATEGIES = {
-    "bm25": BM25Strategy,
-    "bm25_doubleidf": DoubleIDFBM25Strategy,
-    "bm25_reweighed": ReweighedBM25Strategy,
-    "prf_expand": PRFExpand,
-    "prf_rerank": PRFRerankStrategy,
-}
+from prf.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 def _report_metric(metric_name: str, metric_series: pd.Series) -> None:
@@ -44,8 +27,7 @@ def main() -> None:
     parser.add_argument(
         "--strategy",
         required=True,
-        choices=sorted(STRATEGIES.keys()),
-        help="Strategy to run.",
+        help="Path to strategy YAML config.",
     )
     parser.add_argument(
         "--dataset",
@@ -84,47 +66,25 @@ def main() -> None:
     judgments = dataset.judgments
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
 
-    strategy_cls = STRATEGIES[args.strategy]
-    graded = None
-    if args.strategy == "bm25":
-        graded = load_bm25_cache(
-            args.dataset,
-            args.num_queries,
-            args.seed,
-            bm25_k1,
-            bm25_b,
-        )
-    if graded is None:
-        if args.strategy == "prf_rerank":
-            strategy = strategy_cls(
-                corpus,
-                workers=args.workers,
-                bm25_k1=bm25_k1,
-                bm25_b=bm25_b,
-                binary_relevance_fields=args.binary_relevance,
-            )
-        else:
-            strategy = strategy_cls(
-                corpus,
-                workers=args.workers,
-                bm25_k1=bm25_k1,
-                bm25_b=bm25_b,
-            )
-        graded = run_strategy(
-            strategy,
-            judgments,
-            num_queries=args.num_queries,
-            seed=args.seed,
-        )
-        if args.strategy == "bm25":
-            save_bm25_cache(
-                args.dataset,
-                args.num_queries,
-                args.seed,
-                bm25_k1,
-                bm25_b,
-                graded,
-            )
+    strategy_config = load_strategy_config(args.strategy)
+    strategy_cls = resolve_strategy_class(strategy_config.type)
+    params = dict(strategy_config.params)
+    if strategy_config.type == "bm25":
+        if "bm25_k1" not in params and "k1" not in params:
+            params["bm25_k1"] = bm25_k1
+        if "bm25_b" not in params and "b" not in params:
+            params["bm25_b"] = bm25_b
+    strategy = strategy_cls(
+        corpus,
+        workers=args.workers,
+        **params,
+    )
+    graded = run_strategy(
+        strategy,
+        judgments,
+        num_queries=args.num_queries,
+        seed=args.seed,
+    )
     metric_name, metric_fn = metric_for_dataset(args.dataset)
     metric_series = metric_fn(graded)
     _report_metric(metric_name, metric_series)

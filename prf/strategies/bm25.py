@@ -7,6 +7,8 @@ from cheat_at_search.tokenizers import snowball_tokenizer
 
 
 class BM25Strategy(SearchStrategy):
+    _type = "bm25"
+
     def __init__(
         self,
         corpus,
@@ -14,10 +16,16 @@ class BM25Strategy(SearchStrategy):
         description_boost=4.1,
         bm25_k1=1.2,
         bm25_b=0.75,
+        k1=None,
+        b=None,
         top_k=10,
         workers=1,
     ):
         super().__init__(corpus, top_k=top_k, workers=workers)
+        if k1 is not None:
+            bm25_k1 = k1
+        if b is not None:
+            bm25_b = b
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost

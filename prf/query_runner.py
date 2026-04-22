@@ -1,7 +1,7 @@
 import argparse
 
 from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.runner import STRATEGIES
+from prf.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 def _display_title(row) -> str:
@@ -19,8 +19,7 @@ def main() -> None:
     parser.add_argument(
         "--strategy",
         required=True,
-        choices=sorted(STRATEGIES.keys()),
-        help="Strategy to run.",
+        help="Path to strategy YAML config.",
     )
     parser.add_argument(
         "--dataset",
@@ -51,20 +50,18 @@ def main() -> None:
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
-    strategy_cls = STRATEGIES[args.strategy]
-    if args.strategy == "prf_rerank":
-        strategy = strategy_cls(
-            corpus,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-            binary_relevance_fields=args.binary_relevance,
-        )
-    else:
-        strategy = strategy_cls(
-            corpus,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-        )
+    strategy_config = load_strategy_config(args.strategy)
+    strategy_cls = resolve_strategy_class(strategy_config.type)
+    params = dict(strategy_config.params)
+    if strategy_config.type == "bm25":
+        if "bm25_k1" not in params and "k1" not in params:
+            params["bm25_k1"] = bm25_k1
+        if "bm25_b" not in params and "b" not in params:
+            params["bm25_b"] = bm25_b
+    strategy = strategy_cls(
+        corpus,
+        **params,
+    )
 
     top_k, scores = strategy.search(args.query, k=args.k)
     results = corpus.iloc[top_k].copy()

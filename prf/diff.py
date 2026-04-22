@@ -4,14 +4,9 @@ import numpy as np
 import pandas as pd
 from cheat_at_search.search import run_strategy
 
-from prf.datasets import (
-    bm25_params_for_dataset,
-    get_dataset,
-    load_bm25_cache,
-    save_bm25_cache,
-)
+from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.metrics import metric_for_dataset
-from prf.runner import STRATEGIES
+from prf.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 def _display_title(row: pd.Series) -> str:
@@ -63,35 +58,17 @@ def _metric_for_query(
 
 
 def _graded_for_strategy(
-    strategy_name: str,
     strategy,
     judgments: pd.DataFrame,
-    dataset_name: str,
     num_queries: int | None,
     seed: int | None,
 ) -> pd.DataFrame:
-    if strategy_name != "bm25":
-        return run_strategy(
-            strategy,
-            judgments,
-            num_queries=num_queries,
-            seed=seed,
-        )
-    cached = load_bm25_cache(
-        dataset_name, num_queries, seed, strategy.bm25_k1, strategy.bm25_b
-    )
-    if cached is not None:
-        return cached
-    graded = run_strategy(
+    return run_strategy(
         strategy,
         judgments,
         num_queries=num_queries,
         seed=seed,
     )
-    save_bm25_cache(
-        dataset_name, num_queries, seed, strategy.bm25_k1, strategy.bm25_b, graded
-    )
-    return graded
 
 
 def _print_query_results(
@@ -178,14 +155,12 @@ def main() -> None:
     parser.add_argument(
         "--strategy-a",
         required=True,
-        choices=sorted(STRATEGIES.keys()),
-        help="First strategy to compare.",
+        help="Path to first strategy YAML config.",
     )
     parser.add_argument(
         "--strategy-b",
         required=True,
-        choices=sorted(STRATEGIES.keys()),
-        help="Second strategy to compare.",
+        help="Path to second strategy YAML config.",
     )
     parser.add_argument(
         "--dataset",
@@ -244,41 +219,37 @@ def main() -> None:
     metric_name, metric_fn = metric_for_dataset(args.dataset)
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
 
-    if args.strategy_a == "prf_rerank":
-        strategy_a = STRATEGIES[args.strategy_a](
-            corpus,
-            workers=args.workers,
-            binary_relevance_fields=args.binary_relevance,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-        )
-    else:
-        strategy_a = STRATEGIES[args.strategy_a](
-            corpus,
-            workers=args.workers,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-        )
-    if args.strategy_b == "prf_rerank":
-        strategy_b = STRATEGIES[args.strategy_b](
-            corpus,
-            workers=args.workers,
-            binary_relevance_fields=args.binary_relevance,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-        )
-    else:
-        strategy_b = STRATEGIES[args.strategy_b](
-            corpus,
-            workers=args.workers,
-            bm25_k1=bm25_k1,
-            bm25_b=bm25_b,
-        )
+    strategy_a_config = load_strategy_config(args.strategy_a)
+    strategy_b_config = load_strategy_config(args.strategy_b)
+    strategy_a_cls = resolve_strategy_class(strategy_a_config.type)
+    strategy_b_cls = resolve_strategy_class(strategy_b_config.type)
+    params_a = dict(strategy_a_config.params)
+    if strategy_a_config.type == "bm25":
+        if "bm25_k1" not in params_a and "k1" not in params_a:
+            params_a["bm25_k1"] = bm25_k1
+        if "bm25_b" not in params_a and "b" not in params_a:
+            params_a["bm25_b"] = bm25_b
+    params_b = dict(strategy_b_config.params)
+    if strategy_b_config.type == "bm25":
+        if "bm25_k1" not in params_b and "k1" not in params_b:
+            params_b["bm25_k1"] = bm25_k1
+        if "bm25_b" not in params_b and "b" not in params_b:
+            params_b["bm25_b"] = bm25_b
+    strategy_a = strategy_a_cls(
+        corpus,
+        workers=args.workers,
+        **params_a,
+    )
+    strategy_b = strategy_b_cls(
+        corpus,
+        workers=args.workers,
+        **params_b,
+    )
 
     if args.query:
         print(f"Query: {args.query}")
         _print_query_results(
-            f"{args.strategy_a}",
+            f"{strategy_a_config.name}",
             args.query,
             corpus,
             judgments,
@@ -288,7 +259,7 @@ def main() -> None:
             metric_fn,
         )
         _print_query_results(
-            f"{args.strategy_b}",
+            f"{strategy_b_config.name}",
             args.query,
             corpus,
             judgments,
@@ -299,22 +270,8 @@ def main() -> None:
         )
         return
 
-    graded_a = _graded_for_strategy(
-        args.strategy_a,
-        strategy_a,
-        judgments,
-        args.dataset,
-        args.num_queries,
-        args.seed,
-    )
-    graded_b = _graded_for_strategy(
-        args.strategy_b,
-        strategy_b,
-        judgments,
-        args.dataset,
-        args.num_queries,
-        args.seed,
-    )
+    graded_a = _graded_for_strategy(strategy_a, judgments, args.num_queries, args.seed)
+    graded_b = _graded_for_strategy(strategy_b, judgments, args.num_queries, args.seed)
     metric_a = metric_fn(graded_a)
     metric_b = metric_fn(graded_b)
     _print_metric_diff(
@@ -323,8 +280,8 @@ def main() -> None:
         metric_b,
         judgments,
         args.sort,
-        args.strategy_a,
-        args.strategy_b,
+        strategy_a_config.name,
+        strategy_b_config.name,
     )
 
 

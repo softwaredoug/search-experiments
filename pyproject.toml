@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git",
+    "pyyaml>=6.0.2",
 ]
 
 [project.optional-dependencies]

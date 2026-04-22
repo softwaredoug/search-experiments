@@ -1,0 +1,8 @@
+strategy:
+  name: bm25_strong_title
+  type: bm25
+  params:
+    k1: 1.2
+    b: 0.75
+    title_boost: 9.3
+    description_boost: 4.1

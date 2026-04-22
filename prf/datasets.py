@@ -4,14 +4,9 @@ from pathlib import Path
 import pandas as pd
 from searcharray import SearchArray
 
-from cheat_at_search import esci_data, msmarco_data, wands_data
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-DATASETS = {
-    "esci": esci_data,
-    "msmarco": msmarco_data,
-    "wands": wands_data,
-}
+from prf.mounting import ensure_data_mounted
 
 BM25_PARAMS = {
     "msmarco": {"k1": 0.6, "b": 0.62},
@@ -107,8 +102,16 @@ def save_bm25_cache(
 
 
 def get_dataset(name: str, workers: int = 1):
+    ensure_data_mounted()
     try:
-        dataset = DATASETS[name]
+        if name == "esci":
+            from cheat_at_search import esci_data as dataset
+        elif name == "msmarco":
+            from cheat_at_search import msmarco_data as dataset
+        elif name == "wands":
+            from cheat_at_search import wands_data as dataset
+        else:
+            raise KeyError(name)
     except KeyError as exc:
         raise ValueError(f"Unknown dataset: {name}") from exc
 
