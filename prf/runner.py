@@ -1,14 +1,9 @@
 import argparse
 
-import pandas as pd
-from cheat_at_search.search import run_strategy
-
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.metrics import metric_for_dataset
-from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from prf.runners.run import RunParams, run_benchmark
 
 
-def _report_metric(metric_name: str, metric_series: pd.Series) -> None:
+def _report_metric(metric_name: str, metric_series) -> None:
     metric_key = metric_name.lower()
     if metric_series.empty:
         print(f"No {metric_name} results to report.")
@@ -65,46 +60,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    strategy_config = load_strategy_config(args.strategy)
-    strategy_cls = resolve_strategy_class(strategy_config.type)
-    params = dict(strategy_config.params)
-    requires_bm25 = True
-    if strategy_config.type == "agentic":
-        tool_names = params.get("search_tools")
-        if tool_names is not None:
-            requires_bm25 = "bm25" in tool_names
-        if args.device and "embeddings_device" not in params:
-            if tool_names is None or "embeddings" in tool_names:
-                params["embeddings_device"] = args.device
-    if strategy_config.type == "embedding":
-        requires_bm25 = False
-        if args.device and "device" not in params:
-            params["device"] = args.device
-    dataset = get_dataset(
-        args.dataset, workers=args.workers, ensure_snowball=requires_bm25
-    )
-    corpus = dataset.corpus
-    judgments = dataset.judgments
-    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
-    if strategy_config.type == "bm25":
-        if "bm25_k1" not in params and "k1" not in params:
-            params["bm25_k1"] = bm25_k1
-        if "bm25_b" not in params and "b" not in params:
-            params["bm25_b"] = bm25_b
-    strategy = strategy_cls(
-        corpus,
-        workers=args.workers,
-        **params,
-    )
-    graded = run_strategy(
-        strategy,
-        judgments,
+    params = RunParams(
+        strategy_path=args.strategy,
+        dataset=args.dataset,
         num_queries=args.num_queries,
         seed=args.seed,
+        workers=args.workers,
+        binary_relevance=args.binary_relevance,
+        device=args.device,
     )
-    metric_name, metric_fn = metric_for_dataset(args.dataset)
-    metric_series = metric_fn(graded)
-    _report_metric(metric_name, metric_series)
+    result = run_benchmark(params)
+    _report_metric(result.metric_name, result.metric_series)
 
 
 if __name__ == "__main__":
