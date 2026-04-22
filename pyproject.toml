@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git",
     "pyyaml>=6.0.2",
+    "sentence-transformers>=5.4.1",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,7 @@ query = "prf.query_runner:main"
 diff = "prf.diff:main"
 prf-rerank-debug = "prf.vectors_runner:main"
 bm25-debug = "prf.bm25_debug_runner:main"
+embeddings-build = "prf.embeddings_runner:main"
 
 [build-system]
 requires = ["hatchling>=1.24.2"]

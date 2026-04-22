@@ -213,16 +213,29 @@ def main() -> None:
     if args.seed is not None:
         np.random.seed(args.seed)
 
-    dataset = get_dataset(args.dataset, workers=args.workers)
-    corpus = dataset.corpus
-    judgments = dataset.judgments
-    metric_name, metric_fn = metric_for_dataset(args.dataset)
-    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
-
     strategy_a_config = load_strategy_config(args.strategy_a)
     strategy_b_config = load_strategy_config(args.strategy_b)
     strategy_a_cls = resolve_strategy_class(strategy_a_config.type)
     strategy_b_cls = resolve_strategy_class(strategy_b_config.type)
+    requires_bm25 = (
+        strategy_a_config.type == "bm25" or strategy_b_config.type == "bm25"
+    )
+    for config in (strategy_a_config, strategy_b_config):
+        if config.type != "agentic":
+            continue
+        tool_names = config.params.get("search_tools")
+        if tool_names is None:
+            requires_bm25 = True
+            continue
+        if "bm25" in tool_names:
+            requires_bm25 = True
+    dataset = get_dataset(
+        args.dataset, workers=args.workers, ensure_snowball=requires_bm25
+    )
+    corpus = dataset.corpus
+    judgments = dataset.judgments
+    metric_name, metric_fn = metric_for_dataset(args.dataset)
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     params_a = dict(strategy_a_config.params)
     if strategy_a_config.type == "bm25":
         if "bm25_k1" not in params_a and "k1" not in params_a:

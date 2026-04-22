@@ -94,6 +94,7 @@ def load_or_create_embeddings(corpus) -> np.ndarray:
     cached = _load_cache(signature)
     if cached is not None:
         return cached
+    import pdb; pdb.set_trace()
 
     model = _minilm_model()
     texts = [_row_text(row) for _, row in corpus.iterrows()]
@@ -102,3 +103,8 @@ def load_or_create_embeddings(corpus) -> np.ndarray:
         embeddings = np.asarray(embeddings)
     _save_cache(signature, embeddings)
     return embeddings
+
+
+def cache_paths_for_corpus(corpus) -> tuple[Path, Path]:
+    signature = _corpus_signature(corpus)
+    return _cache_paths(signature)

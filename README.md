@@ -52,6 +52,13 @@ uv run bm25-debug --dataset wands --query "salon chair" --k 10
 uv run bm25-debug --dataset wands --query "salon chair" --debug-terms chair,stool
 ```
 
+Build or warm embedding cache:
+
+```bash
+uv run embeddings-build --dataset wands
+uv run embeddings-build --dataset msmarco
+```
+
 ## Lint
 
 ```bash

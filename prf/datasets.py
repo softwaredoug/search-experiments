@@ -23,14 +23,17 @@ def _cache_path(dataset_name: str, field: str) -> Path:
     return CACHE_ROOT / dataset_name / f"{field}_snowball.pkl"
 
 
-def _load_cached_index(path: Path):
+def _load_cached_index(path: Path, expected_length: int | None = None):
     if not path.exists():
         return None
     try:
         with path.open("rb") as handle:
-            return pickle.load(handle)
+            cached = pickle.load(handle)
     except (OSError, pickle.UnpicklingError):
         return None
+    if expected_length is not None and len(cached) != expected_length:
+        return None
+    return cached
 
 
 def _save_cached_index(path: Path, index: SearchArray) -> None:
@@ -45,7 +48,7 @@ def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) ->
         return
 
     cache_path = _cache_path(dataset_name, field)
-    cached = _load_cached_index(cache_path)
+    cached = _load_cached_index(cache_path, expected_length=len(corpus))
     if cached is None:
         cached = SearchArray.index(corpus[field], snowball_tokenizer, workers=workers)
         _save_cached_index(cache_path, cached)
@@ -101,7 +104,7 @@ def save_bm25_cache(
     graded.to_pickle(cache_path)
 
 
-def get_dataset(name: str, workers: int = 1):
+def get_dataset(name: str, workers: int = 1, ensure_snowball: bool = True):
     ensure_data_mounted()
     try:
         if name == "esci":
@@ -116,8 +119,9 @@ def get_dataset(name: str, workers: int = 1):
         raise ValueError(f"Unknown dataset: {name}") from exc
 
     corpus = dataset.corpus
-    for field in SNOWBALL_FIELDS:
-        _ensure_cached_field(corpus, name, field, workers)
+    if ensure_snowball:
+        for field in SNOWBALL_FIELDS:
+            _ensure_cached_field(corpus, name, field, workers)
     return dataset
 
 

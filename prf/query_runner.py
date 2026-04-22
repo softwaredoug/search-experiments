@@ -47,12 +47,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    dataset = get_dataset(args.dataset)
-    corpus = dataset.corpus
-    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     strategy_config = load_strategy_config(args.strategy)
     strategy_cls = resolve_strategy_class(strategy_config.type)
     params = dict(strategy_config.params)
+    requires_bm25 = True
+    if strategy_config.type == "agentic":
+        tool_names = params.get("search_tools")
+        if tool_names is not None:
+            requires_bm25 = "bm25" in tool_names
+    dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
+    corpus = dataset.corpus
+    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     if strategy_config.type == "bm25":
         if "bm25_k1" not in params and "k1" not in params:
             params["bm25_k1"] = bm25_k1
