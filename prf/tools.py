@@ -63,8 +63,8 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
     return search_bm25
 
 
-def make_embedding_tool(corpus):
-    embeddings = load_or_create_embeddings(corpus)
+def make_embedding_tool(corpus, device: str | None = None):
+    embeddings = load_or_create_embeddings(corpus, device=device)
 
     def search_embeddings(
         keywords: str,
@@ -75,7 +75,7 @@ def make_embedding_tool(corpus):
 
         This is an embedding search over concatenated title + description.
         """
-        model = _minilm_model()
+        model = _minilm_model(device=device)
         query_embedded = model.encode(keywords)
         similarity_scores = np.dot(embeddings, query_embedded)
 
@@ -175,11 +175,18 @@ TOOL_BUILDERS = {
 }
 
 
-def build_search_tools(corpus, tool_names: list[str]):
+def build_search_tools(
+    corpus,
+    tool_names: list[str],
+    embeddings_device: str | None = None,
+):
     tools = []
     for tool_name in tool_names:
         builder = TOOL_BUILDERS.get(tool_name)
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
-        tools.append(builder(corpus))
+        if tool_name == "embeddings":
+            tools.append(builder(corpus, device=embeddings_device))
+        else:
+            tools.append(builder(corpus))
     return tools

@@ -8,6 +8,7 @@ import yaml
 
 from prf.strategies.agentic import AgenticSearchStrategy
 from prf.strategies.bm25 import BM25Strategy
+from prf.strategies.embedding import EmbeddingStrategy
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class StrategyConfig:
 STRATEGY_TYPES = {
     BM25Strategy._type: BM25Strategy,
     AgenticSearchStrategy._type: AgenticSearchStrategy,
+    EmbeddingStrategy._type: EmbeddingStrategy,
 }
 
 

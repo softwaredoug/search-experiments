@@ -45,6 +45,10 @@ def main() -> None:
             "(title, description, category)."
         ),
     )
+    parser.add_argument(
+        "--device",
+        help="Embedding device override (e.g., mps, cpu).",
+    )
     args = parser.parse_args()
 
     strategy_config = load_strategy_config(args.strategy)
@@ -55,6 +59,13 @@ def main() -> None:
         tool_names = params.get("search_tools")
         if tool_names is not None:
             requires_bm25 = "bm25" in tool_names
+        if args.device and "embeddings_device" not in params:
+            if tool_names is None or "embeddings" in tool_names:
+                params["embeddings_device"] = args.device
+    if strategy_config.type == "embedding":
+        requires_bm25 = False
+        if args.device and "device" not in params:
+            params["device"] = args.device
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
     bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)

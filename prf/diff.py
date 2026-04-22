@@ -208,6 +208,10 @@ def main() -> None:
             "(title, description, category)."
         ),
     )
+    parser.add_argument(
+        "--device",
+        help="Embedding device override (e.g., mps, cpu).",
+    )
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -242,12 +246,28 @@ def main() -> None:
             params_a["bm25_k1"] = bm25_k1
         if "bm25_b" not in params_a and "b" not in params_a:
             params_a["bm25_b"] = bm25_b
+    if strategy_a_config.type == "agentic":
+        tool_names = params_a.get("search_tools")
+        if args.device and "embeddings_device" not in params_a:
+            if tool_names is None or "embeddings" in tool_names:
+                params_a["embeddings_device"] = args.device
+    if strategy_a_config.type == "embedding":
+        if args.device and "device" not in params_a:
+            params_a["device"] = args.device
     params_b = dict(strategy_b_config.params)
     if strategy_b_config.type == "bm25":
         if "bm25_k1" not in params_b and "k1" not in params_b:
             params_b["bm25_k1"] = bm25_k1
         if "bm25_b" not in params_b and "b" not in params_b:
             params_b["bm25_b"] = bm25_b
+    if strategy_b_config.type == "agentic":
+        tool_names = params_b.get("search_tools")
+        if args.device and "embeddings_device" not in params_b:
+            if tool_names is None or "embeddings" in tool_names:
+                params_b["embeddings_device"] = args.device
+    if strategy_b_config.type == "embedding":
+        if args.device and "device" not in params_b:
+            params_b["device"] = args.device
     strategy_a = strategy_a_cls(
         corpus,
         workers=args.workers,

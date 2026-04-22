@@ -17,13 +17,16 @@ class AgenticSearchStrategy(SearchStrategy):
         model: str = "gpt-5-mini",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list[str] | None = None,
+        embeddings_device: str | None = None,
         tools=None,
     ):
         if tools is not None:
             self.tools = tools
         else:
             tool_names = search_tools or ["bm25"]
-            self.tools = build_search_tools(corpus, tool_names)
+            self.tools = build_search_tools(
+                corpus, tool_names, embeddings_device=embeddings_device
+            )
         self.model = model
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
