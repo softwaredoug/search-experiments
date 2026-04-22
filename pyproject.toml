@@ -24,7 +24,6 @@ query = "prf.query_runner:main"
 diff = "prf.diff:main"
 prf-rerank-debug = "prf.vectors_runner:main"
 bm25-debug = "prf.bm25_debug_runner:main"
-embeddings-build = "prf.embeddings_runner:main"
 
 [build-system]
 requires = ["hatchling>=1.24.2"]

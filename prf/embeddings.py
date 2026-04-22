@@ -9,6 +9,7 @@ import numpy as np
 
 
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_CHUNK_SIZE = 10000
 CACHE_ROOT = Path.home() / ".search-experiments" / "embeddings"
 
 
@@ -117,7 +118,7 @@ def load_or_create_embeddings(
     corpus,
     model_name: str = DEFAULT_MODEL_NAME,
     device: str | None = None,
-    chunk_size: int = 10000,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
     show_progress: bool = False,
 ) -> np.ndarray:
     signature = _corpus_signature(corpus, model_name)
