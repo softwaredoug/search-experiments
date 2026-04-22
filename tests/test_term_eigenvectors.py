@@ -1,6 +1,6 @@
 import numpy as np
 
-from prf.strategies.prf_rerank_terms import term_space_eigenvectors
+from prf.strategies.prf_rerank_terms import term_space_eigenvectors, term_space_pca
 
 
 def _vector_from_sparse(
@@ -43,6 +43,25 @@ def test_term_space_eigenvectors_correlated_terms():
     vec0 = _vector_from_sparse(vectors[0], terms)
     vec1 = _vector_from_sparse(vectors[1], terms)
 
+    assert np.isclose(abs(vec0[0]), abs(vec0[1]), atol=1e-8)
+    assert vec0[0] * vec0[1] > 0
+    assert np.isclose(np.dot(vec0, vec1), 0.0, atol=1e-8)
+
+
+def test_term_space_pca_centered_direction():
+    term_to_importance = {
+        "alpha": [(0, 1.0), (1, 2.0), (2, 3.0)],
+        "beta": [(0, 1.0), (1, 2.0), (2, 3.0)],
+    }
+    terms = sorted(term_to_importance)
+
+    eigenvalues, vectors = term_space_pca(term_to_importance, top_r=2)
+
+    assert len(eigenvalues) == 2
+    vec0 = _vector_from_sparse(vectors[0], terms)
+    vec1 = _vector_from_sparse(vectors[1], terms)
+
+    assert eigenvalues[0] >= eigenvalues[1]
     assert np.isclose(abs(vec0[0]), abs(vec0[1]), atol=1e-8)
     assert vec0[0] * vec0[1] > 0
     assert np.isclose(np.dot(vec0, vec1), 0.0, atol=1e-8)

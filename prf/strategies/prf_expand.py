@@ -11,6 +11,11 @@ from .prf_rerank_terms import (
     weighed_bm25_search,
 )
 
+# Good / bad eigenvectors for queries we know about, just to see how they help
+labeled_eigenvectsors = {
+    "what county is champlain va in?": [0, 1, 2, 3, 4],
+}
+
 
 class PRFExpand(SearchStrategy):
     def __init__(
@@ -22,7 +27,7 @@ class PRFExpand(SearchStrategy):
         bm25_b=0.75,
         top_n_terms=10,
         top_n_eigenvectors=10,
-        top_n_candidates=50,
+        top_n_candidates=100,
         top_terms_per_eigenvector=20,
         top_k=10,
         workers=1,
@@ -65,8 +70,32 @@ class PRFExpand(SearchStrategy):
             matrix,
             top_r=self.top_n_eigenvectors,
         )
-        exp_scores = np.zeros_like(bm25_scores)
-        for eigenvalue, eigenvector in zip(eigenvalues, eigenvectors):
+        pca_eigenvalues, pca_eigenvectors = term_space_eigenvectors(
+            matrix,
+            top_r=self.top_n_eigenvectors,
+        )
+        max_bm25 = np.max(bm25_scores)
+        for vec_idx, (eigenvalue, eigenvector) in enumerate(zip(pca_eigenvalues, pca_eigenvectors)):
+            top_terms = sorted(
+                eigenvector.items(),
+                key=lambda item: abs(item[1]),
+                reverse=True,
+            )[: self.top_terms_per_eigenvector]
+            top_terms = [(term, abs(weight)) for term, weight in top_terms]
+            for term, weight in top_terms:
+                print(f"PCA {vec_idx} -- {term}: {weight} (eigenvalue: {eigenvalue})")
+
+                term_scores = self.corpus["description_snowball"].array.score(term)
+                factors = (term_scores > 0) * weight * (1 + eigenvalue)
+                if vec_idx in [0]:
+                    bm25_scores += factors
+            print("--")
+        top_k = np.argsort(-bm25_scores)[:k]
+        scores = bm25_scores[top_k]
+        return top_k, scores
+
+        # exp_scores = np.zeros_like(bm25_scores)
+        for vec_idx, (eigenvalue, eigenvector) in enumerate(zip(eigenvalues, eigenvectors)):
             if not eigenvector:
                 continue
             top_terms = sorted(
@@ -75,14 +104,17 @@ class PRFExpand(SearchStrategy):
                 reverse=True,
             )[: self.top_terms_per_eigenvector]
             top_terms = [(term, abs(weight)) for term, weight in top_terms]
+            print(f" {vec_idx} --")
             for term, weight in top_terms:
                 term_scores = self.corpus["description_snowball"].array.score(term)
-                exp_scores += term_scores * weight * eigenvalue
-                print(term, weight, np.sqrt(eigenvalue))
-            print("--")
-        import pdb; pdb.set_trace()
-        top_k = np.argsort(-exp_scores)[:k]
-        scores = exp_scores[top_k]
+                factors = (term_scores > 0) * weight * (1 + eigenvalue) * (100 + max_bm25)
+                if vec_idx in [1, 5, 8, 9]:
+                    bm25_scores -= factors
+                else:
+                    bm25_scores += factors
+                print(term, weight, eigenvalue, factors.max())
+        top_k = np.argsort(-bm25_scores)[:k]
+        scores = bm25_scores[top_k]
         return top_k, scores
 
     def search(self, query, k=10):

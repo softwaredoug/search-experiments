@@ -105,10 +105,11 @@ def compute_bm25_matrix(
     term_to_importance = defaultdict(list)
     weight_sum = np.sum(top_n_weights)
     for doc_id, terms, term_importance in zip(top_n, arr[top_n], top_n_weights):
-        for term, _ in terms.terms():
+        this_doc = Counter()
+        for term, tf in terms.terms():
             term_df = arr.docfreq(term)
             weight = _compute_bm25(
-                tf=1,
+                tf=tf,
                 doclen=arr.doclengths().mean(),
                 df=term_df,
                 num_docs=len(arr),
@@ -116,7 +117,8 @@ def compute_bm25_matrix(
                 b=0.75,
             )
             orig_bm25_weight = term_importance / weight_sum if weight_sum > 0 else 0
-            weight = (orig_bm25_weight ** 2) * weight
+            weight = (orig_bm25_weight**2) * weight
+            this_doc[term] += weight
             term_to_importance[term].append((doc_id, weight))
     return term_to_importance
 
@@ -147,6 +149,53 @@ def term_space_eigenvectors(
 
     gram = matrix @ matrix.T
     eigenvalues, eigenvectors = np.linalg.eigh(gram)
+    order = np.argsort(-eigenvalues)
+    top_indices = order[: min(top_r, len(terms))]
+
+    eigenvalues_out = []
+    sparse_vectors = []
+    for idx in top_indices:
+        vector = eigenvectors[:, idx]
+        sparse_vector = {
+            term: float(weight)
+            for term, weight in zip(terms, vector)
+            if abs(weight) > min_abs_weight
+        }
+        eigenvalues_out.append(float(eigenvalues[idx]))
+        sparse_vectors.append(sparse_vector)
+    return eigenvalues_out, sparse_vectors
+
+
+def term_space_pca(
+    term_to_importance: dict[str, list[tuple[int, float]]],
+    top_r: int,
+    *,
+    min_abs_weight: float = 0.0,
+) -> tuple[list[float], list[dict[str, float]]]:
+    if top_r <= 0:
+        raise ValueError("top_r must be positive")
+    if not term_to_importance:
+        return [], []
+
+    terms = sorted(term_to_importance)
+    doc_ids = sorted(
+        {doc_id for entries in term_to_importance.values() for doc_id, _ in entries}
+    )
+    if not doc_ids:
+        return [], []
+
+    doc_index = {doc_id: idx for idx, doc_id in enumerate(doc_ids)}
+    matrix = np.zeros((len(terms), len(doc_ids)), dtype=float)
+    for term_idx, term in enumerate(terms):
+        for doc_id, weight in term_to_importance[term]:
+            matrix[term_idx, doc_index[doc_id]] += weight
+
+    centered = matrix - matrix.mean(axis=1, keepdims=True)
+    denom = len(doc_ids) - 1
+    if denom <= 0:
+        denom = 1
+    cov = (centered @ centered.T) / denom
+    eigenvalues, eigenvectors = np.linalg.eigh(cov)
     order = np.argsort(-eigenvalues)
     top_indices = order[: min(top_r, len(terms))]
 
