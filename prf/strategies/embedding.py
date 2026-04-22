@@ -30,6 +30,7 @@ class EmbeddingStrategy(SearchStrategy):
             corpus,
             model_name=model_name,
             device=device,
+            show_progress=True,
         )
 
     def _cosine_similarity(self, query_embedding: np.ndarray) -> np.ndarray:

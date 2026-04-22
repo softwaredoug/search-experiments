@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
@@ -119,7 +120,7 @@ def load_or_create_embeddings(
     model_name: str = DEFAULT_MODEL_NAME,
     device: str | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    show_progress: bool = False,
+    show_progress: bool = True,
 ) -> np.ndarray:
     signature = _corpus_signature(corpus, model_name)
     cached = _load_cache(signature, model_name)
@@ -147,9 +148,10 @@ def load_or_create_embeddings(
     model = None
     completed = set(manifest.get("completed_chunks", []))
 
-    for chunk_index in range(num_chunks):
-        if show_progress and num_chunks > 0:
-            print(f"Embedding chunks {chunk_index + 1}/{num_chunks}", end="\r", flush=True)
+    chunk_iter = range(num_chunks)
+    if show_progress and num_chunks > 0:
+        chunk_iter = tqdm(chunk_iter, desc="Embedding chunks")
+    for chunk_index in chunk_iter:
         chunk_file = _chunk_path(signature, chunk_index)
         start = chunk_index * chunk_size
         end = min(start + chunk_size, total_count)
@@ -187,8 +189,6 @@ def load_or_create_embeddings(
         })
         _save_manifest(signature, manifest)
 
-    if show_progress and num_chunks > 0:
-        print("")
     if embeddings is None:
         embeddings = np.empty((total_count, dim or 0))
     manifest.update({
