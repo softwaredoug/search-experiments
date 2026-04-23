@@ -4,7 +4,6 @@ from exps.strategies.embedding import EmbeddingStrategy
 from exps.strategies.agentic import AgenticSearchStrategy
 from exps.strategies.agentic_ralphed import AgenticSearchStrategyRalphed
 from exps.strategies.reweighed_bm25 import ReweighedBM25Strategy
-from exps.strategies.prf_rerank import PRFRerankStrategy
 
 __all__ = [
     "BM25Strategy",
@@ -12,6 +11,5 @@ __all__ = [
     "EmbeddingStrategy",
     "AgenticSearchStrategy",
     "AgenticSearchStrategyRalphed",
-    "PRFRerankStrategy",
     "ReweighedBM25Strategy",
 ]

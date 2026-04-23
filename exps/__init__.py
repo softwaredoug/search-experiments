@@ -1,1 +1,1 @@
-"""PRF benchmark package."""
+"""Experiment benchmark package."""

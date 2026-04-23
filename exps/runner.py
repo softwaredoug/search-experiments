@@ -18,7 +18,7 @@ def _report_metric(metric_name: str, metric_series) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run PRF lexical strategies.")
+    parser = argparse.ArgumentParser(description="Run experiment strategies.")
     parser.add_argument(
         "--strategy",
         required=True,
@@ -50,7 +50,7 @@ def main() -> None:
     parser.add_argument(
         "--binary-relevance",
         help=(
-            "Comma-separated fields to use binary relevance in PRF "
+            "Comma-separated fields to treat as binary relevance "
             "(title, description, category)."
         ),
     )

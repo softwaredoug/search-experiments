@@ -10,7 +10,7 @@ from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
 from exps.strategies.reweighed_bm25 import ReweighedBM25Strategy
 from searcharray.similarity import compute_idf
-from exps.strategies.prf_rerank_terms import bm25_search_details
+from exps.bm25_utils import bm25_search_details
 
 
 def _display_title(row) -> str:

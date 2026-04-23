@@ -1,6 +1,6 @@
-## Psuedorelevance Feedback benchmarks
+## Search experiments
 
-BM25 + PRF benchmarks on datasets available in Cheat at Search.
+BM25 and agentic benchmarks on datasets available in Cheat at Search.
 
 ## Setup
 
@@ -19,30 +19,21 @@ uv sync --extra dev
 Run benchmarks:
 
 ```bash
-uv run run --strategy bm25 --dataset wands
-uv run run --strategy prf_rerank --dataset esci
+uv run run --strategy configs/bm25_strong_title.yml --dataset wands
+uv run run --strategy configs/agentic_bm25_embeddings.yml --dataset wands
 ```
 
 Run a single query:
 
 ```bash
-uv run query --strategy bm25 --dataset wands --query "salon chair"
-uv run query --strategy prf_rerank --dataset msmarco --query "salon chair" --k 10
+uv run query --strategy configs/bm25_strong_title.yml --dataset wands --query "salon chair"
+uv run query --strategy configs/agentic_bm25_embeddings.yml --dataset wands --query "salon chair" --k 10
 ```
 
 Run diffing tools:
 
 ```bash
-uv run diff --strategy bm25 --dataset wands
-uv run diff --strategy prf_rerank --dataset esci
-```
-
-Inspect PRF RM3 vectors:
-
-```bash
-uv run exps-rerank-debug --dataset wands --query "salon chair" --k 10
-uv run exps-rerank-debug --dataset esci --query "salon chair" --fields title,description,category --k 10
-uv run exps-rerank-debug --dataset msmarco --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
+uv run diff --strategy-a configs/bm25_strong_title.yml --strategy-b configs/bm25_strong_title.yml --dataset wands
 ```
 
 Inspect BM25 debug output:

@@ -22,7 +22,6 @@ dev = [
 run = "exps.runner:main"
 query = "exps.query_runner:main"
 diff = "exps.diff:main"
-exps-rerank-debug = "exps.vectors_runner:main"
 bm25-debug = "exps.bm25_debug_runner:main"
 
 [build-system]

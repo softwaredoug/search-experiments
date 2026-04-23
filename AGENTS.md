@@ -6,7 +6,7 @@ Keep changes small, testable, and aligned with existing patterns.
 ## Project Overview
 
 - Project name: exps
-- Purpose: lexical search benchmarks (BM25 + pseudo relevance feedback).
+- Purpose: lexical search benchmarks (BM25 + agentic search).
 - Python: >= 3.11
 - Package manager: uv
 - Entrypoints:
@@ -24,12 +24,12 @@ Keep changes small, testable, and aligned with existing patterns.
 ## Run Commands
 
 - Run BM25 benchmark:
-  - `uv run run --strategy bm25`
-- Run PRF benchmark:
-  - `uv run run --strategy prf_rerank`
+  - `uv run run --strategy configs/bm25_strong_title.yml --dataset wands`
+- Run an agentic benchmark:
+  - `uv run run --strategy configs/agentic_bm25_embeddings.yml --dataset wands`
 - Run a single query:
-  - `uv run query --strategy bm25 --query "salon chair"`
-  - `uv run query --strategy prf_rerank --query "salon chair" --k 10`
+  - `uv run query --strategy configs/bm25_strong_title.yml --query "salon chair"`
+  - `uv run query --strategy configs/agentic_bm25_embeddings.yml --query "salon chair" --k 10`
 - Inspect BM25 debug output:
   - `uv run bm25-debug --query "salon chair" --k 10`
 
@@ -91,7 +91,6 @@ Keep changes small, testable, and aligned with existing patterns.
 - Strategies inherit from `cheat_at_search.strategy.SearchStrategy`.
 - `search()` must return `(top_k_indices, scores)`.
 - Indexing uses `SearchArray.index` with `snowball_tokenizer`.
-- For PRF experiments, prefer explicit, small changes that can be isolated.
 
 ## Data Notes
 

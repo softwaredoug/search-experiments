@@ -107,7 +107,7 @@ def main() -> None:
     parser.add_argument(
         "--binary-relevance",
         help=(
-            "Comma-separated fields to use binary relevance in PRF "
+            "Comma-separated fields to treat as binary relevance "
             "(title, description, category)."
         ),
     )

@@ -96,7 +96,7 @@ if [[ "$trace_leaks" == "true" ]]; then
   flamegraph_flag="--leaks"
 fi
 
-uv run memray run $trace_flag --follow-fork -o "$bin_path" -m prf.diff -- \
+uv run memray run $trace_flag --follow-fork -o "$bin_path" -m exps.diff -- \
   --strategy-a "$strategy_a" \
   --strategy-b "$strategy_b" \
   --dataset "$dataset" \
