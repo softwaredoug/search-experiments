@@ -36,13 +36,6 @@ Run diffing tools:
 uv run diff --strategy-a configs/bm25_strong_title.yml --strategy-b configs/bm25_strong_title.yml --dataset wands
 ```
 
-Inspect BM25 debug output:
-
-```bash
-uv run bm25-debug --dataset wands --query "salon chair" --k 10 --k1 1.2 --b 0.75
-uv run bm25-debug --dataset wands --query "salon chair" --debug-terms chair,stool --k1 1.2 --b 0.75
-```
-
 ## Lint
 
 ```bash
