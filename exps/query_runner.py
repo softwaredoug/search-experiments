@@ -1,6 +1,6 @@
 import argparse
 
-from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.datasets import get_dataset
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
@@ -68,12 +68,11 @@ def main() -> None:
             params["device"] = args.device
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
-    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
     if strategy_config.type == "bm25":
         if "bm25_k1" not in params and "k1" not in params:
-            params["bm25_k1"] = bm25_k1
+            raise ValueError("BM25 config must include 'k1' or 'bm25_k1'.")
         if "bm25_b" not in params and "b" not in params:
-            params["bm25_b"] = bm25_b
+            raise ValueError("BM25 config must include 'b' or 'bm25_b'.")
     strategy = strategy_cls(
         corpus,
         **params,

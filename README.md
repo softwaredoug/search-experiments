@@ -39,8 +39,8 @@ uv run diff --strategy-a configs/bm25_strong_title.yml --strategy-b configs/bm25
 Inspect BM25 debug output:
 
 ```bash
-uv run bm25-debug --dataset wands --query "salon chair" --k 10
-uv run bm25-debug --dataset wands --query "salon chair" --debug-terms chair,stool
+uv run bm25-debug --dataset wands --query "salon chair" --k 10 --bm25-k1 1.2 --bm25-b 0.75
+uv run bm25-debug --dataset wands --query "salon chair" --debug-terms chair,stool --bm25-k1 1.2 --bm25-b 0.75
 ```
 
 ## Lint

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from cheat_at_search.search import run_strategy
-from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.runners.run import RunParams, run_benchmark
@@ -86,12 +86,6 @@ def test_run_benchmark_matches_direct():
     strategy_config = load_strategy_config(params.strategy_path)
     strategy_cls = resolve_strategy_class(strategy_config.type)
     strategy_params = dict(strategy_config.params)
-    bm25_k1, bm25_b = bm25_params_for_dataset(params.dataset)
-    if "bm25_k1" not in strategy_params and "k1" not in strategy_params:
-        strategy_params["bm25_k1"] = bm25_k1
-    if "bm25_b" not in strategy_params and "b" not in strategy_params:
-        strategy_params["bm25_b"] = bm25_b
-
     dataset = get_dataset(params.dataset)
     corpus = dataset.corpus
     judgments = dataset.judgments

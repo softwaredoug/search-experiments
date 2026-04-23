@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.datasets import get_dataset
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
 from exps.strategies.reweighed_bm25 import ReweighedBM25Strategy
@@ -91,6 +91,18 @@ def main() -> None:
         help="Ranking strategy to use.",
     )
     parser.add_argument(
+        "--bm25-k1",
+        type=float,
+        required=True,
+        help="BM25 k1 parameter.",
+    )
+    parser.add_argument(
+        "--bm25-b",
+        type=float,
+        required=True,
+        help="BM25 b parameter.",
+    )
+    parser.add_argument(
         "--debug-terms",
         help="Comma-separated query terms to show df columns.",
     )
@@ -108,7 +120,8 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
-    bm25_k1, bm25_b = bm25_params_for_dataset(args.dataset)
+    bm25_k1 = args.bm25_k1
+    bm25_b = args.bm25_b
     if args.strategy == "doubleidf":
         strategy = DoubleIDFBM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
     elif args.strategy == "reweighed":

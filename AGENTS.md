@@ -31,7 +31,7 @@ Keep changes small, testable, and aligned with existing patterns.
   - `uv run query --strategy configs/bm25_strong_title.yml --query "salon chair"`
   - `uv run query --strategy configs/agentic_bm25_embeddings.yml --query "salon chair" --k 10`
 - Inspect BM25 debug output:
-  - `uv run bm25-debug --query "salon chair" --k 10`
+  - `uv run bm25-debug --query "salon chair" --k 10 --bm25-k1 1.2 --bm25-b 0.75`
 
 ## Lint / Format
 

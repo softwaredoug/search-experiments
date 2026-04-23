@@ -6,7 +6,7 @@ from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal
 
-from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
@@ -169,18 +169,16 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
     corpus = dataset.corpus
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    bm25_k1, bm25_b = bm25_params_for_dataset(params.dataset)
-
     if strategy_a_config.type == "bm25":
         if "bm25_k1" not in params_a and "k1" not in params_a:
-            params_a["bm25_k1"] = bm25_k1
+            raise ValueError("Strategy A BM25 config must include 'k1' or 'bm25_k1'.")
         if "bm25_b" not in params_a and "b" not in params_a:
-            params_a["bm25_b"] = bm25_b
+            raise ValueError("Strategy A BM25 config must include 'b' or 'bm25_b'.")
     if strategy_b_config.type == "bm25":
         if "bm25_k1" not in params_b and "k1" not in params_b:
-            params_b["bm25_k1"] = bm25_k1
+            raise ValueError("Strategy B BM25 config must include 'k1' or 'bm25_k1'.")
         if "bm25_b" not in params_b and "b" not in params_b:
-            params_b["bm25_b"] = bm25_b
+            raise ValueError("Strategy B BM25 config must include 'b' or 'bm25_b'.")
 
     strategy_a = strategy_a_cls(corpus, workers=params.workers, **params_a)
     strategy_b = strategy_b_cls(corpus, workers=params.workers, **params_b)

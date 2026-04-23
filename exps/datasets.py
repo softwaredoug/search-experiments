@@ -1,22 +1,13 @@
 import pickle
 from pathlib import Path
-
-import pandas as pd
 from searcharray import SearchArray
 
 from cheat_at_search.tokenizers import snowball_tokenizer
 
 from exps.mounting import ensure_data_mounted
 
-BM25_PARAMS = {
-    "msmarco": {"k1": 0.6, "b": 0.62},
-}
-
-DEFAULT_BM25_PARAMS = {"k1": 1.2, "b": 0.75}
-
 SNOWBALL_FIELDS = ("title", "description", "category")
 CACHE_ROOT = Path.home() / ".search-experiments" / "searcharray"
-BM25_CACHE_ROOT = Path.home() / ".search-experiments" / "bm25"
 
 
 def _cache_path(dataset_name: str, field: str) -> Path:
@@ -55,53 +46,6 @@ def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) ->
     corpus[snowball_field] = cached
 
 
-def _bm25_cache_path(
-    dataset_name: str,
-    num_queries: int | None,
-    seed: int | None,
-    bm25_k1: float,
-    bm25_b: float,
-) -> Path:
-    num_queries_label = num_queries if num_queries is not None else "all"
-    seed_label = seed if seed is not None else "none"
-    filename = (
-        f"graded_bm25_n{num_queries_label}_seed{seed_label}_k1{bm25_k1}_b{bm25_b}.pkl"
-    )
-    return BM25_CACHE_ROOT / dataset_name / filename
-
-
-def load_bm25_cache(
-    dataset_name: str,
-    num_queries: int | None,
-    seed: int | None,
-    bm25_k1: float,
-    bm25_b: float,
-) -> pd.DataFrame | None:
-    cache_path = _bm25_cache_path(dataset_name, num_queries, seed, bm25_k1, bm25_b)
-    if not cache_path.exists():
-        return None
-    try:
-        graded = pd.read_pickle(cache_path)
-    except (OSError, pickle.UnpicklingError):
-        return None
-    if "doc_id" not in graded.columns:
-        return None
-    if "mrr" not in graded.columns:
-        return None
-    return graded
-
-
-def save_bm25_cache(
-    dataset_name: str,
-    num_queries: int | None,
-    seed: int | None,
-    bm25_k1: float,
-    bm25_b: float,
-    graded: pd.DataFrame,
-) -> None:
-    cache_path = _bm25_cache_path(dataset_name, num_queries, seed, bm25_k1, bm25_b)
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    graded.to_pickle(cache_path)
 
 
 def get_dataset(name: str, workers: int = 1, ensure_snowball: bool = True):
@@ -124,7 +68,3 @@ def get_dataset(name: str, workers: int = 1, ensure_snowball: bool = True):
             _ensure_cached_field(corpus, name, field, workers)
     return dataset
 
-
-def bm25_params_for_dataset(name: str) -> tuple[float, float]:
-    params = BM25_PARAMS.get(name, DEFAULT_BM25_PARAMS)
-    return params["k1"], params["b"]

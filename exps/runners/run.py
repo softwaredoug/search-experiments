@@ -5,7 +5,7 @@ from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal
 
-from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
@@ -65,13 +65,11 @@ def run_benchmark(params: RunParams) -> RunResult:
     )
     corpus = dataset.corpus
     judgments = dataset.judgments
-    bm25_k1, bm25_b = bm25_params_for_dataset(params.dataset)
-
     if strategy_config.type == "bm25":
         if "bm25_k1" not in strategy_params and "k1" not in strategy_params:
-            strategy_params["bm25_k1"] = bm25_k1
+            raise ValueError("BM25 config must include 'k1' or 'bm25_k1'.")
         if "bm25_b" not in strategy_params and "b" not in strategy_params:
-            strategy_params["bm25_b"] = bm25_b
+            raise ValueError("BM25 config must include 'b' or 'bm25_b'.")
 
     strategy = strategy_cls(
         corpus,

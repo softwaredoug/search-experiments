@@ -1,32 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-strategy="bm25"
+strategy_config="configs/bm25_strong_title.yml"
+strategy_name=""
 dataset="wands"
 query="salon chair"
 k="10"
+bm25_k1=""
+bm25_b=""
 
 usage() {
   cat <<'EOF'
 Usage: scripts/test_bm25_consistency.sh [options]
 
 Options:
-  --strategy NAME      Strategy (bm25, bm25_doubleidf, bm25_reweighed)
+  --strategy-config P  Strategy config path (default: configs/bm25_strong_title.yml)
+  --strategy-name N    Strategy name override (defaults to config file stem)
   --dataset NAME       Dataset (default: wands)
   --query TEXT         Query to test (default: "salon chair")
   --k N                Number of results (default: 10)
+  --bm25-k1 N           BM25 k1 parameter (required)
+  --bm25-b N            BM25 b parameter (required)
   -h, --help           Show this help message
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --strategy)
-      strategy="$2"
+    --strategy-config)
+      strategy_config="$2"
       shift 2
       ;;
-    --strategy=*)
-      strategy="${1#*=}"
+    --strategy-config=*)
+      strategy_config="${1#*=}"
+      shift 1
+      ;;
+    --strategy-name)
+      strategy_name="$2"
+      shift 2
+      ;;
+    --strategy-name=*)
+      strategy_name="${1#*=}"
       shift 1
       ;;
     --dataset)
@@ -53,6 +67,22 @@ while [[ $# -gt 0 ]]; do
       k="${1#*=}"
       shift 1
       ;;
+    --bm25-k1)
+      bm25_k1="$2"
+      shift 2
+      ;;
+    --bm25-k1=*)
+      bm25_k1="${1#*=}"
+      shift 1
+      ;;
+    --bm25-b)
+      bm25_b="$2"
+      shift 2
+      ;;
+    --bm25-b=*)
+      bm25_b="${1#*=}"
+      shift 1
+      ;;
     -h|--help)
       usage
       exit 0
@@ -65,25 +95,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-case "$strategy" in
-  bm25)
-    debug_strategy="bm25"
-    score_field="bm25_score"
-    ;;
-  bm25_doubleidf)
-    debug_strategy="doubleidf"
-    score_field="bm25_score"
-    ;;
-  bm25_reweighed)
-    debug_strategy="reweighed"
-    score_field="doc_weight"
-    ;;
-  *)
-    echo "Unsupported strategy: $strategy" >&2
-    echo "Expected one of: bm25, bm25_doubleidf, bm25_reweighed" >&2
-    exit 1
-    ;;
-esac
+if [[ -z "$bm25_k1" || -z "$bm25_b" ]]; then
+  echo "--bm25-k1 and --bm25-b are required" >&2
+  usage
+  exit 1
+fi
+
+if [[ -z "$strategy_name" ]]; then
+  filename=$(basename "$strategy_config")
+  strategy_name="${filename%.yml}"
+  strategy_name="${strategy_name%.yaml}"
+fi
+
+debug_strategy="bm25"
+score_field="bm25_score"
 
 tmp_dir=$(mktemp -d)
 diff_out="$tmp_dir/diff.txt"
@@ -92,8 +117,8 @@ query_out="$tmp_dir/query.txt"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 uv run diff \
-  --strategy-a "$strategy" \
-  --strategy-b "$strategy" \
+  --strategy-a "$strategy_config" \
+  --strategy-b "$strategy_config" \
   --dataset "$dataset" \
   --query "$query" \
   --k "$k" > "$diff_out"
@@ -102,15 +127,17 @@ uv run bm25-debug \
   --strategy "$debug_strategy" \
   --dataset "$dataset" \
   --query "$query" \
-  --k "$k" > "$debug_out"
+  --k "$k" \
+  --bm25-k1 "$bm25_k1" \
+  --bm25-b "$bm25_b" > "$debug_out"
 
 uv run query \
-  --strategy "$strategy" \
+  --strategy "$strategy_config" \
   --dataset "$dataset" \
   --query "$query" \
   --k "$k" > "$query_out"
 
-STRATEGY="$strategy" \
+STRATEGY="$strategy_name" \
 SCORE_FIELD="$score_field" \
 DIFF_OUT="$diff_out" \
 DEBUG_OUT="$debug_out" \
