@@ -3,14 +3,30 @@ import argparse
 from exps.runners.run import RunParams, run_benchmark
 
 
-def _report_metric(metric_name: str, metric_series) -> None:
+def _report_metric(metric_name: str, metric_series, graded=None) -> None:
     metric_key = metric_name.lower()
     if metric_series.empty:
         print(f"No {metric_name} results to report.")
         return
 
+    display_series = metric_series
+    if (
+        graded is not None
+        and display_series.index.name == "query_id"
+        and "query" in graded.columns
+        and "query_id" in graded.columns
+    ):
+        query_map = (
+            graded[["query", "query_id"]]
+            .drop_duplicates()
+            .set_index("query_id")["query"]
+        )
+        display_series = display_series.copy()
+        display_series.index = display_series.index.map(query_map.get)
+        display_series.index.name = "query"
+
     print(f"Per-query {metric_name}:")
-    print(metric_series.to_string())
+    print(display_series.to_string())
     print("")
     print("Summary:")
     print(f"mean_{metric_key}={metric_series.mean():.4f}")
@@ -76,7 +92,7 @@ def main() -> None:
         no_cache=args.no_cache,
     )
     result = run_benchmark(params)
-    _report_metric(result.metric_name, result.metric_series)
+    _report_metric(result.metric_name, result.metric_series, result.graded)
 
 
 if __name__ == "__main__":
