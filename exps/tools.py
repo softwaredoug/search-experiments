@@ -6,7 +6,7 @@ import numpy as np
 from searcharray import SearchArray
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from prf.embeddings import _minilm_model, load_or_create_embeddings
+from exps.embeddings import _minilm_model, load_or_create_embeddings
 
 
 def _ensure_snowball_field(corpus, field: str) -> None:

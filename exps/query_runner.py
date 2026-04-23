@@ -1,7 +1,7 @@
 import argparse
 
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 def _display_title(row) -> str:

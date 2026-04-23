@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 from cheat_at_search.strategy import SearchStrategy
 
-from prf.embeddings import _minilm_model, load_or_create_embeddings
-from prf.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.embeddings import _minilm_model, load_or_create_embeddings
+from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 
 
 class EmbeddingStrategy(SearchStrategy):

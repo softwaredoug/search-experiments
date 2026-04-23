@@ -1,6 +1,6 @@
 import argparse
 
-from prf.runners.run import RunParams, run_benchmark
+from exps.runners.run import RunParams, run_benchmark
 
 
 def _report_metric(metric_name: str, metric_series) -> None:

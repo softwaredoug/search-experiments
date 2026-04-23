@@ -4,7 +4,7 @@ from searcharray import SearchArray
 from cheat_at_search import wands_data
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-from prf.strategies.prf_rerank_terms import top_n_term_strengths
+from exps.strategies.prf_rerank_terms import top_n_term_strengths
 
 
 def test_prf_rerank_terms_wands_titles_non_empty():

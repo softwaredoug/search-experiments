@@ -1,6 +1,6 @@
 import numpy as np
 
-from prf.strategies.prf_rerank_terms import term_space_eigenvectors, term_space_pca
+from exps.strategies.prf_rerank_terms import term_space_eigenvectors, term_space_pca
 
 
 def _vector_from_sparse(

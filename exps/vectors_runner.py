@@ -1,8 +1,8 @@
 import argparse
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.strategies.prf_rerank import PRFRerankStrategy
+from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.strategies.prf_rerank import PRFRerankStrategy
 
 
 def _display_title(row) -> str:

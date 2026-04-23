@@ -5,7 +5,7 @@ Keep changes small, testable, and aligned with existing patterns.
 
 ## Project Overview
 
-- Project name: prf
+- Project name: exps
 - Purpose: lexical search benchmarks (BM25 + pseudo relevance feedback).
 - Python: >= 3.11
 - Package manager: uv
@@ -65,7 +65,7 @@ Keep changes small, testable, and aligned with existing patterns.
 
 ### Naming
 
-- Modules: lowercase with underscores (e.g., `bm25.py`, `prf.py`).
+- Modules: lowercase with underscores (e.g., `bm25.py`, `exps.py`).
 - Classes: CapWords (e.g., `BM25Strategy`).
 - Functions: snake_case (e.g., `run_strategy`).
 - Constants: UPPER_SNAKE_CASE when appropriate.

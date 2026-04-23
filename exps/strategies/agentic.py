@@ -4,9 +4,9 @@ import json
 
 from cheat_at_search.strategy import SearchStrategy
 
-from prf.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
-from prf.mapping import build_doc_id_lookup, doc_ids_to_indices
-from prf.tools import build_search_tools
+from exps.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
+from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.tools import build_search_tools
 
 
 class AgenticSearchStrategy(SearchStrategy):

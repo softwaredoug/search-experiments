@@ -5,12 +5,12 @@ import sys
 import numpy as np
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.strategies.bm25 import BM25Strategy
-from prf.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
-from prf.strategies.reweighed_bm25 import ReweighedBM25Strategy
+from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.strategies.bm25 import BM25Strategy
+from exps.strategies.doubleidf_bm25 import DoubleIDFBM25Strategy
+from exps.strategies.reweighed_bm25 import ReweighedBM25Strategy
 from searcharray.similarity import compute_idf
-from prf.strategies.prf_rerank_terms import bm25_search_details
+from exps.strategies.prf_rerank_terms import bm25_search_details
 
 
 def _display_title(row) -> str:

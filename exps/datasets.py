@@ -6,7 +6,7 @@ from searcharray import SearchArray
 
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-from prf.mounting import ensure_data_mounted
+from exps.mounting import ensure_data_mounted
 
 BM25_PARAMS = {
     "msmarco": {"k1": 0.6, "b": 0.62},

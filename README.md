@@ -40,9 +40,9 @@ uv run diff --strategy prf_rerank --dataset esci
 Inspect PRF RM3 vectors:
 
 ```bash
-uv run prf-rerank-debug --dataset wands --query "salon chair" --k 10
-uv run prf-rerank-debug --dataset esci --query "salon chair" --fields title,description,category --k 10
-uv run prf-rerank-debug --dataset msmarco --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
+uv run exps-rerank-debug --dataset wands --query "salon chair" --k 10
+uv run exps-rerank-debug --dataset esci --query "salon chair" --fields title,description,category --k 10
+uv run exps-rerank-debug --dataset msmarco --query "salon chair" --fields title,description --debug-terms chair,stool --k 10
 ```
 
 Inspect BM25 debug output:

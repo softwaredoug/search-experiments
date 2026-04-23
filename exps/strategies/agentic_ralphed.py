@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from cheat_at_search.strategy import SearchStrategy
 
-from prf.agentic import (
+from exps.agentic import (
     DEFAULT_SYSTEM_PROMPT,
     SearchResultsGraded,
     agent_run,
@@ -10,8 +10,8 @@ from prf.agentic import (
     grades,
     make_tool_info,
 )
-from prf.mapping import build_doc_id_lookup, doc_ids_to_indices
-from prf.tools import (
+from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.tools import (
     make_bm25_tool,
     make_embedding_tool,
     make_guarded_bm25_tool,

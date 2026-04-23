@@ -1,5 +1,5 @@
 [project]
-name = "prf"
+name = "exps"
 version = "0.1.0"
 description = "Pseudo relevance feedback benchmarks"
 readme = "README.md"
@@ -19,11 +19,11 @@ dev = [
 ]
 
 [project.scripts]
-run = "prf.runner:main"
-query = "prf.query_runner:main"
-diff = "prf.diff:main"
-prf-rerank-debug = "prf.vectors_runner:main"
-bm25-debug = "prf.bm25_debug_runner:main"
+run = "exps.runner:main"
+query = "exps.query_runner:main"
+diff = "exps.diff:main"
+exps-rerank-debug = "exps.vectors_runner:main"
+bm25-debug = "exps.bm25_debug_runner:main"
 
 [build-system]
 requires = ["hatchling>=1.24.2"]

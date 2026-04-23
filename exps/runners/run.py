@@ -5,9 +5,9 @@ from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal
 
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.metrics import metric_for_dataset
-from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.metrics import metric_for_dataset
+from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 class RunParams(BaseModel):

@@ -443,6 +443,45 @@ wheels = [
 ]
 
 [[package]]
+name = "exps"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "cheat-at-search" },
+    { name = "pyyaml" },
+    { name = "sentence-transformers" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "flake8" },
+    { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pytest" },
+    { name = "snakeviz" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "memray" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=03122ab5" },
+    { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
+    { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "sentence-transformers", specifier = ">=5.4.1" },
+    { name = "snakeviz", marker = "extra == 'dev'", specifier = ">=2.2.2" },
+]
+provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "memray", specifier = ">=1.19.3" }]
+
+[[package]]
 name = "filelock"
 version = "3.29.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1455,45 +1494,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
 ]
-
-[[package]]
-name = "prf"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "cheat-at-search" },
-    { name = "pyyaml" },
-    { name = "sentence-transformers" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "flake8" },
-    { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "pytest" },
-    { name = "snakeviz" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "memray" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=03122ab5" },
-    { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
-    { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "sentence-transformers", specifier = ">=5.4.1" },
-    { name = "snakeviz", marker = "extra == 'dev'", specifier = ">=2.2.2" },
-]
-provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "memray", specifier = ">=1.19.3" }]
 
 [[package]]
 name = "prompt-toolkit"

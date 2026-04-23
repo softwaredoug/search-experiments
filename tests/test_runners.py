@@ -1,11 +1,11 @@
 import pandas as pd
 
 from cheat_at_search.search import run_strategy
-from prf.datasets import bm25_params_for_dataset, get_dataset
-from prf.metrics import metric_for_dataset
-from prf.runners.diff import DiffParams, diff_benchmark
-from prf.runners.run import RunParams, run_benchmark
-from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.datasets import bm25_params_for_dataset, get_dataset
+from exps.metrics import metric_for_dataset
+from exps.runners.diff import DiffParams, diff_benchmark
+from exps.runners.run import RunParams, run_benchmark
+from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
 def test_run_benchmark_wands_bm25_all_params():

@@ -4,7 +4,7 @@ from searcharray import SearchArray
 from cheat_at_search import wands_data
 from cheat_at_search.tokenizers import snowball_tokenizer
 
-from prf.strategies.prf_rerank_terms import compute_bm25_matrix
+from exps.strategies.prf_rerank_terms import compute_bm25_matrix
 
 
 def test_compute_bm25_matrix_wands_description_sanity():

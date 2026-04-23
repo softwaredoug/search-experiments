@@ -2,7 +2,7 @@ import argparse
 
 import pandas as pd
 
-from prf.runners.diff import DiffParams, diff_benchmark
+from exps.runners.diff import DiffParams, diff_benchmark
 
 
 def _display_title(row: pd.Series) -> str:
