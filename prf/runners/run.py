@@ -8,6 +8,7 @@ from typing_extensions import Literal
 from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.metrics import metric_for_dataset
 from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from prf.cache import load_cached_results, save_cached_results
 
 
 class RunParams(BaseModel):
@@ -20,6 +21,7 @@ class RunParams(BaseModel):
     workers: int = 1
     binary_relevance: str | None = None
     device: str | None = None
+    no_cache: bool = False
 
 
 class RunResult(BaseModel):
@@ -77,12 +79,30 @@ def run_benchmark(params: RunParams) -> RunResult:
         workers=params.workers,
         **strategy_params,
     )
-    graded = run_strategy(
-        strategy,
-        judgments,
-        num_queries=params.num_queries,
-        seed=params.seed,
-    )
+    graded = None
+    if not params.no_cache:
+        graded = load_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_config.type,
+            params=strategy_params,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+    if graded is None:
+        graded = run_strategy(
+            strategy,
+            judgments,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+        save_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_config.type,
+            params=strategy_params,
+            num_queries=params.num_queries,
+            seed=params.seed,
+            graded=graded,
+        )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     metric_series = metric_fn(graded)
     if metric_series.index.name != "query_id" and "query_id" in graded.columns:

@@ -58,6 +58,11 @@ def main() -> None:
         "--device",
         help="Embedding device override (e.g., mps, cpu).",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Bypass cached strategy results.",
+    )
     args = parser.parse_args()
 
     params = RunParams(
@@ -68,6 +73,7 @@ def main() -> None:
         workers=args.workers,
         binary_relevance=args.binary_relevance,
         device=args.device,
+        no_cache=args.no_cache,
     )
     result = run_benchmark(params)
     _report_metric(result.metric_name, result.metric_series)

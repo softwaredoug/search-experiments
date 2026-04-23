@@ -86,6 +86,14 @@ class BM25Strategy(SearchStrategy):
 
 ```
 
+## Caching
+
+When a strategy is run on a dataset, the results are cached to disk. This allows for faster iteration when making changes to strategy implementations, as you can bypass the actual search and just load the cached results.
+
+The params, number of queries in the run, seed, dataset, the "_type" param of the strategy are all factors in the cache key. So if you change any of those, it will produce a new cache entry.
+
+You can force the cache to be bypassed with the "--no-cache" flag in scripts, which will force a fresh run of the strategy and update the cache with the new results.
+
 ## Strategy Agnostic Scripts
 
 The different scripts here that compare strategies should take as "--strategy" argument a yml file. 
@@ -96,6 +104,7 @@ Where appropriate, we should expect these params:
 --num-queries   # Number of queries to run as a subset (for faster analysis) 
 --seed          # Random seed for query sampling when num-queries is set
 --workers       # Number of workers to use for parallel processing when applicable
+--no-cache      # Whether to bypass caching of strategy results, forcing a fresh run (useful for testing changes to strategy implementations)
 
 
 Here's some example executions

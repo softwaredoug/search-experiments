@@ -115,6 +115,11 @@ def main() -> None:
         "--device",
         help="Embedding device override (e.g., mps, cpu).",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Bypass cached strategy results.",
+    )
     args = parser.parse_args()
 
     params = DiffParams(
@@ -129,6 +134,7 @@ def main() -> None:
         sort=args.sort,
         binary_relevance=args.binary_relevance,
         device=args.device,
+        no_cache=args.no_cache,
     )
     result = diff_benchmark(params)
 

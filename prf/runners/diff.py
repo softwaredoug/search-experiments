@@ -9,6 +9,7 @@ from typing_extensions import Literal
 from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.metrics import metric_for_dataset
 from prf.strategy_config import load_strategy_config, resolve_strategy_class
+from prf.cache import load_cached_results, save_cached_results
 
 
 class DiffParams(BaseModel):
@@ -25,6 +26,7 @@ class DiffParams(BaseModel):
     sort: Literal["delta", "query"] = "delta"
     binary_relevance: str | None = None
     device: str | None = None
+    no_cache: bool = False
 
 
 class DiffResult(BaseModel):
@@ -200,18 +202,53 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
             strategy_b, judgments, params.query, metric_fn
         )
 
-    graded_a = run_strategy(
-        strategy_a,
-        judgments,
-        num_queries=params.num_queries,
-        seed=params.seed,
-    )
-    graded_b = run_strategy(
-        strategy_b,
-        judgments,
-        num_queries=params.num_queries,
-        seed=params.seed,
-    )
+    graded_a = None
+    graded_b = None
+    if not params.no_cache:
+        graded_a = load_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_a_config.type,
+            params=params_a,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+        graded_b = load_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_b_config.type,
+            params=params_b,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+    if graded_a is None:
+        graded_a = run_strategy(
+            strategy_a,
+            judgments,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+        save_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_a_config.type,
+            params=params_a,
+            num_queries=params.num_queries,
+            seed=params.seed,
+            graded=graded_a,
+        )
+    if graded_b is None:
+        graded_b = run_strategy(
+            strategy_b,
+            judgments,
+            num_queries=params.num_queries,
+            seed=params.seed,
+        )
+        save_cached_results(
+            dataset=params.dataset,
+            strategy_type=strategy_b_config.type,
+            params=params_b,
+            num_queries=params.num_queries,
+            seed=params.seed,
+            graded=graded_b,
+        )
     metric_a = metric_fn(graded_a)
     metric_b = metric_fn(graded_b)
     diff_table = _diff_table(
