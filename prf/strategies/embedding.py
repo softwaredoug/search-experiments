@@ -32,21 +32,39 @@ class EmbeddingStrategy(SearchStrategy):
             device=device,
             show_progress=True,
         )
-
-    def _cosine_similarity(self, query_embedding: np.ndarray) -> np.ndarray:
-        query = query_embedding.astype(float)
-        query_norm = np.linalg.norm(query) or 1.0
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
         doc_norms[doc_norms == 0] = 1.0
-        return np.dot(self._embeddings, query) / (doc_norms * query_norm)
+        self._doc_embeddings = self._embeddings / doc_norms[:, None]
+
+    def _normalize_queries(self, query_embeddings: np.ndarray) -> np.ndarray:
+        queries = query_embeddings.astype(float)
+        if queries.ndim == 1:
+            queries = queries.reshape(1, -1)
+        query_norms = np.linalg.norm(queries, axis=1)
+        query_norms[query_norms == 0] = 1.0
+        return queries / query_norms[:, None]
+
+    def search_batch(self, queries: list[str], k: int = 10):
+        if not queries:
+            return [], []
+        query_embeddings = self._model.encode(queries, convert_to_numpy=True)
+        query_embeddings = np.asarray(query_embeddings)
+        query_embeddings = self._normalize_queries(query_embeddings)
+        scores_matrix = query_embeddings @ self._doc_embeddings.T
+        all_top_k = []
+        all_scores = []
+        for row in scores_matrix:
+            top_k = np.argsort(row)[-k:][::-1]
+            all_top_k.append(top_k)
+            all_scores.append(row[top_k])
+        return all_top_k, all_scores
 
     def search(self, query: str, k: int = 10):
-        query_embedded = self._model.encode(query, convert_to_numpy=True)
-        if query_embedded.ndim != 1:
-            query_embedded = np.asarray(query_embedded).reshape(-1)
-        scores = self._cosine_similarity(query_embedded)
-        top_k = np.argsort(scores)[-k:][::-1]
-        top_scores = scores[top_k]
+        all_top_k, all_scores = self.search_batch([query], k=k)
+        if not all_top_k:
+            return [], []
+        top_k = all_top_k[0]
+        top_scores = all_scores[0]
         if self._lookup:
             indices = doc_ids_to_indices(
                 [self.corpus.iloc[idx].get("doc_id", idx) for idx in top_k],

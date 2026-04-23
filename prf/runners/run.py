@@ -85,6 +85,16 @@ def run_benchmark(params: RunParams) -> RunResult:
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     metric_series = metric_fn(graded)
+    if metric_series.index.name != "query_id" and "query_id" in graded.columns:
+        if "query" in graded.columns:
+            query_map = (
+                graded[["query", "query_id"]]
+                .drop_duplicates()
+                .set_index("query")["query_id"]
+            )
+            metric_series = metric_series.copy()
+            metric_series.index = metric_series.index.map(query_map.get)
+            metric_series.index.name = "query_id"
     metric_key = metric_name.lower()
     summary = {
         f"mean_{metric_key}": float(metric_series.mean()) if not metric_series.empty else 0.0,

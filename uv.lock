@@ -217,7 +217,7 @@ wheels = [
 [[package]]
 name = "cheat-at-search"
 version = "0.1.0"
-source = { git = "https://github.com/softwaredoug/cheat-at-search.git#8d178163d60ae26dfb8eed0a738c5f4e9d643b7e" }
+source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=2b92360#2b923607b4930ce0f2061ae2c45e8f23fa068086" }
 dependencies = [
     { name = "google-genai" },
     { name = "lxml" },
@@ -1482,7 +1482,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git" },
+    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=2b92360" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
