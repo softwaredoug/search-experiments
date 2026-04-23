@@ -65,6 +65,7 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
 
 def make_embedding_tool(corpus, device: str | None = None):
     embeddings = load_or_create_embeddings(corpus, device=device)
+    model = _minilm_model(device=device)
 
     def search_embeddings(
         keywords: str,
@@ -75,7 +76,6 @@ def make_embedding_tool(corpus, device: str | None = None):
 
         This is an embedding search over concatenated title + description.
         """
-        model = _minilm_model(device=device)
         query_embedded = model.encode(keywords)
         similarity_scores = np.dot(embeddings, query_embedded)
 
