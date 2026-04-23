@@ -11,3 +11,4 @@ venv/
 dist/
 build/
 .DS_Store
+agentic/traces/

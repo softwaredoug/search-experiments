@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import textwrap
 from dataclasses import dataclass
 from time import sleep
@@ -76,14 +77,16 @@ def make_tool_info(tools: Iterable[callable]) -> dict[str, ToolAdapter]:
     return tool_info
 
 
-def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state) -> dict:
+def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state, logger=None) -> dict:
+    if logger is None:
+        logger = logging.getLogger(__name__)
     tool_name = item.name
     tool = tool_info[tool_name]
     tool_args = tool.args_model.model_validate_json(item.arguments)
 
-    print(f"Calling {tool_name} with args {tool_args}")
+    logger.info("Calling %s with args %s", tool_name, tool_args)
     py_resp, json_resp = tool.call(tool_args, agent_state=agent_state)
-    print("output", py_resp)
+    logger.info("output %s", py_resp)
     return {
         "type": "function_call_output",
         "call_id": item.call_id,
@@ -98,7 +101,10 @@ def agent_run(
     model: str = "gpt-5-nano",
     agent_state: Optional[dict] = None,
     summary: bool = True,
+    logger=None,
 ):
+    if logger is None:
+        logger = logging.getLogger(__name__)
     tool_calls = True
     resp = None
     while tool_calls:
@@ -126,21 +132,23 @@ def agent_run(
         inputs += resp.output
         if summary:
             usage = resp.usage
-            print("--")
-            print(f"InpTok: {usage.input_tokens}")
-            print(f"OutTok: {usage.output_tokens}")
+            logger.info("--")
+            logger.info("InpTok: %s", usage.input_tokens)
+            logger.info("OutTok: %s", usage.output_tokens)
             for item in resp.output:
                 if item.type == "reasoning":
-                    print("Reasoning:")
+                    logger.info("Reasoning:")
                     for summary_item in item.summary:
-                        print(textwrap.fill(summary_item.text, 80), "\n")
+                        logger.info("%s\n", textwrap.fill(summary_item.text, 80))
                     item.summary = []
 
         for item in resp.output:
             tool_calls = False
             if item.type == "function_call":
                 tool_calls = True
-                tool_response = call_tool(tool_info, item, agent_state=agent_state)
+                tool_response = call_tool(
+                    tool_info, item, agent_state=agent_state, logger=logger
+                )
                 inputs.append(tool_response)
     return resp, inputs
 
@@ -151,6 +159,7 @@ def search(
     agent_state: Optional[dict] = None,
     model: str = "gpt-5",
     text_format=SearchResultsIds,
+    logger=None,
 ):
     resp = None
     if tools is None:
@@ -162,6 +171,7 @@ def search(
         inputs=inputs,
         model=model,
         agent_state=agent_state,
+        logger=logger,
     )
     return resp.output_parsed
 

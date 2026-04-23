@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+from datetime import datetime
+from pathlib import Path
 import json
 
 from cheat_at_search.strategy import SearchStrategy
@@ -51,17 +54,37 @@ class AgenticSearchStrategy(SearchStrategy):
         return cls(corpus, workers=workers, **build_params)
 
     def search(self, query: str, k: int = 10):
+        trace_dir = Path("agentic") / "traces"
+        trace_dir.mkdir(parents=True, exist_ok=True)
+        query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        trace_path = trace_dir / f"{timestamp}_{query_hash}.log"
+        logger = logging.getLogger(f"agentic.trace.{query_hash}")
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(trace_path, encoding="utf-8")
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        )
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.propagate = False
+        logger.info("Query: %s", query)
         agentic_query = "Find me: " + query
         inputs = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": agentic_query},
         ]
-        resp = search(
-            tools=self.tools,
-            inputs=inputs,
-            model=self.model,
-            text_format=SearchResultsIds,
-        )
+        try:
+            resp = search(
+                tools=self.tools,
+                inputs=inputs,
+                model=self.model,
+                text_format=SearchResultsIds,
+                logger=logger,
+            )
+        finally:
+            handler.close()
+            logger.removeHandler(handler)
         ranked_results = resp.ranked_results[:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
