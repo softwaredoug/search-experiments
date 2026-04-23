@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import numpy as np
 from cheat_at_search.strategy import SearchStrategy
@@ -134,4 +135,5 @@ class EmbeddingStrategy(SearchStrategy):
             "doc_chunk_size": self.doc_chunk_size,
             "top_k": getattr(self, "top_k", None),
         }
-        return json.dumps(payload, sort_keys=True, default=str)
+        serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        return hashlib.md5(serialized).hexdigest()

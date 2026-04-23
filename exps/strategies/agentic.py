@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 from cheat_at_search.strategy import SearchStrategy
@@ -75,4 +76,5 @@ class AgenticSearchStrategy(SearchStrategy):
             "search_tools": self.search_tools,
             "embeddings_device": self.embeddings_device,
         }
-        return json.dumps(payload, sort_keys=True, default=str)
+        serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        return hashlib.md5(serialized).hexdigest()
