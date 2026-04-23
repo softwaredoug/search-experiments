@@ -6,8 +6,8 @@ strategy_name=""
 dataset="wands"
 query="salon chair"
 k="10"
-bm25_k1=""
-bm25_b=""
+k1=""
+b=""
 
 usage() {
   cat <<'EOF'
@@ -19,8 +19,8 @@ Options:
   --dataset NAME       Dataset (default: wands)
   --query TEXT         Query to test (default: "salon chair")
   --k N                Number of results (default: 10)
-  --bm25-k1 N           BM25 k1 parameter (required)
-  --bm25-b N            BM25 b parameter (required)
+  --k1 N                BM25 k1 parameter (required)
+  --b N                 BM25 b parameter (required)
   -h, --help           Show this help message
 EOF
 }
@@ -67,20 +67,20 @@ while [[ $# -gt 0 ]]; do
       k="${1#*=}"
       shift 1
       ;;
-    --bm25-k1)
-      bm25_k1="$2"
+    --k1)
+      k1="$2"
       shift 2
       ;;
-    --bm25-k1=*)
-      bm25_k1="${1#*=}"
+    --k1=*)
+      k1="${1#*=}"
       shift 1
       ;;
-    --bm25-b)
-      bm25_b="$2"
+    --b)
+      b="$2"
       shift 2
       ;;
-    --bm25-b=*)
-      bm25_b="${1#*=}"
+    --b=*)
+      b="${1#*=}"
       shift 1
       ;;
     -h|--help)
@@ -95,8 +95,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$bm25_k1" || -z "$bm25_b" ]]; then
-  echo "--bm25-k1 and --bm25-b are required" >&2
+if [[ -z "$k1" || -z "$b" ]]; then
+  echo "--k1 and --b are required" >&2
   usage
   exit 1
 fi
@@ -128,8 +128,8 @@ uv run bm25-debug \
   --dataset "$dataset" \
   --query "$query" \
   --k "$k" \
-  --bm25-k1 "$bm25_k1" \
-  --bm25-b "$bm25_b" > "$debug_out"
+  --k1 "$k1" \
+  --b "$b" > "$debug_out"
 
 uv run query \
   --strategy "$strategy_config" \

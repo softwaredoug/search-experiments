@@ -28,8 +28,8 @@ class ReweighedBM25Strategy(SearchStrategy):
         corpus,
         title_boost=9.3,
         description_boost=4.1,
-        bm25_k1=1.2,
-        bm25_b=0.75,
+        k1=1.2,
+        b=0.75,
         top_k=10,
         workers=1,
     ):
@@ -37,8 +37,8 @@ class ReweighedBM25Strategy(SearchStrategy):
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost
-        self.bm25_k1 = bm25_k1
-        self.bm25_b = bm25_b
+        self.k1 = k1
+        self.b = b
 
         if "title_snowball" not in self.index and "title" in corpus:
             self.index["title_snowball"] = SearchArray.index(
@@ -57,7 +57,7 @@ class ReweighedBM25Strategy(SearchStrategy):
         }
         bm25_scores = np.zeros(len(self.index))
         df_weights = np.zeros(len(self.index))
-        similarity = bm25_similarity(k1=self.bm25_k1, b=self.bm25_b)
+        similarity = bm25_similarity(k1=self.k1, b=self.b)
         for token in tokenized:
             matches = np.zeros(len(self.index), dtype=bool)
             field_dfs = []

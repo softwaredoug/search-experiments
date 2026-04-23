@@ -69,10 +69,10 @@ def main() -> None:
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
     if strategy_config.type == "bm25":
-        if "bm25_k1" not in params and "k1" not in params:
-            raise ValueError("BM25 config must include 'k1' or 'bm25_k1'.")
-        if "bm25_b" not in params and "b" not in params:
-            raise ValueError("BM25 config must include 'b' or 'bm25_b'.")
+        if "k1" not in params:
+            raise ValueError("BM25 config must include 'k1'.")
+        if "b" not in params:
+            raise ValueError("BM25 config must include 'b'.")
     strategy = strategy_cls(
         corpus,
         **params,

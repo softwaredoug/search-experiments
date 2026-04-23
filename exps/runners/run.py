@@ -66,10 +66,10 @@ def run_benchmark(params: RunParams) -> RunResult:
     corpus = dataset.corpus
     judgments = dataset.judgments
     if strategy_config.type == "bm25":
-        if "bm25_k1" not in strategy_params and "k1" not in strategy_params:
-            raise ValueError("BM25 config must include 'k1' or 'bm25_k1'.")
-        if "bm25_b" not in strategy_params and "b" not in strategy_params:
-            raise ValueError("BM25 config must include 'b' or 'bm25_b'.")
+        if "k1" not in strategy_params:
+            raise ValueError("BM25 config must include 'k1'.")
+        if "b" not in strategy_params:
+            raise ValueError("BM25 config must include 'b'.")
 
     strategy = strategy_cls(
         corpus,

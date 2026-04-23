@@ -91,13 +91,13 @@ def main() -> None:
         help="Ranking strategy to use.",
     )
     parser.add_argument(
-        "--bm25-k1",
+        "--k1",
         type=float,
         required=True,
         help="BM25 k1 parameter.",
     )
     parser.add_argument(
-        "--bm25-b",
+        "--b",
         type=float,
         required=True,
         help="BM25 b parameter.",
@@ -120,14 +120,14 @@ def main() -> None:
 
     dataset = get_dataset(args.dataset)
     corpus = dataset.corpus
-    bm25_k1 = args.bm25_k1
-    bm25_b = args.bm25_b
+    k1 = args.k1
+    b = args.b
     if args.strategy == "doubleidf":
-        strategy = DoubleIDFBM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+        strategy = DoubleIDFBM25Strategy(corpus, k1=k1, b=b)
     elif args.strategy == "reweighed":
-        strategy = ReweighedBM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+        strategy = ReweighedBM25Strategy(corpus, k1=k1, b=b)
     else:
-        strategy = BM25Strategy(corpus, bm25_k1=bm25_k1, bm25_b=bm25_b)
+        strategy = BM25Strategy(corpus, k1=k1, b=b)
 
     tokenized = snowball_tokenizer(args.query)
     fields = {
@@ -139,8 +139,8 @@ def main() -> None:
         fields,
         tokenized,
         double_idf=args.strategy == "doubleidf",
-        bm25_k1=bm25_k1,
-        bm25_b=bm25_b,
+        k1=k1,
+        b=b,
     )
 
     debug_terms = []

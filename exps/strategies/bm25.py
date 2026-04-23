@@ -15,23 +15,17 @@ class BM25Strategy(SearchStrategy):
         corpus,
         title_boost=9.3,
         description_boost=4.1,
-        bm25_k1=1.2,
-        bm25_b=0.75,
-        k1=None,
-        b=None,
+        k1=1.2,
+        b=0.75,
         top_k=10,
         workers=1,
     ):
         super().__init__(corpus, top_k=top_k, workers=workers)
-        if k1 is not None:
-            bm25_k1 = k1
-        if b is not None:
-            bm25_b = b
         self.index = corpus
         self.title_boost = title_boost
         self.description_boost = description_boost
-        self.bm25_k1 = bm25_k1
-        self.bm25_b = bm25_b
+        self.k1 = k1
+        self.b = b
 
         if "title_snowball" not in self.index and "title" in corpus:
             self.index["title_snowball"] = SearchArray.index(
@@ -49,7 +43,7 @@ class BM25Strategy(SearchStrategy):
             "description": self.description_boost,
         }
         bm25_scores = np.zeros(len(self.index))
-        similarity = bm25_similarity(k1=self.bm25_k1, b=self.bm25_b)
+        similarity = bm25_similarity(k1=self.k1, b=self.b)
         for token in tokenized:
             field_scores = []
             for field, boost in fields.items():
@@ -71,8 +65,8 @@ class BM25Strategy(SearchStrategy):
             "type": self._type,
             "title_boost": self.title_boost,
             "description_boost": self.description_boost,
-            "bm25_k1": self.bm25_k1,
-            "bm25_b": self.bm25_b,
+            "k1": self.k1,
+            "b": self.b,
             "top_k": getattr(self, "top_k", None),
         }
         return json.dumps(payload, sort_keys=True, default=str)

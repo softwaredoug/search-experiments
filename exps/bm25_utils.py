@@ -13,14 +13,14 @@ def _bm25_search_stats(
     query_terms: list[str],
     *,
     double_idf: bool = False,
-    bm25_k1: float = 1.2,
-    bm25_b: float = 0.75,
+    k1: float = 1.2,
+    b: float = 0.75,
 ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], dict[str, int]]:
     bm25_scores = np.zeros(len(corpus))
     num_matches = np.zeros(len(corpus))
     df_weights = np.zeros(len(corpus))
     term_dfs: dict[str, int] = {}
-    similarity = bm25_similarity(k1=bm25_k1, b=bm25_b)
+    similarity = bm25_similarity(k1=k1, b=b)
     for token in query_terms:
         matches = np.zeros(len(corpus), dtype=bool)
         field_dfs = []
@@ -55,14 +55,14 @@ def bm25_search_details(
     query_terms: list[str],
     *,
     double_idf: bool = False,
-    bm25_k1: float = 1.2,
-    bm25_b: float = 0.75,
+    k1: float = 1.2,
+    b: float = 0.75,
 ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], dict[str, int]]:
     return _bm25_search_stats(
         corpus,
         fields,
         query_terms,
         double_idf=double_idf,
-        bm25_k1=bm25_k1,
-        bm25_b=bm25_b,
+        k1=k1,
+        b=b,
     )

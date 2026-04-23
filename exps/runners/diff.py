@@ -170,15 +170,15 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     if strategy_a_config.type == "bm25":
-        if "bm25_k1" not in params_a and "k1" not in params_a:
-            raise ValueError("Strategy A BM25 config must include 'k1' or 'bm25_k1'.")
-        if "bm25_b" not in params_a and "b" not in params_a:
-            raise ValueError("Strategy A BM25 config must include 'b' or 'bm25_b'.")
+        if "k1" not in params_a:
+            raise ValueError("Strategy A BM25 config must include 'k1'.")
+        if "b" not in params_a:
+            raise ValueError("Strategy A BM25 config must include 'b'.")
     if strategy_b_config.type == "bm25":
-        if "bm25_k1" not in params_b and "k1" not in params_b:
-            raise ValueError("Strategy B BM25 config must include 'k1' or 'bm25_k1'.")
-        if "bm25_b" not in params_b and "b" not in params_b:
-            raise ValueError("Strategy B BM25 config must include 'b' or 'bm25_b'.")
+        if "k1" not in params_b:
+            raise ValueError("Strategy B BM25 config must include 'k1'.")
+        if "b" not in params_b:
+            raise ValueError("Strategy B BM25 config must include 'b'.")
 
     strategy_a = strategy_a_cls(corpus, workers=params.workers, **params_a)
     strategy_b = strategy_b_cls(corpus, workers=params.workers, **params_b)
