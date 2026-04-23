@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import numpy as np
 from cheat_at_search.strategy import SearchStrategy
 
@@ -123,3 +124,14 @@ class EmbeddingStrategy(SearchStrategy):
             if len(indices) == len(top_k):
                 return indices, top_scores
         return top_k, top_scores
+
+    @property
+    def cache_key(self) -> str:
+        payload = {
+            "type": self._type,
+            "model_name": self.model_name,
+            "device": self.device,
+            "doc_chunk_size": self.doc_chunk_size,
+            "top_k": getattr(self, "top_k", None),
+        }
+        return json.dumps(payload, sort_keys=True, default=str)
