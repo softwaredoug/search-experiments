@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from searcharray import SearchArray
 from searcharray.similarity import bm25_similarity
@@ -63,3 +64,15 @@ class BM25Strategy(SearchStrategy):
         top_k = np.argsort(-bm25_scores)[:k]
         scores = bm25_scores[top_k]
         return top_k, scores
+
+    @property
+    def cache_key(self) -> str:
+        payload = {
+            "type": self._type,
+            "title_boost": self.title_boost,
+            "description_boost": self.description_boost,
+            "bm25_k1": self.bm25_k1,
+            "bm25_b": self.bm25_b,
+            "top_k": getattr(self, "top_k", None),
+        }
+        return json.dumps(payload, sort_keys=True, default=str)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from cheat_at_search.strategy import SearchStrategy
 
 from prf.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
@@ -20,10 +22,16 @@ class AgenticSearchStrategy(SearchStrategy):
         embeddings_device: str | None = None,
         tools=None,
     ):
+        self.embeddings_device = embeddings_device
         if tools is not None:
             self.tools = tools
+            if search_tools is not None:
+                self.search_tools = list(search_tools)
+            else:
+                self.search_tools = ["custom"]
         else:
             tool_names = search_tools or ["bm25"]
+            self.search_tools = list(tool_names)
             self.tools = build_search_tools(
                 corpus, tool_names, embeddings_device=embeddings_device
             )
@@ -48,3 +56,14 @@ class AgenticSearchStrategy(SearchStrategy):
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         return ranked_results, [1.0] * len(ranked_results)
+
+    @property
+    def cache_key(self) -> str:
+        payload = {
+            "type": self._type,
+            "model": self.model,
+            "system_prompt": self.system_prompt,
+            "search_tools": self.search_tools,
+            "embeddings_device": self.embeddings_device,
+        }
+        return json.dumps(payload, sort_keys=True, default=str)

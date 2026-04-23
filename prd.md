@@ -88,13 +88,9 @@ class BM25Strategy(SearchStrategy):
 
 ## Caching
 
-When a strategy is run on a dataset, the results are cached to disk. This allows for faster iteration when making changes to strategy implementations, as you can bypass the actual search and just load the cached results.
+When a strategy is run on a dataset, the results might cached to disk by run_strategy. This allows for faster iteration when making changes to strategy implementations, as you can bypass the actual search and just load the cached results.
 
-The params, number of queries in the run, seed, dataset, the "_type" param of the strategy are all factors in the cache key. So if you change any of those, it will produce a new cache entry.
-
-You can force the cache to be bypassed with the "--no-cache" flag in scripts, which will force a fresh run of the strategy and update the cache with the new results.
-
-This should be done in chunks of 100 queries, so if you have a large number of queries, it won't all be lost if something goes wrong mid-run.
+You can force the cache to be bypassed with cache=False to run_strategy. The user controls with --no-cache. 
 
 ## Strategy Agnostic Scripts
 

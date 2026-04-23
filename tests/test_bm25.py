@@ -9,7 +9,7 @@ def test_bm25_wands_ndcg_sanity():
     judgments = wands_data.judgments
 
     strategy = BM25Strategy(corpus)
-    graded = run_strategy(strategy, judgments, num_queries=5, seed=42)
+    graded = run_strategy(strategy, judgments, num_queries=5, seed=42, cache=True)
     ndcg_series = ndcgs(graded)
 
     assert len(graded) > 0

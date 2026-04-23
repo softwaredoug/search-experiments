@@ -3,22 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from cheat_at_search.search import run_strategy
-from tqdm import tqdm
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal
 
 from prf.datasets import bm25_params_for_dataset, get_dataset
 from prf.metrics import metric_for_dataset
 from prf.strategy_config import load_strategy_config, resolve_strategy_class
-from prf.cache import (
-    CHUNK_SIZE,
-    cache_key,
-    load_cached_results,
-    load_chunk,
-    load_manifest,
-    save_chunk,
-    save_manifest,
-)
 
 
 class DiffParams(BaseModel):
@@ -71,13 +61,15 @@ def _query_text_map(judgments: pd.DataFrame) -> dict:
     return {}
 
 
-def _metric_for_query(strategy, judgments: pd.DataFrame, query: str, metric_fn) -> float | None:
+def _metric_for_query(
+    strategy, judgments: pd.DataFrame, query: str, metric_fn, *, cache: bool
+) -> float | None:
     if "query" not in judgments.columns:
         return None
     subset = judgments[judgments["query"] == query]
     if subset.empty:
         return None
-    graded = run_strategy(strategy, subset)
+    graded = run_strategy(strategy, subset, cache=cache)
     series = metric_fn(graded)
     if series.empty:
         return None
@@ -205,14 +197,11 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
             strategy_b, corpus, judgments, params.query, params.k
         )
         query_metric_a = _metric_for_query(
-            strategy_a, judgments, params.query, metric_fn
+            strategy_a, judgments, params.query, metric_fn, cache=not params.no_cache
         )
         query_metric_b = _metric_for_query(
-            strategy_b, judgments, params.query, metric_fn
+            strategy_b, judgments, params.query, metric_fn, cache=not params.no_cache
         )
-
-    graded_a = None
-    graded_b = None
 
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     if params.num_queries:
@@ -220,165 +209,20 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
             params.num_queries, random_state=params.seed
         )
     queries = available_queries["query"].tolist()
-    query_list_hash = "|".join(map(str, queries))
-    total_queries = len(queries)
-    chunk_size = CHUNK_SIZE
-    num_chunks = (total_queries + chunk_size - 1) // chunk_size
-
-    cache_id_a = cache_key(
-        dataset=params.dataset,
-        strategy_type=strategy_a_config.type,
-        params=params_a,
+    graded_a = run_strategy(
+        strategy_a,
+        judgments,
+        queries=queries,
         seed=params.seed,
-        query_list_hash=query_list_hash,
+        cache=not params.no_cache,
     )
-    cache_id_b = cache_key(
-        dataset=params.dataset,
-        strategy_type=strategy_b_config.type,
-        params=params_b,
+    graded_b = run_strategy(
+        strategy_b,
+        judgments,
+        queries=queries,
         seed=params.seed,
-        query_list_hash=query_list_hash,
+        cache=not params.no_cache,
     )
-
-    if not params.no_cache:
-        graded_a = load_cached_results(
-            dataset=params.dataset,
-            strategy_type=strategy_a_config.type,
-            params=params_a,
-            num_queries=params.num_queries,
-            seed=params.seed,
-            query_list_hash=query_list_hash,
-        )
-        graded_b = load_cached_results(
-            dataset=params.dataset,
-            strategy_type=strategy_b_config.type,
-            params=params_b,
-            num_queries=params.num_queries,
-            seed=params.seed,
-            query_list_hash=query_list_hash,
-        )
-
-    if graded_a is None:
-        manifest = None if params.no_cache else load_manifest(cache_id_a)
-        if params.no_cache or manifest is None:
-            manifest = {
-                "dataset": params.dataset,
-                "strategy_type": strategy_a_config.type,
-                "params": params_a,
-                "num_queries": params.num_queries,
-                "seed": params.seed,
-                "chunk_size": chunk_size,
-                "num_chunks": num_chunks,
-                "queries": queries,
-                "query_list_hash": query_list_hash,
-                "completed_chunks": [],
-            }
-            save_manifest(cache_id_a, manifest)
-        else:
-            queries = manifest.get("queries", queries)
-            num_chunks = int(manifest.get("num_chunks", num_chunks))
-
-        completed = set(manifest.get("completed_chunks", []))
-        chunks = []
-        progress = tqdm(
-            total=total_queries,
-            desc="Running strategy A",
-            ncols=80,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
-            disable=False,
-        )
-        try:
-            for chunk_index in range(num_chunks):
-                start = chunk_index * chunk_size
-                end = min(start + chunk_size, len(queries))
-                chunk_queries = queries[start:end]
-                chunk = None
-                cached = False
-                if not params.no_cache and chunk_index in completed:
-                    chunk = load_chunk(cache_id_a, chunk_index)
-                    cached = chunk is not None
-                if chunk is None:
-                    if chunk_queries:
-                        chunk = run_strategy(
-                            strategy_a,
-                            judgments,
-                            queries=chunk_queries,
-                            seed=params.seed,
-                            show_progress=False,
-                        )
-                    else:
-                        chunk = pd.DataFrame()
-                    save_chunk(cache_id_a, chunk_index, chunk)
-                    completed.add(chunk_index)
-                    manifest["completed_chunks"] = sorted(completed)
-                    save_manifest(cache_id_a, manifest)
-                chunks.append(chunk)
-                progress.set_postfix(cached="yes" if cached else "no")
-                progress.update(len(chunk_queries))
-        finally:
-            progress.close()
-        graded_a = pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
-
-    if graded_b is None:
-        manifest = None if params.no_cache else load_manifest(cache_id_b)
-        if params.no_cache or manifest is None:
-            manifest = {
-                "dataset": params.dataset,
-                "strategy_type": strategy_b_config.type,
-                "params": params_b,
-                "num_queries": params.num_queries,
-                "seed": params.seed,
-                "chunk_size": chunk_size,
-                "num_chunks": num_chunks,
-                "queries": queries,
-                "query_list_hash": query_list_hash,
-                "completed_chunks": [],
-            }
-            save_manifest(cache_id_b, manifest)
-        else:
-            queries = manifest.get("queries", queries)
-            num_chunks = int(manifest.get("num_chunks", num_chunks))
-
-        completed = set(manifest.get("completed_chunks", []))
-        chunks = []
-        progress = tqdm(
-            total=total_queries,
-            desc="Running strategy B",
-            ncols=80,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
-            disable=False,
-        )
-        try:
-            for chunk_index in range(num_chunks):
-                start = chunk_index * chunk_size
-                end = min(start + chunk_size, len(queries))
-                chunk_queries = queries[start:end]
-                chunk = None
-                cached = False
-                if not params.no_cache and chunk_index in completed:
-                    chunk = load_chunk(cache_id_b, chunk_index)
-                    cached = chunk is not None
-                if chunk is None:
-                    if chunk_queries:
-                        chunk = run_strategy(
-                            strategy_b,
-                            judgments,
-                            queries=chunk_queries,
-                            seed=params.seed,
-                            show_progress=False,
-                        )
-                    else:
-                        chunk = pd.DataFrame()
-                    save_chunk(cache_id_b, chunk_index, chunk)
-                    completed.add(chunk_index)
-                    manifest["completed_chunks"] = sorted(completed)
-                    save_manifest(cache_id_b, manifest)
-                chunks.append(chunk)
-                progress.set_postfix(cached="yes" if cached else "no")
-                progress.update(len(chunk_queries))
-        finally:
-            progress.close()
-        graded_b = pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
     metric_a = metric_fn(graded_a)
     metric_b = metric_fn(graded_b)
     diff_table = _diff_table(
