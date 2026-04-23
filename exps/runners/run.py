@@ -49,10 +49,12 @@ def run_benchmark(params: RunParams) -> RunResult:
         params=strategy_params,
         device=params.device,
     )
+    available_queries = judgments[["query", "query_id"]].drop_duplicates()
+    num_queries = params.num_queries or len(available_queries)
     graded = run_strategy(
         strategy,
         judgments,
-        num_queries=params.num_queries,
+        num_queries=num_queries,
         seed=params.seed,
         cache=not params.no_cache,
     )
