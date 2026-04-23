@@ -35,7 +35,6 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
-        print("search", keywords)
         bm25_scores = np.zeros(len(corpus))
         for term in snowball_tokenizer(keywords):
             bm25_scores += corpus["title_snowball"].array.score(term) * title_boost
