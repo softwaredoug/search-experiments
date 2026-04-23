@@ -12,6 +12,21 @@ class EmbeddingStrategy(SearchStrategy):
 
     _type = "embedding"
 
+    @classmethod
+    def build(
+        cls,
+        params: dict,
+        *,
+        corpus,
+        workers: int = 1,
+        device: str | None = None,
+        **kwargs,
+    ):
+        build_params = dict(params)
+        if device and "device" not in build_params:
+            build_params["device"] = device
+        return cls(corpus, workers=workers, **build_params)
+
     def __init__(
         self,
         corpus,

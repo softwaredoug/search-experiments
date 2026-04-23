@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
-from exps.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.strategy_factory import create_strategy, load_strategy
 
 
 class RunParams(BaseModel):
@@ -33,48 +33,21 @@ class RunResult(BaseModel):
     graded: pd.DataFrame | None = None
 
 
-def _requires_bm25(strategy_type: str, params: dict) -> bool:
-    if strategy_type == "bm25":
-        return True
-    if strategy_type == "embedding":
-        return False
-    if strategy_type == "agentic":
-        tool_names = params.get("search_tools")
-        if tool_names is None:
-            return True
-        return "bm25" in tool_names
-    return True
-
-
 def run_benchmark(params: RunParams) -> RunResult:
-    strategy_config = load_strategy_config(params.strategy_path)
-    strategy_cls = resolve_strategy_class(strategy_config.type)
-    strategy_params = dict(strategy_config.params)
-    requires_bm25 = _requires_bm25(strategy_config.type, strategy_params)
-
-    if params.device:
-        if strategy_config.type == "agentic" and "embeddings_device" not in strategy_params:
-            tool_names = strategy_params.get("search_tools")
-            if tool_names is None or "embeddings" in tool_names:
-                strategy_params["embeddings_device"] = params.device
-        if strategy_config.type == "embedding" and "device" not in strategy_params:
-            strategy_params["device"] = params.device
-
+    strategy_config, strategy_params, requires_bm25 = load_strategy(
+        params.strategy_path, device=params.device
+    )
     dataset = get_dataset(
         params.dataset, workers=params.workers, ensure_snowball=requires_bm25
     )
     corpus = dataset.corpus
     judgments = dataset.judgments
-    if strategy_config.type == "bm25":
-        if "k1" not in strategy_params:
-            raise ValueError("BM25 config must include 'k1'.")
-        if "b" not in strategy_params:
-            raise ValueError("BM25 config must include 'b'.")
-
-    strategy = strategy_cls(
-        corpus,
+    strategy, _ = create_strategy(
+        strategy_config,
+        corpus=corpus,
         workers=params.workers,
-        **strategy_params,
+        params=strategy_params,
+        device=params.device,
     )
     graded = run_strategy(
         strategy,

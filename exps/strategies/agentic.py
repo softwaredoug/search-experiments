@@ -20,25 +20,34 @@ class AgenticSearchStrategy(SearchStrategy):
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list[str] | None = None,
         embeddings_device: str | None = None,
-        tools=None,
     ):
         self.embeddings_device = embeddings_device
-        if tools is not None:
-            self.tools = tools
-            if search_tools is not None:
-                self.search_tools = list(search_tools)
-            else:
-                self.search_tools = ["custom"]
-        else:
-            tool_names = search_tools or ["bm25"]
-            self.search_tools = list(tool_names)
-            self.tools = build_search_tools(
-                corpus, tool_names, embeddings_device=embeddings_device
-            )
+        tool_names = search_tools or ["bm25"]
+        self.search_tools = list(tool_names)
+        self.tools = build_search_tools(
+            corpus, tool_names, embeddings_device=embeddings_device
+        )
         self.model = model
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
         super().__init__(corpus, workers=workers)
+
+    @classmethod
+    def build(
+        cls,
+        params: dict,
+        *,
+        corpus,
+        workers: int = 1,
+        device: str | None = None,
+        **kwargs,
+    ):
+        build_params = dict(params)
+        if device and "embeddings_device" not in build_params:
+            tool_names = build_params.get("search_tools")
+            if tool_names is None or "embeddings" in tool_names:
+                build_params["embeddings_device"] = device
+        return cls(corpus, workers=workers, **build_params)
 
     def search(self, query: str, k: int = 10):
         agentic_query = "Find me: " + query

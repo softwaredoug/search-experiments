@@ -1,7 +1,7 @@
 import argparse
 
 from exps.datasets import get_dataset
-from exps.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.strategy_factory import create_strategy, load_strategy
 
 
 def _display_title(row) -> str:
@@ -51,31 +51,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    strategy_config = load_strategy_config(args.strategy)
-    strategy_cls = resolve_strategy_class(strategy_config.type)
-    params = dict(strategy_config.params)
-    requires_bm25 = True
-    if strategy_config.type == "agentic":
-        tool_names = params.get("search_tools")
-        if tool_names is not None:
-            requires_bm25 = "bm25" in tool_names
-        if args.device and "embeddings_device" not in params:
-            if tool_names is None or "embeddings" in tool_names:
-                params["embeddings_device"] = args.device
-    if strategy_config.type == "embedding":
-        requires_bm25 = False
-        if args.device and "device" not in params:
-            params["device"] = args.device
+    strategy_config, params, requires_bm25 = load_strategy(
+        args.strategy, device=args.device
+    )
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
-    if strategy_config.type == "bm25":
-        if "k1" not in params:
-            raise ValueError("BM25 config must include 'k1'.")
-        if "b" not in params:
-            raise ValueError("BM25 config must include 'b'.")
-    strategy = strategy_cls(
-        corpus,
-        **params,
+    strategy, _ = create_strategy(
+        strategy_config,
+        corpus=corpus,
+        workers=1,
+        params=params,
+        device=args.device,
     )
 
     top_k, scores = strategy.search(args.query, k=args.k)

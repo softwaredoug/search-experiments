@@ -10,6 +10,14 @@ from cheat_at_search.tokenizers import snowball_tokenizer
 class BM25Strategy(SearchStrategy):
     _type = "bm25"
 
+    @classmethod
+    def build(cls, params: dict, *, corpus, workers: int = 1, **kwargs):
+        if "k1" not in params:
+            raise ValueError("BM25 config must include 'k1'.")
+        if "b" not in params:
+            raise ValueError("BM25 config must include 'b'.")
+        return cls(corpus, workers=workers, **params)
+
     def __init__(
         self,
         corpus,

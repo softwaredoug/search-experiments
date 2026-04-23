@@ -8,7 +8,7 @@ from typing_extensions import Literal
 
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
-from exps.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.strategy_factory import create_strategy, load_strategy
 
 
 class DiffParams(BaseModel):
@@ -76,19 +76,6 @@ def _metric_for_query(
     return float(series.iloc[0])
 
 
-def _requires_bm25(strategy_type: str, params: dict) -> bool:
-    if strategy_type == "bm25":
-        return True
-    if strategy_type == "embedding":
-        return False
-    if strategy_type == "agentic":
-        tool_names = params.get("search_tools")
-        if tool_names is None:
-            return True
-        return "bm25" in tool_names
-    return True
-
-
 def _query_results(
     strategy,
     corpus: pd.DataFrame,
@@ -138,50 +125,33 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
     if params.seed is not None:
         np.random.seed(params.seed)
 
-    strategy_a_config = load_strategy_config(params.strategy_a_path)
-    strategy_b_config = load_strategy_config(params.strategy_b_path)
-    strategy_a_cls = resolve_strategy_class(strategy_a_config.type)
-    strategy_b_cls = resolve_strategy_class(strategy_b_config.type)
-    params_a = dict(strategy_a_config.params)
-    params_b = dict(strategy_b_config.params)
-
-    if params.device:
-        if strategy_a_config.type == "agentic" and "embeddings_device" not in params_a:
-            tool_names = params_a.get("search_tools")
-            if tool_names is None or "embeddings" in tool_names:
-                params_a["embeddings_device"] = params.device
-        if strategy_b_config.type == "agentic" and "embeddings_device" not in params_b:
-            tool_names = params_b.get("search_tools")
-            if tool_names is None or "embeddings" in tool_names:
-                params_b["embeddings_device"] = params.device
-        if strategy_a_config.type == "embedding" and "device" not in params_a:
-            params_a["device"] = params.device
-        if strategy_b_config.type == "embedding" and "device" not in params_b:
-            params_b["device"] = params.device
-
-    requires_bm25 = (
-        _requires_bm25(strategy_a_config.type, params_a)
-        or _requires_bm25(strategy_b_config.type, params_b)
+    strategy_a_config, params_a, requires_bm25_a = load_strategy(
+        params.strategy_a_path, device=params.device
     )
+    strategy_b_config, params_b, requires_bm25_b = load_strategy(
+        params.strategy_b_path, device=params.device
+    )
+    requires_bm25 = requires_bm25_a or requires_bm25_b
     dataset = get_dataset(
         params.dataset, workers=params.workers, ensure_snowball=requires_bm25
     )
     corpus = dataset.corpus
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    if strategy_a_config.type == "bm25":
-        if "k1" not in params_a:
-            raise ValueError("Strategy A BM25 config must include 'k1'.")
-        if "b" not in params_a:
-            raise ValueError("Strategy A BM25 config must include 'b'.")
-    if strategy_b_config.type == "bm25":
-        if "k1" not in params_b:
-            raise ValueError("Strategy B BM25 config must include 'k1'.")
-        if "b" not in params_b:
-            raise ValueError("Strategy B BM25 config must include 'b'.")
-
-    strategy_a = strategy_a_cls(corpus, workers=params.workers, **params_a)
-    strategy_b = strategy_b_cls(corpus, workers=params.workers, **params_b)
+    strategy_a, _ = create_strategy(
+        strategy_a_config,
+        corpus=corpus,
+        workers=params.workers,
+        params=params_a,
+        device=params.device,
+    )
+    strategy_b, _ = create_strategy(
+        strategy_b_config,
+        corpus=corpus,
+        workers=params.workers,
+        params=params_b,
+        device=params.device,
+    )
 
     query_results_a = None
     query_results_b = None
