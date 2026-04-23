@@ -94,6 +94,8 @@ The params, number of queries in the run, seed, dataset, the "_type" param of th
 
 You can force the cache to be bypassed with the "--no-cache" flag in scripts, which will force a fresh run of the strategy and update the cache with the new results.
 
+This should be done in chunks of 100 queries, so if you have a large number of queries, it won't all be lost if something goes wrong mid-run.
+
 ## Strategy Agnostic Scripts
 
 The different scripts here that compare strategies should take as "--strategy" argument a yml file. 

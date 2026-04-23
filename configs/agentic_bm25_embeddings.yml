@@ -2,6 +2,7 @@ strategy:
   name: agentic_bm25_embeddings
   type: agentic
   params:
+    model: gpt-5
     system_prompt: |
       You take user search queries and use a search tool to find products.
 

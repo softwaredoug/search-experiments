@@ -1,0 +1,6 @@
+strategy:
+  name: bm25_msmarco
+  type: bm25
+  params:
+    k1: 0.6
+    b: 0.62
