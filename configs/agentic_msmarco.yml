@@ -2,7 +2,7 @@ strategy:
   name: agentic_msmarco
   type: agentic
   params:
-    model: gpt-5
+    model: gpt-5-mini
     system_prompt: |
       You take user questions and return answers to those questions
 
@@ -31,10 +31,7 @@ strategy:
       
     search_tools:
       - bm25:
-          guards:
-            - disallow_repeated_queries
       - embeddings:
           guards:
-            - disallow_repeated_queries
             - query_min_length:
                 min_terms: 3
