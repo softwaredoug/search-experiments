@@ -62,6 +62,7 @@ def main() -> None:
         workers=1,
         params=params,
         device=args.device,
+        dataset=args.dataset,
     )
 
     top_k, scores = strategy.search(args.query, k=args.k)

@@ -179,6 +179,7 @@ def main() -> None:
             workers=args.workers,
             params=params_a,
             device=args.device,
+            dataset=args.dataset,
         )
         strategy_b, _ = create_strategy(
             strategy_b_config,
@@ -186,6 +187,7 @@ def main() -> None:
             workers=args.workers,
             params=params_b,
             device=args.device,
+            dataset=args.dataset,
         )
         _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
         query_results_a = _query_results(

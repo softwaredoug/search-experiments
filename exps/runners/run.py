@@ -49,6 +49,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         workers=params.workers,
         params=strategy_params,
         device=params.device,
+        dataset=params.dataset,
     )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)

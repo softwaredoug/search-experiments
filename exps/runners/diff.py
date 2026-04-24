@@ -145,6 +145,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         workers=params.workers,
         params=params_a,
         device=params.device,
+        dataset=params.dataset,
     )
     strategy_b, _ = create_strategy(
         strategy_b_config,
@@ -152,6 +153,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         workers=params.workers,
         params=params_b,
         device=params.device,
+        dataset=params.dataset,
     )
 
     query_results_a = None

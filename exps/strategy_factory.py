@@ -48,12 +48,19 @@ def create_strategy(
     workers: int = 1,
     params: dict | None = None,
     device: str | None = None,
+    dataset: str | None = None,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
     strategy_cls = resolve_strategy_class(strategy_config.type)
     if hasattr(strategy_cls, "build"):
-        strategy = strategy_cls.build(params, corpus=corpus, workers=workers, device=device)
+        strategy = strategy_cls.build(
+            params,
+            corpus=corpus,
+            workers=workers,
+            device=device,
+            dataset=dataset,
+        )
     else:
         strategy = strategy_cls(corpus, workers=workers, **params)
     return strategy, params

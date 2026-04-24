@@ -44,6 +44,7 @@ class AgenticSearchStrategy(SearchStrategy):
         corpus,
         workers: int = 1,
         device: str | None = None,
+        dataset: str | None = None,
         **kwargs,
     ):
         build_params = dict(params)
@@ -51,10 +52,13 @@ class AgenticSearchStrategy(SearchStrategy):
             tool_names = build_params.get("search_tools")
             if tool_names is None or "embeddings" in tool_names:
                 build_params["embeddings_device"] = device
-        return cls(corpus, workers=workers, **build_params)
+        strategy = cls(corpus, workers=workers, **build_params)
+        strategy.dataset = dataset
+        return strategy
 
     def search(self, query: str, k: int = 10):
-        trace_dir = Path("agentic") / "traces"
+        dataset = getattr(self, "dataset", None) or "unknown"
+        trace_dir = Path("agentic") / "traces" / str(dataset)
         trace_dir.mkdir(parents=True, exist_ok=True)
         query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")

@@ -156,6 +156,7 @@ def main() -> None:
             workers=args.workers,
             params=strategy_params,
             device=args.device,
+            dataset=args.dataset,
         )
         _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
         top_k, scores = strategy.search(args.query, k=args.k)
