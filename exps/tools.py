@@ -103,6 +103,7 @@ def make_embedding_tool(corpus, device: str | None = None):
 
 
 def guard_disallow_repeated_queries(params: dict, agent_state: dict | None) -> str | None:
+    """Reject repeated queries per tool using agent_state["past_queries"]."""
     if not agent_state:
         return None
     tool_name = params.get("tool_name")
@@ -127,6 +128,7 @@ def guard_disallow_repeated_queries(params: dict, agent_state: dict | None) -> s
 def guard_query_min_length(
     params: dict, agent_state: dict | None, *, min_terms: int
 ) -> str | None:
+    """Reject queries with fewer than min_terms tokens."""
     query = params.get("query", "")
     term_count = len(snowball_tokenizer(query))
     if term_count < min_terms:
@@ -153,6 +155,23 @@ def _parse_guard_entry(entry: Any) -> tuple[str, dict]:
             raise ValueError(f"Guard params for {name} must be a mapping.")
         return name, params
     raise ValueError("Guard entry must be a string or single-key mapping.")
+
+
+def _guard_doc(guard: dict) -> str:
+    guard_name = guard["name"]
+    guard_params = guard.get("params", {})
+    guard_fn = GUARDS.get(guard_name)
+    description = ""
+    if guard_fn and guard_fn.__doc__:
+        description = guard_fn.__doc__.strip()
+    if guard_params:
+        params_str = ", ".join(f"{key}={value}" for key, value in guard_params.items())
+        if description:
+            return f"{guard_name}({params_str}): {description}"
+        return f"{guard_name}({params_str})"
+    if description:
+        return f"{guard_name}: {description}"
+    return guard_name
 
 
 def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
@@ -206,6 +225,7 @@ def make_guarded_search_tool(
         top_k: int = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]] | str:
+        """Search tool wrapper that enforces configured guard checks."""
         params = {
             "tool_name": name,
             "query": query,
@@ -223,6 +243,7 @@ def make_guarded_search_tool(
         return tool_fn(query, top_k, agent_state)
 
     guarded.__name__ = name
+    guarded.__doc__ = tool_fn.__doc__
     return guarded
 
 
@@ -247,6 +268,12 @@ def build_search_tools(
             tool_fn = builder(corpus, device=embeddings_device)
         else:
             tool_fn = builder(corpus)
+        if tool["guards"]:
+            guard_lines = ["Guards:"]
+            guard_lines.extend(f"- {_guard_doc(guard)}" for guard in tool["guards"])
+            guard_block = "\n".join(guard_lines)
+            base_doc = tool_fn.__doc__ or ""
+            tool_fn.__doc__ = f"{base_doc}\n\n{guard_block}" if base_doc else guard_block
         if tool["guards"]:
             tool_fn = make_guarded_search_tool(
                 tool_fn,

@@ -23,10 +23,7 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
     if strategy_type == "embedding":
         return False
     if strategy_type == "agentic":
-        tool_names = params.get("search_tools")
-        if tool_names is None:
-            return True
-        return "bm25" in tool_names
+        return True
     return True
 
 

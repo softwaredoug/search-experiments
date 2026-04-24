@@ -1,0 +1,15 @@
+strategy:
+  name: agentic_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - embeddings:
+          guards:
+            - query_min_length:
+                min_terms: 3

@@ -1,4 +1,7 @@
+import os
+
 import pandas as pd
+import pytest
 
 from cheat_at_search.search import run_strategy
 from exps.datasets import get_dataset
@@ -117,3 +120,21 @@ def test_run_benchmark_matches_direct():
         direct_series.index.name = "query_id"
 
     pd.testing.assert_series_equal(result.metric_series, direct_series)
+
+
+def test_run_benchmark_agentic_guarded():
+    if not os.environ.get("OPENAI_API_KEY"):
+        pytest.fail("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/agentic.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+    assert not result.metric_series.empty
