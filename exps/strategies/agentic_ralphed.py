@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+
 from cheat_at_search.strategy import SearchStrategy
 
 from exps.agentic import (
@@ -14,8 +17,7 @@ from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.tools import (
     make_bm25_tool,
     make_embedding_tool,
-    make_guarded_bm25_tool,
-    make_guarded_embedding_tool,
+    make_guarded_search_tool,
 )
 
 
@@ -35,11 +37,11 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         self._lookup = build_doc_id_lookup(corpus)
 
         if tools is None:
-            embedding_tool = make_guarded_embedding_tool(
+            embedding_tool = make_guarded_search_tool(
                 make_embedding_tool(corpus),
                 func_name="search_embeddings_guarded",
             )
-            bm25_tool = make_guarded_bm25_tool(
+            bm25_tool = make_guarded_search_tool(
                 make_bm25_tool(corpus), func_name="search_bm25_guarded"
             )
             self.tools = [embedding_tool, bm25_tool]
@@ -47,6 +49,19 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             self.tools = tools
 
         super().__init__(corpus, workers=workers)
+
+    @property
+    def cache_key(self) -> str:
+        payload = {
+            "type": "agentic_ralphed",
+            "model": self.model,
+            "system_prompt": self.system_prompt,
+            "skills": self.skills,
+            "tools": ["embeddings", "bm25"],
+            "guards": [],
+        }
+        serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        return hashlib.md5(serialized).hexdigest()
 
     def _inject_skill_on_kw(self, query: str) -> list[str]:
         skill_prompts = []

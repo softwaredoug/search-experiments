@@ -10,7 +10,11 @@ from cheat_at_search.strategy import SearchStrategy
 
 from exps.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
-from exps.tools import build_search_tools
+from exps.tools import (
+    build_search_tools,
+    normalize_search_tools,
+    normalize_search_tools_for_cache,
+)
 
 
 class AgenticSearchStrategy(SearchStrategy):
@@ -22,14 +26,14 @@ class AgenticSearchStrategy(SearchStrategy):
         workers: int = 1,
         model: str = "gpt-5-mini",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
-        search_tools: list[str] | None = None,
+        search_tools: list | None = None,
         embeddings_device: str | None = None,
     ):
         self.embeddings_device = embeddings_device
-        tool_names = search_tools or ["bm25"]
-        self.search_tools = list(tool_names)
+        tool_config = search_tools or ["bm25"]
+        self.search_tools = tool_config
         self.tools = build_search_tools(
-            corpus, tool_names, embeddings_device=embeddings_device
+            corpus, tool_config, embeddings_device=embeddings_device
         )
         self.model = model
         self.system_prompt = system_prompt
@@ -49,8 +53,9 @@ class AgenticSearchStrategy(SearchStrategy):
     ):
         build_params = dict(params)
         if device and "embeddings_device" not in build_params:
-            tool_names = build_params.get("search_tools")
-            if tool_names is None or "embeddings" in tool_names:
+            tool_config = build_params.get("search_tools") or ["bm25"]
+            tool_names = [tool["name"] for tool in normalize_search_tools(tool_config)]
+            if "embeddings" in tool_names:
                 build_params["embeddings_device"] = device
         strategy = cls(corpus, workers=workers, **build_params)
         strategy.dataset = dataset
@@ -100,7 +105,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "type": self._type,
             "model": self.model,
             "system_prompt": self.system_prompt,
-            "search_tools": self.search_tools,
+            "search_tools": normalize_search_tools_for_cache(self.search_tools),
             "embeddings_device": self.embeddings_device,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")

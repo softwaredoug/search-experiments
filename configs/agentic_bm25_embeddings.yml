@@ -15,5 +15,11 @@ strategy:
       It's very important you consider carefully the correct ranking as you'll be evaluated on
       how close that is to the average shoppers ideal ranking.
     search_tools:
-      - bm25
-      - embeddings
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - embeddings:
+          guards:
+            - disallow_repeated_queries
+            - query_min_length:
+                min_terms: 3

@@ -1,0 +1,40 @@
+strategy:
+  name: agentic_msmarco
+  type: agentic
+  params:
+    model: gpt-5
+    system_prompt: |
+      You take user questions and return answers to those questions
+
+      Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      ## Ranking using likely intent
+      
+      There's a couple types of search ranking to consider.
+
+      First, consider the different likely intents of the user. Interpret the intent, and give the best
+      answer for that intent. If the user searched for "What is the CIA?" That likely means Central Intelligence
+      Agency, but it could also mean the Culinary Institute of America.
+     
+      The best answer for the most likely intent should be ranked highest. But because its ambiguous, you should also return results for the other likely intents as well (Culinary Institute of America)
+
+      ## Ranking using full answer completeness
+      
+      Also consider how likely the answer is to fully answer the question. 
+      
+      For example, if the user searched "How do I make a cake?" An answer that just lists ingredients is less complete than an answer that lists ingredients and steps. So the more complete answer should be ranked higher.
+      
+      
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - embeddings:
+          guards:
+            - disallow_repeated_queries
+            - query_min_length:
+                min_terms: 3
