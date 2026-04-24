@@ -98,6 +98,7 @@ The different scripts here that compare strategies should take as "--strategy" a
 
 Where appropriate, we should expect these params:
 
+--query         # Only run with this query. Bypass - but do not delete - caches. If query in judgments, show its ground truth info (ie show grades + a sample of the most relevant doc first)
 --dataset       # The dataset being run on the strategy ie wands, msmarco, etc
 --num-queries   # Number of queries to run as a subset (for faster analysis) 
 --seed          # Random seed for query sampling when num-queries is set

@@ -141,19 +141,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    params = RunParams(
-        strategy_path=args.strategy,
-        dataset=args.dataset,
-        num_queries=args.num_queries,
-        seed=args.seed,
-        workers=args.workers,
-        binary_relevance=args.binary_relevance,
-        device=args.device,
-        no_cache=args.no_cache,
-    )
-    result = run_benchmark(params)
-    _report_metric(result.metric_name, result.metric_series, result.graded)
-
     if args.query:
         strategy_config, strategy_params, requires_bm25 = load_strategy(
             args.strategy, device=args.device
@@ -194,6 +181,20 @@ def main() -> None:
             if grade_col and "grade" in results.columns:
                 values.append(str(row.get("grade", "")))
             print(f"{doc_id}\t" + "\t".join(values) + f"\t{title}")
+        return
+
+    params = RunParams(
+        strategy_path=args.strategy,
+        dataset=args.dataset,
+        num_queries=args.num_queries,
+        seed=args.seed,
+        workers=args.workers,
+        binary_relevance=args.binary_relevance,
+        device=args.device,
+        no_cache=args.no_cache,
+    )
+    result = run_benchmark(params)
+    _report_metric(result.metric_name, result.metric_series, result.graded)
 
 
 if __name__ == "__main__":

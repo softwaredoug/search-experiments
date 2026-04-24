@@ -2,7 +2,9 @@ import argparse
 
 import pandas as pd
 
+from exps.datasets import get_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
+from exps.strategy_factory import create_strategy, load_strategy
 
 
 def _display_title(row: pd.Series) -> str:
@@ -13,6 +15,42 @@ def _display_title(row: pd.Series) -> str:
         return str(title)
     description = row.get("description", "")
     return description if isinstance(description, str) else str(description)
+
+
+def _grade_column(judgments: pd.DataFrame) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _show_most_relevant(
+    *, query: str, judgments: pd.DataFrame, corpus: pd.DataFrame
+) -> None:
+    if "query" not in judgments.columns:
+        return
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return
+    subset = judgments[judgments["query"] == query]
+    if subset.empty:
+        return
+    scores = pd.to_numeric(subset[grade_col], errors="coerce")
+    if scores.notna().any():
+        top_idx = scores.idxmax()
+        top_row = subset.loc[top_idx]
+    else:
+        top_row = subset.iloc[0]
+    doc_id = top_row.get("doc_id")
+    title = ""
+    if doc_id is not None and "doc_id" in corpus.columns:
+        match = corpus[corpus["doc_id"] == doc_id]
+        if not match.empty:
+            title = _display_title(match.iloc[0])
+    label = title if title else str(doc_id) if doc_id is not None else ""
+    print("Most relevant result:")
+    print(f"{label}\t{grade_col}={top_row.get(grade_col)}")
+    print("")
 
 
 def _print_query_results(label: str, results: pd.DataFrame) -> None:
@@ -121,6 +159,44 @@ def main() -> None:
         help="Bypass cached strategy results.",
     )
     args = parser.parse_args()
+
+    if args.query:
+        strategy_a_config, params_a, requires_bm25_a = load_strategy(
+            args.strategy_a, device=args.device
+        )
+        strategy_b_config, params_b, requires_bm25_b = load_strategy(
+            args.strategy_b, device=args.device
+        )
+        requires_bm25 = requires_bm25_a or requires_bm25_b
+        dataset = get_dataset(
+            args.dataset, workers=args.workers, ensure_snowball=requires_bm25
+        )
+        corpus = dataset.corpus
+        judgments = dataset.judgments
+        strategy_a, _ = create_strategy(
+            strategy_a_config,
+            corpus=corpus,
+            workers=args.workers,
+            params=params_a,
+            device=args.device,
+        )
+        strategy_b, _ = create_strategy(
+            strategy_b_config,
+            corpus=corpus,
+            workers=args.workers,
+            params=params_b,
+            device=args.device,
+        )
+        _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
+        query_results_a = _query_results(
+            strategy_a, corpus, judgments, args.query, args.k
+        )
+        query_results_b = _query_results(
+            strategy_b, corpus, judgments, args.query, args.k
+        )
+        _print_query_results(strategy_a_config.name, query_results_a)
+        _print_query_results(strategy_b_config.name, query_results_b)
+        return
 
     params = DiffParams(
         strategy_a_path=args.strategy_a,
