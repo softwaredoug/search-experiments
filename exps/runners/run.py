@@ -14,6 +14,7 @@ class RunParams(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     strategy_path: str
+    base_path: str | None = None
     dataset: Literal["esci", "msmarco", "wands"] = "wands"
     num_queries: int | None = None
     seed: int = 42
@@ -35,7 +36,7 @@ class RunResult(BaseModel):
 
 def run_benchmark(params: RunParams) -> RunResult:
     strategy_config, strategy_params, requires_bm25 = load_strategy(
-        params.strategy_path, device=params.device
+        params.strategy_path, device=params.device, base_path=params.base_path
     )
     dataset = get_dataset(
         params.dataset, workers=params.workers, ensure_snowball=requires_bm25

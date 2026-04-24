@@ -16,6 +16,7 @@ class DiffParams(BaseModel):
 
     strategy_a_path: str
     strategy_b_path: str
+    base_path: str | None = None
     dataset: Literal["esci", "msmarco", "wands"] = "wands"
     query: str | None = None
     k: int = 10
@@ -126,10 +127,10 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         np.random.seed(params.seed)
 
     strategy_a_config, params_a, requires_bm25_a = load_strategy(
-        params.strategy_a_path, device=params.device
+        params.strategy_a_path, device=params.device, base_path=params.base_path
     )
     strategy_b_config, params_b, requires_bm25_b = load_strategy(
-        params.strategy_b_path, device=params.device
+        params.strategy_b_path, device=params.device, base_path=params.base_path
     )
     requires_bm25 = requires_bm25_a or requires_bm25_b
     dataset = get_dataset(

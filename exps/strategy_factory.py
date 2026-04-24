@@ -31,9 +31,12 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
 
 
 def load_strategy(
-    strategy_path: str, *, device: str | None = None
+    strategy_path: str,
+    *,
+    device: str | None = None,
+    base_path: str | None = None,
 ) -> tuple[StrategyConfig, dict, bool]:
-    strategy_config = load_strategy_config(strategy_path)
+    strategy_config = load_strategy_config(strategy_path, base_path=base_path)
     params = strategy_params_for_config(strategy_config, device=device)
     return strategy_config, params, requires_bm25(strategy_config.type, params)
 

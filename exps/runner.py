@@ -1,6 +1,10 @@
 import argparse
 
+import pandas as pd
+
+from exps.datasets import get_dataset
 from exps.runners.run import RunParams, run_benchmark
+from exps.strategy_factory import create_strategy, load_strategy
 
 
 def _report_metric(metric_name: str, metric_series, graded=None) -> None:
@@ -33,6 +37,52 @@ def _report_metric(metric_name: str, metric_series, graded=None) -> None:
     print(f"median_{metric_key}={metric_series.median():.4f}")
 
 
+def _display_title(row: pd.Series) -> str:
+    title = row.get("title", "")
+    if isinstance(title, str) and title.strip():
+        return title
+    if title:
+        return str(title)
+    description = row.get("description", "")
+    return description if isinstance(description, str) else str(description)
+
+
+def _grade_column(judgments: pd.DataFrame) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _show_most_relevant(
+    *, query: str, judgments: pd.DataFrame, corpus: pd.DataFrame
+) -> None:
+    if "query" not in judgments.columns:
+        return
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return
+    subset = judgments[judgments["query"] == query]
+    if subset.empty:
+        return
+    scores = pd.to_numeric(subset[grade_col], errors="coerce")
+    if scores.notna().any():
+        top_idx = scores.idxmax()
+        top_row = subset.loc[top_idx]
+    else:
+        top_row = subset.iloc[0]
+    doc_id = top_row.get("doc_id")
+    title = ""
+    if doc_id is not None and "doc_id" in corpus.columns:
+        match = corpus[corpus["doc_id"] == doc_id]
+        if not match.empty:
+            title = _display_title(match.iloc[0])
+    label = title if title else str(doc_id) if doc_id is not None else ""
+    print("Most relevant result:")
+    print(f"{label}\t{grade_col}={top_row.get(grade_col)}")
+    print("")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run experiment strategies.")
     parser.add_argument(
@@ -50,6 +100,16 @@ def main() -> None:
         "--num-queries",
         type=int,
         help="Number of queries to sample for evaluation.",
+    )
+    parser.add_argument(
+        "--query",
+        help="Optional query string to show ranked results.",
+    )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=10,
+        help="Number of results to show for --query.",
     )
     parser.add_argument(
         "--seed",
@@ -93,6 +153,47 @@ def main() -> None:
     )
     result = run_benchmark(params)
     _report_metric(result.metric_name, result.metric_series, result.graded)
+
+    if args.query:
+        strategy_config, strategy_params, requires_bm25 = load_strategy(
+            args.strategy, device=args.device
+        )
+        dataset = get_dataset(
+            args.dataset, workers=args.workers, ensure_snowball=requires_bm25
+        )
+        corpus = dataset.corpus
+        judgments = dataset.judgments
+        strategy, _ = create_strategy(
+            strategy_config,
+            corpus=corpus,
+            workers=args.workers,
+            params=strategy_params,
+            device=args.device,
+        )
+        _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
+        top_k, scores = strategy.search(args.query, k=args.k)
+        results = corpus.iloc[top_k].copy()
+        results["score"] = scores
+        grade_col = _grade_column(judgments)
+        if grade_col and "query" in judgments.columns and "doc_id" in judgments.columns:
+            match = judgments[judgments["query"] == args.query]
+            grade_map = dict(zip(match["doc_id"], match[grade_col]))
+            if "doc_id" in results.columns:
+                results["grade"] = results["doc_id"].map(grade_map)
+
+        print("Query results:")
+        header_cols = ["score"]
+        if grade_col and "grade" in results.columns:
+            header_cols.append("grade")
+        header = "doc_id\t" + "\t".join(header_cols) + "\ttitle"
+        print(header)
+        for _, row in results.iterrows():
+            doc_id = row.get("doc_id", "")
+            title = _display_title(row)
+            values = [f"{row.get('score', 0):.4f}"]
+            if grade_col and "grade" in results.columns:
+                values.append(str(row.get("grade", "")))
+            print(f"{doc_id}\t" + "\t".join(values) + f"\t{title}")
 
 
 if __name__ == "__main__":

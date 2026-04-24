@@ -25,8 +25,10 @@ STRATEGY_TYPES = {
 }
 
 
-def load_strategy_config(path: str | Path) -> StrategyConfig:
+def load_strategy_config(path: str | Path, *, base_path: str | Path | None = None) -> StrategyConfig:
     config_path = Path(path)
+    if base_path is not None and not config_path.is_absolute():
+        config_path = Path(base_path) / config_path
     if not config_path.exists():
         raise FileNotFoundError(f"Strategy config not found: {config_path}")
     with config_path.open("r", encoding="utf-8") as handle:

@@ -10,7 +10,8 @@ from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
-        strategy_path="configs/bm25_strong_title.yml",
+        strategy_path="configs/bm25.yml",
+        base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
         seed=123,
@@ -20,7 +21,7 @@ def test_run_benchmark_wands_bm25_all_params():
     )
     result = run_benchmark(params)
 
-    assert result.strategy_name == "bm25_strong_title"
+    assert result.strategy_name == "bm25_fixture"
     assert isinstance(result.metric_series, pd.Series)
     assert result.metric_series.index.name == "query_id"
     assert not result.metric_series.empty
@@ -29,8 +30,9 @@ def test_run_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_bm25_all_params():
     params = DiffParams(
-        strategy_a_path="configs/bm25_strong_title.yml",
-        strategy_b_path="configs/bm25_strong_title.yml",
+        strategy_a_path="configs/bm25.yml",
+        strategy_b_path="configs/bm25.yml",
+        base_path="tests/fixtures",
         dataset="wands",
         query=None,
         k=5,
@@ -50,8 +52,9 @@ def test_diff_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_query_results():
     params = DiffParams(
-        strategy_a_path="configs/bm25_strong_title.yml",
-        strategy_b_path="configs/bm25_strong_title.yml",
+        strategy_a_path="configs/bm25.yml",
+        strategy_b_path="configs/bm25.yml",
+        base_path="tests/fixtures",
         dataset="wands",
         query="salon chair",
         k=5,
@@ -72,7 +75,8 @@ def test_diff_benchmark_wands_query_results():
 
 def test_run_benchmark_matches_direct():
     params = RunParams(
-        strategy_path="configs/bm25_strong_title.yml",
+        strategy_path="configs/bm25.yml",
+        base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
         seed=123,
