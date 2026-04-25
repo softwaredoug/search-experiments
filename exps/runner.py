@@ -1,4 +1,7 @@
 import argparse
+import csv
+import json
+from pathlib import Path
 
 import pandas as pd
 
@@ -35,6 +38,35 @@ def _report_metric(metric_name: str, metric_series, graded=None) -> None:
     print("Summary:")
     print(f"mean_{metric_key}={metric_series.mean():.4f}")
     print(f"median_{metric_key}={metric_series.median():.4f}")
+
+
+def _write_summary_csv(path: str, *, dataset: str, result) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "dataset": dataset,
+        "strategy_name": result.strategy_name,
+        "strategy_params": json.dumps(result.strategy_params, sort_keys=True),
+        "metric_name": result.metric_name,
+        **result.summary,
+    }
+
+    file_exists = output_path.exists()
+    fieldnames = None
+    if file_exists:
+        with output_path.open("r", newline="") as handle:
+            reader = csv.DictReader(handle)
+            fieldnames = reader.fieldnames
+
+    if not fieldnames:
+        fieldnames = list(row.keys())
+
+    write_header = not file_exists or output_path.stat().st_size == 0
+    with output_path.open("a", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 def _display_title(row: pd.Series) -> str:
@@ -139,6 +171,10 @@ def main() -> None:
         action="store_true",
         help="Bypass cached strategy results.",
     )
+    parser.add_argument(
+        "--summary-csv",
+        help="Write summary stats to CSV (appends if exists).",
+    )
     args = parser.parse_args()
 
     if args.query:
@@ -196,6 +232,8 @@ def main() -> None:
     )
     result = run_benchmark(params)
     _report_metric(result.metric_name, result.metric_series, result.graded)
+    if args.summary_csv:
+        _write_summary_csv(args.summary_csv, dataset=args.dataset, result=result)
 
 
 if __name__ == "__main__":

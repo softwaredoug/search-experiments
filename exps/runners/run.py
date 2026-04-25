@@ -26,6 +26,7 @@ class RunResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     strategy_name: str
+    strategy_params: dict
     metric_name: str
     metric_series: pd.Series
     summary: dict[str, float]
@@ -77,6 +78,7 @@ def run_benchmark(params: RunParams) -> RunResult:
     }
     return RunResult(
         strategy_name=strategy_config.name,
+        strategy_params=dict(strategy_config.params),
         metric_name=metric_name,
         metric_series=metric_series,
         summary=summary,
