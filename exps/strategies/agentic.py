@@ -51,6 +51,8 @@ class AgenticSearchStrategy(SearchStrategy):
         self.model = model
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
+        self.traces: dict[str, str] = {}
+        self.num_tool_calls: dict[str, int] = {}
         super().__init__(corpus, workers=workers)
 
     @classmethod
@@ -81,18 +83,21 @@ class AgenticSearchStrategy(SearchStrategy):
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": agentic_query},
         ]
-        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as logger:
+        agent_state = {"num_tool_calls": 0}
+        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
             logger.info("Query: %s", query)
             resp = search(
                 tools=self.tools,
                 inputs=inputs,
-                agent_state={},
+                agent_state=agent_state,
                 model=self.model,
                 text_format=SearchResultsIds,
                 logger=logger,
                 stop=self.stop,
                 reprompt=self.reprompt,
             )
+        self.traces[query] = str(trace_path)
+        self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
         ranked_results = resp.ranked_results[:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)

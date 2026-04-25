@@ -84,6 +84,8 @@ def make_tool_info(tools: Iterable[callable]) -> dict[str, ToolAdapter]:
 def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state, logger=None) -> dict:
     if logger is None:
         logger = logging.getLogger(__name__)
+    if agent_state is not None:
+        agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
     tool_name = item.name
     tool = tool_info[tool_name]
     tool_args = tool.args_model.model_validate_json(item.arguments)
@@ -266,7 +268,7 @@ def trace_logger(trace_root: Path, dataset: str, query: str):
     logger.addHandler(handler)
     logger.propagate = False
     try:
-        yield logger
+        yield logger, trace_path
     finally:
         handler.close()
         logger.removeHandler(handler)

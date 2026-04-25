@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import statistics
+
 import pandas as pd
 from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
+from exps.strategies.agentic import AgenticSearchStrategy
 
 
 class RunParams(BaseModel):
@@ -72,9 +75,17 @@ def run_benchmark(params: RunParams) -> RunResult:
             metric_series.index = metric_series.index.map(query_map.get)
             metric_series.index.name = "query_id"
     metric_key = metric_name.lower()
+    tool_calls = [1] * num_queries
+    if isinstance(strategy, AgenticSearchStrategy):
+        tool_calls = list(strategy.num_tool_calls.values())
+        if not tool_calls:
+            tool_calls = [0]
     summary = {
         f"mean_{metric_key}": float(metric_series.mean()) if not metric_series.empty else 0.0,
         f"median_{metric_key}": float(metric_series.median()) if not metric_series.empty else 0.0,
+        "tool_calls_mean": float(statistics.fmean(tool_calls)),
+        "tool_calls_median": float(statistics.median(tool_calls)),
+        "tool_calls_std": float(statistics.pstdev(tool_calls)),
     }
     return RunResult(
         strategy_name=strategy_config.name,

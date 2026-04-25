@@ -32,6 +32,9 @@ def test_run_benchmark_wands_bm25_all_params():
     assert result.metric_series.index.name == "query_id"
     assert not result.metric_series.empty
     assert "mean_" in next(iter(result.summary.keys()))
+    assert result.summary["tool_calls_mean"] == 1.0
+    assert result.summary["tool_calls_median"] == 1.0
+    assert result.summary["tool_calls_std"] == 0.0
 
 
 def test_diff_benchmark_wands_bm25_all_params():
@@ -127,7 +130,7 @@ def test_run_benchmark_matches_direct():
 
 def test_run_benchmark_agentic_guarded():
     if not os.environ.get("OPENAI_API_KEY"):
-        pytest.fail("OPENAI_API_KEY is required for agentic tests.")
+        pytest.skip("OPENAI_API_KEY is required for agentic tests.")
 
     params = RunParams(
         strategy_path="configs/agentic.yml",
@@ -141,6 +144,9 @@ def test_run_benchmark_agentic_guarded():
     )
     result = run_benchmark(params)
     assert not result.metric_series.empty
+    assert result.summary["tool_calls_mean"] >= 0.0
+    assert result.summary["tool_calls_median"] >= 0.0
+    assert result.summary["tool_calls_std"] >= 0.0
 
 
 def test_agentic_stop_iterations(monkeypatch):
