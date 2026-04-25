@@ -7,6 +7,7 @@ def strategy_params_for_config(
     strategy_config: StrategyConfig, *, device: str | None = None
 ) -> dict:
     params = dict(strategy_config.params)
+    params.pop("description", None)
     if device:
         if strategy_config.type == "agentic" and "embeddings_device" not in params:
             tool_names = params.get("search_tools")
