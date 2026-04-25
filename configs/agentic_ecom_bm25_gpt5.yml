@@ -1,8 +1,8 @@
 strategy:
-  name: agentic_bm25_embeddings
+  name: agentic_bm25_ecommerce
   type: agentic
   params:
-    model: gpt-5-mini
+    model: gpt-5
     system_prompt: |
       You take user search queries and use a search tool to find products.
 
@@ -16,4 +16,15 @@ strategy:
       how close that is to the average shoppers ideal ranking.
     search_tools:
       - bm25:
-      - embeddings:
+    description: | 
+      This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
+      
+      in functions:
+      - agent_run: the tool calling loop: looping until no more tools to call. (ie search tools)
+      - search: the main harness: looping until business constraints with search satisfied
+
+      We'll build up these functions and see how they work. 
+
+      We'll create the tools (here bm25)
+
+      Then we'll implement a strategy and see how well it performs in this data.

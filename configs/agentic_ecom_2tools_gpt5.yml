@@ -1,0 +1,31 @@
+strategy:
+  name: agentic_bm25_embeddings_ecommerce
+  type: agentic
+  params:
+    model: gpt-5
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+
+      Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+    search_tools:
+      - bm25:
+      - embeddings:
+    description: | 
+      This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
+      
+      in functions:
+      - agent_run: the tool calling loop: looping until no more tools to call. (ie search tools)
+      - search: the main harness: looping until business constraints with search satisfied
+
+      We'll build up these functions and see how they work. 
+
+      We'll create the tools (here bm25 + embeddings)
+
+      Then we'll implement a strategy and see how well it performs in this data.
