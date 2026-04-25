@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import hashlib
-import logging
-from datetime import datetime
 import json
 
 from cheat_at_search.strategy import SearchStrategy
 
-from exps.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
+from exps.agentic import (
+    DEFAULT_SYSTEM_PROMPT,
+    SearchResultsIds,
+    normalize_stops_for_cache,
+    search,
+    trace_logger,
+)
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.paths import AGENTIC_TRACE_ROOT
 from exps.tools import (
@@ -27,11 +31,15 @@ class AgenticSearchStrategy(SearchStrategy):
         model: str = "gpt-5-mini",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
+        stop: list | None = None,
+        reprompt: str | None = None,
         embeddings_device: str | None = None,
     ):
         self.embeddings_device = embeddings_device
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
+        self.stop = stop
+        self.reprompt = reprompt
         self.tools = build_search_tools(
             corpus, tool_config, embeddings_device=embeddings_device
         )
@@ -63,37 +71,23 @@ class AgenticSearchStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         dataset = getattr(self, "dataset", None) or "unknown"
-        trace_dir = AGENTIC_TRACE_ROOT / str(dataset)
-        trace_dir.mkdir(parents=True, exist_ok=True)
-        query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        trace_path = trace_dir / f"{timestamp}_{query_hash}.log"
-        logger = logging.getLogger(f"agentic.trace.{query_hash}")
-        logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(trace_path, encoding="utf-8")
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-        )
-        logger.handlers.clear()
-        logger.addHandler(handler)
-        logger.propagate = False
-        logger.info("Query: %s", query)
         agentic_query = "Find me: " + query
         inputs = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": agentic_query},
         ]
-        try:
+        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as logger:
+            logger.info("Query: %s", query)
             resp = search(
                 tools=self.tools,
                 inputs=inputs,
+                agent_state={},
                 model=self.model,
                 text_format=SearchResultsIds,
                 logger=logger,
+                stop=self.stop,
+                reprompt=self.reprompt,
             )
-        finally:
-            handler.close()
-            logger.removeHandler(handler)
         ranked_results = resp.ranked_results[:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
@@ -106,6 +100,8 @@ class AgenticSearchStrategy(SearchStrategy):
             "model": self.model,
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools_for_cache(self.search_tools),
+            "stop": normalize_stops_for_cache(self.stop),
+            "reprompt": self.reprompt,
             "embeddings_device": self.embeddings_device,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")

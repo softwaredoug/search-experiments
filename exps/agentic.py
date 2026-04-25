@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import logging
 import textwrap
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+import hashlib
+from pathlib import Path
 from time import sleep
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import openai
 from pydantic import BaseModel, Field
@@ -94,6 +98,15 @@ def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state, logger=None)
     }
 
 
+def stop_iterations(inputs: list, num_loops: int, *, iterations: int) -> bool:
+    return num_loops >= int(iterations)
+
+
+STOPPERS = {
+    "iterations": stop_iterations,
+}
+
+
 def agent_run(
     tool_info: dict[str, ToolAdapter],
     text_format,
@@ -153,6 +166,39 @@ def agent_run(
     return resp, inputs
 
 
+def _parse_stop_entry(entry: Any) -> tuple[str, dict]:
+    if isinstance(entry, str):
+        return entry, {}
+    if isinstance(entry, dict) and len(entry) == 1:
+        (name, raw_params), = entry.items()
+        if isinstance(raw_params, dict):
+            return name, dict(raw_params)
+        if raw_params is None:
+            return name, {}
+        if name == "iterations":
+            return name, {"iterations": raw_params}
+        return name, {"value": raw_params}
+    raise ValueError("Stop entry must be a string or single-key mapping.")
+
+
+def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
+    if not stop_config:
+        return []
+    stops: list[dict[str, Any]] = []
+    for entry in stop_config:
+        name, params = _parse_stop_entry(entry)
+        if name == "iterations" and "iterations" not in params:
+            raise ValueError("Stop condition 'iterations' requires an iterations value.")
+        if name not in STOPPERS:
+            raise ValueError(f"Unknown stop condition: {name}")
+        stops.append({"name": name, "params": params})
+    return stops
+
+
+def normalize_stops_for_cache(stop_config: list | None) -> list[dict[str, Any]]:
+    return normalize_stops(stop_config)
+
+
 def search(
     tools: Optional[list[callable]] = None,
     inputs: Optional[list[dict]] = None,
@@ -160,21 +206,70 @@ def search(
     model: str = "gpt-5",
     text_format=SearchResultsIds,
     logger=None,
+    stop: list | None = None,
+    reprompt: str | None = None,
 ):
     resp = None
     if tools is None:
         tools = []
+    if inputs is None:
+        inputs = []
+    if agent_state is None:
+        agent_state = {}
+    if reprompt is not None and not isinstance(reprompt, str):
+        raise ValueError("reprompt must be a string when provided.")
     tool_info = make_tool_info(tools)
-    resp, _ = agent_run(
-        tool_info,
-        text_format=text_format,
-        inputs=inputs,
-        model=model,
-        agent_state=agent_state,
-        logger=logger,
-    )
+    stops = normalize_stops(stop)
+    if not stops:
+        resp, _ = agent_run(
+            tool_info,
+            text_format=text_format,
+            inputs=inputs,
+            model=model,
+            agent_state=agent_state,
+            logger=logger,
+        )
+        return resp.output_parsed
+    num_loops = 0
+    while True:
+        resp, inputs = agent_run(
+            tool_info,
+            text_format=text_format,
+            inputs=inputs,
+            model=model,
+            agent_state=agent_state,
+            logger=logger,
+        )
+        num_loops += 1
+        if any(
+            STOPPERS[stopper["name"]](inputs, num_loops, **stopper["params"])
+            for stopper in stops
+        ):
+            break
+        if reprompt:
+            inputs.append({"role": "user", "content": reprompt})
     return resp.output_parsed
 
+
+@contextmanager
+def trace_logger(trace_root: Path, dataset: str, query: str):
+    trace_dir = trace_root / str(dataset)
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    trace_path = trace_dir / f"{timestamp}_{query_hash}.log"
+    logger = logging.getLogger(f"agentic.trace.{query_hash}")
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(trace_path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.propagate = False
+    try:
+        yield logger
+    finally:
+        handler.close()
+        logger.removeHandler(handler)
 
 def _grade_to_emoji(grade):
     if grade == 0:

@@ -1,9 +1,12 @@
 import os
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from cheat_at_search.search import run_strategy
+
+import exps.agentic
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
@@ -138,3 +141,64 @@ def test_run_benchmark_agentic_guarded():
     )
     result = run_benchmark(params)
     assert not result.metric_series.empty
+
+
+def test_agentic_stop_iterations(monkeypatch):
+    calls = []
+
+    def fake_agent_run(
+        tool_info,
+        text_format,
+        inputs,
+        model="gpt-5-nano",
+        agent_state=None,
+        summary=True,
+        logger=None,
+    ):
+        calls.append(list(inputs))
+        resp = SimpleNamespace(output_parsed="ok", output=[])
+        return resp, inputs
+
+    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
+
+    result = exps.agentic.search(
+        tools=[],
+        inputs=[{"role": "user", "content": "hi"}],
+        stop=[{"iterations": 2}],
+    )
+
+    assert result == "ok"
+    assert len(calls) == 2
+
+
+def test_agentic_reprompt_appends(monkeypatch):
+    calls = []
+
+    def fake_agent_run(
+        tool_info,
+        text_format,
+        inputs,
+        model="gpt-5-nano",
+        agent_state=None,
+        summary=True,
+        logger=None,
+    ):
+        calls.append(list(inputs))
+        resp = SimpleNamespace(output_parsed="ok", output=[])
+        return resp, inputs
+
+    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
+
+    reprompt = "Try harder"
+    result = exps.agentic.search(
+        tools=[],
+        inputs=[{"role": "user", "content": "hi"}],
+        stop=[{"iterations": 3}],
+        reprompt=reprompt,
+    )
+
+    assert result == "ok"
+    assert len(calls) == 3
+    assert [item["content"] for item in calls[0]] == ["hi"]
+    assert [item["content"] for item in calls[1]] == ["hi", reprompt]
+    assert [item["content"] for item in calls[2]] == ["hi", reprompt, reprompt]
