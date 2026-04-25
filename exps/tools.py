@@ -62,8 +62,12 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
     return search_bm25
 
 
-def make_embedding_tool(corpus, device: str | None = None):
-    embeddings = load_or_create_embeddings(corpus, device=device)
+def make_embedding_tool(
+    corpus, device: str | None = None, dataset_name: str | None = None
+):
+    embeddings = load_or_create_embeddings(
+        corpus, device=device, dataset_name=dataset_name
+    )
     model = _minilm_model(device=device)
 
     def search_embeddings(
@@ -257,6 +261,7 @@ def build_search_tools(
     corpus,
     tool_config: list,
     embeddings_device: str | None = None,
+    dataset_name: str | None = None,
 ):
     tools = []
     for tool in normalize_search_tools(tool_config):
@@ -265,7 +270,9 @@ def build_search_tools(
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
         if tool_name == "embeddings":
-            tool_fn = builder(corpus, device=embeddings_device)
+            tool_fn = builder(
+                corpus, device=embeddings_device, dataset_name=dataset_name
+            )
         else:
             tool_fn = builder(corpus)
         if tool["guards"]:

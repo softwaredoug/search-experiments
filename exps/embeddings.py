@@ -55,25 +55,28 @@ def _corpus_signature(corpus, model_name: str) -> str:
     return hasher.hexdigest()
 
 
-def _cache_paths(signature: str) -> tuple[Path, Path]:
-    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-    emb_path = CACHE_ROOT / f"embeddings_{signature}.npy"
-    meta_path = CACHE_ROOT / f"embeddings_{signature}.json"
+def _cache_root(dataset_name: str | None) -> Path:
+    root = CACHE_ROOT if dataset_name is None else CACHE_ROOT / dataset_name
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _cache_paths(signature: str, root: Path) -> tuple[Path, Path]:
+    emb_path = root / f"embeddings_{signature}.npy"
+    meta_path = root / f"embeddings_{signature}.json"
     return emb_path, meta_path
 
 
-def _manifest_path(signature: str) -> Path:
-    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-    return CACHE_ROOT / f"embeddings_{signature}.manifest.json"
+def _manifest_path(signature: str, root: Path) -> Path:
+    return root / f"embeddings_{signature}.manifest.json"
 
 
-def _chunk_path(signature: str, chunk_index: int) -> Path:
-    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
-    return CACHE_ROOT / f"embeddings_{signature}_chunk_{chunk_index}.npy"
+def _chunk_path(signature: str, chunk_index: int, root: Path) -> Path:
+    return root / f"embeddings_{signature}_chunk_{chunk_index}.npy"
 
 
-def _load_cache(signature: str, model_name: str):
-    emb_path, meta_path = _cache_paths(signature)
+def _load_cache(signature: str, model_name: str, root: Path):
+    emb_path, meta_path = _cache_paths(signature, root)
     if not emb_path.exists() or not meta_path.exists():
         return None
     try:
@@ -93,8 +96,8 @@ def _load_cache(signature: str, model_name: str):
     return embeddings
 
 
-def _load_manifest(signature: str, model_name: str):
-    manifest_path = _manifest_path(signature)
+def _load_manifest(signature: str, model_name: str, root: Path):
+    manifest_path = _manifest_path(signature, root)
     if not manifest_path.exists():
         return None
     try:
@@ -109,8 +112,8 @@ def _load_manifest(signature: str, model_name: str):
     return meta
 
 
-def _save_manifest(signature: str, meta: dict) -> None:
-    manifest_path = _manifest_path(signature)
+def _save_manifest(signature: str, meta: dict, root: Path) -> None:
+    manifest_path = _manifest_path(signature, root)
     with manifest_path.open("w", encoding="utf-8") as handle:
         json.dump(meta, handle)
 
@@ -121,14 +124,20 @@ def load_or_create_embeddings(
     device: str | None = None,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     show_progress: bool = True,
+    dataset_name: str | None = None,
 ) -> np.ndarray:
     signature = _corpus_signature(corpus, model_name)
-    cached = _load_cache(signature, model_name)
+    root = _cache_root(dataset_name)
+    cached = _load_cache(signature, model_name, root)
     if cached is not None:
         return cached
+    if dataset_name is not None:
+        legacy_cached = _load_cache(signature, model_name, _cache_root(None))
+        if legacy_cached is not None:
+            return legacy_cached
 
     total_count = len(corpus)
-    manifest = _load_manifest(signature, model_name)
+    manifest = _load_manifest(signature, model_name, root)
     if manifest is None:
         manifest = {
             "signature": signature,
@@ -152,7 +161,7 @@ def load_or_create_embeddings(
     if show_progress and num_chunks > 0:
         chunk_iter = tqdm(chunk_iter, desc="Embedding chunks")
     for chunk_index in chunk_iter:
-        chunk_file = _chunk_path(signature, chunk_index)
+        chunk_file = _chunk_path(signature, chunk_index, root)
         start = chunk_index * chunk_size
         end = min(start + chunk_size, total_count)
         if chunk_file.exists():
@@ -187,7 +196,7 @@ def load_or_create_embeddings(
             "num_chunks": num_chunks,
             "completed_chunks": sorted(completed),
         })
-        _save_manifest(signature, manifest)
+        _save_manifest(signature, manifest, root)
 
     if embeddings is None:
         embeddings = np.empty((total_count, dim or 0))
@@ -198,12 +207,13 @@ def load_or_create_embeddings(
         "num_chunks": num_chunks,
         "completed_chunks": sorted(completed),
     })
-    _save_manifest(signature, manifest)
+    _save_manifest(signature, manifest, root)
     return embeddings
 
 
 def cache_paths_for_corpus(
-    corpus, model_name: str = DEFAULT_MODEL_NAME
+    corpus, model_name: str = DEFAULT_MODEL_NAME, dataset_name: str | None = None
 ) -> tuple[Path, Path]:
     signature = _corpus_signature(corpus, model_name)
-    return _manifest_path(signature), _chunk_path(signature, 0)
+    root = _cache_root(dataset_name)
+    return _manifest_path(signature, root), _chunk_path(signature, 0, root)

@@ -22,12 +22,13 @@ class EmbeddingStrategy(SearchStrategy):
         corpus,
         workers: int = 1,
         device: str | None = None,
+        dataset: str | None = None,
         **kwargs,
     ):
         build_params = dict(params)
         if device and "device" not in build_params:
             build_params["device"] = device
-        return cls(corpus, workers=workers, **build_params)
+        return cls(corpus, workers=workers, dataset=dataset, **build_params)
 
     def __init__(
         self,
@@ -37,12 +38,14 @@ class EmbeddingStrategy(SearchStrategy):
         workers: int = 1,
         device: str | None = None,
         doc_chunk_size: int = 100000,
+        dataset: str | None = None,
     ):
         super().__init__(corpus, top_k=top_k, workers=workers)
         self.corpus = corpus
         self.model_name = model_name
         self.device = device
         self.doc_chunk_size = doc_chunk_size
+        self.dataset = dataset
         self._lookup = build_doc_id_lookup(corpus)
         self._model = _minilm_model(model_name, device=device)
         self._embeddings = load_or_create_embeddings(
@@ -50,6 +53,7 @@ class EmbeddingStrategy(SearchStrategy):
             model_name=model_name,
             device=device,
             show_progress=True,
+            dataset_name=dataset,
         )
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
         doc_norms[doc_norms == 0] = 1.0

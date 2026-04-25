@@ -33,15 +33,20 @@ class AgenticSearchStrategy(SearchStrategy):
         search_tools: list | None = None,
         stop: list | None = None,
         reprompt: str | None = None,
+        dataset: str | None = None,
         embeddings_device: str | None = None,
     ):
         self.embeddings_device = embeddings_device
+        self.dataset = dataset
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
         self.stop = stop
         self.reprompt = reprompt
         self.tools = build_search_tools(
-            corpus, tool_config, embeddings_device=embeddings_device
+            corpus,
+            tool_config,
+            embeddings_device=embeddings_device,
+            dataset_name=dataset,
         )
         self.model = model
         self.system_prompt = system_prompt
@@ -65,7 +70,7 @@ class AgenticSearchStrategy(SearchStrategy):
             tool_names = [tool["name"] for tool in normalize_search_tools(tool_config)]
             if "embeddings" in tool_names:
                 build_params["embeddings_device"] = device
-        strategy = cls(corpus, workers=workers, **build_params)
+        strategy = cls(corpus, workers=workers, dataset=dataset, **build_params)
         strategy.dataset = dataset
         return strategy
 
