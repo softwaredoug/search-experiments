@@ -4,7 +4,7 @@ strategy:
   params:
     k1: 0.6
     b: 0.62
-  description: | 
-This experiment runs tuned BM25 params on the MSMarco passage dataset. 
+  description: |
+    This experiment runs tuned BM25 params on the MSMarco passage dataset.
 
-These params are taken from what's cited as anserini as the best BM25 params, achieving an MRR of 0.188 on the MSMarco passage ranking task.
+    These params are taken from what's cited as anserini as the best BM25 params, achieving an MRR of 0.188 on the MSMarco passage ranking task.
