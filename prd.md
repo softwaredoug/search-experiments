@@ -213,6 +213,13 @@ OPENAI_KEY = key_for_provider("openai")
 openai = OpenAI(api_key=OPENAI_KEY)
 ```
 
+### Literate programming best practices
+
+Notebooks reimplement from a somewhat bottom-up perspective, linearly, telling a story through the notebook.
+
+Importantly, as you implement each piece, at the end of each cell have a bit of code that demonstrates how what you created works.
+
+Another important rule - don't introduce too much complexity for the human at once. You want to gradually build up to higher concepts, starting simple. At each step, demonstrating what you just did.
 
 ### No caching of BM25 index, results, embeddings, etc
 
@@ -247,5 +254,9 @@ While I'll ask you to create a notebook given a config + command, you should ign
 
 --no-cache
 --device
+
+### Testing whether your notebooks are parsable
+
+You should have jupyter as a dev dependency, you should test the parsing and notebook generation with jupyter at the command line.
 
 
