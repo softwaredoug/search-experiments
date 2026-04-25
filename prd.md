@@ -236,6 +236,11 @@ The intent, etc will also be in the description. Use that to document the cells 
 Notebooks should be placed in the `notebooks/` directory. They should be named according to the strategy and dataset they correspond to, for easy identification. For example, a notebook for the BM25 strategy on the MSMarco dataset could be named `bm25_ms_marco.ipynb`.
 
 
+### Use SearchStrategy
+
+Make sure what's central to the notebook is a SearchStrategy implementation that demonstrates teh experiment. Instantiate the strategy, call run_strategy to get results dataframes. Use cheat_at_search's ndcgs/mrrs helpers to give summary eval metrics. 
+
+
 ### Ignore these params
 
 While I'll ask you to create a notebook given a config + command, you should ignore these command line params that help when running locally
