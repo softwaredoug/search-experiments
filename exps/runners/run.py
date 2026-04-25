@@ -3,9 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Literal
-
-from exps.datasets import get_dataset
+from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
 
@@ -15,7 +13,7 @@ class RunParams(BaseModel):
 
     strategy_path: str
     base_path: str | None = None
-    dataset: Literal["esci", "msmarco", "wands"] = "wands"
+    dataset: DatasetName = "wands"
     num_queries: int | None = None
     seed: int = 42
     workers: int = 1

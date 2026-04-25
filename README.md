@@ -18,6 +18,8 @@ uv sync --extra dev
 
 Run benchmarks:
 
+Datasets: esci, minimarco, msmarco, wands.
+
 ```bash
 uv run run --strategy configs/bm25_strong_title.yml --dataset wands
 uv run run --strategy configs/agentic_bm25_embeddings.yml --dataset wands

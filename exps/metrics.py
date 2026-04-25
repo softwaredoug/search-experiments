@@ -8,7 +8,7 @@ except ImportError:  # pragma: no cover - fallback when dependency lacks MRR
 
 
 def metric_for_dataset(dataset_name: str):
-    if dataset_name == "msmarco":
+    if dataset_name in {"msmarco", "minimarco"}:
         return "MRR", mrrs
     return "NDCG", ndcgs
 

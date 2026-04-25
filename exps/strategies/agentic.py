@@ -3,13 +3,13 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import datetime
-from pathlib import Path
 import json
 
 from cheat_at_search.strategy import SearchStrategy
 
 from exps.agentic import DEFAULT_SYSTEM_PROMPT, SearchResultsIds, search
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.paths import AGENTIC_TRACE_ROOT
 from exps.tools import (
     build_search_tools,
     normalize_search_tools,
@@ -63,7 +63,7 @@ class AgenticSearchStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         dataset = getattr(self, "dataset", None) or "unknown"
-        trace_dir = Path("agentic") / "traces" / str(dataset)
+        trace_dir = AGENTIC_TRACE_ROOT / str(dataset)
         trace_dir.mkdir(parents=True, exist_ok=True)
         query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")

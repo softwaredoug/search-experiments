@@ -1,14 +1,16 @@
 import pickle
 from pathlib import Path
 from searcharray import SearchArray
+from typing_extensions import Literal
 
 from cheat_at_search.tokenizers import snowball_tokenizer
 
 from exps.mounting import ensure_data_mounted
 
 SNOWBALL_FIELDS = ("title", "description", "category")
+DATASET_NAMES = ("esci", "minimarco", "msmarco", "wands")
+DatasetName = Literal["esci", "minimarco", "msmarco", "wands"]
 CACHE_ROOT = Path.home() / ".search-experiments" / "searcharray"
-
 
 def _cache_path(dataset_name: str, field: str) -> Path:
     return CACHE_ROOT / dataset_name / f"{field}_snowball.pkl"
@@ -48,13 +50,15 @@ def _ensure_cached_field(corpus, dataset_name: str, field: str, workers: int) ->
 
 
 
-def get_dataset(name: str, workers: int = 1, ensure_snowball: bool = True):
+def get_dataset(name: DatasetName, workers: int = 1, ensure_snowball: bool = True):
     ensure_data_mounted()
     try:
         if name == "esci":
             from cheat_at_search import esci_data as dataset
         elif name == "msmarco":
             from cheat_at_search import msmarco_data as dataset
+        elif name == "minimarco":
+            from cheat_at_search import minimarco_data as dataset
         elif name == "wands":
             from cheat_at_search import wands_data as dataset
         else:
@@ -67,4 +71,3 @@ def get_dataset(name: str, workers: int = 1, ensure_snowball: bool = True):
         for field in SNOWBALL_FIELDS:
             _ensure_cached_field(corpus, name, field, workers)
     return dataset
-

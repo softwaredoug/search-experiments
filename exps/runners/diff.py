@@ -6,7 +6,7 @@ from cheat_at_search.search import run_strategy
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal
 
-from exps.datasets import get_dataset
+from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
 
@@ -17,7 +17,7 @@ class DiffParams(BaseModel):
     strategy_a_path: str
     strategy_b_path: str
     base_path: str | None = None
-    dataset: Literal["esci", "msmarco", "wands"] = "wands"
+    dataset: DatasetName = "wands"
     query: str | None = None
     k: int = 10
     num_queries: int | None = None

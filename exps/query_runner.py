@@ -1,6 +1,6 @@
 import argparse
 
-from exps.datasets import get_dataset
+from exps.datasets import DATASET_NAMES, get_dataset
 from exps.strategy_factory import create_strategy, load_strategy
 
 
@@ -23,7 +23,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        choices=["esci", "msmarco", "wands"],
+        choices=DATASET_NAMES,
         default="wands",
         help="Dataset to run against.",
     )
