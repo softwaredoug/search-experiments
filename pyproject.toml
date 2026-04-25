@@ -32,5 +32,6 @@ allow-direct-references = true
 
 [dependency-groups]
 dev = [
+    "jupyter>=1.1.1",
     "memray>=1.19.3",
 ]
