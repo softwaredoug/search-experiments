@@ -160,4 +160,12 @@ uv run query --strategy bm25_1.yml --query "salon chair" --dataset wands --k 10
 
 ## Generating Notebooks 
 
+For when I ask you to turn an experiment into a notebook:
+
 See notebooks_prd.md
+
+## Runner tests
+
+Fro when I ask you to audit and make better end-to-end tests.
+
+See runner_tests_prd.md
