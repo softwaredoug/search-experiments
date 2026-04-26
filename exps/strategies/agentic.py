@@ -105,11 +105,6 @@ class AgenticSearchStrategy(SearchStrategy):
             self.traces[query] = str(trace_path)
             self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
             tries += 1
-        if len(ranked_results) != k:
-            raise ValueError(
-                "Agentic search must return k results. "
-                f"Got {len(ranked_results)} of {k} for query '{query}' after {tries} tries."
-            )
         return ranked_results, [1.0] * len(ranked_results)
 
     @property
