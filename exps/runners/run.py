@@ -145,7 +145,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)
-    graded, queries = run_strategy(
+    graded = run_strategy(
         strategy,
         judgments,
         num_queries=num_queries,
@@ -153,7 +153,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         cache=not params.no_cache,
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    metric_series = metric_fn(graded, queries)
+    metric_series = metric_fn(graded)
     metric_key = metric_name.lower()
     tool_calls = [1] * num_queries
     if isinstance(strategy, AgenticSearchStrategy):

@@ -128,7 +128,7 @@ def test_run_benchmark_matches_direct():
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     available_queries = available_queries.sample(params.num_queries, random_state=params.seed)
     queries = available_queries["query"].tolist()
-    direct_graded, direct_queries = run_strategy(
+    direct_graded = run_strategy(
         strategy,
         judgments,
         queries=queries,
@@ -136,7 +136,7 @@ def test_run_benchmark_matches_direct():
         cache=not params.no_cache,
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    direct_series = metric_fn(direct_graded, direct_queries)
+    direct_series = metric_fn(direct_graded)
     if direct_series.index.name != "query_id" and "query_id" in direct_graded.columns:
         query_map = (
             direct_graded[["query", "query_id"]]

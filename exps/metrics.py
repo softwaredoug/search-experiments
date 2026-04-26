@@ -13,9 +13,9 @@ def metric_for_dataset(dataset_name: str):
     return "NDCG", ndcgs
 
 
-def mrrs(graded: pd.DataFrame, queries: list[str] | None = None) -> pd.Series:
+def mrrs(graded: pd.DataFrame) -> pd.Series:
     if _mrrs is not None:
-        return _mrrs(graded, queries)
+        return _mrrs(graded)
 
     if graded.empty:
         return pd.Series(dtype=float)
@@ -38,7 +38,7 @@ def mrrs(graded: pd.DataFrame, queries: list[str] | None = None) -> pd.Series:
         df["_rank"] = df.groupby(query_col).cumcount() + 1
 
     relevant = df[df["_rel"] > 0]
-    all_queries = _queries_series(df, query_col, queries)
+    all_queries = df[query_col].drop_duplicates()
     if relevant.empty:
         result = pd.Series(0.0, index=all_queries)
         result.index.name = query_col
@@ -64,12 +64,3 @@ def _grade_column(df: pd.DataFrame) -> str | None:
             return col
     return None
 
-
-def _queries_series(
-    df: pd.DataFrame,
-    query_col: str,
-    queries: list[str] | None,
-) -> pd.Series:
-    if queries is None:
-        return df[query_col].drop_duplicates()
-    return pd.Series(queries, name=query_col).drop_duplicates()

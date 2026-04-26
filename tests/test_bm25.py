@@ -11,8 +11,8 @@ def test_bm25_wands_ndcg_sanity():
     judgments = wands_data.judgments
 
     strategy = BM25Strategy(corpus)
-    graded, queries = run_strategy(strategy, judgments, num_queries=5, seed=42, cache=True)
-    ndcg_series = ndcgs(graded, queries)
+    graded = run_strategy(strategy, judgments, num_queries=5, seed=42, cache=True)
+    ndcg_series = ndcgs(graded)
 
     assert len(graded) > 0
     assert not ndcg_series.empty
@@ -25,9 +25,9 @@ def test_bm25_minimarco_mrr_sanity():
     judgments = dataset.judgments
 
     strategy = BM25Strategy(corpus)
-    graded, queries = run_strategy(strategy, judgments, num_queries=5, seed=42, cache=True)
+    graded = run_strategy(strategy, judgments, num_queries=5, seed=42, cache=True)
     metric_name, metric_fn = metric_for_dataset("minimarco")
-    metric_series = metric_fn(graded, queries)
+    metric_series = metric_fn(graded)
 
     assert metric_name == "MRR"
     assert len(graded) > 0
