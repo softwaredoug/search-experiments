@@ -8,6 +8,15 @@ Baselines: `bm25_strong_title`, `embedding_minilm`.
 
 | dataset | strategy | model | mean | median |
 |---|---|---|---|---|
+| esci | bm25_strong_title | n/a | 0.2895 | 0.1707 |
+| esci | embedding_minilm | n/a | 0.2304 | 0.0854 |
+| wands | bm25_strong_title | n/a | 0.5408 | 0.4746 |
+| wands | embedding_minilm | n/a | 0.5060 | 0.4083 |
+
+Agentic benchmarks:
+
+| dataset | strategy | model | mean | median |
+|---|---|---|---|---|
 | esci | agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.3996 | 0.3510 |
 | esci | agentic_bm25_ecommerce | gpt-5 | 0.3838 | 0.4268 |
 | esci | agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.3807 | 0.3414 |
