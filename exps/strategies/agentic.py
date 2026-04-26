@@ -84,23 +84,32 @@ class AgenticSearchStrategy(SearchStrategy):
             {"role": "user", "content": agentic_query},
         ]
         agent_state = {"num_tool_calls": 0}
-        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
-            logger.info("Query: %s", query)
-            resp = search(
-                tools=self.tools,
-                inputs=inputs,
-                agent_state=agent_state,
-                model=self.model,
-                text_format=SearchResultsIds,
-                logger=logger,
-                stop=self.stop,
-                reprompt=self.reprompt,
+        ranked_results: list[int] = []
+        tries = 0
+        while len(ranked_results) < k and tries < 3:
+            with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
+                logger.info("Query: %s", query)
+                resp = search(
+                    tools=self.tools,
+                    inputs=inputs,
+                    agent_state=agent_state,
+                    model=self.model,
+                    text_format=SearchResultsIds,
+                    logger=logger,
+                    stop=self.stop,
+                    reprompt=self.reprompt,
+                )
+                ranked_results = resp.ranked_results[:k]
+                if self._lookup:
+                    ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
+            self.traces[query] = str(trace_path)
+            self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
+            tries += 1
+        if len(ranked_results) != k:
+            raise ValueError(
+                "Agentic search must return k results. "
+                f"Got {len(ranked_results)} of {k} for query '{query}' after {tries} tries."
             )
-        self.traces[query] = str(trace_path)
-        self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
-        ranked_results = resp.ranked_results[:k]
-        if self._lookup:
-            ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         return ranked_results, [1.0] * len(ranked_results)
 
     @property
