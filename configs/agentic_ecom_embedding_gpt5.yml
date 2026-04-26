@@ -1,5 +1,5 @@
 strategy:
-  name: agentic_embeddings_ecommerce
+  name: agentic_minilm_ecommerce
   type: agentic
   params:
     model: gpt-5

@@ -6,7 +6,7 @@ import numpy as np
 from searcharray import SearchArray
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from exps.embeddings import _minilm_model, load_or_create_embeddings
+from exps.embeddings import DEFAULT_MODEL_NAME, _minilm_model, load_or_create_embeddings
 
 
 def _ensure_snowball_field(corpus, field: str) -> None:
@@ -63,12 +63,23 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
 
 
 def make_embedding_tool(
-    corpus, device: str | None = None, dataset_name: str | None = None
+    corpus,
+    device: str | None = None,
+    dataset_name: str | None = None,
+    *,
+    model_name: str | None = None,
+    query_prefix: str | None = None,
+    document_prefix: str | None = None,
 ):
+    model_name = model_name or DEFAULT_MODEL_NAME
     embeddings = load_or_create_embeddings(
-        corpus, device=device, dataset_name=dataset_name
+        corpus,
+        model_name=model_name,
+        device=device,
+        dataset_name=dataset_name,
+        document_prefix=document_prefix,
     )
-    model = _minilm_model(device=device)
+    model = _minilm_model(model_name, device=device)
 
     def search_embeddings(
         question: str,
@@ -83,6 +94,8 @@ def make_embedding_tool(
 
         This is an embedding search over concatenated title + description.
         """
+        if query_prefix:
+            question = f"{query_prefix}{question}"
         query_embedded = model.encode(question)
         similarity_scores = np.dot(embeddings, query_embedded)
 
@@ -255,6 +268,14 @@ TOOL_BUILDERS = {
     "bm25": make_bm25_tool,
     "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
+    "e5_base_v2": lambda corpus, device=None, dataset_name=None: make_embedding_tool(
+        corpus,
+        device=device,
+        dataset_name=dataset_name,
+        model_name="intfloat/e5-base-v2",
+        query_prefix="query: ",
+        document_prefix="passage: ",
+    ),
 }
 
 
@@ -270,7 +291,7 @@ def build_search_tools(
         builder = TOOL_BUILDERS.get(tool_name)
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
-        if tool_name in {"embeddings", "minilm"}:
+        if tool_name in {"embeddings", "minilm", "e5_base_v2"}:
             tool_fn = builder(
                 corpus, device=embeddings_device, dataset_name=dataset_name
             )
