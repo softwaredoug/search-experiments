@@ -26,6 +26,6 @@ strategy:
 
       We'll build up these functions and see how they work. 
 
-      We'll create the tools (here bm25 + minilm)
+      We'll create the tools (here bm25 + embeddings)
 
       Then we'll implement a strategy and see how well it performs in this data.

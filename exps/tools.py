@@ -86,7 +86,7 @@ def make_embedding_tool(
         top_k: int = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
-        """Search a corpus using MiniLM embeddings over title/description.
+        """Search a corpus using embeddings over title/description.
 
         Args:
             question: The search query string - natural language query

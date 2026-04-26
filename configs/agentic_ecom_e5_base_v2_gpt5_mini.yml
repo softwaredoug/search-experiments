@@ -25,6 +25,6 @@ strategy:
 
       We'll build up these functions and see how they work. 
 
-      We'll create the tools (here e5_base_v2)
+      We'll create the tools (here embeddings)
 
       Then we'll implement a strategy and see how well it performs in this data.
