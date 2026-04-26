@@ -11,7 +11,7 @@ def strategy_params_for_config(
     if device:
         if strategy_config.type == "agentic" and "embeddings_device" not in params:
             tool_names = params.get("search_tools")
-            if tool_names is None or "embeddings" in tool_names:
+            if tool_names is None or "minilm" in tool_names:
                 params["embeddings_device"] = device
         if strategy_config.type == "embedding" and "device" not in params:
             params["device"] = device

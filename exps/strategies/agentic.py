@@ -70,7 +70,7 @@ class AgenticSearchStrategy(SearchStrategy):
         if device and "embeddings_device" not in build_params:
             tool_config = build_params.get("search_tools") or ["bm25"]
             tool_names = [tool["name"] for tool in normalize_search_tools(tool_config)]
-            if "embeddings" in tool_names:
+            if "minilm" in tool_names:
                 build_params["embeddings_device"] = device
         strategy = cls(corpus, workers=workers, dataset=dataset, **build_params)
         strategy.dataset = dataset

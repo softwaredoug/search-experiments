@@ -15,7 +15,7 @@ strategy:
       It's very important you consider carefully the correct ranking as you'll be evaluated on
       how close that is to the average shoppers ideal ranking.
     search_tools:
-      - embeddings:
+      - minilm:
     description: | 
       This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
       
@@ -25,6 +25,6 @@ strategy:
 
       We'll build up these functions and see how they work. 
 
-      We'll create the tools (here embeddings)
+      We'll create the tools (here minilm)
 
       Then we'll implement a strategy and see how well it performs in this data.

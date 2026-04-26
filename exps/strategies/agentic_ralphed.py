@@ -39,7 +39,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         if tools is None:
             embedding_tool = make_guarded_search_tool(
                 make_embedding_tool(corpus),
-                func_name="search_embeddings_guarded",
+                func_name="search_minilm_guarded",
             )
             bm25_tool = make_guarded_search_tool(
                 make_bm25_tool(corpus), func_name="search_bm25_guarded"
@@ -57,7 +57,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             "model": self.model,
             "system_prompt": self.system_prompt,
             "skills": self.skills,
-            "tools": ["embeddings", "bm25"],
+            "tools": ["minilm", "bm25"],
             "guards": [],
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")

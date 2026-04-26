@@ -14,7 +14,7 @@ strategy:
       - bm25:                                                                                                    
           guards:                                                                                                
             - disallow_repeated_queries                                                                          
-      - embeddings:                                                                                              
+      - minilm:                                                                                                  
           guards:                                                                                                
             - disallow_repeated_queries                                                                          
             - query_min_length:

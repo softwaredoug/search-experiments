@@ -30,7 +30,7 @@ def test_run_benchmark_wands_bm25_all_params():
 
     assert result.strategy_name == "bm25_fixture"
     assert isinstance(result.metric_series, pd.Series)
-    assert result.metric_series.index.name == "query_id"
+    assert result.metric_series.index.name == "query"
     assert not result.metric_series.empty
     assert "mean_" in next(iter(result.summary.keys()))
     assert result.summary["tool_calls_mean"] == 1.0
@@ -138,16 +138,6 @@ def test_run_benchmark_matches_direct():
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     direct_series = metric_fn(direct_graded)
-    if direct_series.index.name != "query_id" and "query_id" in direct_graded.columns:
-        query_map = (
-            direct_graded[["query", "query_id"]]
-            .drop_duplicates()
-            .set_index("query")["query_id"]
-        )
-        direct_series = direct_series.copy()
-        direct_series.index = direct_series.index.map(query_map.get)
-        direct_series.index.name = "query_id"
-
     pd.testing.assert_series_equal(result.metric_series, direct_series)
 
 

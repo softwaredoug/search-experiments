@@ -16,7 +16,7 @@ strategy:
       how close that is to the average shoppers ideal ranking.
     search_tools:
       - bm25:
-      - embeddings:
+      - minilm:
     description: | 
       This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
       
@@ -26,6 +26,6 @@ strategy:
 
       We'll build up these functions and see how they work. 
 
-      We'll create the tools (here bm25 + embeddings)
+      We'll create the tools (here bm25 + minilm)
 
       Then we'll implement a strategy and see how well it performs in this data.

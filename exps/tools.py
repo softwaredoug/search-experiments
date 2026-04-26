@@ -253,6 +253,7 @@ def make_guarded_search_tool(
 
 TOOL_BUILDERS = {
     "bm25": make_bm25_tool,
+    "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
 }
 
@@ -269,7 +270,7 @@ def build_search_tools(
         builder = TOOL_BUILDERS.get(tool_name)
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
-        if tool_name == "embeddings":
+        if tool_name in {"embeddings", "minilm"}:
             tool_fn = builder(
                 corpus, device=embeddings_device, dataset_name=dataset_name
             )
