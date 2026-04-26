@@ -50,7 +50,7 @@ def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -
     means = [row["mean"] for row in ordered]
 
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(range(len(strategies)), means, color="#4C78A8", marker="o", linewidth=2)
+    ax.scatter(range(len(strategies)), means, color="#4C78A8", s=60)
     ax.set_title(f"{dataset.upper()} NDCG (mean)")
     ax.set_ylabel("Mean NDCG")
     ax.set_xticks(range(len(strategies)))
