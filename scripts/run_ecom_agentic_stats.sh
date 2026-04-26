@@ -10,9 +10,12 @@ CONFIGS=(
   "configs/agentic_ecom_2tools_gpt5.yml"
   "configs/agentic_ecom_bm25_gpt5_mini.yml"
   "configs/agentic_ecom_embedding_gpt5_mini.yml"
+  "configs/agentic_ecom_embedding_gpt5_mini_e5_base_v2.yml"
   "configs/agentic_ecom_2tools_gpt5_mini.yml"
+  "configs/agentic_ecom_2tools_gpt5_mini_e5_base_v2.yml"
   "configs/bm25.yml"
   "configs/embedding_minilm.yml"
+  "configs/embedding_e5_base_v2.yml"
 )
 
 DATASETS=(
