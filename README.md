@@ -8,12 +8,13 @@ ESCI (baselines first, agentic sorted by NDCG ascending):
 
 | strategy | model | mean | median |
 |---|---|---|---|
-| bm25_strong_title | n/a | 0.2895 | 0.1707 |
-| embedding_minilm | n/a | 0.2304 | 0.0854 |
-| agentic_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.2957 | 0.1863 |
-| agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.3807 | 0.3414 |
-| agentic_bm25_ecommerce | gpt-5 | 0.3838 | 0.4268 |
-| agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.3996 | 0.3510 |
+| bm25 | n/a | 0.2895 | 0.1707 |
+| embedding_minilm | n/a | 0.2723 | 0.1552 |
+| agentic_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.2952 | 0.1749 |
+| agentic_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.3569 | 0.3399 |
+| agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.3777 | 0.3414 |
+| agentic_bm25_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.3958 | 0.3414 |
+| agentic_bm25_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.4152 | 0.3794 |
 
 ![ESCI NDCG plot](assets/esci_ndcg.png)
 
@@ -21,11 +22,13 @@ WANDS (baselines first, agentic sorted by NDCG ascending):
 
 | strategy | model | mean | median |
 |---|---|---|---|
-| bm25_strong_title | n/a | 0.5408 | 0.4746 |
-| embedding_minilm | n/a | 0.5060 | 0.4083 |
-| agentic_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5367 | 0.4939 |
+| bm25 | n/a | 0.5408 | 0.4746 |
+| embedding_minilm | n/a | 0.5316 | 0.4779 |
+| agentic_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.5330 | 0.4874 |
+| agentic_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.5789 | 0.5609 |
 | agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.5795 | 0.5609 |
-| agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5895 | 0.5609 |
+| agentic_bm25_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.5867 | 0.5609 |
+| agentic_bm25_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.5970 | 0.5609 |
 
 ![WANDS NDCG plot](assets/wands_ndcg.png)
 

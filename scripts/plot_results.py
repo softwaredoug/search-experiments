@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
-BASELINES = ["bm25_strong_title", "embedding_minilm"]
+BASELINES = ["bm25", "bm25_strong_title", "embedding_minilm"]
 DATASETS = ["esci", "wands"]
 
 
