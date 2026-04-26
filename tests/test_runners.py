@@ -82,6 +82,28 @@ def test_diff_benchmark_wands_query_results():
     assert len(result.query_results_b) == 5
 
 
+def test_run_benchmark_query_results():
+    params = RunParams(
+        strategy_path="configs/bm25.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        query="salon chair",
+        k=5,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.query_results is not None
+    assert len(result.query_results) == 5
+    assert "score" in result.query_results.columns
+    assert "display_title" in result.query_results.columns
+    assert result.most_relevant_row is not None
+    assert result.most_relevant_grade_col is not None
+
+
 def test_run_benchmark_matches_direct():
     params = RunParams(
         strategy_path="configs/bm25.yml",
@@ -106,7 +128,7 @@ def test_run_benchmark_matches_direct():
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     available_queries = available_queries.sample(params.num_queries, random_state=params.seed)
     queries = available_queries["query"].tolist()
-    direct_graded = run_strategy(
+    direct_graded, direct_queries = run_strategy(
         strategy,
         judgments,
         queries=queries,
@@ -114,7 +136,7 @@ def test_run_benchmark_matches_direct():
         cache=not params.no_cache,
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    direct_series = metric_fn(direct_graded)
+    direct_series = metric_fn(direct_graded, direct_queries)
     if direct_series.index.name != "query_id" and "query_id" in direct_graded.columns:
         query_map = (
             direct_graded[["query", "query_id"]]

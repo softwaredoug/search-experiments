@@ -18,6 +18,8 @@ class RunParams(BaseModel):
     base_path: str | None = None
     dataset: DatasetName = "wands"
     num_queries: int | None = None
+    query: str | None = None
+    k: int = 10
     seed: int = 42
     workers: int = 1
     binary_relevance: str | None = None
@@ -30,10 +32,79 @@ class RunResult(BaseModel):
 
     strategy_name: str
     strategy_params: dict
-    metric_name: str
-    metric_series: pd.Series
-    summary: dict[str, float]
+    metric_name: str | None = None
+    metric_series: pd.Series | None = None
+    summary: dict[str, float] | None = None
     graded: pd.DataFrame | None = None
+    query_results: pd.DataFrame | None = None
+    query_grade_col: str | None = None
+    most_relevant_row: pd.Series | None = None
+    most_relevant_grade_col: str | None = None
+
+
+def _display_title(row: pd.Series) -> str:
+    title = row.get("title", "")
+    if isinstance(title, str) and title.strip():
+        return title
+    if title:
+        return str(title)
+    description = row.get("description", "")
+    return description if isinstance(description, str) else str(description)
+
+
+def _grade_column(judgments: pd.DataFrame) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _most_relevant_row(
+    *, judgments: pd.DataFrame, corpus: pd.DataFrame, query: str
+) -> tuple[pd.Series | None, str | None]:
+    if "query" not in judgments.columns:
+        return None, None
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return None, None
+    subset = judgments[judgments["query"] == query]
+    if subset.empty:
+        return None, grade_col
+    scores = pd.to_numeric(subset[grade_col], errors="coerce")
+    if scores.notna().any():
+        top_idx = scores.idxmax()
+        top_row = subset.loc[top_idx]
+    else:
+        top_row = subset.iloc[0]
+    top_row = top_row.copy()
+    doc_id = top_row.get("doc_id")
+    display_title = ""
+    if doc_id is not None and "doc_id" in corpus.columns:
+        match = corpus[corpus["doc_id"] == doc_id]
+        if not match.empty:
+            display_title = _display_title(match.iloc[0])
+    top_row["display_title"] = display_title
+    return top_row, grade_col
+
+
+def _query_results(
+    *,
+    strategy,
+    corpus: pd.DataFrame,
+    judgments: pd.DataFrame,
+    query: str,
+    k: int,
+) -> tuple[pd.DataFrame, str | None]:
+    top_k, scores = strategy.search(query, k=k)
+    results = corpus.iloc[top_k].copy()
+    results["score"] = scores
+    grade_col = _grade_column(judgments)
+    if grade_col and "query" in judgments.columns and "doc_id" in judgments.columns:
+        match = judgments[judgments["query"] == query]
+        grade_map = dict(zip(match["doc_id"], match[grade_col]))
+        results["grade"] = results["doc_id"].map(grade_map)
+    results["display_title"] = results.apply(_display_title, axis=1)
+    return results, grade_col
 
 
 def run_benchmark(params: RunParams) -> RunResult:
@@ -53,9 +124,28 @@ def run_benchmark(params: RunParams) -> RunResult:
         device=params.device,
         dataset=params.dataset,
     )
+    if params.query:
+        query_results, grade_col = _query_results(
+            strategy=strategy,
+            corpus=corpus,
+            judgments=judgments,
+            query=params.query,
+            k=params.k,
+        )
+        most_relevant_row, most_relevant_grade_col = _most_relevant_row(
+            judgments=judgments, corpus=corpus, query=params.query
+        )
+        return RunResult(
+            strategy_name=strategy_config.name,
+            strategy_params=dict(strategy_config.params),
+            query_results=query_results,
+            query_grade_col=grade_col,
+            most_relevant_row=most_relevant_row,
+            most_relevant_grade_col=most_relevant_grade_col,
+        )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)
-    graded = run_strategy(
+    graded, queries = run_strategy(
         strategy,
         judgments,
         num_queries=num_queries,
@@ -63,17 +153,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         cache=not params.no_cache,
     )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
-    metric_series = metric_fn(graded)
-    if metric_series.index.name != "query_id" and "query_id" in graded.columns:
-        if "query" in graded.columns:
-            query_map = (
-                graded[["query", "query_id"]]
-                .drop_duplicates()
-                .set_index("query")["query_id"]
-            )
-            metric_series = metric_series.copy()
-            metric_series.index = metric_series.index.map(query_map.get)
-            metric_series.index.name = "query_id"
+    metric_series = metric_fn(graded, queries)
     metric_key = metric_name.lower()
     tool_calls = [1] * num_queries
     if isinstance(strategy, AgenticSearchStrategy):

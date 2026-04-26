@@ -70,8 +70,8 @@ def _metric_for_query(
     subset = judgments[judgments["query"] == query]
     if subset.empty:
         return None
-    graded = run_strategy(strategy, subset, cache=cache)
-    series = metric_fn(graded)
+    graded, queries = run_strategy(strategy, subset, cache=cache)
+    series = metric_fn(graded, queries)
     if series.empty:
         return None
     return float(series.iloc[0])
@@ -180,22 +180,22 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
             params.num_queries, random_state=params.seed
         )
     queries = available_queries["query"].tolist()
-    graded_a = run_strategy(
+    graded_a, queries_a = run_strategy(
         strategy_a,
         judgments,
         queries=queries,
         seed=params.seed,
         cache=not params.no_cache,
     )
-    graded_b = run_strategy(
+    graded_b, queries_b = run_strategy(
         strategy_b,
         judgments,
         queries=queries,
         seed=params.seed,
         cache=not params.no_cache,
     )
-    metric_a = metric_fn(graded_a)
-    metric_b = metric_fn(graded_b)
+    metric_a = metric_fn(graded_a, queries_a)
+    metric_b = metric_fn(graded_b, queries_b)
     diff_table = _diff_table(
         metric_name,
         metric_a,
