@@ -1,5 +1,5 @@
 strategy:
-  name: bm25_strong_title
+  name: bm25
   type: bm25
   params:
     k1: 1.2
