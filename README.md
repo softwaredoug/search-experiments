@@ -2,6 +2,20 @@
 
 Agentic search benchmarks on search datasets. How good can just an agent and a few tools do?
 
+## E-commerce datasets
+
+Baselines: `bm25_strong_title`, `embedding_minilm`.
+
+| dataset | strategy | model | mean | median |
+|---|---|---|---|---|
+| esci | agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.3996 | 0.3510 |
+| esci | agentic_bm25_ecommerce | gpt-5 | 0.3838 | 0.4268 |
+| esci | agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.3807 | 0.3414 |
+| esci | agentic_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.2957 | 0.1863 |
+| wands | agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5895 | 0.5609 |
+| wands | agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.5795 | 0.5609 |
+| wands | agentic_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5367 | 0.4939 |
+
 ## Benchmarks
 
 ### GPT-5
