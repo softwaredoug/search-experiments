@@ -1,6 +1,15 @@
 ## Search experiments
 
-BM25 and agentic benchmarks on datasets available in Cheat at Search.
+Agentic search benchmarks on search datasets. How good can just an agent and a few tools do?
+
+## Benchmarks
+
+### GPT-5
+
+
+### GPT-5-mini
+
+
 
 ## Setup
 
