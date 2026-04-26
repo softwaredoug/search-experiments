@@ -15,6 +15,8 @@ ESCI (baselines first, agentic sorted by NDCG ascending):
 | agentic_bm25_ecommerce | gpt-5 | 0.3838 | 0.4268 |
 | agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.3996 | 0.3510 |
 
+![ESCI NDCG plot](assets/esci_ndcg.png)
+
 WANDS (baselines first, agentic sorted by NDCG ascending):
 
 | strategy | model | mean | median |
@@ -24,6 +26,8 @@ WANDS (baselines first, agentic sorted by NDCG ascending):
 | agentic_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5367 | 0.4939 |
 | agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.5795 | 0.5609 |
 | agentic_bm25_embeddings_ecommerce_gpt5_mini | gpt-5-mini | 0.5895 | 0.5609 |
+
+![WANDS NDCG plot](assets/wands_ndcg.png)
 
 ## Benchmarks
 
