@@ -152,8 +152,18 @@ def run_benchmark(params: RunParams) -> RunResult:
         seed=params.seed,
         cache=not params.no_cache,
     )
+    graded_queries = graded[["query", "query_id"]].drop_duplicates() if not graded.empty else pd.DataFrame()
+    if len(graded_queries) != num_queries:
+        raise ValueError(
+            "Runner expected graded results for "
+            f"{num_queries} queries but found {len(graded_queries)}."
+        )
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     metric_series = metric_fn(graded)
+    if len(metric_series) != num_queries:
+        raise ValueError(
+            f"Runner expected {num_queries} metric values but found {len(metric_series)}."
+        )
     metric_key = metric_name.lower()
     tool_calls = [1] * num_queries
     if isinstance(strategy, AgenticSearchStrategy):
