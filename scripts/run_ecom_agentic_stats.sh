@@ -7,7 +7,7 @@ RESULTS_CSV="${ROOT_DIR}/results.csv"
 CONFIGS=(
   # "configs/agentic_ecom_bm25_gpt5.yml"
   # "configs/agentic_ecom_embedding_gpt5.yml"
-  # "configs/agentic_ecom_2tools_gpt5.yml"
+  "configs/agentic_ecom_2tools_gpt5.yml"
   "configs/agentic_ecom_bm25_gpt5_mini.yml"
   "configs/agentic_ecom_embedding_gpt5_mini.yml"
   "configs/agentic_ecom_2tools_gpt5_mini.yml"
