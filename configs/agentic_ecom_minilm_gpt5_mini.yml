@@ -1,5 +1,5 @@
 strategy:
-  name: agentic_bm25_e5_base_v2_ecommerce_gpt5_mini
+  name: agentic_minilm_ecommerce_gpt5_mini
   type: agentic
   params:
     model: gpt-5-mini
@@ -15,8 +15,7 @@ strategy:
       It's very important you consider carefully the correct ranking as you'll be evaluated on
       how close that is to the average shoppers ideal ranking.
     search_tools:
-      - bm25:
-      - e5_base_v2:
+      - minilm:
     description: | 
       This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
       
@@ -26,6 +25,6 @@ strategy:
 
       We'll build up these functions and see how they work. 
 
-      We'll create the tools (here bm25 + e5_base_v2)
+      We'll create the tools (here embeddings)
 
       Then we'll implement a strategy and see how well it performs in this data.
