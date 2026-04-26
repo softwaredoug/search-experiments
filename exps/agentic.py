@@ -41,7 +41,7 @@ class SearchResultsIds(BaseModel):
     results_summary: str = Field(
         description="The message from you summarizing what you found"
     )
-    ranked_results: list[int] = Field(
+    ranked_results: list[str] = Field(
         description="Top ranked search results (their doc_ids)"
     )
 
