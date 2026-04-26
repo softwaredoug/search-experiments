@@ -1,0 +1,7 @@
+strategy:
+  name: embedding_e5_fixture
+  type: embedding
+  params:
+    model_name: sentence-transformers/all-MiniLM-L6-v2
+    query_prefix: "query: "
+    document_prefix: "passage: "

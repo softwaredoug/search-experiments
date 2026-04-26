@@ -14,6 +14,7 @@ from exps.runners.run import RunParams, run_benchmark
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
+
 def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
         strategy_path="configs/bm25.yml",
@@ -230,3 +231,44 @@ def test_agentic_reprompt_appends(monkeypatch):
     assert [item["content"] for item in calls[0]] == ["hi"]
     assert [item["content"] for item in calls[1]] == ["hi", reprompt]
     assert [item["content"] for item in calls[2]] == ["hi", reprompt, reprompt]
+
+
+def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
+    def fake_cache_root(dataset_name):
+        return tmp_path
+
+    monkeypatch.setattr("exps.embeddings._cache_root", fake_cache_root)
+
+    corpus = pd.DataFrame(
+        {
+            "doc_id": list(range(10)),
+            "title": [f"Doc {i}" for i in range(10)],
+            "description": [f"Description {i}" for i in range(10)],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1],
+            "query": ["blue jeans"],
+            "doc_id": [0],
+            "grade": [1],
+        }
+    )
+
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    monkeypatch.setattr("exps.runners.run.get_dataset", lambda *args, **kwargs: dataset)
+
+    params = RunParams(
+        strategy_path="configs/embedding_e5_base_v2.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert len(result.metric_series) == 1

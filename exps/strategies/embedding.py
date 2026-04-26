@@ -38,6 +38,8 @@ class EmbeddingStrategy(SearchStrategy):
         workers: int = 1,
         device: str | None = None,
         doc_chunk_size: int = 100000,
+        query_prefix: str | None = None,
+        document_prefix: str | None = None,
         dataset: str | None = None,
     ):
         super().__init__(corpus, top_k=top_k, workers=workers)
@@ -45,6 +47,8 @@ class EmbeddingStrategy(SearchStrategy):
         self.model_name = model_name
         self.device = device
         self.doc_chunk_size = doc_chunk_size
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
         self.dataset = dataset
         self._lookup = build_doc_id_lookup(corpus)
         self._model = _minilm_model(model_name, device=device)
@@ -54,6 +58,7 @@ class EmbeddingStrategy(SearchStrategy):
             device=device,
             show_progress=True,
             dataset_name=dataset,
+            document_prefix=document_prefix,
         )
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
         doc_norms[doc_norms == 0] = 1.0
@@ -70,6 +75,8 @@ class EmbeddingStrategy(SearchStrategy):
     def _search_batch(self, queries: list[str], k: int = 10):
         if not queries:
             return [], []
+        if self.query_prefix:
+            queries = [f"{self.query_prefix}{query}" for query in queries]
         query_embeddings = self._model.encode(queries, convert_to_numpy=True)
         query_embeddings = np.asarray(query_embeddings)
         query_embeddings = self._normalize_queries(query_embeddings)
@@ -138,6 +145,8 @@ class EmbeddingStrategy(SearchStrategy):
             "device": self.device,
             "doc_chunk_size": self.doc_chunk_size,
             "top_k": getattr(self, "top_k", None),
+            "query_prefix": self.query_prefix,
+            "document_prefix": self.document_prefix,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

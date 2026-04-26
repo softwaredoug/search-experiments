@@ -27,21 +27,28 @@ def _minilm_model(model_name: str = DEFAULT_MODEL_NAME, device: str | None = Non
     return SentenceTransformer(model_name)
 
 
-def _row_text(row) -> str:
+def _row_text(row, document_prefix: str | None = None) -> str:
     title = row.get("title")
     description = row.get("description")
     title_text = title.strip() if isinstance(title, str) else ""
     description_text = description.strip() if isinstance(description, str) else ""
     if title_text and description_text:
-        return f"{title_text}\n\n{description_text}"
-    if title_text:
-        return title_text
-    return description_text
+        text = f"{title_text}\n\n{description_text}"
+    elif title_text:
+        text = title_text
+    else:
+        text = description_text
+    if document_prefix:
+        return f"{document_prefix}{text}"
+    return text
 
 
-def _corpus_signature(corpus, model_name: str) -> str:
+def _corpus_signature(corpus, model_name: str, document_prefix: str | None = None) -> str:
     hasher = hashlib.sha256()
     hasher.update(model_name.encode("utf-8"))
+    hasher.update(b"|")
+    if document_prefix:
+        hasher.update(document_prefix.encode("utf-8"))
     hasher.update(b"|")
     hasher.update(str(len(corpus)).encode("utf-8"))
     if "doc_id" in corpus.columns:
@@ -125,8 +132,9 @@ def load_or_create_embeddings(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     show_progress: bool = True,
     dataset_name: str | None = None,
+    document_prefix: str | None = None,
 ) -> np.ndarray:
-    signature = _corpus_signature(corpus, model_name)
+    signature = _corpus_signature(corpus, model_name, document_prefix)
     root = _cache_root(dataset_name)
     cached = _load_cache(signature, model_name, root)
     if cached is not None:
@@ -177,7 +185,10 @@ def load_or_create_embeddings(
 
         if model is None:
             model = _minilm_model(model_name, device=device)
-        texts = [_row_text(row) for _, row in corpus.iloc[start:end].iterrows()]
+        texts = [
+            _row_text(row, document_prefix=document_prefix)
+            for _, row in corpus.iloc[start:end].iterrows()
+        ]
         chunk = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
         if chunk.ndim != 2:
             chunk = np.asarray(chunk)
@@ -212,8 +223,11 @@ def load_or_create_embeddings(
 
 
 def cache_paths_for_corpus(
-    corpus, model_name: str = DEFAULT_MODEL_NAME, dataset_name: str | None = None
+    corpus,
+    model_name: str = DEFAULT_MODEL_NAME,
+    dataset_name: str | None = None,
+    document_prefix: str | None = None,
 ) -> tuple[Path, Path]:
-    signature = _corpus_signature(corpus, model_name)
+    signature = _corpus_signature(corpus, model_name, document_prefix)
     root = _cache_root(dataset_name)
     return _manifest_path(signature, root), _chunk_path(signature, 0, root)
