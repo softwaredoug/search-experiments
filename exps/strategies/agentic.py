@@ -78,33 +78,28 @@ class AgenticSearchStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         dataset = getattr(self, "dataset", None) or "unknown"
-        agentic_query = "Find me: " + query
         inputs = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": agentic_query},
+            {"role": "user", "content": query},
         ]
         agent_state = {"num_tool_calls": 0}
-        ranked_results: list[int] = []
-        tries = 0
-        while len(ranked_results) < k and tries < 3:
-            with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
-                logger.info("Query: %s", query)
-                resp = search(
-                    tools=self.tools,
-                    inputs=inputs,
-                    agent_state=agent_state,
-                    model=self.model,
-                    text_format=SearchResultsIds,
-                    logger=logger,
-                    stop=self.stop,
-                    reprompt=self.reprompt,
-                )
-                ranked_results = resp.ranked_results[:k]
-                if self._lookup:
-                    ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
-            self.traces[query] = str(trace_path)
-            self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
-            tries += 1
+        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
+            logger.info("Query: %s", query)
+            resp = search(
+                tools=self.tools,
+                inputs=inputs,
+                agent_state=agent_state,
+                model=self.model,
+                text_format=SearchResultsIds,
+                logger=logger,
+                stop=self.stop,
+                reprompt=self.reprompt,
+            )
+            ranked_results = resp.ranked_results[:k]
+            if self._lookup:
+                ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
+        self.traces[query] = str(trace_path)
+        self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
         return ranked_results, [1.0] * len(ranked_results)
 
     @property
