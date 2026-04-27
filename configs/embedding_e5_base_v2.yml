@@ -1,0 +1,7 @@
+strategy:
+  name: embedding_minilm
+  type: embedding
+  params:
+    model_name: intfloat/e5-base-v2
+    query_prefix: "query: "
+    document_prefix: "passage: "
