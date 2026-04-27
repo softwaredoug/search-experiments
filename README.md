@@ -32,7 +32,7 @@ ESCI is Amazon's Shopping Queries dataset for product search relevance with grad
 | [agentic_bm25_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.3777 | 0.3414 |
 | [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.3958 | 0.3414 |
 | [agentic_bm25_e5_base_v2_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.4152 | 0.3794 |
-| [agentic_bm25_e5_ecommerce_gpt5](configs/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.4535 | 0.4417 |
+| [agentic_bm25_e5_ecommerce_gpt5](configs/ecom_base/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.4535 | 0.4417 |
 
 ![ESCI NDCG plot](assets/esci_ndcg.png)
 
@@ -54,7 +54,7 @@ WANDS is Wayfair's product search relevance dataset with graded judgments. [Sour
 | [agentic_bm25_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.5795 | 0.5609 |
 | [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.5867 | 0.5609 |
 | [agentic_bm25_e5_base_v2_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.5970 | 0.5609 |
-| [agentic_bm25_e5_ecommerce_gpt5](configs/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.6171 | 0.6256 |
+| [agentic_bm25_e5_ecommerce_gpt5](configs/ecom_base/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.6171 | 0.6256 |
 
 ![WANDS NDCG plot](assets/wands_ndcg.png)
 
