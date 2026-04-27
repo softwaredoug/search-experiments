@@ -6,14 +6,14 @@ RESULTS_CSV="${ROOT_DIR}/results.csv"
 
 CONFIGS=(
   # "configs/agentic_ecom_2tools_gpt5.yml"
-  "configs/agentic_ecom_bm25_gpt5_mini.yml"
-  "configs/agentic_ecom_minilm_gpt5_mini.yml"
-  "configs/agentic_ecom_e5_base_v2_gpt5_mini.yml"
-  "configs/agentic_ecom_2tools_gpt5_mini.yml"
-  "configs/agentic_ecom_2tools_e5_gpt5_mini.yml"
-  "configs/bm25.yml"
-  "configs/embedding_minilm.yml"
-  "configs/embedding_e5_base_v2.yml"
+  "configs/ecom_base/agentic_ecom_bm25_gpt5_mini.yml"
+  "configs/ecom_base/agentic_ecom_minilm_gpt5_mini.yml"
+  "configs/ecom_base/agentic_ecom_e5_base_v2_gpt5_mini.yml"
+  "configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml"
+  "configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml"
+  "configs/ecom_base/bm25.yml"
+  "configs/ecom_base/embedding_minilm.yml"
+  "configs/ecom_base/embedding_e5_base_v2.yml"
 )
 
 DATASETS=(

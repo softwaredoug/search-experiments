@@ -11,7 +11,7 @@ Your guidance should come from the description of the yml file. That's your lord
 You will be asked to take a command like
 
 ```
-uv run run --strategy configs/bm25.yml --no-cache --dataset msmarco --workers 4  # run_strategy cache only
+uv run run --strategy configs/ecom_base/bm25.yml --no-cache --dataset msmarco --workers 4  # run_strategy cache only
 ```
 
 And create a notebook that loads msmarco, reimplements the BM25 strategy in the notebook, runs it on the dataset, and evaluates the results with NDCG/MRR.

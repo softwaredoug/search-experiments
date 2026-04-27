@@ -17,7 +17,7 @@ from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
-        strategy_path="configs/bm25.yml",
+        strategy_path="configs/ecom_base/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
@@ -40,8 +40,8 @@ def test_run_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_bm25_all_params():
     params = DiffParams(
-        strategy_a_path="configs/bm25.yml",
-        strategy_b_path="configs/bm25.yml",
+        strategy_a_path="configs/ecom_base/bm25.yml",
+        strategy_b_path="configs/ecom_base/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query=None,
@@ -62,8 +62,8 @@ def test_diff_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_query_results():
     params = DiffParams(
-        strategy_a_path="configs/bm25.yml",
-        strategy_b_path="configs/bm25.yml",
+        strategy_a_path="configs/ecom_base/bm25.yml",
+        strategy_b_path="configs/ecom_base/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query="salon chair",
@@ -85,7 +85,7 @@ def test_diff_benchmark_wands_query_results():
 
 def test_run_benchmark_query_results():
     params = RunParams(
-        strategy_path="configs/bm25.yml",
+        strategy_path="configs/ecom_base/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query="salon chair",
@@ -107,7 +107,7 @@ def test_run_benchmark_query_results():
 
 def test_run_benchmark_matches_direct():
     params = RunParams(
-        strategy_path="configs/bm25.yml",
+        strategy_path="configs/ecom_base/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
@@ -282,7 +282,7 @@ def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
     monkeypatch.setattr("exps.runners.run.get_dataset", lambda *args, **kwargs: dataset)
 
     params = RunParams(
-        strategy_path="configs/embedding_e5_base_v2.yml",
+        strategy_path="configs/ecom_base/embedding_e5_base_v2.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=1,

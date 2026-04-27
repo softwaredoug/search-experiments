@@ -5,8 +5,11 @@ import yaml
 
 
 NOTEBOOK_CONFIG_PAIRS = [
-    ("notebooks/bm25_ms_marco.ipynb", "configs/bm25.yml"),
-    ("notebooks/agentic_ecom_2tools_wands.ipynb", "configs/agentic_ecom_2tools_gpt5_mini.yml"),
+    ("notebooks/bm25_ms_marco.ipynb", "configs/ecom_base/bm25.yml"),
+    (
+        "notebooks/agentic_ecom_2tools_wands.ipynb",
+        "configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml",
+    ),
     ("notebooks/agentic_msmarco_minimarco.ipynb", "configs/agentic_msmarco.yml"),
 ]
 
