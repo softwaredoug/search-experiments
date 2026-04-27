@@ -24,6 +24,7 @@ LABEL_MAP = {
     "agentic_e5_ecommerce_gpt5_mini": "embedding",
     "agentic_bm25_ecommerce_gpt5_mini": "bm25",
     "agentic_bm25_minilm_ecommerce_gpt5_mini": "bm25+embedding",
+    "agentic_bm25_e5_base_v2_ecommerce_gpt5_mini": "bm25+embeddings",
 }
 
 
@@ -169,8 +170,9 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
             label,
             (row["tool_calls_mean"], row["mean_ndcg"]),
             textcoords="offset points",
-            xytext=(6, 4),
-            ha="left",
+            xytext=(0, -12),
+            ha="center",
+            va="top",
             fontsize=8,
         )
 
