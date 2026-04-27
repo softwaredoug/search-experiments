@@ -2,7 +2,7 @@
 
 Agentic search benchmarks on search datasets.
 
-How good can just an agent do at search with just a few basic retrieval tools?
+How well can an agent search with just a few basic retrieval tools?
 
 ## E-commerce datasets
 
