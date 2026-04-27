@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 
-from functools import lru_cache
+import threading
 
 import numpy as np
 from searcharray import SearchArray
@@ -213,9 +213,17 @@ GUARDS = {
 }
 
 
-@lru_cache(maxsize=1)
 def _minilm_guard_model():
-    return _minilm_model(DEFAULT_MODEL_NAME)
+    global _MINILM_GUARD_MODEL
+    if _MINILM_GUARD_MODEL is None:
+        with _MINILM_GUARD_LOCK:
+            if _MINILM_GUARD_MODEL is None:
+                _MINILM_GUARD_MODEL = _minilm_model(DEFAULT_MODEL_NAME)
+    return _MINILM_GUARD_MODEL
+
+
+_MINILM_GUARD_MODEL = None
+_MINILM_GUARD_LOCK = threading.Lock()
 
 
 def _parse_guard_entry(entry: Any) -> tuple[str, dict]:
