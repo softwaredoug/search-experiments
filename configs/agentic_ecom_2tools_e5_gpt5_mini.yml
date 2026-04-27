@@ -1,6 +1,18 @@
 strategy:
   name: agentic_bm25_e5_base_v2_ecommerce_gpt5_mini
   type: agentic
+  description: | 
+    This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
+    
+    in functions:
+    - agent_run: the tool calling loop: looping until no more tools to call. (ie search tools)
+    - search: the main harness: looping until business constraints with search satisfied
+
+    We'll build up these functions and see how they work. 
+
+    We'll create the tools (here bm25 + embeddings)
+
+    Then we'll implement a strategy and see how well it performs in this data.
   params:
     model: gpt-5-mini
     system_prompt: |
@@ -17,15 +29,3 @@ strategy:
     search_tools:
       - bm25:
       - e5_base_v2:
-    description: | 
-      This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
-      
-      in functions:
-      - agent_run: the tool calling loop: looping until no more tools to call. (ie search tools)
-      - search: the main harness: looping until business constraints with search satisfied
-
-      We'll build up these functions and see how they work. 
-
-      We'll create the tools (here bm25 + embeddings)
-
-      Then we'll implement a strategy and see how well it performs in this data.
