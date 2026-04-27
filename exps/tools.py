@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 
+from functools import lru_cache
+
 import numpy as np
 from searcharray import SearchArray
 
@@ -176,7 +178,7 @@ def guard_disallow_similar_queries(
         agent_state["past_queries"][tool_name] = past_queries
 
     past_embeddings = agent_state.setdefault("past_query_embeddings", {}).get(tool_name)
-    model = _minilm_model(DEFAULT_MODEL_NAME)
+    model = _minilm_guard_model()
     if past_embeddings is None and past_queries:
         past_embeddings = list(model.encode(past_queries))
         agent_state["past_query_embeddings"][tool_name] = past_embeddings
@@ -209,6 +211,11 @@ GUARDS = {
     "query_min_length": guard_query_min_length,
     "disallow_similar_queries": guard_disallow_similar_queries,
 }
+
+
+@lru_cache(maxsize=1)
+def _minilm_guard_model():
+    return _minilm_model(DEFAULT_MODEL_NAME)
 
 
 def _parse_guard_entry(entry: Any) -> tuple[str, dict]:

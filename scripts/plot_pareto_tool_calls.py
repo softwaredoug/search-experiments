@@ -171,7 +171,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
     fy = [row["mean_ndcg"] for row in frontier]
     ax.plot(fx, fy, color="#F58518", linewidth=2, marker="o", zorder=3)
 
-    ax.set_title(f"{dataset.upper()} - GPT-5 Pareto (Tool Calls vs NDCG)")
+    ax.set_title(f"{dataset.upper()} - GPT-5-mini Pareto (Tool Calls vs NDCG)")
     ax.set_xlabel("Mean Tool Calls")
     ax.set_ylabel("Mean NDCG")
     if dataset == "esci":
