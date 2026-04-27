@@ -8,10 +8,10 @@ How well can an agent search with just a few basic retrieval tools?
 
 ### The search tools
 
-Retrieval with the following strategies available to the tools:
+Retrieval using different models. With different sets of tools. Below you'll see some combination of:
 
-- e5-base-v2: [Source](https://huggingface.co/intfloat/e5-base-v2)
-- minilm: [Source](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
+- [e5-base-v2](https://huggingface.co/intfloat/e5-base-v2)
+- [minilm](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - bm25 w/ std params on title and description fields.
 
 ### Amazon ESCI 
