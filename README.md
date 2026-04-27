@@ -14,6 +14,8 @@ Retrieval using different models. With different sets of tools. Below you'll see
 - [minilm](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 - bm25 w/ std params on title and description fields.
 
+All sharing basically the same prompt. Click each strategy to see prompt + tools used. A tool-calling loop will run through once, produce the best ranked results. We'll then evaluate those.
+
 ### Amazon ESCI 
 
 Baselines first, agentic sorted by NDCG ascending. N=1000 queries.
