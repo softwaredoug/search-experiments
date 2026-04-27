@@ -99,12 +99,31 @@ def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state, logger=None)
     }
 
 
-def stop_iterations(inputs: list, num_loops: int, *, iterations: int) -> bool:
+def stop_iterations(
+    inputs: list,
+    num_loops: int,
+    *,
+    iterations: int,
+    agent_state: Optional[dict],
+) -> bool:
     return num_loops >= int(iterations)
+
+
+def stop_tool_calls(
+    inputs: list,
+    num_loops: int,
+    *,
+    tool_calls: int,
+    agent_state: Optional[dict],
+) -> bool:
+    if agent_state is None:
+        return False
+    return int(agent_state.get("num_tool_calls", 0)) >= int(tool_calls)
 
 
 STOPPERS = {
     "iterations": stop_iterations,
+    "tool_calls": stop_tool_calls,
 }
 
 
@@ -178,6 +197,8 @@ def _parse_stop_entry(entry: Any) -> tuple[str, dict]:
             return name, {}
         if name == "iterations":
             return name, {"iterations": raw_params}
+        if name == "tool_calls":
+            return name, {"tool_calls": raw_params}
         return name, {"value": raw_params}
     raise ValueError("Stop entry must be a string or single-key mapping.")
 
@@ -190,6 +211,8 @@ def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
         name, params = _parse_stop_entry(entry)
         if name == "iterations" and "iterations" not in params:
             raise ValueError("Stop condition 'iterations' requires an iterations value.")
+        if name == "tool_calls" and "tool_calls" not in params:
+            raise ValueError("Stop condition 'tool_calls' requires a tool_calls value.")
         if name not in STOPPERS:
             raise ValueError(f"Unknown stop condition: {name}")
         stops.append({"name": name, "params": params})
@@ -243,7 +266,12 @@ def search(
         )
         num_loops += 1
         if any(
-            STOPPERS[stopper["name"]](inputs, num_loops, **stopper["params"])
+            STOPPERS[stopper["name"]](
+                inputs,
+                num_loops,
+                agent_state=agent_state,
+                **stopper["params"],
+            )
             for stopper in stops
         ):
             break

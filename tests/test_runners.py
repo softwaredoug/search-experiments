@@ -190,6 +190,39 @@ def test_agentic_stop_iterations(monkeypatch):
     assert len(calls) == 2
 
 
+def test_agentic_stop_tool_calls(monkeypatch):
+    calls = []
+
+    def fake_agent_run(
+        tool_info,
+        text_format,
+        inputs,
+        model="gpt-5-nano",
+        agent_state=None,
+        summary=True,
+        logger=None,
+    ):
+        calls.append(list(inputs))
+        if agent_state is not None:
+            agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
+        resp = SimpleNamespace(output_parsed="ok", output=[])
+        return resp, inputs
+
+    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
+
+    agent_state = {"num_tool_calls": 0}
+    result = exps.agentic.search(
+        tools=[],
+        inputs=[{"role": "user", "content": "hi"}],
+        stop=[{"tool_calls": 2}],
+        agent_state=agent_state,
+    )
+
+    assert result == "ok"
+    assert len(calls) == 2
+    assert agent_state["num_tool_calls"] == 2
+
+
 def test_agentic_reprompt_appends(monkeypatch):
     calls = []
 
