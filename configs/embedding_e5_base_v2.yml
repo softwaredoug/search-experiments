@@ -1,5 +1,5 @@
 strategy:
-  name: embedding_minilm
+  name: embedding_e5
   type: embedding
   params:
     model_name: intfloat/e5-base-v2
