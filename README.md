@@ -14,7 +14,7 @@ Retrieval with the following strategies available to the tools:
 
 ### Amazon ESCI 
 
-Baselines first, agentic sorted by NDCG ascending.
+Baselines first, agentic sorted by NDCG ascending. N=1000 queries.
 
 ESCI is Amazon's Shopping Queries dataset for product search relevance with graded labels. [Source](https://github.com/amazon-science/esci-data)
 
@@ -52,3 +52,8 @@ WANDS is Wayfair's product search relevance dataset with graded judgments. [Sour
 
 ![WANDS NDCG plot](assets/wands_ndcg.png)
 
+## Run a strategy
+
+```bash
+uv run run --strategy configs/agentic_ecom_minilm_gpt5_mini.yml --dataset wands --num-queries 1000
+```
