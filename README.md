@@ -36,6 +36,8 @@ ESCI is Amazon's Shopping Queries dataset for product search relevance with grad
 
 ![ESCI NDCG plot](assets/esci_ndcg.png)
 
+![ESCI tool calls pareto](assets/esci_pareto_gpt5_mini.png)
+
 ### Wayfair WANDS
 
 Baselines first, agentic sorted by NDCG ascending.
@@ -55,6 +57,8 @@ WANDS is Wayfair's product search relevance dataset with graded judgments. [Sour
 | [agentic_bm25_e5_ecommerce_gpt5](configs/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.6171 | 0.6256 |
 
 ![WANDS NDCG plot](assets/wands_ndcg.png)
+
+![WANDS tool calls pareto](assets/wands_pareto_gpt5_mini.png)
 
 ## Run a strategy
 
