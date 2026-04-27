@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from collections import defaultdict
 from pathlib import Path
 
@@ -10,12 +11,35 @@ import matplotlib.pyplot as plt
 
 BASELINES = ["bm25", "bm25_strong_title", "embedding_minilm", "embedding_e5"]
 DATASETS = ["esci", "wands"]
+GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
+GPT5_HARDCODED_NDCG = {
+    "esci": 0.4534540809414133,
+    "wands": 0.6170634248596244,
+}
 
 
 def _load_results(path: Path) -> list[dict[str, str]]:
     with path.open() as handle:
         reader = csv.DictReader(handle)
         return list(reader)
+
+
+def _strategy_model(row: dict[str, str]) -> str | None:
+    try:
+        params = json.loads(row.get("strategy_params", "{}"))
+    except json.JSONDecodeError:
+        return None
+    model = params.get("model")
+    return model if isinstance(model, str) else None
+
+
+def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
+    strategy_name = row.get("strategy_name")
+    if strategy_name in BASELINES:
+        return True
+    if strategy_name == GPT5_STRATEGY:
+        return True
+    return _strategy_model(row) == "gpt-5-mini"
 
 
 def _aggregate(rows: list[dict[str, str]]):
@@ -81,8 +105,21 @@ def main() -> None:
     output_dir = repo_root / "assets"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    rows = _load_results(results_path)
+    rows = [row for row in _load_results(results_path) if _include_in_ndcg_plot(row)]
     aggregated = _aggregate(rows)
+    for dataset, mean_ndcg in GPT5_HARDCODED_NDCG.items():
+        if any(
+            row["dataset"] == dataset and row["strategy"] == GPT5_STRATEGY
+            for row in aggregated
+        ):
+            continue
+        aggregated.append(
+            {
+                "dataset": dataset,
+                "strategy": GPT5_STRATEGY,
+                "mean": mean_ndcg,
+            }
+        )
 
     for dataset in DATASETS:
         output_path = output_dir / f"{dataset}_ndcg.png"

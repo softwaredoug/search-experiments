@@ -166,6 +166,12 @@ See notebooks_prd.md
 
 ## Runner tests
 
-Fro when I ask you to audit and make better end-to-end tests.
+For when I ask you to audit and make better end-to-end tests.
 
 See runner_tests_prd.md
+
+## Codegen strategies
+
+For when I ask you to make a strategy that iteratively edits code to improve search results.
+
+See codegen_prd.md

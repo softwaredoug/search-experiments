@@ -30,14 +30,14 @@ for dataset in "${DATASETS[@]}"; do
         --num-queries 1000 \
         --workers 16 \
         --device mps \
-        --summary-csv "${RESULTS_CSV}"
+        --summary-csv "${RESULTS_CSV}" 
     else
       uv run run \
         --strategy "${ROOT_DIR}/${config}" \
         --dataset "${dataset}" \
         --workers 16 \
         --device mps \
-        --summary-csv "${RESULTS_CSV}"
+        --summary-csv "${RESULTS_CSV}" 
     fi
   done
 done
