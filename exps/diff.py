@@ -1,10 +1,12 @@
 import argparse
+from datetime import datetime
 
 import pandas as pd
 
 from exps.datasets import DATASET_NAMES, get_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.strategy_factory import create_strategy, load_strategy
+from exps.trace_utils import build_agentic_trace_root
 
 
 def _display_title(row: pd.Series) -> str:
@@ -161,6 +163,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.query:
+        run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         strategy_a_config, params_a, requires_bm25_a = load_strategy(
             args.strategy_a, device=args.device
         )
@@ -173,6 +176,20 @@ def main() -> None:
         )
         corpus = dataset.corpus
         judgments = dataset.judgments
+        trace_path_a = None
+        if strategy_a_config.type == "agentic":
+            trace_path_a = build_agentic_trace_root(
+                strategy_a_config.name,
+                args.dataset,
+                run_started_at=run_started_at,
+            )
+        trace_path_b = None
+        if strategy_b_config.type == "agentic":
+            trace_path_b = build_agentic_trace_root(
+                strategy_b_config.name,
+                args.dataset,
+                run_started_at=run_started_at,
+            )
         strategy_a, _ = create_strategy(
             strategy_a_config,
             corpus=corpus,
@@ -180,6 +197,7 @@ def main() -> None:
             params=params_a,
             device=args.device,
             dataset=args.dataset,
+            trace_path=trace_path_a,
         )
         strategy_b, _ = create_strategy(
             strategy_b_config,
@@ -188,6 +206,7 @@ def main() -> None:
             params=params_b,
             device=args.device,
             dataset=args.dataset,
+            trace_path=trace_path_b,
         )
         _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
         query_results_a = _query_results(

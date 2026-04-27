@@ -5,7 +5,6 @@ import textwrap
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-import hashlib
 from pathlib import Path
 from time import sleep
 from typing import Any, Iterable, Optional
@@ -254,13 +253,11 @@ def search(
 
 
 @contextmanager
-def trace_logger(trace_root: Path, dataset: str, query: str):
-    trace_dir = trace_root / str(dataset)
+def trace_logger(trace_dir: Path):
     trace_dir.mkdir(parents=True, exist_ok=True)
-    query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    trace_path = trace_dir / f"{timestamp}_{query_hash}.log"
-    logger = logging.getLogger(f"agentic.trace.{query_hash}")
+    trace_path = trace_dir / f"{timestamp}.log"
+    logger = logging.getLogger(f"agentic.trace.{trace_dir.name}.{timestamp}")
     logger.setLevel(logging.INFO)
     handler = logging.FileHandler(trace_path, encoding="utf-8")
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import statistics
+from datetime import datetime
 
 import pandas as pd
 from cheat_at_search.search import run_strategy
@@ -9,6 +10,7 @@ from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
 from exps.strategies.agentic import AgenticSearchStrategy
+from exps.trace_utils import build_agentic_trace_root
 
 
 class RunParams(BaseModel):
@@ -111,6 +113,14 @@ def run_benchmark(params: RunParams) -> RunResult:
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path, device=params.device, base_path=params.base_path
     )
+    trace_path = None
+    if strategy_config.type == "agentic":
+        run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        trace_path = build_agentic_trace_root(
+            strategy_config.name,
+            params.dataset,
+            run_started_at=run_started_at,
+        )
     dataset = get_dataset(
         params.dataset, workers=params.workers, ensure_snowball=requires_bm25
     )
@@ -123,6 +133,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         params=strategy_params,
         device=params.device,
         dataset=params.dataset,
+        trace_path=trace_path,
     )
     if params.query:
         query_results, grade_col = _query_results(

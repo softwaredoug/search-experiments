@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 from cheat_at_search.strategy import SearchStrategy
 
@@ -13,7 +14,7 @@ from exps.agentic import (
     trace_logger,
 )
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
-from exps.paths import AGENTIC_TRACE_ROOT
+from exps.trace_utils import slugify
 from exps.tools import (
     build_search_tools,
     normalize_search_tools,
@@ -33,11 +34,10 @@ class AgenticSearchStrategy(SearchStrategy):
         search_tools: list | None = None,
         stop: list | None = None,
         reprompt: str | None = None,
-        dataset: str | None = None,
         embeddings_device: str | None = None,
+        trace_path: Path | None = None,
     ):
         self.embeddings_device = embeddings_device
-        self.dataset = dataset
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
         self.stop = stop
@@ -46,13 +46,13 @@ class AgenticSearchStrategy(SearchStrategy):
             corpus,
             tool_config,
             embeddings_device=embeddings_device,
-            dataset_name=dataset,
         )
         self.model = model
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
         self.traces: dict[str, str] = {}
         self.num_tool_calls: dict[str, int] = {}
+        self.trace_path = trace_path
         super().__init__(corpus, workers=workers)
 
     @classmethod
@@ -63,7 +63,6 @@ class AgenticSearchStrategy(SearchStrategy):
         corpus,
         workers: int = 1,
         device: str | None = None,
-        dataset: str | None = None,
         **kwargs,
     ):
         build_params = dict(params)
@@ -72,18 +71,19 @@ class AgenticSearchStrategy(SearchStrategy):
             tool_names = [tool["name"] for tool in normalize_search_tools(tool_config)]
             if "minilm" in tool_names:
                 build_params["embeddings_device"] = device
-        strategy = cls(corpus, workers=workers, dataset=dataset, **build_params)
-        strategy.dataset = dataset
-        return strategy
+        return cls(corpus, workers=workers, **build_params)
 
     def search(self, query: str, k: int = 10):
-        dataset = getattr(self, "dataset", None) or "unknown"
+        if self.trace_path is None:
+            raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
+        query_slug = slugify(query, fallback="query")
+        query_dir = self.trace_path / query_slug
         inputs = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": query},
         ]
         agent_state = {"num_tool_calls": 0}
-        with trace_logger(AGENTIC_TRACE_ROOT, dataset, query) as (logger, trace_path):
+        with trace_logger(query_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
             resp = search(
                 tools=self.tools,
@@ -99,7 +99,13 @@ class AgenticSearchStrategy(SearchStrategy):
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         self.traces[query] = str(trace_path)
-        self.num_tool_calls[query] = int(agent_state.get("num_tool_calls", 0))
+        num_tool_calls = int(agent_state.get("num_tool_calls", 0))
+        self.num_tool_calls[query] = num_tool_calls
+        summary_path = query_dir / "summary.json"
+        summary_path.write_text(
+            json.dumps({"num_tool_calls": num_tool_calls}, indent=2) + "\n",
+            encoding="utf-8",
+        )
         return ranked_results, [1.0] * len(ranked_results)
 
     @property

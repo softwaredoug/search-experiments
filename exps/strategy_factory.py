@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from exps.strategy_config import StrategyConfig, load_strategy_config, resolve_strategy_class
 
 
@@ -47,18 +49,25 @@ def create_strategy(
     params: dict | None = None,
     device: str | None = None,
     dataset: str | None = None,
+    trace_path: Path | None = None,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
+    params = dict(params)
+    if strategy_config.type == "agentic":
+        if trace_path is None:
+            raise ValueError("trace_path is required for agentic strategies.")
+        params["trace_path"] = trace_path
     strategy_cls = resolve_strategy_class(strategy_config.type)
     if hasattr(strategy_cls, "build"):
-        strategy = strategy_cls.build(
-            params,
-            corpus=corpus,
-            workers=workers,
-            device=device,
-            dataset=dataset,
-        )
+        build_kwargs = {
+            "corpus": corpus,
+            "workers": workers,
+            "device": device,
+        }
+        if strategy_config.type != "agentic":
+            build_kwargs["dataset"] = dataset
+        strategy = strategy_cls.build(params, **build_kwargs)
     else:
         strategy = strategy_cls(corpus, workers=workers, **params)
     return strategy, params

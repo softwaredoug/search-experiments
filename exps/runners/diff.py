@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 from cheat_at_search.search import run_strategy
@@ -9,6 +11,7 @@ from typing_extensions import Literal
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
+from exps.trace_utils import build_agentic_trace_root
 
 
 class DiffParams(BaseModel):
@@ -126,6 +129,8 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
     if params.seed is not None:
         np.random.seed(params.seed)
 
+    run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
     strategy_a_config, params_a, requires_bm25_a = load_strategy(
         params.strategy_a_path, device=params.device, base_path=params.base_path
     )
@@ -139,6 +144,20 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
     corpus = dataset.corpus
     judgments = dataset.judgments
     metric_name, metric_fn = metric_for_dataset(params.dataset)
+    trace_path_a = None
+    if strategy_a_config.type == "agentic":
+        trace_path_a = build_agentic_trace_root(
+            strategy_a_config.name,
+            params.dataset,
+            run_started_at=run_started_at,
+        )
+    trace_path_b = None
+    if strategy_b_config.type == "agentic":
+        trace_path_b = build_agentic_trace_root(
+            strategy_b_config.name,
+            params.dataset,
+            run_started_at=run_started_at,
+        )
     strategy_a, _ = create_strategy(
         strategy_a_config,
         corpus=corpus,
@@ -146,6 +165,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         params=params_a,
         device=params.device,
         dataset=params.dataset,
+        trace_path=trace_path_a,
     )
     strategy_b, _ = create_strategy(
         strategy_b_config,
@@ -154,6 +174,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         params=params_b,
         device=params.device,
         dataset=params.dataset,
+        trace_path=trace_path_b,
     )
 
     query_results_a = None

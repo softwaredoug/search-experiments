@@ -1,7 +1,9 @@
 import argparse
+from datetime import datetime
 
 from exps.datasets import DATASET_NAMES, get_dataset
 from exps.strategy_factory import create_strategy, load_strategy
+from exps.trace_utils import build_agentic_trace_root
 
 
 def _display_title(row) -> str:
@@ -54,6 +56,14 @@ def main() -> None:
     strategy_config, params, requires_bm25 = load_strategy(
         args.strategy, device=args.device
     )
+    trace_path = None
+    if strategy_config.type == "agentic":
+        run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        trace_path = build_agentic_trace_root(
+            strategy_config.name,
+            args.dataset,
+            run_started_at=run_started_at,
+        )
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
     strategy, _ = create_strategy(
@@ -63,6 +73,7 @@ def main() -> None:
         params=params,
         device=args.device,
         dataset=args.dataset,
+        trace_path=trace_path,
     )
 
     top_k, scores = strategy.search(args.query, k=args.k)
