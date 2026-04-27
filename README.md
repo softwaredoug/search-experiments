@@ -1,6 +1,8 @@
 ## Search experiments
 
-Agentic search benchmarks on search datasets. How good can just an agent and a few tools do?
+Agentic search benchmarks on search datasets.
+
+How good can just an agent do at search with just a few basic retrieval tools?
 
 ## E-commerce datasets
 
