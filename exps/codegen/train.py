@@ -170,6 +170,7 @@ def train_codegen_strategy(
     messages: list[str] = []
     round_ndcgs: list[float] = []
     for round_idx in range(train_config.rounds):
+        print(f"Starting training round {round_idx + 1}/{train_config.rounds}...")
         code = code_path.read_text(encoding="utf-8")
         system_prompt = build_system_prompt(
             train_config.system_prompt,
@@ -180,11 +181,11 @@ def train_codegen_strategy(
         )
         agent = OpenAIAgent(
             tools=tools,
-            model=train_config.model,
-            system_prompt=system_prompt,
+            model="openai/" + train_config.model,
             response_model=FinalMessage,
         )
-        resp: FinalMessage | None = agent.loop()
+        inputs = [{"role": "system", "content": system_prompt}]
+        resp: FinalMessage | None = agent.loop(inputs=inputs)
         if resp is not None:
             messages.append(resp.message)
         code = code_path.read_text(encoding="utf-8")
