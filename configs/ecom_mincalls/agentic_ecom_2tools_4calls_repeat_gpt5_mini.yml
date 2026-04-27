@@ -1,0 +1,26 @@
+strategy:
+  name: agentic_bm25_e5_ecommerce_4calls_repeat_gpt5_mini
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+
+      Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - e5_base_v2:
+          guards:
+            - disallow_repeated_queries
+    stop:
+      - tool_calls: 4
+    reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
