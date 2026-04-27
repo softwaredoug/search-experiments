@@ -8,7 +8,7 @@ Agentic search benchmarks on search datasets. How good can just an agent and a f
 
 Baselines first, agentic sorted by NDCG ascending.
 
-ESCI is Amazon's Shopping Queries dataset for product search relevance with graded labels. Source: https://github.com/amazon-science/esci-data
+ESCI is Amazon's Shopping Queries dataset for product search relevance with graded labels. [Source](https://github.com/amazon-science/esci-data)
 
 | strategy | model | mean | median |
 |---|---|---|---|
@@ -28,7 +28,7 @@ ESCI is Amazon's Shopping Queries dataset for product search relevance with grad
 
 Baselines first, agentic sorted by NDCG ascending.
 
-WANDS is Wayfair's product search relevance dataset with graded judgments. Source: https://github.com/wayfair/WANDS
+WANDS is Wayfair's product search relevance dataset with graded judgments. [Source](https://github.com/wayfair/WANDS)
 
 | strategy | model | mean | median |
 |---|---|---|---|
