@@ -11,7 +11,7 @@ Your guidance should come from the description of the yml file. That's your lord
 You will be asked to take a command like
 
 ```
-uv run run --strategy configs/bm25.yml --no-cache --dataset msmarco --workers 4 
+uv run run --strategy configs/bm25.yml --no-cache --dataset msmarco --workers 4  # run_strategy cache only
 ```
 
 And create a notebook that loads msmarco, reimplements the BM25 strategy in the notebook, runs it on the dataset, and evaluates the results with NDCG/MRR.
@@ -98,7 +98,7 @@ Make sure what's central to the notebook is a SearchStrategy implementation that
 
 While I'll ask you to create a notebook given a config + command, you should ignore these command line params that help when running locally
 
---no-cache
+--no-cache (run_strategy cache only)
 --device
 
 ### Testing whether your notebooks are parsable

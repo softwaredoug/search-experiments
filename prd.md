@@ -90,7 +90,7 @@ class BM25Strategy(SearchStrategy):
 
 When a strategy is run on a dataset, the results might cached to disk by run_strategy. This allows for faster iteration when making changes to strategy implementations, as you can bypass the actual search and just load the cached results.
 
-You can force the cache to be bypassed with cache=False to run_strategy. The user controls with --no-cache. 
+You can force the cache to be bypassed with cache=False to run_strategy. The user controls with --no-cache (this only affects run_strategy results, not BM25 indices or embeddings).
 
 ## Strategy Agnostic Scripts
 
@@ -103,7 +103,7 @@ Where appropriate, we should expect these params:
 --num-queries   # Number of queries to run as a subset (for faster analysis) 
 --seed          # Random seed for query sampling when num-queries is set
 --workers       # Number of workers to use for parallel processing when applicable
---no-cache      # Whether to bypass caching of strategy results, forcing a fresh run (useful for testing changes to strategy implementations)
+--no-cache      # Bypass run_strategy cache only (does not affect BM25 indices or embeddings)
 
 
 Here's some example executions

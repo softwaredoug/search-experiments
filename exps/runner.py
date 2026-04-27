@@ -104,7 +104,10 @@ def main() -> None:
     parser.add_argument(
         "--no-cache",
         action="store_true",
-        help="Bypass cached strategy results.",
+        help=(
+            "Bypass cached strategy results (run_strategy only; does not affect "
+            "BM25 indices or embeddings)."
+        ),
     )
     parser.add_argument(
         "--summary-csv",

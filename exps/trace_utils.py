@@ -25,7 +25,14 @@ def build_agentic_trace_root(
         run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     return (
         AGENTIC_TRACE_ROOT
+        / slugify(dataset, fallback="dataset")
         / slugify(strategy_name, fallback="strategy")
         / run_started_at
-        / slugify(dataset, fallback="dataset")
     )
+
+
+def dataset_from_trace_path(trace_path: Path) -> str | None:
+    try:
+        return trace_path.parent.parent.name
+    except (AttributeError, IndexError):
+        return None

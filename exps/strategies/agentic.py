@@ -14,7 +14,7 @@ from exps.agentic import (
     trace_logger,
 )
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
-from exps.trace_utils import slugify
+from exps.trace_utils import dataset_from_trace_path, slugify
 from exps.tools import (
     build_search_tools,
     normalize_search_tools,
@@ -38,6 +38,8 @@ class AgenticSearchStrategy(SearchStrategy):
         trace_path: Path | None = None,
     ):
         self.embeddings_device = embeddings_device
+        self.trace_path = trace_path
+        dataset_name = dataset_from_trace_path(trace_path) if trace_path else None
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
         self.stop = stop
@@ -46,13 +48,13 @@ class AgenticSearchStrategy(SearchStrategy):
             corpus,
             tool_config,
             embeddings_device=embeddings_device,
+            dataset_name=dataset_name,
         )
         self.model = model
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
         self.traces: dict[str, str] = {}
         self.num_tool_calls: dict[str, int] = {}
-        self.trace_path = trace_path
         super().__init__(corpus, workers=workers)
 
     @classmethod
