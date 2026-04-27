@@ -29,5 +29,8 @@ strategy:
         Use apply_patch to edit the reranker module.
         Use run_reranker to inspect single queries and run_evals for NDCG.
         If NDCG does not improve, revert with revert_changes.
+
+        DO NOT rename the function in the code. You MUST keep the signature the same.
+
     run:
       top_k: 10

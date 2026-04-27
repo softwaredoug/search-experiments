@@ -4,7 +4,7 @@ from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.search import ndcgs, run_strategy
-from cheat_at_search.tools.code import (
+from exps.codegen.tools.code import (
     make_guardrail_checker,
     make_length_validator,
     make_patch_fn,
@@ -14,7 +14,11 @@ from pydantic import BaseModel, Field
 from exps.codegen.io import make_codegen_dir, reranker_path, write_metadata
 from exps.codegen.prompts import build_system_prompt
 from exps.codegen.strategy import CodeGenSearchStrategy
-from exps.codegen.tools import make_eval_guardrail, make_eval_tools, make_training_eval_fn
+from exps.codegen.tools.runtime import (
+    make_eval_guardrail,
+    make_eval_tools,
+    make_training_eval_fn,
+)
 from exps.codegen.types import CodeGenArtifact, CodeGenRunConfig, CodeGenTrainConfig
 from exps.tools import build_search_tools, normalize_search_tools
 
