@@ -20,6 +20,12 @@ PARETO_STRATEGIES = {
     "agentic_bm25_e5_base_v2_ecommerce_gpt5_mini",
 }
 
+LABEL_MAP = {
+    "agentic_e5_ecommerce_gpt5_mini": "embedding",
+    "agentic_bm25_ecommerce_gpt5_mini": "bm25",
+    "agentic_bm25_minilm_ecommerce_gpt5_mini": "bm25+embedding",
+}
+
 
 def _load_rows(path: Path) -> list[dict[str, str]]:
     with path.open() as handle:
@@ -158,8 +164,9 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
     ax.scatter(x_vals, y_vals, color="#F58518", s=60, zorder=2)
 
     for row in frontier:
+        label = LABEL_MAP.get(str(row["strategy"]), str(row["strategy"]))
         ax.annotate(
-            row["strategy"],
+            label,
             (row["tool_calls_mean"], row["mean_ndcg"]),
             textcoords="offset points",
             xytext=(6, 4),
