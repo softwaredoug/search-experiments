@@ -176,6 +176,8 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
     ax.set_ylabel("Mean NDCG")
     if dataset == "esci":
         ax.set_ylim(0.2, 0.5)
+    if dataset == "wands":
+        ax.set_ylim(0.4, 0.7)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
