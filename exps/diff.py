@@ -201,6 +201,7 @@ def main() -> None:
             device=args.device,
             dataset=args.dataset,
             trace_path=trace_path_a,
+            judgments=judgments,
         )
         strategy_b, _ = create_strategy(
             strategy_b_config,
@@ -210,6 +211,7 @@ def main() -> None:
             device=args.device,
             dataset=args.dataset,
             trace_path=trace_path_b,
+            judgments=judgments,
         )
         _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
         query_results_a = _query_results(

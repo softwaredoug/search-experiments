@@ -42,6 +42,7 @@ class RunResult(BaseModel):
     query_grade_col: str | None = None
     most_relevant_row: pd.Series | None = None
     most_relevant_grade_col: str | None = None
+    codegen_artifact_path: str | None = None
 
 
 def _display_title(row: pd.Series) -> str:
@@ -134,6 +135,11 @@ def run_benchmark(params: RunParams) -> RunResult:
         device=params.device,
         dataset=params.dataset,
         trace_path=trace_path,
+        judgments=judgments,
+    )
+    codegen_artifact_path = getattr(strategy, "artifact_path", None)
+    codegen_artifact_path = (
+        str(codegen_artifact_path) if codegen_artifact_path is not None else None
     )
     if params.query:
         query_results, grade_col = _query_results(
@@ -153,6 +159,7 @@ def run_benchmark(params: RunParams) -> RunResult:
             query_grade_col=grade_col,
             most_relevant_row=most_relevant_row,
             most_relevant_grade_col=most_relevant_grade_col,
+            codegen_artifact_path=codegen_artifact_path,
         )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)
@@ -195,4 +202,5 @@ def run_benchmark(params: RunParams) -> RunResult:
         metric_series=metric_series,
         summary=summary,
         graded=graded,
+        codegen_artifact_path=codegen_artifact_path,
     )

@@ -27,6 +27,8 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
         return False
     if strategy_type == "agentic":
         return True
+    if strategy_type == "codegen":
+        return True
     return True
 
 
@@ -50,6 +52,7 @@ def create_strategy(
     device: str | None = None,
     dataset: str | None = None,
     trace_path: Path | None = None,
+    judgments=None,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
@@ -67,6 +70,9 @@ def create_strategy(
         }
         if strategy_config.type != "agentic":
             build_kwargs["dataset"] = dataset
+        if strategy_config.type == "codegen":
+            build_kwargs["strategy_name"] = strategy_config.name
+            build_kwargs["judgments"] = judgments
         strategy = strategy_cls.build(params, **build_kwargs)
     else:
         strategy = strategy_cls(corpus, workers=workers, **params)

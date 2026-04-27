@@ -128,6 +128,9 @@ def main() -> None:
             no_cache=args.no_cache,
         )
         result = run_benchmark(params)
+        if result.codegen_artifact_path:
+            print(f"Codegen artifact: {result.codegen_artifact_path}")
+            print("")
         if result.most_relevant_row is not None:
             label = result.most_relevant_row.get("display_title", "")
             if not label:
@@ -167,6 +170,9 @@ def main() -> None:
         no_cache=args.no_cache,
     )
     result = run_benchmark(params)
+    if result.codegen_artifact_path:
+        print(f"Codegen artifact: {result.codegen_artifact_path}")
+        print("")
     _report_metric(result.metric_name, result.metric_series, result.graded)
     if args.summary_csv:
         _write_summary_csv(args.summary_csv, dataset=args.dataset, result=result)

@@ -166,6 +166,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         device=params.device,
         dataset=params.dataset,
         trace_path=trace_path_a,
+        judgments=judgments,
     )
     strategy_b, _ = create_strategy(
         strategy_b_config,
@@ -175,6 +176,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         device=params.device,
         dataset=params.dataset,
         trace_path=trace_path_b,
+        judgments=judgments,
     )
 
     query_results_a = None

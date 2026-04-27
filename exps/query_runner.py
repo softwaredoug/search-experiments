@@ -66,6 +66,7 @@ def main() -> None:
         )
     dataset = get_dataset(args.dataset, ensure_snowball=requires_bm25)
     corpus = dataset.corpus
+    judgments = dataset.judgments
     strategy, _ = create_strategy(
         strategy_config,
         corpus=corpus,
@@ -74,6 +75,7 @@ def main() -> None:
         device=args.device,
         dataset=args.dataset,
         trace_path=trace_path,
+        judgments=judgments,
     )
 
     top_k, scores = strategy.search(args.query, k=args.k)

@@ -9,6 +9,7 @@ import yaml
 from exps.strategies.agentic import AgenticSearchStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
+from exps.codegen.strategy import CodeGenSearchStrategy
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ STRATEGY_TYPES = {
     BM25Strategy._type: BM25Strategy,
     AgenticSearchStrategy._type: AgenticSearchStrategy,
     EmbeddingStrategy._type: EmbeddingStrategy,
+    CodeGenSearchStrategy._type: CodeGenSearchStrategy,
 }
 
 
