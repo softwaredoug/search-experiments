@@ -9,8 +9,9 @@ ESCI (baselines first, agentic sorted by NDCG ascending):
 | strategy | model | mean | median |
 |---|---|---|---|
 | [bm25](configs/bm25.yml) | n/a | 0.2895 | 0.1707 |
-| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.2723 | 0.1552 |
+| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.2304 | 0.0854 |
 | [agentic_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_minilm_gpt5_mini.yml) | gpt-5-mini | 0.2952 | 0.1749 |
+| [embedding_e5](configs/embedding_e5_base_v2.yml) | n/a | 0.3142 | 0.2250 |
 | [agentic_e5_ecommerce_gpt5_mini](configs/agentic_ecom_e5_base_v2_gpt5_mini.yml) | gpt-5-mini | 0.3569 | 0.3399 |
 | [agentic_bm25_ecommerce_gpt5_mini](configs/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.3777 | 0.3414 |
 | [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.3958 | 0.3414 |
@@ -24,8 +25,9 @@ WANDS (baselines first, agentic sorted by NDCG ascending):
 | strategy | model | mean | median |
 |---|---|---|---|
 | [bm25](configs/bm25.yml) | n/a | 0.5408 | 0.4746 |
-| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.5316 | 0.4779 |
+| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.5060 | 0.4083 |
 | [agentic_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_minilm_gpt5_mini.yml) | gpt-5-mini | 0.5330 | 0.4874 |
+| [embedding_e5](configs/embedding_e5_base_v2.yml) | n/a | 0.5571 | 0.5475 |
 | [agentic_e5_ecommerce_gpt5_mini](configs/agentic_ecom_e5_base_v2_gpt5_mini.yml) | gpt-5-mini | 0.5789 | 0.5609 |
 | [agentic_bm25_ecommerce_gpt5_mini](configs/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.5795 | 0.5609 |
 | [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.5867 | 0.5609 |
