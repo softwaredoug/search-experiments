@@ -51,6 +51,15 @@ def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -
 
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(range(len(strategies)), means, color="#4C78A8", marker="o", linewidth=2)
+    for idx, value in enumerate(means):
+        ax.annotate(
+            f"{value:.3f}",
+            (idx, value),
+            textcoords="offset points",
+            xytext=(0, 6),
+            ha="center",
+            fontsize=9,
+        )
     ax.set_title(f"{dataset.upper()} NDCG (mean)")
     ax.set_ylabel("Mean NDCG")
     ax.set_xticks(range(len(strategies)))

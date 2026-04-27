@@ -8,13 +8,14 @@ ESCI (baselines first, agentic sorted by NDCG ascending):
 
 | strategy | model | mean | median |
 |---|---|---|---|
-| bm25 | n/a | 0.2895 | 0.1707 |
-| embedding_minilm | n/a | 0.2723 | 0.1552 |
-| agentic_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.2952 | 0.1749 |
-| agentic_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.3569 | 0.3399 |
-| agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.3777 | 0.3414 |
-| agentic_bm25_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.3958 | 0.3414 |
-| agentic_bm25_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.4152 | 0.3794 |
+| [bm25](configs/bm25.yml) | n/a | 0.2895 | 0.1707 |
+| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.2723 | 0.1552 |
+| [agentic_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_minilm_gpt5_mini.yml) | gpt-5-mini | 0.2952 | 0.1749 |
+| [agentic_e5_ecommerce_gpt5_mini](configs/agentic_ecom_e5_base_v2_gpt5_mini.yml) | gpt-5-mini | 0.3569 | 0.3399 |
+| [agentic_bm25_ecommerce_gpt5_mini](configs/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.3777 | 0.3414 |
+| [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.3958 | 0.3414 |
+| [agentic_bm25_e5_base_v2_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.4152 | 0.3794 |
+| [agentic_bm25_e5_ecommerce_gpt5](configs/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.4535 | 0.4417 |
 
 ![ESCI NDCG plot](assets/esci_ndcg.png)
 
@@ -22,13 +23,14 @@ WANDS (baselines first, agentic sorted by NDCG ascending):
 
 | strategy | model | mean | median |
 |---|---|---|---|
-| bm25 | n/a | 0.5408 | 0.4746 |
-| embedding_minilm | n/a | 0.5316 | 0.4779 |
-| agentic_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.5330 | 0.4874 |
-| agentic_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.5789 | 0.5609 |
-| agentic_bm25_ecommerce_gpt5_mini | gpt-5-mini | 0.5795 | 0.5609 |
-| agentic_bm25_minilm_ecommerce_gpt5_mini | gpt-5-mini | 0.5867 | 0.5609 |
-| agentic_bm25_e5_base_v2_ecommerce_gpt5_mini | gpt-5-mini | 0.5970 | 0.5609 |
+| [bm25](configs/bm25.yml) | n/a | 0.5408 | 0.4746 |
+| [embedding_minilm](configs/embedding_minilm.yml) | n/a | 0.5316 | 0.4779 |
+| [agentic_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_minilm_gpt5_mini.yml) | gpt-5-mini | 0.5330 | 0.4874 |
+| [agentic_e5_ecommerce_gpt5_mini](configs/agentic_ecom_e5_base_v2_gpt5_mini.yml) | gpt-5-mini | 0.5789 | 0.5609 |
+| [agentic_bm25_ecommerce_gpt5_mini](configs/agentic_ecom_bm25_gpt5_mini.yml) | gpt-5-mini | 0.5795 | 0.5609 |
+| [agentic_bm25_minilm_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_gpt5_mini.yml) | gpt-5-mini | 0.5867 | 0.5609 |
+| [agentic_bm25_e5_base_v2_ecommerce_gpt5_mini](configs/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.5970 | 0.5609 |
+| [agentic_bm25_e5_ecommerce_gpt5](configs/agentic_ecom_2tools_gpt5.yml) | gpt-5 | 0.6171 | 0.6256 |
 
 ![WANDS NDCG plot](assets/wands_ndcg.png)
 
