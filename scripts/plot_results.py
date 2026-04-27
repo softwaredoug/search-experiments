@@ -60,11 +60,15 @@ def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -
             ha="center",
             fontsize=9,
         )
-    ax.set_title(f"{dataset.upper()} NDCG (mean)")
+    if dataset == "esci":
+        ax.set_title("ESCI - NDCG Mean (N=1000)")
+    else:
+        ax.set_title(f"{dataset.upper()} NDCG (mean)")
     ax.set_ylabel("Mean NDCG")
     ax.set_xticks(range(len(strategies)))
     ax.set_xticklabels(strategies, rotation=30, ha="right")
-    ax.set_ylim(0, max(means) * 1.1 if means else 1)
+    y_min = 0.2 if dataset == "wands" else 0
+    ax.set_ylim(y_min, max(means) * 1.1 if means else 1)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
