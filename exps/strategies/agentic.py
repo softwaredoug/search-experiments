@@ -80,6 +80,17 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
         query_slug = slugify(query, fallback="query")
         query_dir = self.trace_path / query_slug
+        if query_dir.exists():
+            counter = 2
+            while True:
+                candidate = self.trace_path / f"{query_slug}_{counter}"
+                try:
+                    candidate.mkdir(parents=True, exist_ok=False)
+                except FileExistsError:
+                    counter += 1
+                    continue
+                query_dir = candidate
+                break
         inputs = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": query},
