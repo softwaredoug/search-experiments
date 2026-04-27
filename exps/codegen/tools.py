@@ -95,9 +95,10 @@ def make_eval_tools(
             cache=False,
         )
         ndcgs = results.groupby("query")["ndcg"].mean()
+        query_ndcgs = {str(k): float(v) for k, v in ndcgs.to_dict().items()}
         return {
             "mean_ndcg": float(ndcgs.mean()) if not ndcgs.empty else 0.0,
-            "query_ndcgs": ndcgs.to_dict(),
+            "query_ndcgs": query_ndcgs,
         }
 
     def run_reranker(query: str, label: bool = False):
@@ -126,13 +127,14 @@ def make_eval_tools(
                 continue
             row = corpus.iloc[index]
             entry = {
-                "doc_id": row.get(id_col),
+                "doc_id": str(row.get(id_col)),
                 "title": row.get("title", ""),
                 "description": row.get("description", ""),
                 "score": int(score),
             }
             if label_map is not None:
-                entry["grade"] = label_map.get(row.get(id_col))
+                grade = label_map.get(row.get(id_col))
+                entry["grade"] = int(grade) if grade is not None else None
             results.append(entry)
         return results
 

@@ -67,7 +67,7 @@ def _start_code(rerank_name: str, top_k: int) -> str:
     return (
         f"def {rerank_name}(fielded_bm25, query):\n"
         f"    docs = fielded_bm25(query, top_k={top_k})\n"
-        "    return [doc['id'] for doc in docs]\n\n"
+        "    return [str(doc['id']) for doc in docs]\n\n"
         f"def reranker(fielded_bm25, query):\n"
         f"    return {rerank_name}(fielded_bm25, query)\n"
     )
