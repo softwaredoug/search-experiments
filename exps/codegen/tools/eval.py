@@ -2,7 +2,7 @@ from typing import List, Dict, Union, Optional, Literal
 from pydantic import BaseModel, Field
 from cheat_at_search.search import run_strategy
 from cheat_at_search.strategy import SearchStrategy
-from cheat_at_search.logger import log_to_stdout
+from exps.logging_utils import log_to_stdout
 import importlib
 import numpy as np
 import pandas as pd

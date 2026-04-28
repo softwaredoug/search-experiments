@@ -3,7 +3,7 @@ strategy:
   type: codegen
   params:
     train:
-      model: gpt-5-mini
+      model: gpt-5
       rounds: 5
       search_tools:
         - bm25
@@ -16,12 +16,10 @@ strategy:
           - overfit:
               model: openai/gpt-5-mini
       eval:
-        num_training_queries: 200
+        num_training_queries: 100
         num_validation_queries: 100
-        num_test_queries: 100
         training_seed: 5678
         validation_seed: 1234
-        test_seed: 42
         eval_margin: 0.003
       system_prompt: |
         Your task is to improve the reranker code so it returns more relevant results.

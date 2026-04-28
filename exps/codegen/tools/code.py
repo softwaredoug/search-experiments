@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional, Literal, Callable, Tuple
 from pydantic import BaseModel, Field
 import pandas as pd
-from cheat_at_search.logger import log_to_stdout
+from exps.logging_utils import log_to_stdout
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from functools import lru_cache
 import os

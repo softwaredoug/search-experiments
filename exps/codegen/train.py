@@ -26,6 +26,9 @@ from exps.tools import build_search_tools, normalize_search_tools
 DEFAULT_OVERFIT_PROMPT = """
 You're going to look at code that reranks search queries.
 
+The function name will be rerank_<dataset> (for example, rerank_wands). Do not treat the
+function name itself as overfitting.
+
 Ensure the code does not overfit to specific queries. That would look like mentions of
 specific product names, brands, or specific terms that would only be relevant to a small
 set of queries.
@@ -102,6 +105,8 @@ def train_codegen_strategy(
     params: dict,
     device: str | None = None,
     workers: int = 1,
+    report_num_queries: int | None = None,
+    report_seed: int = 42,
     run_started_at: str | None = None,
 ) -> CodeGenArtifact:
     if judgments is None:
@@ -218,11 +223,18 @@ def train_codegen_strategy(
             rerank_name=rerank_name,
             workers=workers,
         )
+        if report_num_queries is not None:
+            report_count = report_num_queries
+        else:
+            query_cols = ["query"]
+            if "query_id" in judgments.columns:
+                query_cols.append("query_id")
+            report_count = len(judgments[query_cols].drop_duplicates())
         results_codegen = run_strategy(
             codegen_strategy,
             judgments,
-            num_queries=eval_cfg.num_test_queries,
-            seed=eval_cfg.test_seed,
+            num_queries=report_count,
+            seed=report_seed,
             cache=False,
         )
         mean_ndcg = float(ndcgs(results_codegen).mean()) if not results_codegen.empty else 0.0
@@ -242,10 +254,10 @@ def train_codegen_strategy(
         "start_with": train_config.start_with,
         "training_seed": eval_cfg.training_seed,
         "validation_seed": eval_cfg.validation_seed,
-        "test_seed": eval_cfg.test_seed,
         "num_training_queries": eval_cfg.num_training_queries,
         "num_validation_queries": eval_cfg.num_validation_queries,
-        "num_test_queries": eval_cfg.num_test_queries,
+        "report_seed": report_seed,
+        "report_num_queries": report_num_queries,
         "eval_margin": eval_cfg.eval_margin,
     }
     write_metadata(output_dir, metadata)

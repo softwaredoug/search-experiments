@@ -40,6 +40,8 @@ class CodeGenSearchStrategy(SearchStrategy):
         device: str | None = None,
         dataset: str | None = None,
         strategy_name: str | None = None,
+        report_num_queries: int | None = None,
+        report_seed: int | None = None,
         **kwargs,
     ):
         if dataset is None:
@@ -56,6 +58,8 @@ class CodeGenSearchStrategy(SearchStrategy):
             params=params,
             device=device,
             workers=workers,
+            report_num_queries=report_num_queries,
+            report_seed=report_seed or 42,
         )
         rerank_name = f"rerank_{dataset}"
         return cls(

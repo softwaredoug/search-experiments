@@ -136,6 +136,8 @@ def run_benchmark(params: RunParams) -> RunResult:
         dataset=params.dataset,
         trace_path=trace_path,
         judgments=judgments,
+        report_num_queries=params.num_queries,
+        report_seed=params.seed,
     )
     codegen_artifact_path = getattr(strategy, "artifact_path", None)
     codegen_artifact_path = (

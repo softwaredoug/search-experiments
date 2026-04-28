@@ -53,6 +53,8 @@ def create_strategy(
     dataset: str | None = None,
     trace_path: Path | None = None,
     judgments=None,
+    report_num_queries: int | None = None,
+    report_seed: int | None = None,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
@@ -73,6 +75,9 @@ def create_strategy(
         if strategy_config.type == "codegen":
             build_kwargs["strategy_name"] = strategy_config.name
             build_kwargs["judgments"] = judgments
+            build_kwargs["report_num_queries"] = report_num_queries
+            if report_seed is not None:
+                build_kwargs["report_seed"] = report_seed
         strategy = strategy_cls.build(params, **build_kwargs)
     else:
         strategy = strategy_cls(corpus, workers=workers, **params)

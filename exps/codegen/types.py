@@ -9,10 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class CodeGenEvalConfig(BaseModel):
     num_training_queries: int = 200
     num_validation_queries: int = 100
-    num_test_queries: int = 100
     training_seed: int = 5678
     validation_seed: int = 1234
-    test_seed: int = 42
     eval_margin: float = 0.003
 
 
