@@ -60,6 +60,18 @@ WANDS is Wayfair's product search relevance dataset with graded judgments. [Sour
 
 ![WANDS tool calls pareto](assets/wands_pareto_gpt5_mini.png)
 
+
+### ESCI - Forcing more tool calls
+
+Below we force the agent to make at least 4 calls to a retrieval backend, with two different enforcements on repeat queries: direct equivalence (after lowercasing, etc.) and semantic similarity.
+
+| strategy | model | mean | median |
+|---|---|---|---|
+| [agentic_bm25_e5_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.4152 | 0.3794 |
+| [agentic_bm25_e5_ecommerce_4calls_repeat_gpt5_mini](configs/ecom_mincalls/agentic_ecom_2tools_4calls_repeat_gpt5_mini.yml) | gpt-5-mini | 0.4292 | 0.3948 |
+| [agentic_bm25_e5_ecommerce_4calls_sim0p9_gpt5_mini](configs/ecom_mincalls/agentic_ecom_2tools_4calls_sim0p9_gpt5_mini.yml) | gpt-5-mini | 0.4308 | 0.4258 |
+
+
 ## Run a strategy
 
 ```bash
