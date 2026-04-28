@@ -16,6 +16,9 @@ EXCLUDE_AGENTIC_MINILM = {
     "agentic_minilm_ecommerce_gpt5_mini",
     "agentic_bm25_minilm_ecommerce_gpt5_mini",
 }
+STRATEGY_ALIASES = {
+    "agentic_bm25_e5_base_v2_ecommerce_gpt5_mini": "agentic_bm25_e5_ecommerce_gpt5_mini",
+}
 GPT5_HARDCODED_NDCG = {
     "esci": 0.4534540809414133,
     "wands": 0.6170634248596244,
@@ -55,7 +58,8 @@ def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
 def _aggregate(rows: list[dict[str, str]]):
     agg = defaultdict(lambda: {"sum": 0.0, "count": 0})
     for row in rows:
-        key = (row["dataset"], row["strategy_name"])
+        strategy_name = STRATEGY_ALIASES.get(row["strategy_name"], row["strategy_name"])
+        key = (row["dataset"], strategy_name)
         agg[key]["sum"] += float(row["mean_ndcg"])
         agg[key]["count"] += 1
     aggregated = []

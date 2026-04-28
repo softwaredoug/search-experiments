@@ -17,14 +17,14 @@ GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
 PARETO_STRATEGIES = {
     "agentic_e5_ecommerce_gpt5_mini",
     "agentic_bm25_ecommerce_gpt5_mini",
-    "agentic_bm25_e5_ecommerce_gpt5_mini",
+    "agentic_bm25_e5_base_v2_ecommerce_gpt5_mini",
 }
 
 LABEL_MAP = {
     "agentic_e5_ecommerce_gpt5_mini": "embedding",
     "agentic_bm25_ecommerce_gpt5_mini": "bm25",
     "agentic_bm25_minilm_ecommerce_gpt5_mini": "bm25+embedding",
-    "agentic_bm25_e5_ecommerce_gpt5_mini": "bm25+embeddings",
+    "agentic_bm25_e5_base_v2_ecommerce_gpt5_mini": "bm25+embeddings",
 }
 
 
