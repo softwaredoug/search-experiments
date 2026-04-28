@@ -7,9 +7,9 @@ RESULTS_CSV="${ROOT_DIR}/results.csv"
 CONFIGS=(
   # "configs/ecom_base/agentic_ecom_2tools_gpt5.yml"
   "configs/ecom_base/agentic_ecom_bm25_gpt5_mini.yml"
-  "configs/ecom_base/agentic_ecom_minilm_gpt5_mini.yml"
+  # "configs/ecom_base/agentic_ecom_minilm_gpt5_mini.yml"
   "configs/ecom_base/agentic_ecom_e5_base_v2_gpt5_mini.yml"
-  "configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml"
+  # "configs/ecom_base/agentic_ecom_2tools_gpt5_mini.yml"
   "configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml"
   "configs/ecom_base/bm25.yml"
   "configs/ecom_base/embedding_minilm.yml"
@@ -28,14 +28,14 @@ for dataset in "${DATASETS[@]}"; do
         --strategy "${ROOT_DIR}/${config}" \
         --dataset "${dataset}" \
         --num-queries 1000 \
-        --workers 16 \
+        --workers 32 \
         --device mps \
         --summary-csv "${RESULTS_CSV}" 
     else
       uv run run \
         --strategy "${ROOT_DIR}/${config}" \
         --dataset "${dataset}" \
-        --workers 16 \
+        --workers 32 \
         --device mps \
         --summary-csv "${RESULTS_CSV}" 
     fi
