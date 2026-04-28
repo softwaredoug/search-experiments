@@ -143,6 +143,7 @@ def make_patch_fn(
     corpus,
     code_dir: str,
     module_name: str = "rerank_esci",
+    function_name: str | None = None,
     guardrail_fns: List = None,
     training_eval_fn: Optional[Callable] = None,
     validation_eval_fn: Optional[Callable] = None,
@@ -152,6 +153,7 @@ def make_patch_fn(
 
     filepath = os.path.join(code_dir, f"{module_name}.py")
     backup_path = os.path.join(code_dir, f"{module_name}_backup.py")
+    function_name = function_name or module_name
 
     if guardrail_fns is None:
         guardrail_fns = []
@@ -178,7 +180,7 @@ def make_patch_fn(
         )
 
     def revert_changes() -> str:
-        """Undo the last patch to rerank_esci.py by restoring from backup."""
+        """Undo the last patch by restoring from backup."""
         with open(backup_path) as backup:
             with open(filepath, "w") as f:
                 logger.info(f"Reverted {module_name}.py to backup.")
@@ -236,35 +238,37 @@ def make_patch_fn(
         # Attempt to eval the code
         local_vars = {}
         exec(code, {}, local_vars)
-        if module_name not in local_vars:
-            logger.error("Edited code does not define module_name")
-            raise ValueError("The edited code does not define module_name.")
-        # Test that rerank_esci is callable
-        if not callable(local_vars[module_name]):
-            logger.error("module_name is not callable.")
-            raise ValueError("module_name is not callable.")
+        if function_name not in local_vars:
+            logger.error("Edited code does not define function_name")
+            raise ValueError("The edited code does not define function_name.")
+        # Test that rerank function is callable
+        if not callable(local_vars[function_name]):
+            logger.error("function_name is not callable.")
+            raise ValueError("function_name is not callable.")
         for query in test_queries:
             try:
-                results = local_vars[module_name](search_fn, query)[:10]
+                results = local_vars[function_name](search_fn, query)[:10]
             except Exception as e:
-                logger.error(f"Error calling {module_name} with query '{query}': {e}")
+                logger.error(
+                    f"Error calling {function_name} with query '{query}': {e}"
+                )
                 logger.error(code)
                 raise ValueError(
-                    f"Error calling {module_name} with query '{query}': {e}"
+                    f"Error calling {function_name} with query '{query}': {e}"
                 )
 
             try:
                 if not isinstance(results, list):
                     logger.error(
-                        f"'{module_name}' did not return a list for query '{query}'."
+                        f"'{function_name}' did not return a list for query '{query}'."
                     )
                     raise ValueError(
-                        f"'{module_name}' did not return a list for query '{query}'."
+                        f"'{function_name}' did not return a list for query '{query}'."
                     )
             except Exception as e:
                 logger.error(f"Error collecting results with query '{query}': {e}")
                 raise ValueError(
-                    f"Error calling 'rerank_esci' with query '{query}': {e}"
+                    f"Error calling '{function_name}' with query '{query}': {e}"
                 )
         return code, existing_code, local_vars
 
@@ -383,7 +387,7 @@ def make_patch_fn(
                 current_code=existing_code,
             )
 
-    apply_patch.__doc__ = f"""Save the proposed code change to rerank_esci.py.
+    apply_patch.__doc__ = f"""Save the proposed code change to {module_name}.py.
 
     {full_guardrail_doc_strs}
 
