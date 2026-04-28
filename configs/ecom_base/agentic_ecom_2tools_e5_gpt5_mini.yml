@@ -3,7 +3,7 @@ strategy:
   type: agentic
   description: | 
     This experiment uses an agentic search loop in a harness. The tool calling loop is seen below
-    
+   
     in functions:
     - agent_run: the tool calling loop: looping until no more tools to call. (ie search tools)
     - search: the main harness: looping until business constraints with search satisfied

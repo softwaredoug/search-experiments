@@ -61,6 +61,21 @@ WANDS is Wayfair's product search relevance dataset with graded judgments. [Sour
 ![WANDS tool calls pareto](assets/wands_pareto_gpt5_mini.png)
 
 
+### MiniMSMARCO
+
+Baselines first, agentic sorted by MRR ascending.
+
+| strategy | model | mean | median |
+|---|---|---|---|
+| [bm25_msmarco](configs/msmarco/bm25_msmarco.yml) | n/a | 0.4913 | 0.3333 |
+| [embedding_e5_msmarco](configs/msmarco/embedding_e5_msmarco.yml) | n/a | 0.6983 | 1.0000 |
+| [agentic_msmarco_bm25_gpt5_mini](configs/msmarco/agentic_msmarco_bm25_gpt5_mini.yml) | gpt-5-mini | 0.4647 | 0.3333 |
+| [agentic_msmarco_bm25_e5_gpt5_mini](configs/msmarco/agentic_msmarco_bm25_e5_gpt5_mini.yml) | gpt-5-mini | 0.5689 | 0.5000 |
+| [agentic_msmarco_e5_gpt5_mini](configs/msmarco/agentic_msmarco_e5_gpt5_mini.yml) | gpt-5-mini | 0.6123 | 1.0000 |
+
+![MiniMSMARCO MRR plot](assets/minimarco_mrr.png)
+
+
 ### ESCI - Forcing more tool calls
 
 Below we force the agent to make at least 4 calls to a retrieval backend, with two different enforcements on repeat queries: direct equivalence (after lowercasing, etc.) and semantic similarity.
@@ -69,7 +84,7 @@ Below we force the agent to make at least 4 calls to a retrieval backend, with t
 |---|---|---|---|
 | [agentic_bm25_e5_ecommerce_gpt5_mini](configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml) | gpt-5-mini | 0.4101 | 0.3743 |
 | [agentic_bm25_e5_ecommerce_4calls_repeat_gpt5_mini](configs/ecom_mincalls/agentic_ecom_2tools_4calls_repeat_gpt5_mini.yml) | gpt-5-mini | 0.4290 | 0.3948 |
-| [agentic_bm25_e5_ecommerce_4calls_sim0p9_gpt5_mini](configs/ecom_mincalls/agentic_ecom_2tools_4calls_sim0p9_gpt5_mini.yml) | gpt-5-mini | 0.4308 | 0.4258 |
+| [agentic_bm25_e5_ecommerce_4calls_sim0p9_gpt5_mini](configs/ecom_mincalls/agentic_ecom_2tools_4calls_sim0p9_gpt5_mini.yml) | gpt-5-mini | 0.4236 | 0.4258 |
 
 
 ## Run a strategy

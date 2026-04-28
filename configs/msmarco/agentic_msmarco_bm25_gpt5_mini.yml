@@ -1,0 +1,14 @@
+strategy:
+  name: agentic_msmarco_bm25_gpt5_mini
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user questions and return answers to those questions
+
+      Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+    search_tools:
+      - bm25:
