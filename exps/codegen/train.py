@@ -67,13 +67,29 @@ def _parse_guardrails(raw_guards: list[dict]) -> list:
     return guardrails
 
 
+def _make_rerank_name_guard(rerank_name: str) -> callable:
+    def guard(code: str) -> str | None:
+        try:
+            local_vars: dict = {}
+            exec(code, {}, local_vars)
+        except Exception as exc:
+            return f"Code failed to execute: {exc}"
+        rerank_fn = local_vars.get(rerank_name)
+        if not callable(rerank_fn):
+            return f"Code must define a callable {rerank_name} function."
+        return None
+
+    guard.__doc__ = (
+        f"Code must define a callable {rerank_name} function with the required signature."
+    )
+    return guard
+
+
 def _start_code(rerank_name: str, top_k: int) -> str:
     return (
         f"def {rerank_name}(fielded_bm25, query):\n"
         f"    docs = fielded_bm25(query, top_k={top_k})\n"
-        "    return [str(doc['id']) for doc in docs]\n\n"
-        f"def reranker(fielded_bm25, query):\n"
-        f"    return {rerank_name}(fielded_bm25, query)\n"
+        "    return [str(doc['id']) for doc in docs]\n"
     )
 
 
@@ -145,11 +161,12 @@ def train_codegen_strategy(
     )
 
     guardrails = _parse_guardrails(train_config.edit.guards)
+    guardrails.append(_make_rerank_name_guard(rerank_name))
     apply_patch, try_out_patch, revert_changes = make_patch_fn(
         search_fn=primary_search_tool,
         corpus=corpus,
         code_dir=str(output_dir),
-        module_name="reranker",
+        module_name=rerank_name,
         guardrail_fns=guardrails,
         training_eval_fn=training_eval_fn,
         validation_eval_fn=validation_eval_fn,

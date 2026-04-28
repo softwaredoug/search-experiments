@@ -17,7 +17,6 @@ DEFAULT_SYSTEM_PROMPT = dedent(
     Your code must include a function named {rerank_name}. It takes a search tool and a query
     string and returns a list of document ids ordered most relevant to least.
 
-    Keep a wrapper function named reranker that calls {rerank_name}.
     """
 ).strip()
 
