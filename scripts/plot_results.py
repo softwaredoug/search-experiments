@@ -12,6 +12,10 @@ import matplotlib.pyplot as plt
 BASELINES = ["bm25", "bm25_strong_title", "embedding_minilm", "embedding_e5"]
 DATASETS = ["esci", "wands"]
 GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
+EXCLUDE_AGENTIC_MINILM = {
+    "agentic_minilm_ecommerce_gpt5_mini",
+    "agentic_bm25_minilm_ecommerce_gpt5_mini",
+}
 GPT5_HARDCODED_NDCG = {
     "esci": 0.4534540809414133,
     "wands": 0.6170634248596244,
@@ -39,7 +43,13 @@ def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
         return True
     if strategy_name == GPT5_STRATEGY:
         return True
-    return _strategy_model(row) == "gpt-5-mini"
+    model = _strategy_model(row)
+    if model in {"gpt-5-mini", "gpt-5.1-mini"}:
+        if strategy_name in EXCLUDE_AGENTIC_MINILM:
+            return False
+        if isinstance(strategy_name, str) and strategy_name.startswith("agentic_"):
+            return True
+    return False
 
 
 def _aggregate(rows: list[dict[str, str]]):
