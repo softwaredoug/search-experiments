@@ -31,7 +31,7 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
 
         Args:
             keywords: The search query string.
-            top_k: The number of top results to return.
+            top_k: The number of top results to return (max 20).
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
@@ -92,7 +92,7 @@ def make_embedding_tool(
 
         Args:
             question: The search query string - natural language query
-            top_k: The number of top results to return.
+            top_k: The number of top results to return (max 20).
 
         This is an embedding search over concatenated title + description.
         """
@@ -311,6 +311,8 @@ def make_guarded_search_tool(
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]] | str:
         """Search tool wrapper that enforces configured guard checks."""
+        if top_k > 20:
+            return "Error! top_k must be <= 20."
         params = {
             "tool_name": name,
             "query": query,

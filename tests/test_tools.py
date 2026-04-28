@@ -23,6 +23,15 @@ def test_guard_disallow_similar_queries(monkeypatch):
     err = tools_mod.guard_disallow_similar_queries(params, agent_state, threshold=0.9)
     assert err is None
 
+
+def test_guarded_tool_limits_top_k():
+    def _tool(query: str, top_k: int, agent_state=None):
+        return [{"id": 1, "title": query, "description": "", "score": float(top_k)}]
+
+    guarded = tools_mod.make_guarded_search_tool(_tool)
+    err = guarded("chair", top_k=21)
+    assert isinstance(err, str)
+
     params["query"] = "beta"
     err = tools_mod.guard_disallow_similar_queries(params, agent_state, threshold=0.9)
     assert isinstance(err, str)
