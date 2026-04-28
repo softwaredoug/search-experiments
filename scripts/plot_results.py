@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
-BASELINES = ["bm25", "bm25_strong_title", "embedding_minilm", "embedding_e5"]
+BASELINES = ["bm25", "bm25_strong_title", "embedding_e5"]
 DATASETS = ["esci", "wands"]
 GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
 EXCLUDE_AGENTIC_MINILM = {
