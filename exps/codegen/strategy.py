@@ -16,6 +16,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         corpus,
         *,
         search_fn,
+        tool_fns: list[callable] | None = None,
         code: str,
         rerank_name: str | None = None,
         artifact_path: Path | None = None,
@@ -24,6 +25,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         super().__init__(corpus, workers=workers)
         self.index = corpus
         self.search_fn = search_fn
+        self.tool_fns = tool_fns or [search_fn]
         self.code = code
         self.rerank_name = rerank_name
         self.artifact_path = artifact_path
@@ -66,6 +68,7 @@ class CodeGenSearchStrategy(SearchStrategy):
             corpus,
             workers=workers,
             search_fn=artifact.search_fn,
+            tool_fns=artifact.tool_fns,
             code=artifact.code,
             rerank_name=rerank_name,
             artifact_path=artifact.path,
@@ -73,7 +76,7 @@ class CodeGenSearchStrategy(SearchStrategy):
 
     def search(self, query, k: int = 10):
         rerank_fn = load_rerank_fn(self.code, self.rerank_name)
-        doc_ids = rerank_fn(self.search_fn, query)[:k]
+        doc_ids = rerank_fn(*self.tool_fns, query=query)[:k]
         scores = np.arange(len(doc_ids), 0, -1)
         top_k_ilocs = []
         for doc_id in doc_ids:

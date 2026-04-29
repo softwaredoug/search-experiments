@@ -88,10 +88,24 @@ def _make_rerank_name_guard(rerank_name: str) -> callable:
     return guard
 
 
-def _start_code(rerank_name: str, top_k: int) -> str:
+def _start_code(
+    rerank_name: str,
+    top_k: int,
+    *,
+    tool_params: list[str],
+    primary_tool_name: str,
+) -> str:
+    signature = ", ".join([*tool_params, "query"])
+    if "fielded_bm25" in primary_tool_name:
+        call = (
+            f"    docs = {primary_tool_name}"
+            f"(query, field_to_search='title', operator='or', top_k={top_k})\n"
+        )
+    else:
+        call = f"    docs = {primary_tool_name}(query, top_k={top_k})\n"
     return (
-        f"def {rerank_name}(fielded_bm25, query):\n"
-        f"    docs = fielded_bm25(query, top_k={top_k})\n"
+        f"def {rerank_name}({signature}):\n"
+        f"{call}"
         "    return [str(doc['id']) for doc in docs]\n"
     )
 
@@ -120,18 +134,6 @@ def train_codegen_strategy(
     code_path = reranker_path(output_dir)
     rerank_name = f"rerank_{dataset}"
 
-    if train_config.start_with:
-        start_path = Path(train_config.start_with).expanduser()
-        if not start_path.exists():
-            raise FileNotFoundError(f"start_with path not found: {start_path}")
-        start_code = start_path.read_text(encoding="utf-8")
-        code_path.write_text(start_code, encoding="utf-8")
-    elif not code_path.exists():
-        code_path.write_text(
-            _start_code(rerank_name, run_config.top_k),
-            encoding="utf-8",
-        )
-
     tool_config = train_config.search_tools or ["bm25"]
     normalized_tools = normalize_search_tools(tool_config)
     search_tools = build_search_tools(
@@ -143,13 +145,33 @@ def train_codegen_strategy(
     if not search_tools:
         raise ValueError("Codegen requires at least one search tool.")
     search_tool_names = [tool.__name__ for tool in search_tools]
+    search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
+    tool_params = search_tool_names.copy()
     primary_search_tool = search_tools[0]
+    primary_tool_name = search_tool_names[0]
+
+    if train_config.start_with:
+        start_path = Path(train_config.start_with).expanduser()
+        if not start_path.exists():
+            raise FileNotFoundError(f"start_with path not found: {start_path}")
+        start_code = start_path.read_text(encoding="utf-8")
+        code_path.write_text(start_code, encoding="utf-8")
+    elif not code_path.exists():
+        code_path.write_text(
+            _start_code(
+                rerank_name,
+                run_config.top_k,
+                tool_params=tool_params,
+                primary_tool_name=primary_tool_name,
+            ),
+            encoding="utf-8",
+        )
 
     eval_cfg = train_config.eval
     training_eval_fn = make_training_eval_fn(
         corpus=corpus,
         judgments=judgments,
-        search_fn=primary_search_tool,
+        tool_fns=search_tools,
         rerank_name=rerank_name,
         seed=eval_cfg.training_seed,
         num_queries=eval_cfg.num_training_queries,
@@ -158,7 +180,7 @@ def train_codegen_strategy(
     validation_eval_fn = make_eval_guardrail(
         corpus=corpus,
         judgments=judgments,
-        search_fn=primary_search_tool,
+        tool_fns=search_tools,
         rerank_name=rerank_name,
         seed=eval_cfg.validation_seed,
         num_queries=eval_cfg.num_validation_queries,
@@ -169,6 +191,7 @@ def train_codegen_strategy(
     guardrails.append(_make_rerank_name_guard(rerank_name))
     apply_patch, try_out_patch, revert_changes = make_patch_fn(
         search_fn=primary_search_tool,
+        tool_fns=search_tools,
         corpus=corpus,
         code_dir=str(output_dir),
         module_name="reranker",
@@ -182,7 +205,7 @@ def train_codegen_strategy(
     run_evals, run_reranker = make_eval_tools(
         corpus=corpus,
         judgments=judgments,
-        search_fn=primary_search_tool,
+        tool_fns=search_tools,
         rerank_name=rerank_name,
         code_path=code_path,
         seed=eval_cfg.training_seed,
@@ -204,6 +227,8 @@ def train_codegen_strategy(
             dataset=dataset,
             rerank_name=rerank_name,
             search_tool_names=search_tool_names,
+            search_tool_docs=search_tool_docs,
+            rerank_params=tool_params + ["query"],
             code=code,
         )
         agent = OpenAIAgent(
@@ -219,6 +244,7 @@ def train_codegen_strategy(
         codegen_strategy = CodeGenSearchStrategy(
             corpus,
             search_fn=primary_search_tool,
+            tool_fns=search_tools,
             code=code,
             rerank_name=rerank_name,
             workers=workers,
@@ -267,4 +293,5 @@ def train_codegen_strategy(
         code=final_code,
         metadata=metadata,
         search_fn=primary_search_tool,
+        tool_fns=search_tools,
     )

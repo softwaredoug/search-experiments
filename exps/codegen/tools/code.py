@@ -142,6 +142,7 @@ def make_patch_fn(
     search_fn,
     corpus,
     code_dir: str,
+    tool_fns: list[callable] | None = None,
     module_name: str = "rerank_esci",
     function_name: str | None = None,
     guardrail_fns: List = None,
@@ -154,6 +155,7 @@ def make_patch_fn(
     filepath = os.path.join(code_dir, f"{module_name}.py")
     backup_path = os.path.join(code_dir, f"{module_name}_backup.py")
     function_name = function_name or module_name
+    tool_fns = tool_fns or [search_fn]
 
     if guardrail_fns is None:
         guardrail_fns = []
@@ -247,7 +249,7 @@ def make_patch_fn(
             raise ValueError("function_name is not callable.")
         for query in test_queries:
             try:
-                results = local_vars[function_name](search_fn, query)[:10]
+                results = local_vars[function_name](*tool_fns, query=query)[:10]
             except Exception as e:
                 logger.error(
                     f"Error calling {function_name} with query '{query}': {e}"

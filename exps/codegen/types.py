@@ -41,3 +41,4 @@ class CodeGenArtifact(BaseModel):
     code: str
     metadata: dict[str, Any]
     search_fn: callable
+    tool_fns: list[callable]

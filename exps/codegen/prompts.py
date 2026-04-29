@@ -27,10 +27,20 @@ def build_system_prompt(
     dataset: str,
     rerank_name: str,
     search_tool_names: list[str],
+    search_tool_docs: list[str],
+    rerank_params: list[str],
     code: str,
 ) -> str:
     prompt = base_prompt or DEFAULT_SYSTEM_PROMPT.format(rerank_name=rerank_name)
-    tool_block = "\n".join(f"- {name}" for name in search_tool_names)
+    tool_lines = []
+    for name, doc in zip(search_tool_names, search_tool_docs):
+        doc_str = (doc or "").strip()
+        if doc_str:
+            tool_lines.append(f"- {name}: {doc_str}")
+        else:
+            tool_lines.append(f"- {name}")
+    tool_block = "\n".join(tool_lines)
+    params_block = ", ".join(rerank_params)
     return dedent(
         f"""
         {prompt}
@@ -38,6 +48,9 @@ def build_system_prompt(
         Dataset: {dataset}
         Available search tools:
         {tool_block}
+
+        Reranker signature parameters:
+        {params_block}
 
         Reranker code to improve:
 

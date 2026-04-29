@@ -14,7 +14,7 @@ def make_eval_guardrail(
     *,
     corpus,
     judgments: pd.DataFrame,
-    search_fn: callable,
+    tool_fns: list[callable],
     rerank_name: str,
     seed: int,
     num_queries: int,
@@ -23,7 +23,8 @@ def make_eval_guardrail(
     def eval_guardrail(code: str) -> pd.Series:
         strategy = CodeGenSearchStrategy(
             corpus,
-            search_fn=search_fn,
+            search_fn=tool_fns[0],
+            tool_fns=tool_fns,
             code=code,
             rerank_name=rerank_name,
             workers=workers,
@@ -45,7 +46,7 @@ def make_training_eval_fn(
     *,
     corpus,
     judgments: pd.DataFrame,
-    search_fn: callable,
+    tool_fns: list[callable],
     rerank_name: str,
     seed: int,
     num_queries: int,
@@ -54,7 +55,7 @@ def make_training_eval_fn(
     return make_eval_guardrail(
         corpus=corpus,
         judgments=judgments,
-        search_fn=search_fn,
+        tool_fns=tool_fns,
         rerank_name=rerank_name,
         seed=seed,
         num_queries=num_queries,
@@ -66,7 +67,7 @@ def make_eval_tools(
     *,
     corpus,
     judgments: pd.DataFrame,
-    search_fn: callable,
+    tool_fns: list[callable],
     rerank_name: str,
     code_path,
     seed: int,
@@ -82,7 +83,8 @@ def make_eval_tools(
         code = code_path.read_text(encoding="utf-8")
         strategy = CodeGenSearchStrategy(
             corpus,
-            search_fn=search_fn,
+            search_fn=tool_fns[0],
+            tool_fns=tool_fns,
             code=code,
             rerank_name=rerank_name,
             workers=workers,
@@ -108,7 +110,7 @@ def make_eval_tools(
         """
         code = code_path.read_text(encoding="utf-8")
         rerank_fn = load_rerank_fn(code, rerank_name)
-        doc_ids = rerank_fn(search_fn, query)
+        doc_ids = rerank_fn(*tool_fns, query=query)
         scores = np.arange(len(doc_ids), 0, -1)
         results = []
         label_map = None

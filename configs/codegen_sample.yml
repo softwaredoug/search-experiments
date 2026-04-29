@@ -4,9 +4,10 @@ strategy:
   params:
     train:
       model: gpt-5
-      rounds: 5
+      rounds: 10
       search_tools:
-        - bm25
+        - fielded_bm25
+        - e5_base_v2
       start_with: null
       edit:
         guards:
@@ -17,7 +18,7 @@ strategy:
               model: openai/gpt-5-mini
       eval:
         num_training_queries: 100
-        num_validation_queries: 100
+        num_validation_queries: 200
         training_seed: 5678
         validation_seed: 1234
         eval_margin: 0.003

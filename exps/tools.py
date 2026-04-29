@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 
+from typing_extensions import Literal
+
 import threading
 
 import numpy as np
@@ -62,6 +64,68 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
         return results
 
     return search_bm25
+
+
+def make_fielded_bm25_tool(corpus):
+    _ensure_snowball_field(corpus, "title")
+    _ensure_snowball_field(corpus, "description")
+
+    def fielded_bm25(
+        keywords: str,
+        field_to_search: Literal["title", "description"] = "title",
+        operator: Literal["and", "or"] = "or",
+        top_k: int = 5,
+        agent_state=None,
+    ) -> list[dict[str, Union[str, int, float]]]:
+        """Search a corpus using BM25 over a single field.
+
+        Args:
+            keywords: The search query string.
+            field_to_search: Which field to search: title or description.
+            operator: How to combine search terms: and/or.
+            top_k: The number of top results to return.
+
+        Returns:
+            Search results as a list of dictionaries with 'id', 'title',
+            'description', and 'score' keys.
+        """
+        query_tokens = snowball_tokenizer(keywords)
+        scores = np.zeros(len(corpus))
+        if field_to_search == "title":
+            field_name = "title_snowball"
+        elif field_to_search == "description":
+            field_name = "description_snowball"
+        else:
+            raise ValueError("field_to_search must be 'title' or 'description'")
+
+        for token in query_tokens:
+            scores += corpus[field_name].array.score(token)
+
+        if operator == "and":
+            for token in query_tokens:
+                require_mask = corpus[field_name].array.score(token) > 0
+                scores = scores * require_mask
+        elif operator != "or":
+            raise ValueError("operator must be 'and' or 'or'")
+
+        top_k_indices = np.argsort(scores)[-top_k:][::-1]
+        scores = scores[top_k_indices]
+        top_rows = corpus.iloc[top_k_indices].copy()
+        top_rows.loc[:, "score"] = scores
+
+        results = []
+        for _, row in top_rows.iterrows():
+            results.append(
+                {
+                    "id": row.get("doc_id"),
+                    "title": row.get("title", ""),
+                    "description": row.get("description", ""),
+                    "score": row.get("score", 0.0),
+                }
+            )
+        return results
+
+    return fielded_bm25
 
 
 def make_embedding_tool(
@@ -336,6 +400,7 @@ def make_guarded_search_tool(
 
 TOOL_BUILDERS = {
     "bm25": make_bm25_tool,
+    "fielded_bm25": make_fielded_bm25_tool,
     "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
     "e5_base_v2": lambda corpus, device=None, dataset_name=None: make_embedding_tool(
