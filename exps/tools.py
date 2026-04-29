@@ -130,7 +130,19 @@ def make_embedding_tool(
     model_name = model_name or DEFAULT_MODEL_NAME
 
     def passage_fn(row):
-        return _passage_text(row, document_prefix=document_prefix)
+        title = row.get("title")
+        description = row.get("description")
+        title_text = title.strip() if isinstance(title, str) else ""
+        description_text = description.strip() if isinstance(description, str) else ""
+        if title_text and description_text:
+            text = f"{title_text}\n\n{description_text}"
+        elif title_text:
+            text = title_text
+        else:
+            text = description_text
+        if document_prefix:
+            return f"{document_prefix}{text}"
+        return text
 
     embeddings = load_or_create_embeddings(
         corpus,
@@ -437,11 +449,3 @@ def build_search_tools(
             )
         tools.append(tool_fn)
     return tools
-
-
-def _passage_text(row, document_prefix: str | None = None) -> str:
-    description = row.get("description")
-    description_text = description.strip() if isinstance(description, str) else ""
-    if document_prefix:
-        return f"{document_prefix}{description_text}"
-    return description_text
