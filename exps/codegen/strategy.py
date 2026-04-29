@@ -75,13 +75,16 @@ class CodeGenSearchStrategy(SearchStrategy):
         )
 
     def search(self, query, k: int = 10):
-        rerank_fn = load_rerank_fn(self.code, self.rerank_name)
-        doc_ids = rerank_fn(*self.tool_fns, query=query)[:k]
-        scores = np.arange(len(doc_ids), 0, -1)
-        top_k_ilocs = []
-        for doc_id in doc_ids:
-            iloc = self._lookup.get(str(doc_id))
-            if iloc is not None:
-                top_k_ilocs.append(iloc)
-        scores = scores[: len(top_k_ilocs)]
-        return top_k_ilocs, scores
+        try:
+            rerank_fn = load_rerank_fn(self.code, self.rerank_name)
+            doc_ids = rerank_fn(*self.tool_fns, query=query)[:k]
+            scores = np.arange(len(doc_ids), 0, -1)
+            top_k_ilocs = []
+            for doc_id in doc_ids:
+                iloc = self._lookup.get(str(doc_id))
+                if iloc is not None:
+                    top_k_ilocs.append(iloc)
+            scores = scores[: len(top_k_ilocs)]
+            return top_k_ilocs, scores
+        except Exception:
+            return [], np.array([])
