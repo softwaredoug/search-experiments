@@ -79,7 +79,9 @@ def _print_rounds(records: list[dict]) -> None:
         short_name = record.get("short_name") or ""
         summary = (record.get("summary") or "").replace("\n", " ")
         mean_str = f"{mean_ndcg:.4f}" if isinstance(mean_ndcg, (int, float)) else ""
-        print(f"{record.get('round','')}\t{mean_str}\t{delta_str}\t{short_name}\t{summary}")
+        print(
+            f"{record.get('round', '')}\t{mean_str}\t{delta_str}\t{short_name}\t{summary}"
+        )
         if isinstance(mean_ndcg, (int, float)):
             prev = mean_ndcg
 

@@ -19,7 +19,10 @@ class Edit(BaseModel):
     )
     block_until: str = Field(
         ...,
-        description="The end of the block of text which the patch should be applied. Do not leave blank.",
+        description=(
+            "The end of the block of text which the patch should be applied. "
+            "Do not leave blank."
+        ),
     )
     action: Literal["insert_after", "replace", "delete"] = Field(
         ..., description="The action to perform: insert_after, replace, or delete."
@@ -63,7 +66,10 @@ class EvalResult(BaseModel):
     )
     error_message: Optional[str] = Field(
         None,
-        description="An error or warning message if the patch failed to be applied, evaluation failed, or NDCG did not improve sufficiently.",
+        description=(
+            "An error or warning message if the patch failed to be applied, "
+            "evaluation failed, or NDCG did not improve sufficiently."
+        ),
     )
     ndcg_deltas: Optional[Dict[str, float]] = Field(
         None, description="The NDCG deltas for the training dataset."
@@ -82,7 +88,10 @@ class EvalResult(BaseModel):
 def make_length_validator(
     max_lines: int = 10, max_cols=120
 ) -> Callable[[str], Optional[str]]:
-    guardrail_desc = f"""Edits longer than {max_lines} and wider than {max_cols} characters will be rejected."""
+    guardrail_desc = (
+        f"Edits longer than {max_lines} and wider than {max_cols} "
+        "characters will be rejected."
+    )
 
     def length_validation(code: str) -> Optional[str]:
         if code.count("\n") > max_lines:
@@ -166,7 +175,10 @@ def make_patch_fn(
     full_guardrail_doc_strs = guardrail_doc_strs
     if validation_eval_fn is not None:
         validation_eval_fn = lru_cache(maxsize=64)(validation_eval_fn)
-        full_guardrail_doc_strs += f"\nEdits that reduce validation NDCG will be rejected as overfitting (must improve by at least {eval_margin})."
+        full_guardrail_doc_strs += (
+            "\nEdits that reduce validation NDCG will be rejected as overfitting "
+            f"(must improve by at least {eval_margin})."
+        )
         full_guardrail_doc_strs = (
             "Your code will be rejected if it does not meet these guardrails:\n"
             + full_guardrail_doc_strs
@@ -231,10 +243,10 @@ def make_patch_fn(
                 code = (
                     code[:anchor_index]
                     + edit.text
-                    + code[block_index + len(edit.block_until) :]
+                    + code[block_index + len(edit.block_until):]
                 )
             elif edit.action == "delete":
-                code = code[:anchor_index] + code[block_index + len(edit.block_until) :]
+                code = code[:anchor_index] + code[block_index + len(edit.block_until):]
             else:
                 raise ValueError(f"Unknown action '{edit.action}'.")
         # Attempt to eval the code
@@ -311,7 +323,10 @@ def make_patch_fn(
                 icon = "⚠️"
 
             logger.info(
-                f"{icon} Evaluated patch successfully. train NDCG before: {ndcgs_before.mean()}, after: {ndcgs_after.mean()}"
+                "%s Evaluated patch successfully. train NDCG before: %s, after: %s",
+                icon,
+                ndcgs_before.mean(),
+                ndcgs_after.mean(),
             )
             logger.info(f"Changed queries NDCG deltas: {changed_queries}")
             logger.info("Code:")
@@ -319,12 +334,13 @@ def make_patch_fn(
             # Check if in margin
             warning = None
             if ndcgs_after.mean() < (ndcgs_before.mean() + eval_margin):
-                warning = f"""⚠️ Warning: NDCG did not improve by at least {eval_margin} on training set:
-                before={ndcgs_before.mean()},
-                after={ndcgs_after.mean()}.
-            It might be rejected if applied.
-
-            Hint: look at changed queries, modify your change to get the upside of your change, and minimize the downside."""
+                warning = (
+                    "⚠️ Warning: NDCG did not improve by at least "
+                    f"{eval_margin} on training set: before={ndcgs_before.mean()}, "
+                    f"after={ndcgs_after.mean()}. It might be rejected if applied. "
+                    "Hint: look at changed queries, modify your change to get the upside "
+                    "of your change, and minimize the downside."
+                )
             logger.warning(warning)
 
             return EvalResult(
@@ -364,14 +380,21 @@ def make_patch_fn(
                 ndcg_after = validation_eval_fn(code).mean()
                 if ndcg_after < (ndcg_before + eval_margin):
                     logger.warning(
-                        f"❌ Rejecting Change: Validation NDCG must increase at least {eval_margin} after applying patch: before={ndcg_before}, after={ndcg_after}"
+                        "❌ Rejecting Change: Validation NDCG must increase at least %s "
+                        "after applying patch: before=%s, after=%s",
+                        eval_margin,
+                        ndcg_before,
+                        ndcg_after,
                     )
                     raise ValueError(
-                        f"Rejecting change as overfit must increase NDCG by at least {eval_margin}: before={ndcg_before}, after={ndcg_after}"
+                        "Rejecting change as overfit must increase NDCG by at least "
+                        f"{eval_margin}: before={ndcg_before}, after={ndcg_after}"
                     )
                 else:
                     logger.info(
-                        f"✅ Validation NDCG improved: before={ndcg_before}, after={ndcg_after}"
+                        "✅ Validation NDCG improved: before=%s, after=%s",
+                        ndcg_before,
+                        ndcg_after,
                     )
 
             code = _commit_code(code)

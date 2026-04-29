@@ -14,7 +14,6 @@ from exps.runners.run import RunParams, run_benchmark
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
-
 def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
         strategy_path="configs/ecom_base/bm25.yml",
@@ -257,10 +256,10 @@ def test_agentic_reprompt_appends(monkeypatch):
 
 
 def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
-    def fake_cache_root(dataset_name):
+    def fake_cache_root():
         return tmp_path
 
-    monkeypatch.setattr("exps.embeddings._cache_root", fake_cache_root)
+    monkeypatch.setattr("cheat_at_search.embeddings._cache_root", fake_cache_root)
 
     corpus = pd.DataFrame(
         {

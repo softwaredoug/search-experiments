@@ -464,7 +464,7 @@ wheels = [
 [[package]]
 name = "cheat-at-search"
 version = "0.1.0"
-source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=1c3cd70a282f914#1c3cd70a282f914c6dcfa48f605e67c584d30286" }
+source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=9ea255b6ee96fb81#9ea255b6ee96fb8128e1f634af26485983d1df18" }
 dependencies = [
     { name = "datasets" },
     { name = "google-genai" },
@@ -476,6 +476,7 @@ dependencies = [
     { name = "pystemmer" },
     { name = "pyyaml" },
     { name = "searcharray" },
+    { name = "sentence-transformers" },
 ]
 
 [[package]]
@@ -865,7 +866,6 @@ source = { editable = "." }
 dependencies = [
     { name = "cheat-at-search" },
     { name = "pyyaml" },
-    { name = "sentence-transformers" },
 ]
 
 [package.optional-dependencies]
@@ -886,13 +886,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=1c3cd70a282f914" },
+    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=9ea255b6ee96fb81" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.10.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "sentence-transformers", specifier = ">=5.4.1" },
     { name = "snakeviz", marker = "extra == 'dev'", specifier = ">=2.2.2" },
 ]
 provides-extras = ["dev"]

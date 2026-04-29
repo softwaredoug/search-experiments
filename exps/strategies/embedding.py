@@ -4,9 +4,20 @@ import hashlib
 import json
 import numpy as np
 from cheat_at_search.strategy import SearchStrategy
-
-from exps.embeddings import _minilm_model, load_or_create_embeddings
+from cheat_at_search.embeddings import (
+    DEFAULT_CHUNK_SIZE,
+    _load_model,
+    load_or_create_embeddings,
+)
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+
+
+def _passage_text(row, document_prefix: str | None = None) -> str:
+    description = row.get("description")
+    description_text = description.strip() if isinstance(description, str) else ""
+    if document_prefix:
+        return f"{document_prefix}{description_text}"
+    return description_text
 
 
 class EmbeddingStrategy(SearchStrategy):
@@ -51,14 +62,18 @@ class EmbeddingStrategy(SearchStrategy):
         self.document_prefix = document_prefix
         self.dataset = dataset
         self._lookup = build_doc_id_lookup(corpus)
-        self._model = _minilm_model(model_name, device=device)
+        self._model = _load_model(model_name, device=device)
+
+        def passage_fn(row):
+            return _passage_text(row, document_prefix=document_prefix)
+
         self._embeddings = load_or_create_embeddings(
             corpus,
+            passage_fn=passage_fn,
             model_name=model_name,
             device=device,
+            chunk_size=DEFAULT_CHUNK_SIZE,
             show_progress=True,
-            dataset_name=dataset,
-            document_prefix=document_prefix,
         )
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
         doc_norms[doc_norms == 0] = 1.0

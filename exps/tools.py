@@ -7,23 +7,17 @@ from typing_extensions import Literal
 import threading
 
 import numpy as np
-from searcharray import SearchArray
 
 from cheat_at_search.tokenizers import snowball_tokenizer
-from exps.embeddings import DEFAULT_MODEL_NAME, _minilm_model, load_or_create_embeddings
-
-
-def _ensure_snowball_field(corpus, field: str) -> None:
-    snowball_field = f"{field}_snowball"
-    if snowball_field in corpus or field not in corpus:
-        return
-    corpus[snowball_field] = SearchArray.index(corpus[field], snowball_tokenizer)
+from cheat_at_search.embeddings import (
+    DEFAULT_MODEL_NAME,
+    DEFAULT_CHUNK_SIZE,
+    _load_model,
+    load_or_create_embeddings,
+)
 
 
 def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float = 1.0):
-    _ensure_snowball_field(corpus, "title")
-    _ensure_snowball_field(corpus, "description")
-
     def search_bm25(
         keywords: str,
         top_k: int = 5,
@@ -67,9 +61,6 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
 
 
 def make_fielded_bm25_tool(corpus):
-    _ensure_snowball_field(corpus, "title")
-    _ensure_snowball_field(corpus, "description")
-
     def fielded_bm25(
         keywords: str,
         field_to_search: Literal["title", "description"] = "title",
@@ -131,21 +122,24 @@ def make_fielded_bm25_tool(corpus):
 def make_embedding_tool(
     corpus,
     device: str | None = None,
-    dataset_name: str | None = None,
     *,
     model_name: str | None = None,
     query_prefix: str | None = None,
     document_prefix: str | None = None,
 ):
     model_name = model_name or DEFAULT_MODEL_NAME
+
+    def passage_fn(row):
+        return _passage_text(row, document_prefix=document_prefix)
+
     embeddings = load_or_create_embeddings(
         corpus,
+        passage_fn=passage_fn,
         model_name=model_name,
         device=device,
-        dataset_name=dataset_name,
-        document_prefix=document_prefix,
+        chunk_size=DEFAULT_CHUNK_SIZE,
     )
-    model = _minilm_model(model_name, device=device)
+    model = _load_model(model_name, device=device)
 
     def search_embeddings(
         question: str,
@@ -282,7 +276,7 @@ def _minilm_guard_model():
     if _MINILM_GUARD_MODEL is None:
         with _MINILM_GUARD_LOCK:
             if _MINILM_GUARD_MODEL is None:
-                _MINILM_GUARD_MODEL = _minilm_model(DEFAULT_MODEL_NAME)
+                _MINILM_GUARD_MODEL = _load_model(DEFAULT_MODEL_NAME)
     return _MINILM_GUARD_MODEL
 
 
@@ -403,10 +397,9 @@ TOOL_BUILDERS = {
     "fielded_bm25": make_fielded_bm25_tool,
     "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
-    "e5_base_v2": lambda corpus, device=None, dataset_name=None: make_embedding_tool(
+    "e5_base_v2": lambda corpus, device=None: make_embedding_tool(
         corpus,
         device=device,
-        dataset_name=dataset_name,
         model_name="intfloat/e5-base-v2",
         query_prefix="query: ",
         document_prefix="passage: ",
@@ -427,9 +420,7 @@ def build_search_tools(
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
         if tool_name in {"embeddings", "minilm", "e5_base_v2"}:
-            tool_fn = builder(
-                corpus, device=embeddings_device, dataset_name=dataset_name
-            )
+            tool_fn = builder(corpus, device=embeddings_device)
         else:
             tool_fn = builder(corpus)
         if tool["guards"]:
@@ -446,3 +437,11 @@ def build_search_tools(
             )
         tools.append(tool_fn)
     return tools
+
+
+def _passage_text(row, document_prefix: str | None = None) -> str:
+    description = row.get("description")
+    description_text = description.strip() if isinstance(description, str) else ""
+    if document_prefix:
+        return f"{document_prefix}{description_text}"
+    return description_text
