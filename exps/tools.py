@@ -12,7 +12,7 @@ from cheat_at_search.tokenizers import snowball_tokenizer
 from cheat_at_search.embeddings import (
     DEFAULT_MODEL_NAME,
     DEFAULT_CHUNK_SIZE,
-    _load_model,
+    load_model,
     load_or_create_embeddings,
 )
 
@@ -144,14 +144,13 @@ def make_embedding_tool(
             return f"{document_prefix}{text}"
         return text
 
-    embeddings = load_or_create_embeddings(
+    embeddings, model = load_or_create_embeddings(
         corpus,
         passage_fn=passage_fn,
         model_name=model_name,
         device=device,
         chunk_size=DEFAULT_CHUNK_SIZE,
     )
-    model = _load_model(model_name, device=device)
 
     def search_embeddings(
         question: str,
@@ -288,7 +287,7 @@ def _minilm_guard_model():
     if _MINILM_GUARD_MODEL is None:
         with _MINILM_GUARD_LOCK:
             if _MINILM_GUARD_MODEL is None:
-                _MINILM_GUARD_MODEL = _load_model(DEFAULT_MODEL_NAME)
+                _MINILM_GUARD_MODEL = load_model(DEFAULT_MODEL_NAME)
     return _MINILM_GUARD_MODEL
 
 

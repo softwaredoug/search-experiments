@@ -6,7 +6,7 @@ import numpy as np
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.embeddings import (
     DEFAULT_CHUNK_SIZE,
-    _load_model,
+    load_model,
     load_or_create_embeddings,
 )
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
@@ -54,7 +54,7 @@ class EmbeddingStrategy(SearchStrategy):
         self.document_prefix = document_prefix
         self.dataset = dataset
         self._lookup = build_doc_id_lookup(corpus)
-        self._model = _load_model(model_name, device=device)
+        self._model = None
 
         def passage_fn(row):
             title = row.get("title")
@@ -71,7 +71,7 @@ class EmbeddingStrategy(SearchStrategy):
                 return f"{document_prefix}{text}"
             return text
 
-        self._embeddings = load_or_create_embeddings(
+        embeddings, model = load_or_create_embeddings(
             corpus,
             passage_fn=passage_fn,
             model_name=model_name,
@@ -79,9 +79,11 @@ class EmbeddingStrategy(SearchStrategy):
             chunk_size=DEFAULT_CHUNK_SIZE,
             show_progress=True,
         )
+        self._embeddings = embeddings
+        self._model = model
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
         doc_norms[doc_norms == 0] = 1.0
-        self._doc_embeddings = self._embeddings / doc_norms[:, None]
+        self._embeddings /= doc_norms[:, None]
 
     def _normalize_queries(self, query_embeddings: np.ndarray) -> np.ndarray:
         queries = query_embeddings.astype(float)
@@ -96,10 +98,12 @@ class EmbeddingStrategy(SearchStrategy):
             return [], []
         if self.query_prefix:
             queries = [f"{self.query_prefix}{query}" for query in queries]
+        if self._model is None:
+            self._model = load_model(self.model_name, device=self.device)
         query_embeddings = self._model.encode(queries, convert_to_numpy=True)
         query_embeddings = np.asarray(query_embeddings)
         query_embeddings = self._normalize_queries(query_embeddings)
-        num_docs = self._doc_embeddings.shape[0]
+        num_docs = self._embeddings.shape[0]
         chunk_size = max(int(self.doc_chunk_size), 1)
         num_queries = query_embeddings.shape[0]
         best_scores = np.full((num_queries, k), -np.inf)
@@ -107,7 +111,7 @@ class EmbeddingStrategy(SearchStrategy):
 
         for start in range(0, num_docs, chunk_size):
             end = min(start + chunk_size, num_docs)
-            doc_chunk = self._doc_embeddings[start:end]
+            doc_chunk = self._embeddings[start:end]
             scores_chunk = query_embeddings @ doc_chunk.T
 
             for row_idx in range(num_queries):
