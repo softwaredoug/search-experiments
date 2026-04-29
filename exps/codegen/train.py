@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -41,6 +42,12 @@ class FinalMessage(BaseModel):
     """Final message indicating completion of the reranker improvement process."""
 
     message: str = Field(..., description="A message indicating completion of the task.")
+    short_name: str | None = Field(
+        None, description="Short 3-4 word name of the change."
+    )
+    summary: str | None = Field(
+        None, description="One or more sentences describing the change."
+    )
 
 
 def _parse_guardrails(raw_guards: list[dict]) -> list:
@@ -218,7 +225,9 @@ def train_codegen_strategy(
         tools.append(try_out_patch)
 
     messages: list[str] = []
+    round_summaries: list[dict] = []
     round_ndcgs: list[float] = []
+    rounds_log_path = output_dir / "rounds.jsonl"
     for round_idx in range(train_config.rounds):
         print(f"Starting training round {round_idx + 1}/{train_config.rounds}...")
         code = code_path.read_text(encoding="utf-8")
@@ -266,6 +275,21 @@ def train_codegen_strategy(
         mean_ndcg = float(ndcgs(results_codegen).mean()) if not results_codegen.empty else 0.0
         round_ndcgs.append(mean_ndcg)
         print(f"Round {round_idx + 1}/{train_config.rounds} mean NDCG: {mean_ndcg:.4f}")
+        round_record = {
+            "round": round_idx + 1,
+            "short_name": resp.short_name if resp else None,
+            "summary": resp.summary if resp else None,
+            "message": resp.message if resp else None,
+            "mean_ndcg": mean_ndcg,
+        }
+        round_summaries.append(round_record)
+        rounds_log_path.write_text(
+            (rounds_log_path.read_text(encoding="utf-8") if rounds_log_path.exists() else "")
+            + json.dumps(round_record) + "\n",
+            encoding="utf-8",
+        )
+        round_code_path = output_dir / f"reranker_round_{round_idx + 1}.py"
+        round_code_path.write_text(code, encoding="utf-8")
 
     final_code = code_path.read_text(encoding="utf-8")
     metadata = {
@@ -276,6 +300,7 @@ def train_codegen_strategy(
         "rounds": train_config.rounds,
         "search_tools": normalized_tools,
         "messages": messages,
+        "round_summaries": round_summaries,
         "round_ndcgs": round_ndcgs,
         "start_with": train_config.start_with,
         "training_seed": eval_cfg.training_seed,
