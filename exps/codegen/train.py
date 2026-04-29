@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -175,13 +176,39 @@ def train_codegen_strategy(
         )
 
     eval_cfg = train_config.eval
+    query_cols = ["query"]
+    if "query_id" in judgments.columns:
+        query_cols.append("query_id")
+    available_queries = judgments[query_cols].drop_duplicates()["query"].tolist()
+    if report_num_queries is not None:
+        report_count = min(report_num_queries, len(available_queries))
+        base_queries = random.Random(report_seed).sample(available_queries, report_count)
+    else:
+        base_queries = list(available_queries)
+        report_count = len(base_queries)
+
+    train_size = int(len(base_queries) * eval_cfg.train_query_fraction)
+    val_size = int(len(base_queries) * eval_cfg.validation_query_fraction)
+    if base_queries and eval_cfg.train_query_fraction > 0 and train_size == 0:
+        train_size = 1
+    if base_queries and eval_cfg.validation_query_fraction > 0 and val_size == 0:
+        val_size = 1
+
+    validation_queries_list = random.Random(eval_cfg.validation_seed).sample(
+        base_queries, min(val_size, len(base_queries))
+    )
+    remaining_queries = [q for q in base_queries if q not in set(validation_queries_list)]
+    training_queries_list = random.Random(eval_cfg.training_seed).sample(
+        remaining_queries, min(train_size, len(remaining_queries))
+    )
     training_eval_fn = make_training_eval_fn(
         corpus=corpus,
         judgments=judgments,
         tool_fns=search_tools,
         rerank_name=rerank_name,
         seed=eval_cfg.training_seed,
-        num_queries=eval_cfg.num_training_queries,
+        num_queries=len(training_queries_list),
+        queries=training_queries_list,
         workers=workers,
     )
     validation_eval_fn = make_eval_guardrail(
@@ -190,7 +217,8 @@ def train_codegen_strategy(
         tool_fns=search_tools,
         rerank_name=rerank_name,
         seed=eval_cfg.validation_seed,
-        num_queries=eval_cfg.num_validation_queries,
+        num_queries=len(validation_queries_list),
+        queries=validation_queries_list,
         workers=workers,
     )
 
@@ -216,7 +244,8 @@ def train_codegen_strategy(
         rerank_name=rerank_name,
         code_path=code_path,
         seed=eval_cfg.training_seed,
-        num_queries=eval_cfg.num_training_queries,
+        num_queries=len(training_queries_list),
+        queries=training_queries_list,
         workers=workers,
     )
 
@@ -258,17 +287,10 @@ def train_codegen_strategy(
             rerank_name=rerank_name,
             workers=workers,
         )
-        if report_num_queries is not None:
-            report_count = report_num_queries
-        else:
-            query_cols = ["query"]
-            if "query_id" in judgments.columns:
-                query_cols.append("query_id")
-            report_count = len(judgments[query_cols].drop_duplicates())
         results_codegen = run_strategy(
             codegen_strategy,
             judgments,
-            num_queries=report_count,
+            queries=base_queries,
             seed=report_seed,
             cache=False,
         )
@@ -305,8 +327,11 @@ def train_codegen_strategy(
         "start_with": train_config.start_with,
         "training_seed": eval_cfg.training_seed,
         "validation_seed": eval_cfg.validation_seed,
-        "num_training_queries": eval_cfg.num_training_queries,
-        "num_validation_queries": eval_cfg.num_validation_queries,
+        "train_query_fraction": eval_cfg.train_query_fraction,
+        "validation_query_fraction": eval_cfg.validation_query_fraction,
+        "num_training_queries": len(training_queries_list),
+        "num_validation_queries": len(validation_queries_list),
+        "base_query_count": len(base_queries),
         "report_seed": report_seed,
         "report_num_queries": report_num_queries,
         "eval_margin": eval_cfg.eval_margin,

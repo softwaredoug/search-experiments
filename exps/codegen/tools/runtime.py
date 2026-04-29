@@ -18,6 +18,7 @@ def make_eval_guardrail(
     rerank_name: str,
     seed: int,
     num_queries: int,
+    queries: list[str] | None = None,
     workers: int = 1,
 ) -> callable:
     def eval_guardrail(code: str) -> pd.Series:
@@ -32,7 +33,8 @@ def make_eval_guardrail(
         results = run_strategy(
             strategy,
             judgments,
-            num_queries=num_queries,
+            queries=queries,
+            num_queries=None if queries else num_queries,
             seed=seed,
             cache=False,
         )
@@ -50,6 +52,7 @@ def make_training_eval_fn(
     rerank_name: str,
     seed: int,
     num_queries: int,
+    queries: list[str] | None = None,
     workers: int = 1,
 ) -> callable:
     return make_eval_guardrail(
@@ -59,6 +62,7 @@ def make_training_eval_fn(
         rerank_name=rerank_name,
         seed=seed,
         num_queries=num_queries,
+        queries=queries,
         workers=workers,
     )
 
@@ -72,6 +76,7 @@ def make_eval_tools(
     code_path,
     seed: int,
     num_queries: int,
+    queries: list[str] | None = None,
     workers: int = 1,
 ):
     id_col = resolve_id_column(corpus)
@@ -92,7 +97,8 @@ def make_eval_tools(
         results = run_strategy(
             strategy,
             judgments,
-            num_queries=num_queries,
+            queries=queries,
+            num_queries=None if queries else num_queries,
             seed=seed,
             cache=False,
         )
