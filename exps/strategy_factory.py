@@ -1,8 +1,25 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from exps.strategy_config import StrategyConfig, load_strategy_config, resolve_strategy_class
+
+
+def _default_device() -> str:
+    logger = logging.getLogger(__name__)
+    try:
+        import torch
+    except ImportError:
+        logger.warning("torch not installed; defaulting device to cpu")
+        return "cpu"
+
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    logger.warning("No GPU available; defaulting device to cpu")
+    return "cpu"
 
 
 def strategy_params_for_config(
@@ -10,6 +27,8 @@ def strategy_params_for_config(
 ) -> dict:
     params = dict(strategy_config.params)
     params.pop("description", None)
+    if device is None:
+        device = _default_device()
     if device:
         if strategy_config.type == "agentic" and "embeddings_device" not in params:
             tool_names = params.get("search_tools")
@@ -59,6 +78,8 @@ def create_strategy(
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
     params = dict(params)
+    if device is None:
+        device = _default_device()
     if strategy_config.type == "agentic":
         if trace_path is None:
             raise ValueError("trace_path is required for agentic strategies.")

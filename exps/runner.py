@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import subprocess
 from pathlib import Path
 
 from exps.datasets import DATASET_NAMES
@@ -24,8 +25,16 @@ def _report_metric(metric_name: str, metric_series, graded=None) -> None:
 def _write_summary_csv(path: str, *, dataset: str, result) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        commit_sha = (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
+            .strip()
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        commit_sha = ""
     row = {
         "dataset": dataset,
+        "commit_sha": commit_sha,
         "strategy_name": result.strategy_name,
         "strategy_params": json.dumps(result.strategy_params, sort_keys=True),
         "metric_name": result.metric_name,
