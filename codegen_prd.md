@@ -32,6 +32,7 @@ strategy:
             num_validation_queries: 100
         model: gpt-5-mini
         rounds: 10
+        refresh_every: 10
 
         system_prompt: |
              Your task is to look at the data and improve the reranker code so that it returns more relevant results
@@ -253,3 +254,9 @@ If a path is provided to --train.continue, don't use the latest, use the provide
 
 The command line argument train.rounds (--train.rounds 10) overrides whatever is in the config.
 
+
+## Refreshing training sets
+
+Use train.refresh_every to control how often codegen regenerates tools and resamples
+the training/validation query sets. The default is refresh_every == rounds (once at
+the start). Set refresh_every to 1 to refresh every round.

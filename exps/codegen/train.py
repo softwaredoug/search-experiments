@@ -119,6 +119,54 @@ def _start_code(
     )
 
 
+def _resolve_continuation(
+    continue_from: str | bool | None,
+    *,
+    dataset: str,
+    strategy_name: str,
+) -> tuple[Path | None, int, str | None]:
+    if not continue_from:
+        return None, 0, None
+
+    if isinstance(continue_from, str) and continue_from != "latest":
+        continue_path = Path(continue_from).expanduser()
+    else:
+        continue_path = find_latest_codegen_run(dataset, strategy_name)
+    if continue_path is None:
+        raise FileNotFoundError(
+            f"No prior codegen runs found for dataset={dataset} strategy={strategy_name}."
+        )
+    if not continue_path.exists():
+        raise FileNotFoundError(f"continue path not found: {continue_path}")
+
+    previous_rounds = 0
+    rounds_log = continue_path / "rounds.jsonl"
+    if rounds_log.exists():
+        with rounds_log.open("r", encoding="utf-8") as handle:
+            previous_rounds = sum(1 for _ in handle)
+
+    round_files = list(continue_path.glob("reranker_round_*.py"))
+    if round_files:
+
+        def _round_num(path: Path) -> int:
+            name = path.stem
+            try:
+                return int(name.split("_round_")[-1])
+            except ValueError:
+                return -1
+
+        last_round_path = max(round_files, key=_round_num)
+        previous_rounds = max(_round_num(last_round_path), previous_rounds, 0)
+        start_code = last_round_path.read_text(encoding="utf-8")
+        return continue_path, previous_rounds, start_code
+
+    prior_reranker = continue_path / "reranker.py"
+    if not prior_reranker.exists():
+        raise FileNotFoundError(f"No reranker code found in {continue_path}")
+    start_code = prior_reranker.read_text(encoding="utf-8")
+    return continue_path, previous_rounds, start_code
+
+
 def train_codegen_strategy(
     *,
     strategy_name: str,
@@ -145,59 +193,14 @@ def train_codegen_strategy(
 
     tool_config = train_config.search_tools or ["bm25"]
     normalized_tools = normalize_search_tools(tool_config)
-    search_tools = build_search_tools(
-        corpus,
-        tool_config,
-        embeddings_device=device,
-        dataset_name=dataset,
-    )
-    if not search_tools:
-        raise ValueError("Codegen requires at least one search tool.")
-    search_tool_names = [tool.__name__ for tool in search_tools]
-    search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
-    tool_params = search_tool_names.copy()
-    primary_search_tool = search_tools[0]
-    primary_tool_name = search_tool_names[0]
 
     continue_from = train_config.continue_from
-    continue_path: Path | None = None
-    previous_rounds = 0
-    start_code: str | None = None
-    if continue_from:
-        if isinstance(continue_from, str) and continue_from != "latest":
-            continue_path = Path(continue_from).expanduser()
-        else:
-            continue_path = find_latest_codegen_run(dataset, strategy_name)
-        if continue_path is None:
-            raise FileNotFoundError(
-                f"No prior codegen runs found for dataset={dataset} strategy={strategy_name}."
-            )
-        if not continue_path.exists():
-            raise FileNotFoundError(f"continue path not found: {continue_path}")
-
-        rounds_log = continue_path / "rounds.jsonl"
-        if rounds_log.exists():
-            with rounds_log.open("r", encoding="utf-8") as handle:
-                previous_rounds = sum(1 for _ in handle)
-
-        round_files = list(continue_path.glob("reranker_round_*.py"))
-        if round_files:
-            def _round_num(path: Path) -> int:
-                name = path.stem
-                try:
-                    return int(name.split("_round_")[-1])
-                except ValueError:
-                    return -1
-
-            last_round_path = max(round_files, key=_round_num)
-            previous_rounds = max(_round_num(last_round_path), previous_rounds, 0)
-            start_code = last_round_path.read_text(encoding="utf-8")
-        else:
-            prior_reranker = continue_path / "reranker.py"
-            if not prior_reranker.exists():
-                raise FileNotFoundError(f"No reranker code found in {continue_path}")
-            start_code = prior_reranker.read_text(encoding="utf-8")
-    elif train_config.start_with:
+    continue_path, previous_rounds, start_code = _resolve_continuation(
+        continue_from,
+        dataset=dataset,
+        strategy_name=strategy_name,
+    )
+    if start_code is None and train_config.start_with:
         start_path = Path(train_config.start_with).expanduser()
         if not start_path.exists():
             raise FileNotFoundError(f"start_with path not found: {start_path}")
@@ -211,16 +214,6 @@ def train_codegen_strategy(
             shutil.copyfile(rounds_log, output_dir / "rounds.jsonl")
     if start_code is not None:
         code_path.write_text(start_code, encoding="utf-8")
-    elif not code_path.exists():
-        code_path.write_text(
-            _start_code(
-                rerank_name,
-                run_config.top_k,
-                tool_params=tool_params,
-                primary_tool_name=primary_tool_name,
-            ),
-            encoding="utf-8",
-        )
 
     eval_cfg = train_config.eval
     query_cols = ["query"]
@@ -241,80 +234,124 @@ def train_codegen_strategy(
     if base_queries and eval_cfg.validation_query_fraction > 0 and val_size == 0:
         val_size = 1
 
-    validation_queries_list = random.Random(eval_cfg.validation_seed).sample(
-        base_queries, min(val_size, len(base_queries))
-    )
-    remaining_queries = [q for q in base_queries if q not in set(validation_queries_list)]
-    training_queries_list = random.Random(eval_cfg.training_seed).sample(
-        remaining_queries, min(train_size, len(remaining_queries))
-    )
-    training_eval_fn = make_training_eval_fn(
-        corpus=corpus,
-        judgments=judgments,
-        tool_fns=search_tools,
-        rerank_name=rerank_name,
-        seed=eval_cfg.training_seed,
-        num_queries=len(training_queries_list),
-        queries=training_queries_list,
-        workers=workers,
-    )
-    validation_eval_fn = make_eval_guardrail(
-        corpus=corpus,
-        judgments=judgments,
-        tool_fns=search_tools,
-        rerank_name=rerank_name,
-        seed=eval_cfg.validation_seed,
-        num_queries=len(validation_queries_list),
-        queries=validation_queries_list,
-        workers=workers,
-    )
-
     guardrails = _parse_guardrails(train_config.edit.guards)
     guardrails.append(_make_rerank_name_guard(rerank_name))
-    apply_patch, try_out_patch, revert_changes = make_patch_fn(
-        search_fn=primary_search_tool,
-        tool_fns=search_tools,
-        corpus=corpus,
-        code_dir=str(output_dir),
-        module_name="reranker",
-        function_name=rerank_name,
-        guardrail_fns=guardrails,
-        training_eval_fn=training_eval_fn,
-        validation_eval_fn=validation_eval_fn,
-        eval_margin=eval_cfg.eval_margin,
-    )
-
-    run_evals, run_reranker = make_eval_tools(
-        corpus=corpus,
-        judgments=judgments,
-        tool_fns=search_tools,
-        rerank_name=rerank_name,
-        code_path=code_path,
-        seed=eval_cfg.training_seed,
-        num_queries=len(training_queries_list),
-        queries=training_queries_list,
-        workers=workers,
-    )
-
-    tools = [*search_tools, apply_patch, run_reranker, run_evals, revert_changes]
-    if train_config.try_out_patch:
-        tools.append(try_out_patch)
 
     messages: list[str] = []
     round_summaries: list[dict] = []
     round_ndcgs: list[float] = []
     rounds_log_path = output_dir / "rounds.jsonl"
+    refresh_every = train_config.refresh_every or train_config.rounds
+    if refresh_every <= 0:
+        raise ValueError("refresh_every must be >= 1")
+    search_tools = None
+    search_tool_names = None
+    search_tool_docs = None
+    tool_params = None
+    primary_search_tool = None
+    primary_tool_name = None
+    training_queries_list: list[str] = []
+    validation_queries_list: list[str] = []
+    tools = None
     total_rounds = previous_rounds + train_config.rounds
     for round_idx in range(previous_rounds, total_rounds):
+        refresh_round = (round_idx - previous_rounds) % refresh_every == 0
+        if refresh_round:
+            search_tools = build_search_tools(
+                corpus,
+                tool_config,
+                embeddings_device=device,
+                dataset_name=dataset,
+            )
+            if not search_tools:
+                raise ValueError("Codegen requires at least one search tool.")
+            search_tool_names = [tool.__name__ for tool in search_tools]
+            search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
+            tool_params = search_tool_names.copy()
+            primary_search_tool = search_tools[0]
+            primary_tool_name = search_tool_names[0]
+
+            training_seed = eval_cfg.training_seed + round_idx
+            validation_seed = eval_cfg.validation_seed + round_idx
+            validation_queries_list = random.Random(validation_seed).sample(
+                base_queries, min(val_size, len(base_queries))
+            )
+            remaining_queries = [
+                q for q in base_queries if q not in set(validation_queries_list)
+            ]
+            training_queries_list = random.Random(training_seed).sample(
+                remaining_queries, min(train_size, len(remaining_queries))
+            )
+            training_eval_fn = make_training_eval_fn(
+                corpus=corpus,
+                judgments=judgments,
+                tool_fns=search_tools,
+                rerank_name=rerank_name,
+                seed=training_seed,
+                num_queries=len(training_queries_list),
+                queries=training_queries_list,
+                workers=workers,
+            )
+            validation_eval_fn = make_eval_guardrail(
+                corpus=corpus,
+                judgments=judgments,
+                tool_fns=search_tools,
+                rerank_name=rerank_name,
+                seed=validation_seed,
+                num_queries=len(validation_queries_list),
+                queries=validation_queries_list,
+                workers=workers,
+            )
+
+            apply_patch, try_out_patch, revert_changes = make_patch_fn(
+                search_fn=primary_search_tool,
+                tool_fns=search_tools,
+                corpus=corpus,
+                code_dir=str(output_dir),
+                module_name="reranker",
+                function_name=rerank_name,
+                guardrail_fns=guardrails,
+                training_eval_fn=training_eval_fn,
+                validation_eval_fn=validation_eval_fn,
+                eval_margin=eval_cfg.eval_margin,
+            )
+
+            run_evals, run_reranker = make_eval_tools(
+                corpus=corpus,
+                judgments=judgments,
+                tool_fns=search_tools,
+                rerank_name=rerank_name,
+                code_path=code_path,
+                seed=training_seed,
+                num_queries=len(training_queries_list),
+                queries=training_queries_list,
+                workers=workers,
+            )
+
+            tools = [*search_tools, apply_patch, run_reranker, run_evals, revert_changes]
+            if train_config.try_out_patch:
+                tools.append(try_out_patch)
+
+            if not code_path.exists():
+                code_path.write_text(
+                    _start_code(
+                        rerank_name,
+                        run_config.top_k,
+                        tool_params=tool_params,
+                        primary_tool_name=primary_tool_name,
+                    ),
+                    encoding="utf-8",
+                )
+
         print(f"Starting training round {round_idx + 1}/{total_rounds}...")
         code = code_path.read_text(encoding="utf-8")
         system_prompt = build_system_prompt(
             train_config.system_prompt,
             dataset=dataset,
             rerank_name=rerank_name,
-            search_tool_names=search_tool_names,
-            search_tool_docs=search_tool_docs,
-            rerank_params=tool_params + ["query"],
+            search_tool_names=search_tool_names or [],
+            search_tool_docs=search_tool_docs or [],
+            rerank_params=(tool_params or []) + ["query"],
             code=code,
         )
         agent = OpenAIAgent(
@@ -351,6 +388,8 @@ def train_codegen_strategy(
             "summary": resp.summary if resp else None,
             "message": resp.message if resp else None,
             "mean_ndcg": mean_ndcg,
+            "training_query_count": len(training_queries_list),
+            "validation_query_count": len(validation_queries_list),
         }
         round_summaries.append(round_record)
         rounds_log_path.write_text(
@@ -371,6 +410,7 @@ def train_codegen_strategy(
         "rounds_added": train_config.rounds,
         "continued_from": str(continue_path) if continue_from else None,
         "previous_rounds": previous_rounds,
+        "refresh_every": refresh_every,
         "search_tools": normalized_tools,
         "messages": messages,
         "round_summaries": round_summaries,

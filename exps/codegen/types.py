@@ -25,6 +25,7 @@ class CodeGenTrainConfig(BaseModel):
     eval: CodeGenEvalConfig = Field(default_factory=CodeGenEvalConfig)
     model: str = "gpt-5-mini"
     rounds: int = 10
+    refresh_every: int | None = None
     system_prompt: str | None = None
     search_tools: list = Field(default_factory=lambda: ["bm25"])
     try_out_patch: bool = True
