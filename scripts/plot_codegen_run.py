@@ -140,6 +140,7 @@ def main() -> None:
         if args.run_path
         else _find_latest_run(args.dataset, args.strategy)
     )
+    print(f"Run path: {run_path}")
     records = _load_rounds(run_path)
     _print_rounds(records)
     title = f"Codegen run: {run_path}"
