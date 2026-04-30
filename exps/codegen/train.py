@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+import shutil
 from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -13,7 +14,7 @@ from exps.codegen.tools.code import (
 )
 from pydantic import BaseModel, Field
 
-from exps.codegen.io import make_codegen_dir, reranker_path, write_metadata
+from exps.codegen.io import find_latest_codegen_run, make_codegen_dir, reranker_path, write_metadata
 from exps.codegen.prompts import build_system_prompt
 from exps.codegen.strategy import CodeGenSearchStrategy
 from exps.codegen.tools.runtime import (
@@ -138,8 +139,8 @@ def train_codegen_strategy(
     train_config = CodeGenTrainConfig.model_validate(train_params)
     run_config = CodeGenRunConfig.model_validate(run_params)
 
-    output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
-    code_path = reranker_path(output_dir)
+    output_dir: Path | None = None
+    code_path: Path | None = None
     rerank_name = f"rerank_{dataset}"
 
     tool_config = train_config.search_tools or ["bm25"]
@@ -158,11 +159,57 @@ def train_codegen_strategy(
     primary_search_tool = search_tools[0]
     primary_tool_name = search_tool_names[0]
 
-    if train_config.start_with:
+    continue_from = train_config.continue_from
+    continue_path: Path | None = None
+    previous_rounds = 0
+    start_code: str | None = None
+    if continue_from:
+        if isinstance(continue_from, str) and continue_from != "latest":
+            continue_path = Path(continue_from).expanduser()
+        else:
+            continue_path = find_latest_codegen_run(dataset, strategy_name)
+        if continue_path is None:
+            raise FileNotFoundError(
+                f"No prior codegen runs found for dataset={dataset} strategy={strategy_name}."
+            )
+        if not continue_path.exists():
+            raise FileNotFoundError(f"continue path not found: {continue_path}")
+
+        rounds_log = continue_path / "rounds.jsonl"
+        if rounds_log.exists():
+            with rounds_log.open("r", encoding="utf-8") as handle:
+                previous_rounds = sum(1 for _ in handle)
+
+        round_files = list(continue_path.glob("reranker_round_*.py"))
+        if round_files:
+            def _round_num(path: Path) -> int:
+                name = path.stem
+                try:
+                    return int(name.split("_round_")[-1])
+                except ValueError:
+                    return -1
+
+            last_round_path = max(round_files, key=_round_num)
+            previous_rounds = max(_round_num(last_round_path), previous_rounds, 0)
+            start_code = last_round_path.read_text(encoding="utf-8")
+        else:
+            prior_reranker = continue_path / "reranker.py"
+            if not prior_reranker.exists():
+                raise FileNotFoundError(f"No reranker code found in {continue_path}")
+            start_code = prior_reranker.read_text(encoding="utf-8")
+    elif train_config.start_with:
         start_path = Path(train_config.start_with).expanduser()
         if not start_path.exists():
             raise FileNotFoundError(f"start_with path not found: {start_path}")
         start_code = start_path.read_text(encoding="utf-8")
+    if output_dir is None:
+        output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
+        code_path = reranker_path(output_dir)
+    if continue_path is not None:
+        rounds_log = continue_path / "rounds.jsonl"
+        if rounds_log.exists():
+            shutil.copyfile(rounds_log, output_dir / "rounds.jsonl")
+    if start_code is not None:
         code_path.write_text(start_code, encoding="utf-8")
     elif not code_path.exists():
         code_path.write_text(
@@ -257,8 +304,9 @@ def train_codegen_strategy(
     round_summaries: list[dict] = []
     round_ndcgs: list[float] = []
     rounds_log_path = output_dir / "rounds.jsonl"
-    for round_idx in range(train_config.rounds):
-        print(f"Starting training round {round_idx + 1}/{train_config.rounds}...")
+    total_rounds = previous_rounds + train_config.rounds
+    for round_idx in range(previous_rounds, total_rounds):
+        print(f"Starting training round {round_idx + 1}/{total_rounds}...")
         code = code_path.read_text(encoding="utf-8")
         system_prompt = build_system_prompt(
             train_config.system_prompt,
@@ -296,7 +344,7 @@ def train_codegen_strategy(
         )
         mean_ndcg = float(ndcgs(results_codegen).mean()) if not results_codegen.empty else 0.0
         round_ndcgs.append(mean_ndcg)
-        print(f"Round {round_idx + 1}/{train_config.rounds} mean NDCG: {mean_ndcg:.4f}")
+        print(f"Round {round_idx + 1}/{total_rounds} mean NDCG: {mean_ndcg:.4f}")
         round_record = {
             "round": round_idx + 1,
             "short_name": resp.short_name if resp else None,
@@ -319,7 +367,10 @@ def train_codegen_strategy(
         "strategy_name": strategy_name,
         "rerank_name": rerank_name,
         "model": train_config.model,
-        "rounds": train_config.rounds,
+        "rounds": total_rounds,
+        "rounds_added": train_config.rounds,
+        "continued_from": str(continue_path) if continue_from else None,
+        "previous_rounds": previous_rounds,
         "search_tools": normalized_tools,
         "messages": messages,
         "round_summaries": round_summaries,

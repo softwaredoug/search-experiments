@@ -19,6 +19,8 @@ class CodeGenEditConfig(BaseModel):
 
 
 class CodeGenTrainConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     edit: CodeGenEditConfig = Field(default_factory=CodeGenEditConfig)
     eval: CodeGenEvalConfig = Field(default_factory=CodeGenEvalConfig)
     model: str = "gpt-5-mini"
@@ -27,6 +29,7 @@ class CodeGenTrainConfig(BaseModel):
     search_tools: list = Field(default_factory=lambda: ["bm25"])
     try_out_patch: bool = True
     start_with: str | None = None
+    continue_from: str | bool | None = Field(default=None, alias="continue")
 
 
 class CodeGenRunConfig(BaseModel):

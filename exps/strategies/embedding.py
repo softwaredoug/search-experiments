@@ -9,6 +9,7 @@ from cheat_at_search.embeddings import (
     load_model,
     load_or_create_embeddings,
 )
+from exps.embeddings_utils import make_passage_fn
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 
 
@@ -56,20 +57,7 @@ class EmbeddingStrategy(SearchStrategy):
         self._lookup = build_doc_id_lookup(corpus)
         self._model = None
 
-        def passage_fn(row):
-            title = row.get("title")
-            description = row.get("description")
-            title_text = title.strip() if isinstance(title, str) else ""
-            description_text = description.strip() if isinstance(description, str) else ""
-            if title_text and description_text:
-                text = f"{title_text}\n\n{description_text}"
-            elif title_text:
-                text = title_text
-            else:
-                text = description_text
-            if document_prefix:
-                return f"{document_prefix}{text}"
-            return text
+        passage_fn = make_passage_fn(document_prefix)
 
         embeddings, model = load_or_create_embeddings(
             corpus,

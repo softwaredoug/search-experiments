@@ -27,6 +27,8 @@ class RunParams(BaseModel):
     binary_relevance: str | None = None
     device: str | None = None
     no_cache: bool = False
+    train_rounds: int | None = None
+    train_continue: str | None = None
 
 
 class RunResult(BaseModel):
@@ -114,6 +116,15 @@ def run_benchmark(params: RunParams) -> RunResult:
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path, device=params.device, base_path=params.base_path
     )
+    if params.train_rounds is not None or params.train_continue is not None:
+        if strategy_config.type != "codegen":
+            raise ValueError("Training overrides are only supported for codegen strategies.")
+        train_params = dict(strategy_params.get("train") or {})
+        if params.train_rounds is not None:
+            train_params["rounds"] = params.train_rounds
+        if params.train_continue is not None:
+            train_params["continue"] = params.train_continue
+        strategy_params["train"] = train_params
     trace_path = None
     if strategy_config.type == "agentic":
         run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")

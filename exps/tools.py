@@ -15,6 +15,7 @@ from cheat_at_search.embeddings import (
     load_model,
     load_or_create_embeddings,
 )
+from exps.embeddings_utils import make_passage_fn
 
 
 def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float = 1.0):
@@ -129,20 +130,7 @@ def make_embedding_tool(
 ):
     model_name = model_name or DEFAULT_MODEL_NAME
 
-    def passage_fn(row):
-        title = row.get("title")
-        description = row.get("description")
-        title_text = title.strip() if isinstance(title, str) else ""
-        description_text = description.strip() if isinstance(description, str) else ""
-        if title_text and description_text:
-            text = f"{title_text}\n\n{description_text}"
-        elif title_text:
-            text = title_text
-        else:
-            text = description_text
-        if document_prefix:
-            return f"{document_prefix}{text}"
-        return text
+    passage_fn = make_passage_fn(document_prefix)
 
     embeddings, model = load_or_create_embeddings(
         corpus,
@@ -165,6 +153,9 @@ def make_embedding_tool(
 
         This is an embedding search over concatenated title + description.
         """
+        nonlocal model
+        if model is None:
+            model = load_model(model_name, device=device)
         if query_prefix:
             question = f"{query_prefix}{question}"
         query_embedded = model.encode(question)

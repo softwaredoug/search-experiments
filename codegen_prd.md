@@ -226,3 +226,30 @@ Generated code should live in
 
 ~/.search-experiments/codegen/<dataset>/<strategy_name>/<timestamp>/reranker.py
 
+
+## Training continuation
+
+For the runner add a train.continue flag (--train.continue)                                                       
+                                                                                                                  
+Right now, this would get implemented for codegen, and anything else should throw an error.                       
+                                                                                                                  
+When this is set, you find the latest codegen run of the current dataset and use the last rerank function         
+there to continue training.                                                                                       
+
+You copy the artifacts over to a new run and continue training.                                                   
+
+IE we're training wands. If this is the latest ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/                                  
+
+The last round there is rerank_round_4.py
+
+The config tells you to run 10 rounds. So you keep going 10 more rounds, up to 14
+
+You copy rounds.jsonl from the original run, and continue to append to it (so now we should have 14)
+
+If a path is provided to --train.continue, don't use the latest, use the provided path. This allows users to continue from any point, not just the latest.
+
+
+## Training rounds
+
+The command line argument train.rounds (--train.rounds 10) overrides whatever is in the config.
+

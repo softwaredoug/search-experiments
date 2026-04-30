@@ -10,6 +10,16 @@ from exps.paths import SEARCH_EXPERIMENTS_ROOT
 CODEGEN_ROOT = SEARCH_EXPERIMENTS_ROOT / "codegen"
 
 
+def find_latest_codegen_run(dataset: str, strategy_name: str) -> Path | None:
+    runs_root = CODEGEN_ROOT / dataset / strategy_name
+    if not runs_root.exists():
+        return None
+    candidates = [path for path in runs_root.iterdir() if path.is_dir()]
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda path: path.name)[-1]
+
+
 def make_codegen_dir(
     dataset: str, strategy_name: str, *, run_started_at: str | None = None
 ) -> Path:
