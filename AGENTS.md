@@ -44,6 +44,16 @@ Keep changes small, testable, and aligned with existing patterns.
 - Run a single test:
   - `uv run pytest tests/test_bm25.py::test_bm25_wands_ndcg_sanity`
 
+## Test-Driven Flow
+
+When a problem is reported, create a runner test first.
+
+- Always use small data (few queries, WANDS dataset, 1 training round).
+- Always run end-to-end; avoid mocking.
+- Assume `OPENAI_API_KEY` is set; fail loudly if missing.
+- If the issue cannot be reproduced under these constraints, prompt the user.
+- Tests may take up to 5 minutes to run; that is acceptable.
+
 ## Code Style Guidelines
 
 ### Imports

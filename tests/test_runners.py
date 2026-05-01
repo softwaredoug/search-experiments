@@ -161,6 +161,27 @@ def test_run_benchmark_agentic_guarded():
     assert result.summary["tool_calls_std"] >= 0.0
 
 
+def test_run_benchmark_codegen_guarded():
+    if not os.environ.get("OPENAI_API_KEY"):
+        pytest.skip("OPENAI_API_KEY is required for codegen tests.")
+
+    params = RunParams(
+        strategy_path="configs/codegen_guarded.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+        train_rounds=1,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
 def test_agentic_stop_iterations(monkeypatch):
     calls = []
 

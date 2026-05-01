@@ -15,7 +15,7 @@ class CodeGenEvalConfig(BaseModel):
 
 
 class CodeGenEditConfig(BaseModel):
-    guards: list[dict[str, Any]] = Field(default_factory=list)
+    guards: list[dict[str, Any] | str] = Field(default_factory=list)
 
 
 class CodeGenTrainConfig(BaseModel):

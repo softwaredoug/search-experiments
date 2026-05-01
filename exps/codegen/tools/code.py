@@ -195,6 +195,10 @@ def make_patch_fn(
 
     def revert_changes() -> str:
         """Undo the last patch by restoring from backup."""
+        if not os.path.exists(backup_path):
+            with open(filepath, "r") as current:
+                with open(backup_path, "w") as backup:
+                    backup.write(current.read())
         with open(backup_path) as backup:
             with open(filepath, "w") as f:
                 logger.info(f"Reverted {module_name}.py to backup.")
@@ -261,7 +265,7 @@ def make_patch_fn(
             raise ValueError("function_name is not callable.")
         for query in test_queries:
             try:
-                results = local_vars[function_name](*tool_fns, query=query)[:10]
+                results = local_vars[function_name](query, *tool_fns)[:10]
             except Exception as e:
                 logger.error(
                     f"Error calling {function_name} with query '{query}': {e}"

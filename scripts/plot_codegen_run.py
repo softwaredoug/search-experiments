@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 
 import matplotlib.pyplot as plt
 
@@ -86,7 +87,13 @@ def _print_rounds(records: list[dict]) -> None:
             prev = mean_ndcg
 
 
-def _plot_rounds(records: list[dict], *, title: str, metric_key: str) -> None:
+def _slugify(value: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9]+", "_", value).strip("_") or "run"
+
+
+def _plot_rounds(
+    records: list[dict], *, title: str, metric_key: str, output_path: Path
+) -> None:
     if not records:
         return
     rounds = [record.get("round") for record in records]
@@ -120,7 +127,14 @@ def _plot_rounds(records: list[dict], *, title: str, metric_key: str) -> None:
     plt.ylabel(ylabel)
     plt.grid(alpha=0.2)
     plt.tight_layout()
-    plt.show()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists():
+        response = input(f"{output_path} exists. Overwrite? [y/N]: ").strip().lower()
+        if response not in {"y", "yes"}:
+            print("Canceled.")
+            return
+    plt.savefig(output_path, dpi=150)
+    plt.close()
 
 
 def main() -> None:
@@ -140,6 +154,15 @@ def main() -> None:
         default="full",
         help="Which NDCG series to plot (full or test).",
     )
+    parser.add_argument(
+        "--output-dir",
+        default="assets",
+        help="Directory to write plot image.",
+    )
+    parser.add_argument(
+        "--title",
+        help="Override chart title.",
+    )
     args = parser.parse_args()
 
     run_path = (
@@ -151,8 +174,23 @@ def main() -> None:
     records = _load_rounds(run_path)
     _print_rounds(records)
     metric_key = "mean_ndcg" if args.metric == "full" else "mean_ndcg_test"
-    title = f"Codegen run: {run_path} ({args.metric})"
-    _plot_rounds(records, title=title, metric_key=metric_key)
+    title = args.title or f"Codegen run: {run_path} ({args.metric})"
+    if args.title:
+        filename = _slugify(args.title)
+    else:
+        strategy_name = args.strategy or run_path.parent.name
+        filename = "_".join(
+            [
+                "codegen",
+                _slugify(args.dataset),
+                _slugify(strategy_name),
+                _slugify(run_path.name),
+                _slugify(args.metric),
+            ]
+        )
+    output_path = Path(args.output_dir) / f"{filename}.png"
+    _plot_rounds(records, title=title, metric_key=metric_key, output_path=output_path)
+    print(f"Wrote plot: {output_path}")
 
 
 if __name__ == "__main__":

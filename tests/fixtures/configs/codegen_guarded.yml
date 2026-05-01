@@ -1,0 +1,26 @@
+strategy:
+  name: codegen_guarded_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 5
+              max_cols: 120
+      eval:
+        train_query_fraction: 0.2
+        validation_query_fraction: 0.2
+        training_seed: 123
+        validation_seed: 456
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+
+    run:
+      top_k: 5
