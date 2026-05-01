@@ -212,9 +212,7 @@ Its important the model only knows about the training set its using. And whether
 
 That's what the 'validation_guardrail' is for. It runs the proposed code on a holdout set, and rejects changes that don't improve the holdout.
 
-That should always be assumed to be part of the codegen process, even if not explicitly mentioned in the yaml. We can have various guardrails, but a validation guardrail should always be one of them.
-
-IE always use that guardrail.
+Validation is now explicit: include `validation` in `edit.guards` when you want the guardrail applied. Guardrails are only enforced when listed.
 
 
 ## Codegen location
@@ -260,4 +258,3 @@ The command line argument train.rounds (--train.rounds 10) overrides whatever is
 Use train.refresh_every to control how often codegen regenerates tools and resamples
 the training/validation query sets. The default is refresh_every == rounds (once at
 the start). Set refresh_every to 1 to refresh every round.
-
