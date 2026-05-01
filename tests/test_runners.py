@@ -1,5 +1,10 @@
+"""Runner integration tests.
+
+See docs/runner_tests_prd.md for requirements.
+"""
+
 import os
-from types import SimpleNamespace
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -16,7 +21,7 @@ from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
-        strategy_path="configs/ecom_base/bm25.yml",
+        strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
@@ -39,8 +44,8 @@ def test_run_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_bm25_all_params():
     params = DiffParams(
-        strategy_a_path="configs/ecom_base/bm25.yml",
-        strategy_b_path="configs/ecom_base/bm25.yml",
+        strategy_a_path="configs/bm25.yml",
+        strategy_b_path="configs/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query=None,
@@ -61,8 +66,8 @@ def test_diff_benchmark_wands_bm25_all_params():
 
 def test_diff_benchmark_wands_query_results():
     params = DiffParams(
-        strategy_a_path="configs/ecom_base/bm25.yml",
-        strategy_b_path="configs/ecom_base/bm25.yml",
+        strategy_a_path="configs/bm25.yml",
+        strategy_b_path="configs/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query="salon chair",
@@ -84,7 +89,7 @@ def test_diff_benchmark_wands_query_results():
 
 def test_run_benchmark_query_results():
     params = RunParams(
-        strategy_path="configs/ecom_base/bm25.yml",
+        strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         query="salon chair",
@@ -102,11 +107,17 @@ def test_run_benchmark_query_results():
     assert "display_title" in result.query_results.columns
     assert result.most_relevant_row is not None
     assert result.most_relevant_grade_col is not None
+    assert result.relevant_examples is not None
+    assert len(result.relevant_examples) <= 3
+    for example in result.relevant_examples:
+        assert "doc_id" in example
+        assert "title" in example
+        assert "description" in example
 
 
 def test_run_benchmark_matches_direct():
     params = RunParams(
-        strategy_path="configs/ecom_base/bm25.yml",
+        strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=2,
@@ -118,7 +129,7 @@ def test_run_benchmark_matches_direct():
     )
     result = run_benchmark(params)
 
-    strategy_config = load_strategy_config(params.strategy_path)
+    strategy_config = load_strategy_config(params.strategy_path, base_path=params.base_path)
     strategy_cls = resolve_strategy_class(strategy_config.type)
     strategy_params = dict(strategy_config.params)
     dataset = get_dataset(params.dataset)
@@ -140,9 +151,25 @@ def test_run_benchmark_matches_direct():
     pd.testing.assert_series_equal(result.metric_series, direct_series)
 
 
+def test_run_benchmark_train_rounds_requires_codegen():
+    params = RunParams(
+        strategy_path="configs/bm25.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+        train_rounds=1,
+    )
+    with pytest.raises(ValueError):
+        run_benchmark(params)
+
+
 def test_run_benchmark_agentic_guarded():
     if not os.environ.get("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY is required for agentic tests.")
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
     params = RunParams(
         strategy_path="configs/agentic.yml",
@@ -161,9 +188,34 @@ def test_run_benchmark_agentic_guarded():
     assert result.summary["tool_calls_std"] >= 0.0
 
 
+def test_run_benchmark_codegen_rounds_override():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    params = RunParams(
+        strategy_path="configs/codegen_guarded.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+        train_rounds=1,
+    )
+    result = run_benchmark(params)
+
+    assert result.codegen_artifact_path is not None
+    metadata_path = Path(result.codegen_artifact_path) / "metadata.json"
+    assert metadata_path.exists()
+    metadata = metadata_path.read_text(encoding="utf-8")
+    assert "\"rounds\": 1" in metadata
+    assert "\"rounds_added\": 1" in metadata
+
+
 def test_run_benchmark_codegen_guarded():
     if not os.environ.get("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY is required for codegen tests.")
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
 
     params = RunParams(
         strategy_path="configs/codegen_guarded.yml",
@@ -182,98 +234,85 @@ def test_run_benchmark_codegen_guarded():
     assert not result.metric_series.empty
 
 
-def test_agentic_stop_iterations(monkeypatch):
-    calls = []
+def test_agentic_stop_iterations():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
-    def fake_agent_run(
-        tool_info,
-        text_format,
-        inputs,
-        model="gpt-5-nano",
-        agent_state=None,
-        summary=True,
-        logger=None,
-    ):
-        calls.append(list(inputs))
-        resp = SimpleNamespace(output_parsed="ok", output=[])
-        return resp, inputs
-
-    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
-
+    reprompt = "Please try again with SearchResultsIds."
+    inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
     result = exps.agentic.search(
         tools=[],
-        inputs=[{"role": "user", "content": "hi"}],
+        inputs=inputs,
         stop=[{"iterations": 2}],
+        reprompt=reprompt,
+        model="gpt-5-nano",
     )
 
-    assert result == "ok"
-    assert len(calls) == 2
+    assert isinstance(result, exps.agentic.SearchResultsIds)
+    reprompt_count = sum(
+        1
+        for item in inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and item.get("content") == reprompt
+    )
+    assert reprompt_count == 1
 
 
-def test_agentic_stop_tool_calls(monkeypatch):
-    calls = []
+def test_agentic_stop_tool_calls():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
-    def fake_agent_run(
-        tool_info,
-        text_format,
-        inputs,
-        model="gpt-5-nano",
-        agent_state=None,
-        summary=True,
-        logger=None,
-    ):
-        calls.append(list(inputs))
-        if agent_state is not None:
-            agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
-        resp = SimpleNamespace(output_parsed="ok", output=[])
-        return resp, inputs
-
-    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
+    def echo_tool(message: str, agent_state=None) -> dict[str, str]:
+        """Return the provided message."""
+        return {"message": message}
 
     agent_state = {"num_tool_calls": 0}
+    inputs = [
+        {
+            "role": "user",
+            "content": (
+                "Call the echo_tool twice with message 'ping-1' and 'ping-2'. "
+                "Then respond with SearchResultsIds."
+            ),
+        }
+    ]
     result = exps.agentic.search(
-        tools=[],
-        inputs=[{"role": "user", "content": "hi"}],
-        stop=[{"tool_calls": 2}],
+        tools=[echo_tool],
+        inputs=inputs,
+        stop=[{"tool_calls": 2}, {"iterations": 3}],
+        reprompt="Remember to call echo_tool before answering.",
         agent_state=agent_state,
+        model="gpt-5-nano",
     )
 
-    assert result == "ok"
-    assert len(calls) == 2
-    assert agent_state["num_tool_calls"] == 2
+    assert isinstance(result, exps.agentic.SearchResultsIds)
+    assert agent_state["num_tool_calls"] >= 2
 
 
-def test_agentic_reprompt_appends(monkeypatch):
-    calls = []
+def test_agentic_reprompt_appends():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
-    def fake_agent_run(
-        tool_info,
-        text_format,
-        inputs,
-        model="gpt-5-nano",
-        agent_state=None,
-        summary=True,
-        logger=None,
-    ):
-        calls.append(list(inputs))
-        resp = SimpleNamespace(output_parsed="ok", output=[])
-        return resp, inputs
-
-    monkeypatch.setattr(exps.agentic, "agent_run", fake_agent_run)
-
-    reprompt = "Try harder"
+    reprompt = "Try again with a new ordering."
+    inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
     result = exps.agentic.search(
         tools=[],
-        inputs=[{"role": "user", "content": "hi"}],
+        inputs=inputs,
         stop=[{"iterations": 3}],
         reprompt=reprompt,
+        model="gpt-5-nano",
     )
 
-    assert result == "ok"
-    assert len(calls) == 3
-    assert [item["content"] for item in calls[0]] == ["hi"]
-    assert [item["content"] for item in calls[1]] == ["hi", reprompt]
-    assert [item["content"] for item in calls[2]] == ["hi", reprompt, reprompt]
+    assert isinstance(result, exps.agentic.SearchResultsIds)
+    reprompt_count = sum(
+        1
+        for item in inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and item.get("content") == reprompt
+    )
+    assert reprompt_count == 2
 
 
 def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
@@ -302,7 +341,7 @@ def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
     monkeypatch.setattr("exps.runners.run.get_dataset", lambda *args, **kwargs: dataset)
 
     params = RunParams(
-        strategy_path="configs/ecom_base/embedding_e5_base_v2.yml",
+        strategy_path="configs/embedding_e5_base_v2.yml",
         base_path="tests/fixtures",
         dataset="wands",
         num_queries=1,
