@@ -16,6 +16,27 @@ def _display_title(row) -> str:
     return description if isinstance(description, str) else str(description)
 
 
+def _grade_column(judgments) -> str | None:
+    for col in ("grade", "relevance", "rel", "label", "score"):
+        if col in judgments.columns:
+            return col
+    return None
+
+
+def _display_description(row) -> str:
+    description = row.get("description", "")
+    if isinstance(description, str):
+        return description
+    return str(description)
+
+
+def _coerce_grade(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a single query for debugging.")
     parser.add_argument(
@@ -88,6 +109,32 @@ def main() -> None:
         title = _display_title(row)
         score = row.get("score", 0)
         print(f"{doc_id}\t{score:.4f}\t{title}")
+
+    if (
+        judgments is not None
+        and "query" in judgments.columns
+        and "doc_id" in judgments.columns
+        and "doc_id" in corpus.columns
+    ):
+        grade_col = _grade_column(judgments)
+        if grade_col:
+            subset = judgments[judgments["query"] == args.query]
+            if not subset.empty:
+                numeric = subset[grade_col].apply(_coerce_grade)
+                if numeric.notna().any():
+                    subset = subset.assign(_grade=numeric).sort_values("_grade", ascending=False)
+                top_rows = subset.head(3)
+                print("\nRelevant examples:")
+                for _, row in top_rows.iterrows():
+                    doc_id = row.get("doc_id")
+                    grade = row.get(grade_col, "")
+                    match = corpus[corpus["doc_id"] == doc_id]
+                    if match.empty:
+                        continue
+                    item = match.iloc[0]
+                    title = _display_title(item)
+                    description = _display_description(item)
+                    print(f"{doc_id}\t{grade}\t{title}\t{description}")
 
 
 if __name__ == "__main__":

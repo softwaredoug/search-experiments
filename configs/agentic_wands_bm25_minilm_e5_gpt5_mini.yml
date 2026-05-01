@@ -1,0 +1,27 @@
+strategy:
+  name: agentic_wands_bm25_minilm_e5_gpt5_mini
+  type: agentic
+  description: |
+    WANDS-specific agentic strategy using category-aware tools.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find products in a homegoods / furniture
+      dataset.
+
+      These tools support optional product_categories filtering. Categorization can be imperfect,
+      so consider searching both with and without category filters.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+    few_shot:
+      - sample_judgments: 10
+    search_tools:
+      - bm25_wands:
+      - minilm_wands:
+      - e5_base_v2_wands:
+      - check_features_wands:

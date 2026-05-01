@@ -44,6 +44,7 @@ class RunResult(BaseModel):
     query_grade_col: str | None = None
     most_relevant_row: pd.Series | None = None
     most_relevant_grade_col: str | None = None
+    relevant_examples: list[dict] | None = None
     codegen_artifact_path: str | None = None
 
 
@@ -55,6 +56,13 @@ def _display_title(row: pd.Series) -> str:
         return str(title)
     description = row.get("description", "")
     return description if isinstance(description, str) else str(description)
+
+
+def _display_description(row: pd.Series) -> str:
+    description = row.get("description", "")
+    if isinstance(description, str):
+        return description
+    return str(description)
 
 
 def _grade_column(judgments: pd.DataFrame) -> str | None:
@@ -90,6 +98,41 @@ def _most_relevant_row(
             display_title = _display_title(match.iloc[0])
     top_row["display_title"] = display_title
     return top_row, grade_col
+
+
+def _relevant_examples(
+    *, judgments: pd.DataFrame, corpus: pd.DataFrame, query: str
+) -> tuple[list[dict], str | None]:
+    if "query" not in judgments.columns or "doc_id" not in judgments.columns:
+        return [], None
+    grade_col = _grade_column(judgments)
+    if grade_col is None:
+        return [], None
+    subset = judgments[judgments["query"] == query]
+    if subset.empty:
+        return [], grade_col
+    scores = pd.to_numeric(subset[grade_col], errors="coerce")
+    if scores.notna().any():
+        subset = subset.assign(_grade=scores).sort_values("_grade", ascending=False)
+    if "doc_id" not in corpus.columns:
+        return [], grade_col
+    examples = []
+    for _, row in subset.head(3).iterrows():
+        doc_id = row.get("doc_id")
+        grade = row.get(grade_col)
+        match = corpus[corpus["doc_id"] == doc_id]
+        if match.empty:
+            continue
+        item = match.iloc[0]
+        examples.append(
+            {
+                "doc_id": doc_id,
+                "grade": grade,
+                "title": _display_title(item),
+                "description": _display_description(item),
+            }
+        )
+    return examples, grade_col
 
 
 def _query_results(
@@ -165,13 +208,17 @@ def run_benchmark(params: RunParams) -> RunResult:
         most_relevant_row, most_relevant_grade_col = _most_relevant_row(
             judgments=judgments, corpus=corpus, query=params.query
         )
+        relevant_examples, relevant_grade_col = _relevant_examples(
+            judgments=judgments, corpus=corpus, query=params.query
+        )
         return RunResult(
             strategy_name=strategy_config.name,
             strategy_params=dict(strategy_config.params),
             query_results=query_results,
             query_grade_col=grade_col,
             most_relevant_row=most_relevant_row,
-            most_relevant_grade_col=most_relevant_grade_col,
+            most_relevant_grade_col=relevant_grade_col or most_relevant_grade_col,
+            relevant_examples=relevant_examples,
             codegen_artifact_path=codegen_artifact_path,
         )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()

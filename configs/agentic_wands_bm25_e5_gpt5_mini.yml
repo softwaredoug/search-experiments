@@ -1,0 +1,29 @@
+strategy:
+  name: agentic_wands_bm25_minilm_e5_gpt5_mini
+  type: agentic
+  description: |
+    WANDS-specific agentic strategy using category-aware tools.
+  params:
+    model: gpt-5.4-mini
+    system_prompt: |
+      You take user search queries and use search tools to find products in a homegoods / furniture
+      dataset.
+
+      Here we have tools design to search the Wayfair product catalog.
+
+      The procedure you should follow
+
+      1. Gather many types of candidates using the search tools.
+      2. Use the check_features_wands tool to inspect important features of the candidates you found. This can help you better understand the products and their relevance to the query, which can inform your ranking.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+    few_shot:
+      - sample_judgments: 
+          num_rows: 3
+          columns:
+           - category
+           - features
+    search_tools:
+      - bm25_wands:
+      - e5_base_v2_wands:
+      - check_features_wands:

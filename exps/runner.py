@@ -157,16 +157,15 @@ def main() -> None:
         if result.codegen_artifact_path:
             print(f"Codegen artifact: {result.codegen_artifact_path}")
             print("")
-        if result.most_relevant_row is not None:
-            label = result.most_relevant_row.get("display_title", "")
-            if not label:
-                doc_id = result.most_relevant_row.get("doc_id")
-                label = str(doc_id) if doc_id is not None else ""
-            grade_col = result.most_relevant_grade_col
-            if grade_col:
-                print("Most relevant result:")
-                print(f"{label}\t{grade_col}={result.most_relevant_row.get(grade_col)}")
-                print("")
+        if result.relevant_examples:
+            print("Relevant examples:")
+            for example in result.relevant_examples:
+                doc_id = example.get("doc_id", "")
+                grade = example.get("grade", "")
+                title = example.get("title", "")
+                description = example.get("description", "")
+                print(f"{doc_id}\t{grade}\t{title}\t{description}")
+            print("")
 
         if result.query_results is None:
             return

@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 
 from exps.datasets import DATASET_NAMES, get_dataset
-from exps.runners.diff import DiffParams, diff_benchmark
+from exps.runners.diff import DiffParams, diff_benchmark, _query_results as _runner_query_results
 from exps.strategy_factory import create_strategy, load_strategy
 from exps.trace_utils import build_agentic_trace_root
 
@@ -19,6 +19,13 @@ def _display_title(row: pd.Series) -> str:
     return description if isinstance(description, str) else str(description)
 
 
+def _display_description(row: pd.Series) -> str:
+    description = row.get("description", "")
+    if isinstance(description, str):
+        return description
+    return str(description)
+
+
 def _grade_column(judgments: pd.DataFrame) -> str | None:
     for col in ("grade", "relevance", "rel", "label", "score"):
         if col in judgments.columns:
@@ -26,7 +33,7 @@ def _grade_column(judgments: pd.DataFrame) -> str | None:
     return None
 
 
-def _show_most_relevant(
+def _show_relevant_examples(
     *, query: str, judgments: pd.DataFrame, corpus: pd.DataFrame
 ) -> None:
     if "query" not in judgments.columns:
@@ -39,19 +46,21 @@ def _show_most_relevant(
         return
     scores = pd.to_numeric(subset[grade_col], errors="coerce")
     if scores.notna().any():
-        top_idx = scores.idxmax()
-        top_row = subset.loc[top_idx]
-    else:
-        top_row = subset.iloc[0]
-    doc_id = top_row.get("doc_id")
-    title = ""
-    if doc_id is not None and "doc_id" in corpus.columns:
+        subset = subset.assign(_grade=scores).sort_values("_grade", ascending=False)
+    top_rows = subset.head(3)
+    if "doc_id" not in corpus.columns:
+        return
+    print("Relevant examples:")
+    for _, row in top_rows.iterrows():
+        doc_id = row.get("doc_id")
+        grade = row.get(grade_col, "")
         match = corpus[corpus["doc_id"] == doc_id]
-        if not match.empty:
-            title = _display_title(match.iloc[0])
-    label = title if title else str(doc_id) if doc_id is not None else ""
-    print("Most relevant result:")
-    print(f"{label}\t{grade_col}={top_row.get(grade_col)}")
+        if match.empty:
+            continue
+        item = match.iloc[0]
+        title = _display_title(item)
+        description = _display_description(item)
+        print(f"{doc_id}\t{grade}\t{title}\t{description}")
     print("")
 
 
@@ -64,6 +73,10 @@ def _print_query_results(label: str, results: pd.DataFrame) -> None:
         score = row.get("score", 0)
         grade = row.get("grade", "")
         print(f"{doc_id}\t{score:.4f}\t{grade}\t{title}")
+
+
+def _query_results(strategy, corpus, judgments, query: str, k: int) -> pd.DataFrame:
+    return _runner_query_results(strategy, corpus, judgments, query, k)
 
 
 def _print_metric_diff(
@@ -213,7 +226,7 @@ def main() -> None:
             trace_path=trace_path_b,
             judgments=judgments,
         )
-        _show_most_relevant(query=args.query, judgments=judgments, corpus=corpus)
+        _show_relevant_examples(query=args.query, judgments=judgments, corpus=corpus)
         query_results_a = _query_results(
             strategy_a, corpus, judgments, args.query, args.k
         )
