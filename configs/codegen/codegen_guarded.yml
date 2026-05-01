@@ -1,5 +1,5 @@
 strategy:
-  name: codegen_sample
+  name: codegen_guarded
   type: codegen
   params:
     train:

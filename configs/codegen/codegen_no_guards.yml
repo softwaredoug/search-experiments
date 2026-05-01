@@ -1,5 +1,5 @@
 strategy:
-  name: codegen_sample
+  name: codegen_no_guards
   type: codegen
   params:
     train:
@@ -11,13 +11,7 @@ strategy:
         - e5_base_v2
       start_with: null
       edit:
-        guards:
-          - validation
-          - length:
-              max_lines: 10
-              max_cols: 120
-          - overfit:
-              model: openai/gpt-5-mini
+        guards: []
       eval:
         train_query_fraction: 0.20
         validation_query_fraction: 0.40

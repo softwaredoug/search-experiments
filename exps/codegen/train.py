@@ -52,13 +52,11 @@ class FinalMessage(BaseModel):
     )
 
 
-def _parse_guardrails(raw_guards: list[dict]) -> list:
+def _parse_guardrails(raw_guards: list[dict]) -> tuple[list, bool]:
     guardrails = []
+    validation_enabled = False
     if not raw_guards:
-        raw_guards = [
-            {"length": {"max_lines": 10, "max_cols": 120}},
-            {"overfit": {"prompt": DEFAULT_OVERFIT_PROMPT}},
-        ]
+        return guardrails, validation_enabled
     for guard in raw_guards:
         if isinstance(guard, str):
             guard = {guard: {}}
@@ -74,9 +72,11 @@ def _parse_guardrails(raw_guards: list[dict]) -> list:
             prompt = params.get("prompt", DEFAULT_OVERFIT_PROMPT)
             model = params.get("model", "openai/gpt-5-mini")
             guardrails.append(make_guardrail_checker(prompt=prompt, model=model))
+        elif name == "validation":
+            validation_enabled = True
         else:
             raise ValueError(f"Unknown edit guard: {name}")
-    return guardrails
+    return guardrails, validation_enabled
 
 
 def _make_rerank_name_guard(rerank_name: str) -> callable:
@@ -234,7 +234,7 @@ def train_codegen_strategy(
     if base_queries and eval_cfg.validation_query_fraction > 0 and val_size == 0:
         val_size = 1
 
-    guardrails = _parse_guardrails(train_config.edit.guards)
+    guardrails, validation_enabled = _parse_guardrails(train_config.edit.guards)
     guardrails.append(_make_rerank_name_guard(rerank_name))
 
     messages: list[str] = []
@@ -298,16 +298,18 @@ def train_codegen_strategy(
             queries=training_queries_list,
             workers=workers,
         )
-        validation_eval_fn = make_eval_guardrail(
-            corpus=corpus,
-            judgments=judgments,
-            tool_fns=search_tools,
-            rerank_name=rerank_name,
-            seed=validation_seed,
-            num_queries=len(validation_queries_list),
-            queries=validation_queries_list,
-            workers=workers,
-        )
+        validation_eval_fn = None
+        if validation_enabled:
+            validation_eval_fn = make_eval_guardrail(
+                corpus=corpus,
+                judgments=judgments,
+                tool_fns=search_tools,
+                rerank_name=rerank_name,
+                seed=validation_seed,
+                num_queries=len(validation_queries_list),
+                queries=validation_queries_list,
+                workers=workers,
+            )
 
         apply_patch, try_out_patch, revert_changes = make_patch_fn(
             search_fn=primary_search_tool,
