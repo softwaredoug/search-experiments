@@ -86,11 +86,11 @@ def _print_rounds(records: list[dict]) -> None:
             prev = mean_ndcg
 
 
-def _plot_rounds(records: list[dict], *, title: str) -> None:
+def _plot_rounds(records: list[dict], *, title: str, metric_key: str) -> None:
     if not records:
         return
     rounds = [record.get("round") for record in records]
-    ndcgs = [record.get("mean_ndcg") for record in records]
+    ndcgs = [record.get(metric_key) for record in records]
     deltas = [
         None if idx == 0 or ndcgs[idx] is None or ndcgs[idx - 1] is None else ndcgs[idx] - ndcgs[idx - 1]
         for idx in range(len(ndcgs))
@@ -116,7 +116,8 @@ def _plot_rounds(records: list[dict], *, title: str) -> None:
 
     plt.title(title)
     plt.xlabel("Round")
-    plt.ylabel("Mean NDCG")
+    ylabel = "Mean NDCG" if metric_key == "mean_ndcg" else "Mean NDCG (test)"
+    plt.ylabel(ylabel)
     plt.grid(alpha=0.2)
     plt.tight_layout()
     plt.show()
@@ -133,6 +134,12 @@ def main() -> None:
         "--run-path",
         help="Path to the codegen run directory. Defaults to latest run.",
     )
+    parser.add_argument(
+        "--metric",
+        choices=["full", "test"],
+        default="full",
+        help="Which NDCG series to plot (full or test).",
+    )
     args = parser.parse_args()
 
     run_path = (
@@ -143,8 +150,9 @@ def main() -> None:
     print(f"Run path: {run_path}")
     records = _load_rounds(run_path)
     _print_rounds(records)
-    title = f"Codegen run: {run_path}"
-    _plot_rounds(records, title=title)
+    metric_key = "mean_ndcg" if args.metric == "full" else "mean_ndcg_test"
+    title = f"Codegen run: {run_path} ({args.metric})"
+    _plot_rounds(records, title=title, metric_key=metric_key)
 
 
 if __name__ == "__main__":

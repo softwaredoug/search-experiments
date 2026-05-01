@@ -31,7 +31,6 @@ strategy:
             num_training_queries: 200
             num_validation_queries: 100
         model: gpt-5-mini
-        rounds: 10
         refresh_every: 10
 
         system_prompt: |
@@ -62,7 +61,7 @@ and returns a list of product IDs in the order you think best matches the query.
 
 In the end, the training process actually *creates* a strategy. The training is not "part of" the strategy, the training creates a CodeGenSearchStrategy.
 
-For 10 rounds, this will start a new agent, load the last rounds python file, prompt the agent with the system prompt above, and then the agent will propose edits to the code. The proposed code will be run against a holdout set, and if the NDCG goes up, the changes are accepted. If not, they are rejected.
+For N rounds (from --train.rounds), this will start a new agent, load the last rounds python file, prompt the agent with the system prompt above, and then the agent will propose edits to the code. The proposed code will be run against a holdout set, and if the NDCG goes up, the changes are accepted. If not, they are rejected.
 
 Then a new python file is output and the cycle repeats until rounds is complete.
 
@@ -251,7 +250,7 @@ If a path is provided to --train.continue, don't use the latest, use the provide
 
 ## Training rounds
 
-The command line argument train.rounds (--train.rounds 10) overrides whatever is in the config.
+The command line argument train.rounds (--train.rounds 10) controls the number of rounds and is intended to be used instead of editing configs.
 
 
 ## Refreshing training sets
@@ -289,3 +288,21 @@ def rerank(query, search_wands, **args):
 ```
 
 The caller populates the args based on the tools that "search_wands" needs, but the codegen code doesn't know about those tools, it just knows it has a "search_wands" tool that it can call with a query and some args. This allows us to hide the details of the search tools from codegen, while still allowing it to use a trained strategy as a tool.
+
+### This can be deeply layered
+
+Of course, we could have something layered like:
+
+
+```yaml
+        search_tools:
+          - continue
+              - path: ~/.search-experiments/codegen/wands/codegen_sample/20260426_121212/
+              - name: search_wands_v1
+              - dependencies:
+                  - continue:
+                    - path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
+                    - name: search_wands
+                    - dependencies:
+                      - fielded_bm25:
+```

@@ -4,8 +4,7 @@ strategy:
   params:
     train:
       model: gpt-5
-      rounds: 3
-      refresh_every: 3
+      refresh_every: 5
       search_tools:
         - fielded_bm25
         - e5_base_v2
@@ -14,7 +13,6 @@ strategy:
         guards: []
       eval:
         train_query_fraction: 0.20
-        validation_query_fraction: 0.40
         training_seed: 5678
         validation_seed: 1234
         eval_margin: 0.003

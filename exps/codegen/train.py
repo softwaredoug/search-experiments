@@ -240,6 +240,7 @@ def train_codegen_strategy(
     messages: list[str] = []
     round_summaries: list[dict] = []
     round_ndcgs: list[float] = []
+    round_test_ndcgs: list[float] = []
     rounds_log_path = output_dir / "rounds.jsonl"
     refresh_every = train_config.refresh_every or train_config.rounds
     if refresh_every <= 0:
@@ -252,6 +253,7 @@ def train_codegen_strategy(
     primary_tool_name = None
     training_queries_list: list[str] = []
     validation_queries_list: list[str] = []
+    test_queries_list: list[str] = []
     tools = None
 
     def _refresh_round_state(round_idx: int) -> None:
@@ -264,6 +266,7 @@ def train_codegen_strategy(
         nonlocal training_queries_list
         nonlocal validation_queries_list
         nonlocal tools
+        nonlocal test_queries_list
 
         search_tools = build_search_tools(
             corpus,
@@ -288,6 +291,7 @@ def train_codegen_strategy(
         training_queries_list = random.Random(training_seed).sample(
             remaining_queries, min(train_size, len(remaining_queries))
         )
+        test_queries_list = [q for q in base_queries if q not in set(training_queries_list)]
         training_eval_fn = make_training_eval_fn(
             corpus=corpus,
             judgments=judgments,
@@ -370,15 +374,32 @@ def train_codegen_strategy(
             cache=False,
         )
         baseline_ndcg = float(ndcgs(baseline_results).mean()) if not baseline_results.empty else 0.0
+        baseline_test_ndcg = 0.0
+        if test_queries_list:
+            baseline_test_results = run_strategy(
+                baseline_strategy,
+                judgments,
+                queries=test_queries_list,
+                seed=report_seed,
+                cache=False,
+            )
+            baseline_test_ndcg = (
+                float(ndcgs(baseline_test_results).mean())
+                if not baseline_test_results.empty
+                else 0.0
+            )
         round_ndcgs.append(baseline_ndcg)
+        round_test_ndcgs.append(baseline_test_ndcg)
         baseline_record = {
             "round": 0,
             "short_name": "baseline",
             "summary": "Initial reranker baseline",
             "message": None,
             "mean_ndcg": baseline_ndcg,
+            "mean_ndcg_test": baseline_test_ndcg,
             "training_query_count": len(training_queries_list),
             "validation_query_count": len(validation_queries_list),
+            "test_query_count": len(test_queries_list),
         }
         round_summaries.append(baseline_record)
         rounds_log_path.write_text(json.dumps(baseline_record) + "\n", encoding="utf-8")
@@ -424,16 +445,34 @@ def train_codegen_strategy(
             cache=False,
         )
         mean_ndcg = float(ndcgs(results_codegen).mean()) if not results_codegen.empty else 0.0
+        mean_test_ndcg = 0.0
+        if test_queries_list:
+            results_test = run_strategy(
+                codegen_strategy,
+                judgments,
+                queries=test_queries_list,
+                seed=report_seed,
+                cache=False,
+            )
+            mean_test_ndcg = (
+                float(ndcgs(results_test).mean()) if not results_test.empty else 0.0
+            )
         round_ndcgs.append(mean_ndcg)
-        print(f"Round {round_idx + 1}/{total_rounds} mean NDCG: {mean_ndcg:.4f}")
+        round_test_ndcgs.append(mean_test_ndcg)
+        print(
+            f"Round {round_idx + 1}/{total_rounds} mean NDCG: {mean_ndcg:.4f} "
+            f"(test {mean_test_ndcg:.4f})"
+        )
         round_record = {
             "round": round_idx + 1,
             "short_name": resp.short_name if resp else None,
             "summary": resp.summary if resp else None,
             "message": resp.message if resp else None,
             "mean_ndcg": mean_ndcg,
+            "mean_ndcg_test": mean_test_ndcg,
             "training_query_count": len(training_queries_list),
             "validation_query_count": len(validation_queries_list),
+            "test_query_count": len(test_queries_list),
         }
         round_summaries.append(round_record)
         rounds_log_path.write_text(
@@ -459,6 +498,7 @@ def train_codegen_strategy(
         "messages": messages,
         "round_summaries": round_summaries,
         "round_ndcgs": round_ndcgs,
+        "round_test_ndcgs": round_test_ndcgs,
         "start_with": train_config.start_with,
         "training_seed": eval_cfg.training_seed,
         "validation_seed": eval_cfg.validation_seed,
