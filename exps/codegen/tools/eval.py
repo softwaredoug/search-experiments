@@ -50,7 +50,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         if self.code:
             rerank_fn = _rerank_fn_from_code(self.code)
 
-        product_ids = rerank_fn(self.search_fn, query)[:k]
+        product_ids = rerank_fn(query, self.search_fn)[:k]
         scores = np.arange(len(product_ids), 0, -1)
         top_k_ilocs = []
         for product_id in product_ids:
@@ -158,7 +158,7 @@ def make_eval_fn(corpus, judgments, code_dir: str, search_fn,
             rerank_fn = _get_rerank_fn(module_name)
 
             k = 10
-            product_ids = rerank_fn(search_fn, query)
+            product_ids = rerank_fn(query, search_fn)
             scores = np.arange(len(product_ids), 0, -1)
             scores = scores[:k]
 

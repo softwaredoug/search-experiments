@@ -104,7 +104,7 @@ def _start_code(
     tool_params: list[str],
     primary_tool_name: str,
 ) -> str:
-    signature = ", ".join([*tool_params, "query"])
+    signature = ", ".join(["query", *tool_params, "**kwargs"])
     if "fielded_bm25" in primary_tool_name:
         call = (
             f"    docs = {primary_tool_name}"
@@ -395,7 +395,7 @@ def train_codegen_strategy(
             rerank_name=rerank_name,
             search_tool_names=search_tool_names or [],
             search_tool_docs=search_tool_docs or [],
-            rerank_params=(tool_params or []) + ["query"],
+            rerank_params=["query", *(tool_params or []), "**kwargs"],
             code=code,
         )
         agent = OpenAIAgent(

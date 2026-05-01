@@ -49,8 +49,8 @@ strategy:
 
              If NDCG does not go up after your edits, revert your changes using the 'revert_changes' function.
 
-             Your code MUST have a function rerank_wands. It takes as parameters search_esci function and a query string. It
-             returns a list of product IDs in the order you think best matches the query.
+Your code MUST have a function rerank_wands. It takes the query first, followed by search tools, then **kwargs,
+and returns a list of product IDs in the order you think best matches the query.
 
              Here are some examples of user queries, product titles, and human labels (Relevant, Partially Relevant, Irrelevant) that
              you are ranking:
@@ -76,7 +76,7 @@ Run for one of these strategies first executes the training task, produces the s
 Starting code is the following:
 
 ```
-def rerank(fielded_bm25, query):
+def rerank(query, fielded_bm25, **kwargs):
     docs = fielded_bm25(keywords=query,
                        field_to_search='title_snowball',
                        operator='and',
@@ -86,8 +86,9 @@ def rerank(fielded_bm25, query):
 
 Its a function that takes
 
-1. One or more search_tools (ie bm25, etc) as listed. These are essentially injected into this code
-2. A query string
+1. A query string (first)
+2. One or more search_tools (ie bm25, etc) as listed
+3. **kwargs for runtime-only args (ignore unless instructed)
 
 It then returns the top 10 results for the query.
 
@@ -258,3 +259,33 @@ The command line argument train.rounds (--train.rounds 10) overrides whatever is
 Use train.refresh_every to control how often codegen regenerates tools and resamples
 the training/validation query sets. The default is refresh_every == rounds (once at
 the start). Set refresh_every to 1 to refresh every round.
+
+
+## Trained search strategy as tool 
+
+For data hiding purposes, and to help focus on an important part of the task. 
+
+To do this, it can be useful to use a past iterations trained strategy as a tool. IE:
+
+
+```yaml
+        search_tools:
+          - continue:
+            - path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
+            - name: search_wands
+            - dependencies:
+              - fielded_bm25:
+```
+
+Notice, of course, takes other tools that IT was trained on. Our goal is to HIDE the BM25 tool from codegen, but still forward it.
+
+We also hide details, suing "name" to specify the name of the tool as it will be used in the codegen code. So in this case, the codegen code doesn't know about "continue" or "fielded_bm25", it just knows about "search_wands".
+
+So the rerank function here would look something like this general **args format to conceal 
+
+```python
+def rerank(query, search_wands, **args):
+    return search(query, **args)
+```
+
+The caller populates the args based on the tools that "search_wands" needs, but the codegen code doesn't know about those tools, it just knows it has a "search_wands" tool that it can call with a query and some args. This allows us to hide the details of the search tools from codegen, while still allowing it to use a trained strategy as a tool.

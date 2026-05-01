@@ -4,7 +4,7 @@ strategy:
   params:
     train:
       model: gpt-5
-      rounds: 10
+      rounds: 3
       refresh_every: 3
       search_tools:
         - fielded_bm25

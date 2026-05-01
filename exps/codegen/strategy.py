@@ -77,7 +77,7 @@ class CodeGenSearchStrategy(SearchStrategy):
     def search(self, query, k: int = 10):
         try:
             rerank_fn = load_rerank_fn(self.code, self.rerank_name)
-            doc_ids = rerank_fn(*self.tool_fns, query=query)[:k]
+            doc_ids = rerank_fn(query, *self.tool_fns)[:k]
             scores = np.arange(len(doc_ids), 0, -1)
             top_k_ilocs = []
             for doc_id in doc_ids:

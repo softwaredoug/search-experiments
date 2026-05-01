@@ -116,7 +116,7 @@ def make_eval_tools(
         """
         code = code_path.read_text(encoding="utf-8")
         rerank_fn = load_rerank_fn(code, rerank_name)
-        doc_ids = rerank_fn(*tool_fns, query=query)
+        doc_ids = rerank_fn(query, *tool_fns)
         scores = np.arange(len(doc_ids), 0, -1)
         results = []
         label_map = None

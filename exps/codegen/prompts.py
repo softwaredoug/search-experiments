@@ -14,8 +14,9 @@ DEFAULT_SYSTEM_PROMPT = dedent(
 
     If NDCG does not improve after edits, revert changes using revert_changes.
 
-    Your code must include a function named {rerank_name}. It takes a search tool and a query
-    string and returns a list of document ids ordered most relevant to least.
+    Your code must include a function named {rerank_name}. It takes the query first, followed by
+    the available search tools, plus **kwargs for hidden runtime args, and returns a list of
+    document ids ordered most relevant to least.
 
     """
 ).strip()
