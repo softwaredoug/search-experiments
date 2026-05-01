@@ -11,3 +11,22 @@ Notice the tests in tests/test_runners.py
 Runner tests are end to end. They use OPENAI and test fixtures when agentic strategies are involved. They run the entire pipeline, from strategy instantiation to evaluation.
 
 They're meant to stimulate the code as if run from the command line.
+
+### Small amounts of data. Small models.
+
+- Use the smaller wands dataset. Or tmdb if needed.
+- Use num_queries=10 or something small to keep runtime down.
+- If testing training, set train.rounds=1 or 2 to keep runtime down.
+- Use tiny models like gpt-5-mini at the most
+
+Even with these, tests will be slow. That's ok
+
+### Test with yml configs
+
+Your job is to use test fixture yaml configs that define an experiment and its params. Use the fixtures in tests/fixtures/configs
+
+### Ensure tests are integration tests
+
+Do minimal or no mocking. Test on direct APIs (ie OPENAI, etc).
+
+Expect OPENAI_API_KEY to be set. Tests should fail if not.

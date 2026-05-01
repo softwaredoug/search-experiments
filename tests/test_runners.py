@@ -5,6 +5,7 @@ See docs/runner_tests_prd.md for requirements.
 
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
