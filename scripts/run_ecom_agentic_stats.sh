@@ -22,6 +22,14 @@ DATASETS=(
 )
 
 for dataset in "${DATASETS[@]}"; do
+  if [[ "${dataset}" == "wands" ]]; then
+    uv run run \
+      --strategy "${ROOT_DIR}/configs/codegen/agentic_w_codegen.yml" \
+      --dataset "${dataset}" \
+      --workers 32 \
+      --device mps \
+      --summary-csv "${RESULTS_CSV}"
+  fi
   for config in "${CONFIGS[@]}"; do
     if [[ "${dataset}" == "esci" ]]; then
       uv run run \
