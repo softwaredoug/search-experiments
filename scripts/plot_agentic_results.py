@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 BASELINES = ["bm25", "bm25_strong_title", "embedding_e5"]
 DATASETS = ["esci", "wands"]
 GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
+ALLOW_AGENTIC = {"agentic_codegen"}
 EXCLUDE_AGENTIC_MINILM = {
     "agentic_minilm_ecommerce_gpt5_mini",
     "agentic_bm25_minilm_ecommerce_gpt5_mini",
@@ -43,6 +44,8 @@ def _strategy_model(row: dict[str, str]) -> str | None:
 def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
     strategy_name = row.get("strategy_name")
     if strategy_name in BASELINES:
+        return True
+    if strategy_name in ALLOW_AGENTIC:
         return True
     if strategy_name == GPT5_STRATEGY:
         return True
