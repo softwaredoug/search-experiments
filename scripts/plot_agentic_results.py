@@ -52,7 +52,7 @@ def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
     if strategy_name == GPT5_STRATEGY:
         return True
     model = _strategy_model(row)
-    if model in {"gpt-5-mini", "gpt-5.1-mini"}:
+    if model in {"gpt-5-mini", "gpt-5.1-mini", "gpt-5.1"}:
         if strategy_name in EXCLUDE_AGENTIC_MINILM:
             return False
         if isinstance(strategy_name, str) and strategy_name.startswith("agentic_"):
