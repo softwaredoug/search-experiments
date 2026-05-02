@@ -1,0 +1,18 @@
+strategy:
+  name: agentic_codegen
+  type: agentic
+  params:
+    model: gpt-5.4-mini
+    system_prompt: |
+      You take user search queries and use search tools to find the most relevant products
+
+      Use the search tool to gather candidates.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+    search_tools:
+      - codegen:
+          path: tests/fixtures/past_runs/20260502_025238
+          name: search
+          dependencies:
+            - fielded_bm25
+            - e5_base_v2

@@ -189,6 +189,82 @@ def test_run_benchmark_agentic_guarded():
     assert result.summary["tool_calls_std"] >= 0.0
 
 
+def test_run_benchmark_agentic_codegen_tool(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    codegen_dir = tmp_path / "codegen_run"
+    codegen_dir.mkdir()
+    reranker_path = codegen_dir / "reranker.py"
+    reranker_path.write_text(
+        """
+def rerank_wands(query, fielded_bm25, **kwargs):
+    docs = fielded_bm25(
+        keywords=query,
+        fields=['title^9.3', 'description^4.1'],
+        operator='or',
+        top_k=10,
+    )
+    return [doc['id'] for doc in docs]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "agentic_codegen.yml"
+    config_path.write_text(
+        f"""
+strategy:
+  name: agentic_codegen_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find the most relevant products.
+    search_tools:
+      - codegen:
+          path: {codegen_dir}
+          name: search
+          dependencies:
+            - fielded_bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert not result.metric_series.empty
+    assert result.summary["tool_calls_mean"] >= 0.0
+
+
+def test_run_benchmark_agentic_codegen_fixture_nonzero():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/agentic_w_codegen.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=2,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert (result.metric_series > 0).any()
+
+
 def test_run_benchmark_codegen_rounds_override():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
