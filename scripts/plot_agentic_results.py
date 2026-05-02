@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import csv
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -116,7 +118,19 @@ def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -
     plt.close(fig)
 
 
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", text.strip().lower())
+    return re.sub(r"_+", "_", slug).strip("_") or "ndcg"
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Plot agentic NDCG results.")
+    parser.add_argument(
+        "--name",
+        help="Suffix label for the plot filename (slugified).",
+        default="ndcg",
+    )
+    args = parser.parse_args()
     repo_root = Path(__file__).resolve().parents[1]
     results_path = repo_root / "results.csv"
     output_dir = repo_root / "assets"
@@ -138,8 +152,9 @@ def main() -> None:
             }
         )
 
+    suffix = _slugify(args.name)
     for dataset in DATASETS:
-        output_path = output_dir / f"{dataset}_ndcg.png"
+        output_path = output_dir / f"{dataset}_{suffix}.png"
         _plot_dataset(aggregated, dataset, output_path)
 
 
