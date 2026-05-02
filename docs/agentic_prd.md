@@ -133,6 +133,17 @@ When the tool is produced internally, it should advertise the datasets it can be
 
 By convention, the tools will have the dataset as a suffix, ie "_esci" or "_wands" etc, but that's only a convention.
 
+### Fielded BM25
+
+The fielded BM25 tool accepts a weighted list of fields and an operator:
+
+```
+    fields: ["title^9.3", "description^4.1"]
+    operator: and
+```
+
+Only title and description are supported.
+
 ## Harness constraints
 
 Some params require wrapping the agentic loop itself in a harness to drive execution.

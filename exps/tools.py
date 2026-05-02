@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import re
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -627,8 +628,34 @@ def make_codegen_tool(
     dependency_map = {tool.__name__: tool for tool in dependency_tools}
     reranker_path = _find_latest_reranker_path(Path(path).expanduser())
     reranker_fn, reranker_name = _load_reranker_fn(reranker_path, dataset_name)
+    signature = inspect.signature(reranker_fn)
+    params = list(signature.parameters.values())
+    required_deps = []
+    if params:
+        for param in params[1:]:
+            if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                continue
+            required_deps.append(param.name)
+    missing_deps = [dep for dep in required_deps if dep not in dependency_map]
+    if missing_deps:
+        missing_str = ", ".join(missing_deps)
+        raise ValueError(f"codegen tool missing dependencies: {missing_str}")
 
     doc_lookup = corpus.set_index("doc_id", drop=False)
+
+    def _to_builtin(value):
+        if isinstance(value, np.generic):
+            return value.item()
+        return value
+
+    def _coerce_doc_id(value):
+        value = _to_builtin(value)
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return value
+        return value
 
     def search(
         query: str,
@@ -643,22 +670,22 @@ def make_codegen_tool(
         results = []
         for rank, item in enumerate(reranker_results or []):
             if isinstance(item, dict):
-                doc_id = item.get("id") or item.get("doc_id")
-                score = item.get("score")
+                doc_id = _coerce_doc_id(item.get("id") or item.get("doc_id"))
+                score = _to_builtin(item.get("score"))
             else:
-                doc_id = item
+                doc_id = _coerce_doc_id(item)
                 score = None
             if doc_id is None or doc_id not in doc_lookup.index:
                 continue
             row = doc_lookup.loc[doc_id]
             entry = {
-                "id": row.get("doc_id", doc_id),
-                "title": row.get("title", ""),
-                "description": row.get("description", ""),
+                "id": int(_to_builtin(row.get("doc_id", doc_id))),
+                "title": str(_to_builtin(row.get("title", ""))),
+                "description": str(_to_builtin(row.get("description", ""))),
                 "score": float(score) if score is not None else 1.0 / (rank + 1),
             }
             for field in return_fields:
-                entry[field] = row.get(field)
+                entry[field] = _to_builtin(row.get(field))
             results.append(entry)
             if len(results) >= top_k:
                 break

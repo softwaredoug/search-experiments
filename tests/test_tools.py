@@ -151,3 +151,34 @@ def test_fielded_bm25_matches_bm25_strategy():
     tool_scores = [result["score"] for result in tool_results]
     assert tool_ids == list(indices)
     assert np.allclose(tool_scores, scores)
+
+
+def test_codegen_tool_missing_dependencies_raises(tmp_path):
+    reranker_path = Path(tmp_path) / "reranker.py"
+    reranker_path.write_text(
+        """
+def rerank_wands(query, fielded_bm25, search_embeddings):
+    return [101]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101],
+            "title": ["Alpha"],
+            "description": ["Desc A"],
+        }
+    )
+    with pytest.raises(ValueError, match="missing dependencies"):
+        tools_mod.build_search_tools(
+            corpus,
+            [
+                {
+                    "codegen": {
+                        "path": str(tmp_path),
+                        "dependencies": ["fielded_bm25"],
+                    }
+                }
+            ],
+            dataset_name="wands",
+        )
