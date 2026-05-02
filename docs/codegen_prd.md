@@ -76,10 +76,12 @@ Starting code is the following:
 
 ```
 def rerank(query, fielded_bm25, **kwargs):
-    docs = fielded_bm25(keywords=query,
-                       field_to_search='title_snowball',
-                       operator='and',
-                       top_k=10)
+    docs = fielded_bm25(
+        keywords=query,
+        fields=['title^9.3', 'description^4.1'],
+        operator='and',
+        top_k=10,
+    )
     return [doc['id'] for doc in docs]
 ```
 
@@ -155,11 +157,13 @@ from pydantic import BaseModel, Field
 
 
 original_source = """
-def rerank(fielded_bm25, query):
-    docs = fielded_bm25(keywords=query,
-                       field_to_search='title_snowball',
-                       operator='and',
-                       top_k=10)
+def rerank(query, fielded_bm25):
+    docs = fielded_bm25(
+        keywords=query,
+        fields=['title^9.3', 'description^4.1'],
+        operator='and',
+        top_k=10,
+    )
     return [doc['id'] for doc in docs]
 """
 
@@ -269,40 +273,82 @@ To do this, it can be useful to use a past iterations trained strategy as a tool
 
 ```yaml
         search_tools:
-          - continue:
-            - path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
-            - name: search_wands
-            - dependencies:
-              - fielded_bm25:
+          - codegen:
+              path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
+              name: search
+              description: |
+                Search the WANDS dataset and return results.
+              dependencies:
+                - fielded_bm25
+              return_fields:
+                - category
 ```
 
-Notice, of course, takes other tools that IT was trained on. Our goal is to HIDE the BM25 tool from codegen, but still forward it.
+(This is a tool either usable in an agentic strategy or to be taken as an argument to codegen).
 
-We also hide details, suing "name" to specify the name of the tool as it will be used in the codegen code. So in this case, the codegen code doesn't know about "continue" or "fielded_bm25", it just knows about "search_wands".
+name / description optional. If not provided:
 
-So the rerank function here would look something like this general **args format to conceal 
+- name: search
+- description: Search the dataset and return results.
 
-```python
-def rerank(query, search_wands, **args):
-    return search(query, **args)
+### Notice the dependencies
+
+It's expected this creates a search function that takes a query and top_k (max 20).
+It must return results with id, title, description, and score. If return_fields are provided,
+include those columns in the response as well.
+
+It would be instantiated with the other agentic tools, in a factory for making tools from a config, ie
+
+```
+def make_codegen_tool(
+    corpus,
+    dependencies: list,
+    path: str,
+    name: str,
+    description: str,
+    return_fields: list | None = None,
+):
+    # Load the last round's reranker from the provided path
+    last_reranker_path = find_last_reranker(path)
+    reranker_fn = load_reranker(last_reranker_path)
+
+    # Create a tool that wraps the reranker function, injecting dependencies as needed
+    def search(query, top_k=10, **kwargs):
+        """Search the corpus, return top results."""
+        # Inject dependencies into the reranker function as needed
+        return reranker_fn(query=query, **dependencies, **kwargs)
+
+    # Patch the tool name / description as needed
+    # ...
+    return search 
 ```
 
-The caller populates the args based on the tools that "search_wands" needs, but the codegen code doesn't know about those tools, it just knows it has a "search_wands" tool that it can call with a query and some args. This allows us to hide the details of the search tools from codegen, while still allowing it to use a trained strategy as a tool.
+Now "search" here (or really named the "name" param) should be available to either:
+
+1. An agentic strategy as a tool
+2. A codegen strategy as a tool (for training a new codegen strategy on top of the last one's results)
+
+### Notice the return fields
+
+The return fields is a list of fields the tool returns for each doc. These correspond to pandas columns in the corpus that should also be returned. On top of the default title, description, doc_id, and score
+
 
 ### This can be deeply layered
 
-Of course, we could have something layered like:
+Of course, we could have something layered like.
+
+So you'll need to plan for stuff like this
 
 
 ```yaml
         search_tools:
-          - continue
-              - path: ~/.search-experiments/codegen/wands/codegen_sample/20260426_121212/
-              - name: search_wands_v1
-              - dependencies:
-                  - continue:
-                    - path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
-                    - name: search_wands
-                    - dependencies:
-                      - fielded_bm25:
+          - codegen:
+              path: ~/.search-experiments/codegen/wands/codegen_sample/20260426_121212/
+              name: search
+              dependencies:
+                - codegen:
+                    path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
+                    name: search
+                    dependencies:
+                      - fielded_bm25
 ```
