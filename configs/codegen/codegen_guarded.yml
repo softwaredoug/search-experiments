@@ -19,10 +19,10 @@ strategy:
               model: openai/gpt-5-mini
       eval:
         train_query_fraction: 0.20
-        validation_query_fraction: 0.40
+        validation_query_fraction: 0.80
         training_seed: 5678
         validation_seed: 1234
-        eval_margin: 0.003
+        eval_margin: 0.002
       system_prompt: |
         Your task is to improve the reranker code so it returns more relevant results.
 

@@ -3,8 +3,7 @@ strategy:
   type: codegen
   params:
     train:
-      model: gpt-5
-      refresh_every: 3
+      model: gpt-5.4
       search_tools:
         - fielded_bm25
         - e5_base_v2
@@ -13,13 +12,13 @@ strategy:
         guards:
           - validation
           - length:
-              max_lines: 10
+              max_lines: 5
               max_cols: 120
           - overfit:
               model: openai/gpt-5-mini
       eval:
         train_query_fraction: 0.20
-        validation_query_fraction: 0.40
+        validation_query_fraction: 0.75
         training_seed: 5678
         validation_seed: 1234
         eval_margin: 0.003
