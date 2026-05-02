@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib.util
+import re
+from pathlib import Path
 from typing import Any, Optional, Union
 
 from typing_extensions import Literal
@@ -7,6 +10,9 @@ from typing_extensions import Literal
 import threading
 
 import numpy as np
+
+from searcharray import SearchArray
+from searcharray.similarity import bm25_similarity
 
 from cheat_at_search.tokenizers import snowball_tokenizer
 from cheat_at_search.embeddings import (
@@ -174,41 +180,83 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
     return search_bm25
 
 
+def _parse_weighted_fields(fields: list[str]) -> list[tuple[str, float]]:
+    parsed_fields = []
+    for field_entry in fields:
+        if not isinstance(field_entry, str) or "^" not in field_entry:
+            raise ValueError("Fields must be strings in the form 'title^9.3'.")
+        field_name, weight_str = field_entry.split("^", 1)
+        field_name = field_name.strip()
+        if field_name not in {"title", "description"}:
+            raise ValueError("Fields must be title or description.")
+        try:
+            weight = float(weight_str)
+        except ValueError as exc:
+            raise ValueError("Field weights must be numeric.") from exc
+        parsed_fields.append((field_name, weight))
+    if not parsed_fields:
+        raise ValueError("Fields must include at least one entry.")
+    return parsed_fields
+
+
+def _ensure_field_indices(corpus, field_names: list[str]) -> None:
+    for field_name in field_names:
+        if field_name not in corpus:
+            raise ValueError(f"Corpus missing required field: {field_name}")
+        snowball_name = f"{field_name}_snowball"
+        if snowball_name not in corpus:
+            corpus[snowball_name] = SearchArray.index(corpus[field_name], snowball_tokenizer)
+
+
 def make_fielded_bm25_tool(corpus):
     def fielded_bm25(
         keywords: str,
-        field_to_search: Literal["title", "description"] = "title",
+        fields: list[str],
         operator: Literal["and", "or"] = "or",
         top_k: int = 5,
+        k1: float = 1.2,
+        b: float = 0.75,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
-        """Search a corpus using BM25 over a single field.
+        """Search a corpus using BM25 over weighted fields.
 
         Args:
             keywords: The search query string.
-            field_to_search: Which field to search: title or description.
-            operator: How to combine search terms: and/or.
+            fields: Weighted fields to search, e.g. ["title^9.3", "description^4.1"].
+            operator: How to combine search terms: and/or. AND requires every term
+                to appear in at least one field.
             top_k: The number of top results to return.
+            k1: BM25 k1 parameter.
+            b: BM25 b parameter.
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
+        if not isinstance(fields, list):
+            raise ValueError("fields must be a list of weighted field strings.")
+        parsed_fields = _parse_weighted_fields(fields)
+        _ensure_field_indices(corpus, [field for field, _ in parsed_fields])
+
         query_tokens = snowball_tokenizer(keywords)
         scores = np.zeros(len(corpus))
-        if field_to_search == "title":
-            field_name = "title_snowball"
-        elif field_to_search == "description":
-            field_name = "description_snowball"
-        else:
-            raise ValueError("field_to_search must be 'title' or 'description'")
+        similarity = bm25_similarity(k1=k1, b=b)
+        require_mask = None
 
         for token in query_tokens:
-            scores += corpus[field_name].array.score(token)
+            field_scores = []
+            for field_name, weight in parsed_fields:
+                snowball_name = f"{field_name}_snowball"
+                term_match = corpus[snowball_name].array.score(token, similarity=similarity)
+                field_scores.append(term_match * weight)
+            term_scores = sum(field_scores) if field_scores else 0
+            scores += term_scores
+            if operator == "and":
+                term_present = sum(field_scores) > 0
+                require_mask = term_present if require_mask is None else (require_mask & term_present)
 
         if operator == "and":
-            for token in query_tokens:
-                require_mask = corpus[field_name].array.score(token) > 0
+            if require_mask is not None:
                 scores = scores * require_mask
         elif operator != "or":
             raise ValueError("operator must be 'and' or 'or'")
@@ -512,6 +560,116 @@ def make_check_features_wands_tool(corpus):
     return check_features_wands
 
 
+def _find_latest_reranker_path(path: Path) -> Path:
+    if path.is_file():
+        return path
+    if not path.exists():
+        raise FileNotFoundError(f"codegen path not found: {path}")
+    round_files = list(path.glob("reranker_round_*.py"))
+    if round_files:
+        def round_number(file_path: Path) -> int:
+            match = re.search(r"reranker_round_(\d+)\.py", file_path.name)
+            return int(match.group(1)) if match else -1
+
+        return max(round_files, key=round_number)
+    fallback = path / "reranker.py"
+    if fallback.exists():
+        return fallback
+    raise FileNotFoundError(f"No reranker files found in {path}")
+
+
+def _load_reranker_fn(path: Path, dataset_name: str | None) -> tuple[callable, str]:
+    module_name = f"codegen_reranker_{path.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Unable to load reranker module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if dataset_name:
+        fn_name = f"rerank_{dataset_name}"
+        reranker_fn = getattr(module, fn_name, None)
+        if reranker_fn is not None:
+            return reranker_fn, fn_name
+    reranker_fn = getattr(module, "rerank", None)
+    if reranker_fn is None:
+        raise ValueError(f"No rerank function found in {path}")
+    return reranker_fn, "rerank"
+
+
+def make_codegen_tool(
+    corpus,
+    *,
+    tool_config: dict[str, Any],
+    embeddings_device: str | None = None,
+    dataset_name: str | None = None,
+):
+    path = tool_config.get("path")
+    if not path:
+        raise ValueError("codegen tool requires a path.")
+    tool_name = tool_config.get("name") or "search"
+    description = tool_config.get("description") or "Search the dataset and return results."
+    return_fields = tool_config.get("return_fields") or []
+    if not isinstance(return_fields, list):
+        raise ValueError("return_fields must be a list when provided.")
+    missing_fields = [field for field in return_fields if field not in corpus.columns]
+    if missing_fields:
+        missing_str = ", ".join(missing_fields)
+        raise ValueError(f"return_fields not found in corpus: {missing_str}")
+    dependencies = tool_config.get("dependencies") or []
+    if not isinstance(dependencies, list):
+        raise ValueError("dependencies must be a list of tool entries.")
+    dependency_tools = build_search_tools(
+        corpus,
+        dependencies,
+        embeddings_device=embeddings_device,
+        dataset_name=dataset_name,
+    )
+    dependency_map = {tool.__name__: tool for tool in dependency_tools}
+    reranker_path = _find_latest_reranker_path(Path(path).expanduser())
+    reranker_fn, reranker_name = _load_reranker_fn(reranker_path, dataset_name)
+
+    doc_lookup = corpus.set_index("doc_id", drop=False)
+
+    def search(
+        query: str,
+        top_k: int = 10,
+        agent_state=None,
+        **kwargs,
+    ) -> list[dict[str, Union[str, int, float]]]:
+        """Search the corpus, return top results."""
+        if top_k > 20:
+            return "Error! top_k must be <= 20."
+        reranker_results = reranker_fn(query=query, **dependency_map, **kwargs)
+        results = []
+        for rank, item in enumerate(reranker_results or []):
+            if isinstance(item, dict):
+                doc_id = item.get("id") or item.get("doc_id")
+                score = item.get("score")
+            else:
+                doc_id = item
+                score = None
+            if doc_id is None or doc_id not in doc_lookup.index:
+                continue
+            row = doc_lookup.loc[doc_id]
+            entry = {
+                "id": row.get("doc_id", doc_id),
+                "title": row.get("title", ""),
+                "description": row.get("description", ""),
+                "score": float(score) if score is not None else 1.0 / (rank + 1),
+            }
+            for field in return_fields:
+                entry[field] = row.get(field)
+            results.append(entry)
+            if len(results) >= top_k:
+                break
+        return results
+
+    search.__name__ = tool_name
+    search.__doc__ = description
+    search.__codegen_reranker__ = reranker_name
+    return search
+
+
 def guard_disallow_repeated_queries(params: dict, agent_state: dict | None) -> str | None:
     """Reject repeated queries per tool using agent_state["past_queries"]."""
     if agent_state is None:
@@ -650,11 +808,15 @@ def _guard_doc(guard: dict) -> str:
     return guard_name
 
 
+def _normalize_tool_config(tool_info: dict) -> dict[str, Any]:
+    return {key: value for key, value in tool_info.items() if key != "guards"}
+
+
 def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
     normalized = []
     for item in tool_config:
         if isinstance(item, str):
-            normalized.append({"name": item, "guards": []})
+            normalized.append({"name": item, "guards": [], "config": {}})
             continue
         if isinstance(item, dict) and len(item) == 1:
             tool_name = next(iter(item))
@@ -668,10 +830,31 @@ def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
             for guard_entry in guards_raw:
                 guard_name, guard_params = _parse_guard_entry(guard_entry)
                 guards.append({"name": guard_name, "params": guard_params})
-            normalized.append({"name": tool_name, "guards": guards})
+            normalized.append(
+                {
+                    "name": tool_name,
+                    "guards": guards,
+                    "config": _normalize_tool_config(tool_info),
+                }
+            )
             continue
         raise ValueError("search_tools entries must be strings or single-key mappings.")
     return normalized
+
+
+def _normalize_tool_config_for_cache(config: dict[str, Any]) -> dict[str, Any]:
+    normalized = {}
+    for key, value in config.items():
+        if key == "dependencies":
+            if not isinstance(value, list):
+                raise ValueError("dependencies must be a list of tool entries.")
+            normalized[key] = normalize_search_tools_for_cache(value)
+            continue
+        if isinstance(value, Path):
+            normalized[key] = str(value)
+            continue
+        normalized[key] = value
+    return dict(sorted(normalized.items()))
 
 
 def normalize_search_tools_for_cache(tool_config: list) -> list[dict[str, Any]]:
@@ -683,7 +866,14 @@ def normalize_search_tools_for_cache(tool_config: list) -> list[dict[str, Any]]:
             {"name": guard["name"], "params": dict(sorted(guard["params"].items()))}
             for guard in guards
         ]
-        normalized_sorted.append({"name": tool["name"], "guards": guards})
+        config = tool.get("config") or {}
+        normalized_sorted.append(
+            {
+                "name": tool["name"],
+                "guards": guards,
+                "config": _normalize_tool_config_for_cache(config),
+            }
+        )
     return normalized_sorted
 
 
@@ -730,6 +920,7 @@ TOOL_BUILDERS = {
     "fielded_bm25": make_fielded_bm25_tool,
     "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
+    "codegen": make_codegen_tool,
     "e5_base_v2": lambda corpus, device=None: make_embedding_tool(
         corpus,
         device=device,
@@ -765,7 +956,14 @@ def build_search_tools(
         builder = TOOL_BUILDERS.get(tool_name)
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
-        if tool_name in {"embeddings", "minilm", "e5_base_v2"}:
+        if tool_name == "codegen":
+            tool_fn = builder(
+                corpus,
+                tool_config=tool.get("config") or {},
+                embeddings_device=embeddings_device,
+                dataset_name=dataset_name,
+            )
+        elif tool_name in {"embeddings", "minilm", "e5_base_v2"}:
             tool_fn = builder(corpus, device=embeddings_device)
         else:
             tool_fn = builder(corpus)
@@ -776,10 +974,14 @@ def build_search_tools(
             base_doc = tool_fn.__doc__ or ""
             tool_fn.__doc__ = f"{base_doc}\n\n{guard_block}" if base_doc else guard_block
         if tool["guards"]:
+            if tool_name == "codegen":
+                guard_func_name = tool_fn.__name__
+            else:
+                guard_func_name = f"search_{tool_name}"
             tool_fn = make_guarded_search_tool(
                 tool_fn,
                 guards=tool["guards"],
-                func_name=f"search_{tool_name}",
+                func_name=guard_func_name,
             )
         tools.append(tool_fn)
     return tools

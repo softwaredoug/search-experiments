@@ -108,7 +108,7 @@ def _start_code(
     if "fielded_bm25" in primary_tool_name:
         call = (
             f"    docs = {primary_tool_name}"
-            f"(query, field_to_search='title', operator='or', top_k={top_k})\n"
+            f"(query, fields=['title^9.3', 'description^4.1'], operator='or', top_k={top_k})\n"
         )
     else:
         call = f"    docs = {primary_tool_name}(query, top_k={top_k})\n"
