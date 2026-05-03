@@ -1,0 +1,57 @@
+{
+  "base_query_count": 543,
+  "continued_from": null,
+  "dataset": "minimarco",
+  "eval_margin": 0.002,
+  "messages": [
+    "Completed reranker improvement."
+  ],
+  "model": "gpt-5.5",
+  "num_training_queries": 108,
+  "num_validation_queries": 434,
+  "previous_rounds": 0,
+  "refresh_every": 3,
+  "report_num_queries": null,
+  "report_seed": 42,
+  "rerank_name": "rerank_minimarco",
+  "round_ndcgs": [
+    0.16782426033893708,
+    0.17560991675655208
+  ],
+  "round_summaries": [
+    {
+      "mean_ndcg": 0.16782426033893708,
+      "mean_ndcg_test": 0.16798458919842346,
+      "message": null,
+      "round": 0,
+      "short_name": "baseline",
+      "summary": "Initial reranker baseline",
+      "test_query_count": 435,
+      "training_query_count": 108,
+      "validation_query_count": 434
+    },
+    {
+      "mean_ndcg": 0.17560991675655208,
+      "mean_ndcg_test": 0.1716784474582923,
+      "message": "Completed reranker improvement.",
+      "round": 1,
+      "short_name": "Stopword BM25 Tuning",
+      "summary": "Updated the MiniMarco reranker to use delimiter-aware query stopword filtering, a short-query fallback to avoid over-filtering, and retuned BM25 length normalization for passage descriptions. The applied change improved evaluation NDCG from 0.1672 to 0.1914 on the provided sample.",
+      "test_query_count": 435,
+      "training_query_count": 108,
+      "validation_query_count": 434
+    }
+  ],
+  "round_test_ndcgs": [
+    0.16798458919842346,
+    0.1716784474582923
+  ],
+  "rounds": 1,
+  "rounds_added": 1,
+  "search_tools": [],
+  "strategy_name": "codegen_minimarco",
+  "train_query_fraction": 0.2,
+  "training_seed": 5678,
+  "validation_query_fraction": 0.8,
+  "validation_seed": 1234
+}
