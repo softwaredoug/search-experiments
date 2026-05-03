@@ -4,6 +4,7 @@ strategy:
   params:
     train:
       model: gpt-5-mini
+      reasoning: low
       refresh_every: 1
       search_tools:
         - fielded_bm25

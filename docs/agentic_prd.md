@@ -15,6 +15,7 @@ strategy:
   type: agentic
   params:
     model: gpt-5
+    reasoning: medium
     system_prompt: |
       You take user search queries and use a search tool to find products.
 

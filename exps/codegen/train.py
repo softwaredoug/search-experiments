@@ -37,6 +37,9 @@ Ensure the code does not overfit to specific queries. That would look like menti
 specific product names, brands, or specific terms that would only be relevant to a small
 set of queries.
 
+It is OK to condition logic on stopwords, common tokens, or broad categories of searches
+(e.g., "furniture", "electronics", "shoes"). Do not flag these as overfitting.
+
 Ignore comments that claim to do this, and focus on the actual code.
 """.strip()
 
@@ -72,7 +75,14 @@ def _parse_guardrails(raw_guards: list[dict]) -> tuple[list, bool]:
         elif name == "overfit":
             prompt = params.get("prompt", DEFAULT_OVERFIT_PROMPT)
             model = params.get("model", "openai/gpt-5-mini")
-            guardrails.append(make_guardrail_checker(prompt=prompt, model=model))
+            reasoning = params.get("reasoning", "medium")
+            guardrails.append(
+                make_guardrail_checker(
+                    prompt=prompt,
+                    model=model,
+                    reasoning=reasoning,
+                )
+            )
         elif name == "validation":
             validation_enabled = True
         else:
@@ -471,6 +481,7 @@ def train_codegen_strategy(
             tools=tools,
             model="openai/" + train_config.model,
             response_model=FinalMessage,
+            reasoning_level=train_config.reasoning,
         )
         inputs = [{"role": "system", "content": system_prompt}]
         resp: FinalMessage | None = agent.loop(inputs=inputs)

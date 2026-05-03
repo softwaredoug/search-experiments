@@ -202,6 +202,7 @@ strategy:
   type: agentic
   params:
     model: gpt-5-mini
+    reasoning: low
     system_prompt: |
       You take user search queries and use search tools to find the most relevant products.
     search_tools:
@@ -262,6 +263,7 @@ strategy:
   type: agentic
   params:
     model: gpt-5-mini
+    reasoning: low
     system_prompt: |
       You take user search queries and use search tools to find the most relevant products.
     search_tools:

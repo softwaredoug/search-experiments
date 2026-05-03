@@ -117,11 +117,16 @@ class GuardrailResponse(BaseModel):
     )
 
 
-def make_guardrail_checker(prompt: str, model: str = "openai/gpt-5-mini"):
+def make_guardrail_checker(
+    prompt: str,
+    model: str = "openai/gpt-5-mini",
+    reasoning: str = "medium",
+):
     agent = OpenAIAgent(
         tools=[],
         model=model,
         response_model=GuardrailResponse,
+        reasoning_level=reasoning,
     )
 
     def code_guardrails(code: str) -> Optional[str]:

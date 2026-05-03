@@ -24,6 +24,7 @@ class CodeGenTrainConfig(BaseModel):
     edit: CodeGenEditConfig = Field(default_factory=CodeGenEditConfig)
     eval: CodeGenEvalConfig = Field(default_factory=CodeGenEvalConfig)
     model: str = "gpt-5-mini"
+    reasoning: str = "medium"
     rounds: int = 10
     refresh_every: int | None = None
     system_prompt: str | None = None

@@ -56,6 +56,7 @@ strategy:
   params:
     train:
       model: gpt-5-mini
+      reasoning: low
       refresh_every: 1
       search_tools:
         - get_corpus

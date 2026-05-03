@@ -31,6 +31,7 @@ strategy:
             num_training_queries: 200
             num_validation_queries: 100
         model: gpt-5-mini
+        reasoning: medium
         refresh_every: 10
 
         system_prompt: |

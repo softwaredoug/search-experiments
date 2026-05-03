@@ -174,6 +174,7 @@ class AgenticSearchStrategy(SearchStrategy):
         corpus,
         workers: int = 1,
         model: str = "gpt-5-mini",
+        reasoning: str = "medium",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
         stop: list | None = None,
@@ -195,6 +196,7 @@ class AgenticSearchStrategy(SearchStrategy):
             dataset_name=dataset_name,
         )
         self.model = model
+        self.reasoning = reasoning
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
         self.traces: dict[str, str] = {}
@@ -256,6 +258,7 @@ class AgenticSearchStrategy(SearchStrategy):
                 inputs=inputs,
                 agent_state=agent_state,
                 model=self.model,
+                reasoning=self.reasoning,
                 text_format=SearchResultsIds,
                 logger=logger,
                 stop=self.stop,
@@ -279,6 +282,7 @@ class AgenticSearchStrategy(SearchStrategy):
         payload = {
             "type": self._type,
             "model": self.model,
+            "reasoning": self.reasoning,
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools_for_cache(self.search_tools),
             "stop": normalize_stops_for_cache(self.stop),

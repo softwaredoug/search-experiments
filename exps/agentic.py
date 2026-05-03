@@ -134,6 +134,7 @@ def agent_run(
     model: str = "gpt-5-nano",
     agent_state: Optional[dict] = None,
     summary: bool = True,
+    reasoning: str = "medium",
     logger=None,
 ):
     if logger is None:
@@ -150,7 +151,7 @@ def agent_run(
                     input=inputs,
                     tools=[tool.tool_spec for tool in tool_info.values()],
                     reasoning={
-                        "effort": "medium",
+                        "effort": reasoning,
                         "summary": "auto" if summary else "none",
                     },
                     text_format=text_format,
@@ -232,6 +233,7 @@ def search(
     logger=None,
     stop: list | None = None,
     reprompt: str | None = None,
+    reasoning: str = "medium",
 ):
     resp = None
     if tools is None:
@@ -252,6 +254,7 @@ def search(
             model=model,
             agent_state=agent_state,
             logger=logger,
+            reasoning=reasoning,
         )
         return resp.output_parsed
     num_loops = 0
@@ -263,6 +266,7 @@ def search(
             model=model,
             agent_state=agent_state,
             logger=logger,
+            reasoning=reasoning,
         )
         num_loops += 1
         if any(
