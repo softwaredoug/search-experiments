@@ -4,7 +4,7 @@ This code is architected so that the command line arguments match 1-1 with a "Ru
 
 Notice the runners.py and the exp/runners/ module
 
-Notice the tests in tests/test_runners.py
+Notice the tests in tests/integration/test_runners.py
 
 ### How runner tests should work
 

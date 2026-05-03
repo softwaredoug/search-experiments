@@ -42,7 +42,7 @@ Keep changes small, testable, and aligned with existing patterns.
 - Run all tests:
   - `uv run pytest`
 - Run a single test:
-  - `uv run pytest tests/test_bm25.py::test_bm25_wands_ndcg_sanity`
+  - `uv run pytest tests/unit/test_bm25.py::test_bm25_wands_ndcg_sanity`
 
 ## Test-Driven Flow
 

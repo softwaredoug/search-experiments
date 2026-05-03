@@ -109,4 +109,4 @@ You should have jupyter as a dev dependency, you should test the parsinig and no
 
 Always run the test
 
- uv run pytest tests/test_notebook_descriptions.py
+ uv run pytest tests/unit/test_notebook_descriptions.py
