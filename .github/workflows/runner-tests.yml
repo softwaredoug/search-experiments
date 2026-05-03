@@ -29,4 +29,4 @@ jobs:
       - name: Run runner tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run pytest tests/test_runners.py
+        run: uv run pytest -s tests/test_runners.py
