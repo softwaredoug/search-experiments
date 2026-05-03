@@ -140,7 +140,13 @@ def _build_feature_lookup(
     return feature_values_map, doc_features
 
 
-def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float = 1.0):
+def make_bm25_tool(
+    corpus,
+    title_boost: float = 10.0,
+    description_boost: float = 1.0,
+    k1: float | None = None,
+    b: float | None = None,
+):
     def search_bm25(
         keywords: str,
         top_k: int = 5,
@@ -157,11 +163,26 @@ def make_bm25_tool(corpus, title_boost: float = 10.0, description_boost: float =
             'description', and 'score' keys.
         """
         bm25_scores = np.zeros(len(corpus))
+        similarity = None
+        if k1 is not None or b is not None:
+            similarity = bm25_similarity(k1=k1 or 1.2, b=b or 0.75)
         for term in snowball_tokenizer(keywords):
-            bm25_scores += corpus["title_snowball"].array.score(term) * title_boost
-            bm25_scores += (
-                corpus["description_snowball"].array.score(term) * description_boost
-            )
+            if similarity is None:
+                bm25_scores += corpus["title_snowball"].array.score(term) * title_boost
+                bm25_scores += (
+                    corpus["description_snowball"].array.score(term) * description_boost
+                )
+            else:
+                bm25_scores += (
+                    corpus["title_snowball"].array.score(term, similarity=similarity)
+                    * title_boost
+                )
+                bm25_scores += (
+                    corpus["description_snowball"].array.score(
+                        term, similarity=similarity
+                    )
+                    * description_boost
+                )
 
         top_k_indices = np.argsort(bm25_scores)[-top_k:][::-1]
         bm25_scores = bm25_scores[top_k_indices]
@@ -782,6 +803,30 @@ def make_query_rewrite_tool(
     return query_rewrite
 
 
+def make_get_corpus_tool(corpus):
+    def get_corpus(agent_state=None):
+        """Return the pandas DataFrame corpus.
+
+        Columns:
+        - title: title (if any) of the document
+        - description: body of the document
+        - title_snowball: snowball-tokenized SearchArray index for title
+        - description_snowball: snowball-tokenized SearchArray index for description
+
+        SearchArray API (lexical statistics) lives on the .array attribute of
+        snowball columns, e.g. corpus["title_snowball"].array:
+        - score(token, similarity=...): BM25-style scores
+        - termfreqs(token): term frequency per doc
+        - docfreq(token): document frequency
+        - doclengths(): document lengths
+        - positions(token): positions per doc
+        """
+        return corpus
+
+    get_corpus.__name__ = "get_corpus"
+    return get_corpus
+
+
 def guard_disallow_repeated_queries(params: dict, agent_state: dict | None) -> str | None:
     """Reject repeated queries per tool using agent_state["past_queries"]."""
     if agent_state is None:
@@ -1034,6 +1079,7 @@ TOOL_BUILDERS = {
     "embeddings": make_embedding_tool,
     "codegen": make_codegen_tool,
     "query_rewrite": make_query_rewrite_tool,
+    "get_corpus": make_get_corpus_tool,
     "e5_base_v2": lambda corpus, device=None: make_embedding_tool(
         corpus,
         device=device,
@@ -1076,6 +1122,9 @@ def build_search_tools(
                 embeddings_device=embeddings_device,
                 dataset_name=dataset_name,
             )
+        elif tool_name == "bm25":
+            tool_params = tool.get("config", {}).get("params", {})
+            tool_fn = builder(corpus, **tool_params)
         elif tool_name in {"embeddings", "minilm", "e5_base_v2"}:
             tool_fn = builder(corpus, device=embeddings_device)
         else:

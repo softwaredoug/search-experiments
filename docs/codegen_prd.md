@@ -352,3 +352,29 @@ So you'll need to plan for stuff like this
                     dependencies:
                       - fielded_bm25
 ```
+
+## Raw search tools
+
+Raw search tools work differently than the tools so far. They can only be used in codegen. An agent cannot call them as a 'tool'.
+
+```
+    search_tools:
+      - raw:
+        - get_corpus
+```
+
+In this case, we should not list the tool with the other tools.
+
+Instead the name + description should be appended to the system prompt to describe them, ie
+
+```
+<main system prompt>
+
+## Additionally injected search code
+
+The following functions are available to generated code, injected into the rerank function:
+
+### Tool Name
+
+< Tool description>
+```

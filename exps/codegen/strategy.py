@@ -6,7 +6,7 @@ import numpy as np
 from cheat_at_search.strategy import SearchStrategy
 
 from exps.codegen.io import find_latest_codegen_run, reranker_path
-from exps.codegen.utils import build_id_lookup, load_rerank_fn, resolve_id_column
+from exps.codegen.utils import build_id_lookup, load_rerank_fn, resolve_id_column, split_search_tools
 from exps.tools import build_search_tools
 
 
@@ -71,14 +71,22 @@ class CodeGenSearchStrategy(SearchStrategy):
 
         train_config = dict(params.get("train") or {})
         tool_config = train_config.get("search_tools") or []
+        normal_tool_config, raw_tool_config = split_search_tools(tool_config)
         tool_fns = build_search_tools(
             corpus,
-            tool_config,
+            normal_tool_config,
+            embeddings_device=device,
+            dataset_name=dataset,
+        )
+        raw_tools = build_search_tools(
+            corpus,
+            raw_tool_config,
             embeddings_device=device,
             dataset_name=dataset,
         )
         if not tool_fns:
             raise ValueError("Codegen run requires at least one search tool.")
+        tool_fns = tool_fns + raw_tools
         rerank_name = f"rerank_{dataset}"
         return cls(
             corpus,

@@ -32,3 +32,17 @@ def resolve_grade_column(judgments) -> str | None:
         if col in judgments.columns:
             return col
     return None
+
+
+def split_search_tools(tool_config: list) -> tuple[list, list]:
+    normal_tools: list = []
+    raw_tools: list = []
+    for entry in tool_config:
+        if isinstance(entry, dict) and len(entry) == 1 and "raw" in entry:
+            raw_entries = entry.get("raw") or []
+            if not isinstance(raw_entries, list):
+                raise ValueError("raw search tools must be a list")
+            raw_tools.extend(raw_entries)
+            continue
+        normal_tools.append(entry)
+    return normal_tools, raw_tools

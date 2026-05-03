@@ -1,0 +1,24 @@
+strategy:
+  name: codegen_get_corpus_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      refresh_every: 1
+      search_tools:
+        - bm25
+        - raw:
+            - get_corpus
+      edit:
+        guards:
+          - validation
+      eval:
+        train_query_fraction: 0.2
+        validation_query_fraction: 0.2
+        training_seed: 123
+        validation_seed: 456
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5

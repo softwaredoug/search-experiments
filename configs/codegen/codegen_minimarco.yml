@@ -6,8 +6,13 @@ strategy:
       model: gpt-5
       refresh_every: 3
       search_tools:
-        - bm25
+        - bm25:
+            params:
+              k1: 0.6
+              b: 0.62
         - query_rewrite
+        - raw:
+            - get_corpus
       edit:
         guards:
           - validation

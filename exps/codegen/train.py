@@ -23,6 +23,7 @@ from exps.codegen.tools.runtime import (
     make_training_eval_fn,
 )
 from exps.codegen.types import CodeGenArtifact, CodeGenRunConfig, CodeGenTrainConfig
+from exps.codegen.utils import split_search_tools
 from exps.tools import build_search_tools, normalize_search_tools
 
 
@@ -192,7 +193,8 @@ def train_codegen_strategy(
     rerank_name = f"rerank_{dataset}"
 
     tool_config = train_config.search_tools or ["bm25"]
-    normalized_tools = normalize_search_tools(tool_config)
+    normal_tool_config, raw_tool_config = split_search_tools(tool_config)
+    normalized_tools = normalize_search_tools(normal_tool_config)
 
     continue_from = train_config.continue_from
     continue_path, previous_rounds, start_code = _resolve_continuation(
@@ -248,6 +250,9 @@ def train_codegen_strategy(
     tool_params = None
     primary_search_tool = None
     primary_tool_name = None
+    tool_fns = None
+    raw_tool_names: list[str] = []
+    raw_tool_docs: list[str] = []
     training_queries_list: list[str] = []
     validation_queries_list: list[str] = []
     test_queries_list: list[str] = []
@@ -260,6 +265,9 @@ def train_codegen_strategy(
         nonlocal tool_params
         nonlocal primary_search_tool
         nonlocal primary_tool_name
+        nonlocal tool_fns
+        nonlocal raw_tool_names
+        nonlocal raw_tool_docs
         nonlocal training_queries_list
         nonlocal validation_queries_list
         nonlocal tools
@@ -267,15 +275,25 @@ def train_codegen_strategy(
 
         search_tools = build_search_tools(
             corpus,
-            tool_config,
+            normal_tool_config,
+            embeddings_device=device,
+            dataset_name=dataset,
+        )
+        raw_tools = build_search_tools(
+            corpus,
+            raw_tool_config,
             embeddings_device=device,
             dataset_name=dataset,
         )
         if not search_tools:
             raise ValueError("Codegen requires at least one search tool.")
+        tool_fns = search_tools + raw_tools
         search_tool_names = [tool.__name__ for tool in search_tools]
         search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
+        raw_tool_names = [tool.__name__ for tool in raw_tools]
+        raw_tool_docs = [tool.__doc__ or "" for tool in raw_tools]
         tool_params = search_tool_names.copy()
+        tool_params.extend(raw_tool_names)
         primary_search_tool = search_tools[0]
         primary_tool_name = search_tool_names[0]
 
@@ -292,7 +310,7 @@ def train_codegen_strategy(
         training_eval_fn = make_training_eval_fn(
             corpus=corpus,
             judgments=judgments,
-            tool_fns=search_tools,
+            tool_fns=tool_fns,
             rerank_name=rerank_name,
             seed=training_seed,
             num_queries=len(training_queries_list),
@@ -304,7 +322,7 @@ def train_codegen_strategy(
             validation_eval_fn = make_eval_guardrail(
                 corpus=corpus,
                 judgments=judgments,
-                tool_fns=search_tools,
+                tool_fns=tool_fns,
                 rerank_name=rerank_name,
                 seed=validation_seed,
                 num_queries=len(validation_queries_list),
@@ -314,7 +332,7 @@ def train_codegen_strategy(
 
         apply_patch, try_out_patch, revert_changes = make_patch_fn(
             search_fn=primary_search_tool,
-            tool_fns=search_tools,
+            tool_fns=tool_fns,
             corpus=corpus,
             code_dir=str(output_dir),
             module_name="reranker",
@@ -328,7 +346,7 @@ def train_codegen_strategy(
         run_evals, run_reranker = make_eval_tools(
             corpus=corpus,
             judgments=judgments,
-            tool_fns=search_tools,
+            tool_fns=tool_fns,
             rerank_name=rerank_name,
             code_path=code_path,
             seed=training_seed,
@@ -358,7 +376,7 @@ def train_codegen_strategy(
         baseline_strategy = CodeGenSearchStrategy(
             corpus,
             search_fn=primary_search_tool,
-            tool_fns=search_tools,
+            tool_fns=tool_fns,
             code=baseline_code,
             rerank_name=rerank_name,
             workers=workers,
@@ -413,6 +431,8 @@ def train_codegen_strategy(
             rerank_name=rerank_name,
             search_tool_names=search_tool_names or [],
             search_tool_docs=search_tool_docs or [],
+            raw_tool_names=raw_tool_names,
+            raw_tool_docs=raw_tool_docs,
             rerank_params=["query", *(tool_params or []), "**kwargs"],
             code=code,
         )
@@ -429,7 +449,7 @@ def train_codegen_strategy(
         codegen_strategy = CodeGenSearchStrategy(
             corpus,
             search_fn=primary_search_tool,
-            tool_fns=search_tools,
+            tool_fns=tool_fns,
             code=code,
             rerank_name=rerank_name,
             workers=workers,
