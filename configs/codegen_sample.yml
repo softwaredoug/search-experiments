@@ -7,7 +7,6 @@ strategy:
       search_tools:
         - fielded_bm25
         - e5_base_v2
-      start_with: null
       edit:
         guards:
           - validation

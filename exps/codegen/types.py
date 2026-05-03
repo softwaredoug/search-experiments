@@ -29,7 +29,6 @@ class CodeGenTrainConfig(BaseModel):
     system_prompt: str | None = None
     search_tools: list = Field(default_factory=lambda: ["bm25"])
     try_out_patch: bool = True
-    start_with: str | None = None
     continue_from: str | bool | None = Field(default=None, alias="continue")
 
 

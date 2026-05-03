@@ -200,11 +200,8 @@ def train_codegen_strategy(
         dataset=dataset,
         strategy_name=strategy_name,
     )
-    if start_code is None and train_config.start_with:
-        start_path = Path(train_config.start_with).expanduser()
-        if not start_path.exists():
-            raise FileNotFoundError(f"start_with path not found: {start_path}")
-        start_code = start_path.read_text(encoding="utf-8")
+    if start_code is None and train_params.get("start_with"):
+        raise ValueError("start_with is no longer supported; use train.continue instead.")
     if output_dir is None:
         output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
         code_path = reranker_path(output_dir)
@@ -499,7 +496,6 @@ def train_codegen_strategy(
         "round_summaries": round_summaries,
         "round_ndcgs": round_ndcgs,
         "round_test_ndcgs": round_test_ndcgs,
-        "start_with": train_config.start_with,
         "training_seed": eval_cfg.training_seed,
         "validation_seed": eval_cfg.validation_seed,
         "train_query_fraction": eval_cfg.train_query_fraction,

@@ -1,20 +1,30 @@
 strategy:
-  name: codegen_no_guards
+  name: codegen_nested
   type: codegen
   params:
     train:
       model: gpt-5
-      refresh_every: 5
+      refresh_every: 3
       search_tools:
         - fielded_bm25
         - e5_base_v2
+        - query_rewrite:                                                                        
+             model: gpt-5-mini                                                                   
+             max_alternatives: 5                                                                 
       edit:
-        guards: []
+        guards:
+          - validation
+          - length:
+              max_lines: 10
+              max_cols: 120
+          # - overfit:
+          #     model: openai/gpt-5-mini
       eval:
         train_query_fraction: 0.20
+        validation_query_fraction: 0.80
         training_seed: 5678
         validation_seed: 1234
-        eval_margin: 0.003
+        eval_margin: 0.002
       system_prompt: |
         Your task is to improve the reranker code so it returns more relevant results.
 
