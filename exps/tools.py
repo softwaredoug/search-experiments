@@ -820,6 +820,7 @@ def make_get_corpus_tool(corpus):
         - docfreq(token): document frequency
         - doclengths(): document lengths
         - positions(token): positions per doc
+        - tokenizer: access with corpus["description_snowball"].array.tokenizer
         """
         return corpus
 
