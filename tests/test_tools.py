@@ -182,3 +182,28 @@ def rerank_wands(query, fielded_bm25, search_embeddings):
             ],
             dataset_name="wands",
         )
+
+
+def test_build_search_tools_rejects_raw_in_agentic_context():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["alpha"],
+            "description": ["desc"],
+        }
+    )
+    with pytest.raises(ValueError, match="raw search tool"):
+        tools_mod.build_search_tools(corpus, ["get_corpus"])
+
+
+def test_build_search_tools_allows_raw_context():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["alpha"],
+            "description": ["desc"],
+        }
+    )
+    tools = tools_mod.build_search_tools(corpus, ["get_corpus"], context="raw")
+    assert len(tools) == 1
+    assert tools[0].__name__ == "get_corpus"

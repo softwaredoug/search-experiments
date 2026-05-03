@@ -972,6 +972,8 @@ def _normalize_tool_config(tool_info: dict) -> dict[str, Any]:
 def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
     normalized = []
     for item in tool_config:
+        if isinstance(item, dict) and len(item) == 1 and "raw" in item:
+            raise ValueError("raw search tools are only supported in codegen configs.")
         if isinstance(item, str):
             normalized.append({"name": item, "guards": [], "config": {}})
             continue
@@ -1072,32 +1074,72 @@ def make_guarded_search_tool(
     return guarded
 
 
-TOOL_BUILDERS = {
-    "bm25": make_bm25_tool,
-    "fielded_bm25": make_fielded_bm25_tool,
-    "minilm": make_embedding_tool,
-    "embeddings": make_embedding_tool,
-    "codegen": make_codegen_tool,
-    "query_rewrite": make_query_rewrite_tool,
-    "get_corpus": make_get_corpus_tool,
-    "e5_base_v2": lambda corpus, device=None: make_embedding_tool(
-        corpus,
-        device=device,
-        model_name="intfloat/e5-base-v2",
-        query_prefix="query: ",
-        document_prefix="passage: ",
-    ),
-    "bm25_wands": make_wands_bm25_tool,
-    "minilm_wands": make_wands_embedding_tool,
-    "e5_base_v2_wands": lambda corpus, device=None: make_wands_embedding_tool(
-        corpus,
-        device=device,
-        model_name="intfloat/e5-base-v2",
-        query_prefix="query: ",
-        document_prefix="passage: ",
-    ),
-    "check_features_wands": make_check_features_wands_tool,
+TOOL_REGISTRY = {
+    "bm25": {"builder": make_bm25_tool, "kind": "agentic"},
+    "fielded_bm25": {"builder": make_fielded_bm25_tool, "kind": "agentic"},
+    "minilm": {"builder": make_embedding_tool, "kind": "agentic"},
+    "embeddings": {"builder": make_embedding_tool, "kind": "agentic"},
+    "codegen": {"builder": make_codegen_tool, "kind": "agentic"},
+    "query_rewrite": {"builder": make_query_rewrite_tool, "kind": "agentic"},
+    "get_corpus": {"builder": make_get_corpus_tool, "kind": "raw"},
+    "e5_base_v2": {
+        "builder": lambda corpus, device=None: make_embedding_tool(
+            corpus,
+            device=device,
+            model_name="intfloat/e5-base-v2",
+            query_prefix="query: ",
+            document_prefix="passage: ",
+        ),
+        "kind": "agentic",
+    },
+    "bm25_wands": {"builder": make_wands_bm25_tool, "kind": "agentic"},
+    "minilm_wands": {"builder": make_wands_embedding_tool, "kind": "agentic"},
+    "e5_base_v2_wands": {
+        "builder": lambda corpus, device=None: make_wands_embedding_tool(
+            corpus,
+            device=device,
+            model_name="intfloat/e5-base-v2",
+            query_prefix="query: ",
+            document_prefix="passage: ",
+        ),
+        "kind": "agentic",
+    },
+    "check_features_wands": {"builder": make_check_features_wands_tool, "kind": "agentic"},
 }
+
+
+def tool_kind(name: str) -> str:
+    entry = TOOL_REGISTRY.get(name)
+    if entry is None:
+        raise ValueError(f"Unknown search tool: {name}")
+    return entry.get("kind", "agentic")
+
+
+def split_search_tools(tool_config: list) -> tuple[list, list]:
+    normal_tools: list = []
+    raw_tools: list = []
+    for entry in tool_config:
+        if isinstance(entry, dict) and len(entry) == 1 and "raw" in entry:
+            raw_entries = entry.get("raw") or []
+            if not isinstance(raw_entries, list):
+                raise ValueError("raw search tools must be a list")
+            raw_tools.extend(raw_entries)
+            continue
+        if isinstance(entry, str):
+            if tool_kind(entry) == "raw":
+                raw_tools.append(entry)
+            else:
+                normal_tools.append(entry)
+            continue
+        if isinstance(entry, dict) and len(entry) == 1:
+            tool_name = next(iter(entry))
+            if tool_kind(tool_name) == "raw":
+                raw_tools.append(entry)
+            else:
+                normal_tools.append(entry)
+            continue
+        normal_tools.append(entry)
+    return normal_tools, raw_tools
 
 
 def build_search_tools(
@@ -1105,16 +1147,20 @@ def build_search_tools(
     tool_config: list,
     embeddings_device: str | None = None,
     dataset_name: str | None = None,
+    context: str = "agentic",
 ):
     tools = []
     for tool in normalize_search_tools(tool_config):
         tool_name = tool["name"]
+        entry = TOOL_REGISTRY.get(tool_name)
+        if entry is None:
+            raise ValueError(f"Unknown search tool: {tool_name}")
+        if context == "agentic" and entry.get("kind", "agentic") == "raw":
+            raise ValueError(f"{tool_name} is a raw search tool and cannot be used in agentic strategies.")
         if tool_name.endswith("_wands"):
             if dataset_name != "wands":
                 raise ValueError(f"{tool_name} is only available for wands dataset.")
-        builder = TOOL_BUILDERS.get(tool_name)
-        if builder is None:
-            raise ValueError(f"Unknown search tool: {tool_name}")
+        builder = entry["builder"]
         if tool_name in {"codegen", "query_rewrite"}:
             tool_fn = builder(
                 corpus,

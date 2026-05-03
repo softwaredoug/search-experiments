@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-
+from exps.tools import tool_kind
 def resolve_id_column(df) -> str:
     for col in ("doc_id", "product_id", "id"):
         if col in df.columns:
@@ -43,6 +43,19 @@ def split_search_tools(tool_config: list) -> tuple[list, list]:
             if not isinstance(raw_entries, list):
                 raise ValueError("raw search tools must be a list")
             raw_tools.extend(raw_entries)
+            continue
+        if isinstance(entry, str):
+            if tool_kind(entry) == "raw":
+                raw_tools.append(entry)
+            else:
+                normal_tools.append(entry)
+            continue
+        if isinstance(entry, dict) and len(entry) == 1:
+            tool_name = next(iter(entry))
+            if tool_kind(tool_name) == "raw":
+                raw_tools.append(entry)
+            else:
+                normal_tools.append(entry)
             continue
         normal_tools.append(entry)
     return normal_tools, raw_tools

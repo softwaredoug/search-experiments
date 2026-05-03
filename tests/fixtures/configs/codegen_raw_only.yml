@@ -6,8 +6,7 @@ strategy:
       model: gpt-5-mini
       refresh_every: 1
       search_tools:
-        - raw:
-            - get_corpus
+        - get_corpus
       edit:
         guards:
           - validation

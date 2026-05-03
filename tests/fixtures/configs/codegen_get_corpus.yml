@@ -7,8 +7,7 @@ strategy:
       refresh_every: 1
       search_tools:
         - bm25
-        - raw:
-            - get_corpus
+        - get_corpus
       edit:
         guards:
           - validation

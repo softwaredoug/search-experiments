@@ -97,6 +97,8 @@ The following context gets passed to OpenAI from the tool:
 - tool name: the function name
 - tool description: a description of what the tool does, how to use it, etc. This is important for the agent to know when to call it, how to call it, etc.
 
+Raw tools (kind: raw) are not allowed in agentic strategies. If a raw tool is listed in an agentic config, raise an error.
+
 ### Top k
 
 To not flood the agent's context, at most the agent can request 20 results.

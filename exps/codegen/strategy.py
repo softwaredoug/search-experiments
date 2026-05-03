@@ -83,6 +83,7 @@ class CodeGenSearchStrategy(SearchStrategy):
             raw_tool_config,
             embeddings_device=device,
             dataset_name=dataset,
+            context="raw",
         )
         if not tool_fns and not raw_tools:
             raise ValueError("Codegen run requires at least one search tool.")
