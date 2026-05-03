@@ -11,6 +11,7 @@ from typing_extensions import Literal
 import threading
 
 import numpy as np
+from pydantic import BaseModel, Field
 
 from searcharray import SearchArray
 from searcharray.similarity import bm25_similarity
@@ -22,6 +23,7 @@ from cheat_at_search.embeddings import (
     load_model,
     load_or_create_embeddings,
 )
+from cheat_at_search.enrich.enrich import AutoEnricher
 from exps.embeddings_utils import make_passage_fn
 
 WANDS_TOP_CATEGORIES = [
@@ -697,6 +699,83 @@ def make_codegen_tool(
     return search
 
 
+def make_query_rewrite_tool(
+    corpus,
+    *,
+    tool_config: dict[str, Any] | None = None,
+    **_unused,
+):
+    config = tool_config or {}
+    model = config.get("model") or "openai/gpt-5-mini"
+    max_alternatives = config.get("max_alternatives") or 5
+    temperature = config.get("temperature")
+    reasoning_effort = config.get("reasoning_effort")
+    verbosity = config.get("verbosity")
+
+    if "/" not in model:
+        model = f"openai/{model}"
+
+    class QueryRewriteResponse(BaseModel):
+        original_query: str = Field(description="The original query string")
+        rewriters: list[str] = Field(description="Alternate query forms including the original query")
+
+    system_prompt = (
+        "You rewrite search queries to alternate forms without changing meaning. "
+        "Only apply spelling corrections, acronym expansions, or acronym forms of the same terms. "
+        "Do not add synonyms or new concepts. Return a short list of alternates."
+    )
+    enricher = AutoEnricher(
+        model=model,
+        system_prompt=system_prompt,
+        response_model=QueryRewriteResponse,
+        temperature=temperature,
+        reasoning_effort=reasoning_effort,
+        verbosity=verbosity,
+    )
+
+    def query_rewrite(
+        query: str,
+        max_alternatives: int = max_alternatives,
+        agent_state=None,
+    ) -> dict[str, Any]:
+        """Rewrite a query into alternate forms for lexical search."""
+        if not isinstance(query, str) or not query.strip():
+            original = "" if isinstance(query, str) else str(query)
+            return {"original_query": original, "rewriters": [original]}
+        prompt = (
+            "Rewrite the query with alternate spellings or acronym expansions only. "
+            "Do not add synonyms. Ensure the original query appears in the list. "
+            "Return JSON with keys 'original_query' and 'rewriters'.\n\n"
+            f"Query: {query}\n"
+            f"Max alternates: {max_alternatives}"
+        )
+        parsed = enricher.enrich(prompt)
+        candidates = parsed.rewriters if parsed and parsed.rewriters else []
+        deduped = []
+        seen = set()
+        for item in candidates:
+            if not isinstance(item, str):
+                continue
+            normalized = item.strip()
+            if not normalized or normalized in seen:
+                continue
+            deduped.append(normalized)
+            seen.add(normalized)
+        original = query.strip()
+        if original:
+            if original in seen:
+                deduped.remove(original)
+            deduped.insert(0, original)
+        rewriters = deduped[: max(1, int(max_alternatives))]
+        return {"original_query": original, "rewriters": rewriters}
+
+    query_rewrite.__name__ = "query_rewrite"
+    query_rewrite.__doc__ = (
+        "Rewrite a query into alternate forms (spelling/acronym variants only)."
+    )
+    return query_rewrite
+
+
 def guard_disallow_repeated_queries(params: dict, agent_state: dict | None) -> str | None:
     """Reject repeated queries per tool using agent_state["past_queries"]."""
     if agent_state is None:
@@ -948,6 +1027,7 @@ TOOL_BUILDERS = {
     "minilm": make_embedding_tool,
     "embeddings": make_embedding_tool,
     "codegen": make_codegen_tool,
+    "query_rewrite": make_query_rewrite_tool,
     "e5_base_v2": lambda corpus, device=None: make_embedding_tool(
         corpus,
         device=device,
@@ -983,7 +1063,7 @@ def build_search_tools(
         builder = TOOL_BUILDERS.get(tool_name)
         if builder is None:
             raise ValueError(f"Unknown search tool: {tool_name}")
-        if tool_name == "codegen":
+        if tool_name in {"codegen", "query_rewrite"}:
             tool_fn = builder(
                 corpus,
                 tool_config=tool.get("config") or {},
@@ -1001,6 +1081,8 @@ def build_search_tools(
             base_doc = tool_fn.__doc__ or ""
             tool_fn.__doc__ = f"{base_doc}\n\n{guard_block}" if base_doc else guard_block
         if tool["guards"]:
+            if tool_name == "query_rewrite":
+                raise ValueError("query_rewrite does not support guards.")
             if tool_name == "codegen":
                 guard_func_name = tool_fn.__name__
             else:

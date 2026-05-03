@@ -265,6 +265,44 @@ def test_run_benchmark_agentic_codegen_fixture_nonzero():
     assert (result.metric_series > 0).any()
 
 
+def test_run_benchmark_agentic_query_rewrite_tool(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    config_path = tmp_path / "agentic_query_rewrite.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_query_rewrite_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find the most relevant products.
+    search_tools:
+      - query_rewrite:
+          model: gpt-5-mini
+          max_alternatives: 2
+      - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
 def test_run_benchmark_codegen_rounds_override():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
