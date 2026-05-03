@@ -122,21 +122,6 @@ def main() -> None:
         "--summary-csv",
         help="Write summary stats to CSV (appends if exists).",
     )
-    parser.add_argument(
-        "--train.rounds",
-        dest="train_rounds",
-        type=int,
-        help="Override codegen training rounds (adds to prior when continuing).",
-    )
-    parser.add_argument(
-        "--train.continue",
-        dest="train_continue",
-        nargs="?",
-        const="latest",
-        help=(
-            "Continue codegen training from the latest run, or from the given path."
-        ),
-    )
     args = parser.parse_args()
 
     if args.query:
@@ -150,8 +135,6 @@ def main() -> None:
             binary_relevance=args.binary_relevance,
             device=args.device,
             no_cache=args.no_cache,
-            train_rounds=args.train_rounds,
-            train_continue=args.train_continue,
         )
         result = run_benchmark(params)
         if result.codegen_artifact_path:
@@ -193,8 +176,6 @@ def main() -> None:
         binary_relevance=args.binary_relevance,
         device=args.device,
         no_cache=args.no_cache,
-        train_rounds=args.train_rounds,
-        train_continue=args.train_continue,
     )
     result = run_benchmark(params)
     if result.codegen_artifact_path:

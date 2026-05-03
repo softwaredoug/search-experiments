@@ -5,7 +5,9 @@ from pathlib import Path
 import numpy as np
 from cheat_at_search.strategy import SearchStrategy
 
+from exps.codegen.io import find_latest_codegen_run, reranker_path
 from exps.codegen.utils import build_id_lookup, load_rerank_fn, resolve_id_column
+from exps.tools import build_search_tools
 
 
 class CodeGenSearchStrategy(SearchStrategy):
@@ -50,28 +52,42 @@ class CodeGenSearchStrategy(SearchStrategy):
             raise ValueError("Codegen strategy requires dataset name.")
         if strategy_name is None:
             raise ValueError("Codegen strategy requires strategy name.")
-        from exps.codegen.train import train_codegen_strategy
+        run_config = dict(params.get("run") or {})
+        run_path = run_config.get("path")
+        if run_path is None:
+            run_path = find_latest_codegen_run(dataset, strategy_name)
+            if run_path is None:
+                raise ValueError(
+                    "No trained codegen run found. Run `uv run train` or set run.path."
+                )
+        run_path = Path(run_path).expanduser()
+        if not run_path.exists():
+            raise FileNotFoundError(f"Codegen run path not found: {run_path}")
 
-        artifact = train_codegen_strategy(
-            strategy_name=strategy_name,
-            dataset=dataset,
-            corpus=corpus,
-            judgments=kwargs.get("judgments"),
-            params=params,
-            device=device,
-            workers=workers,
-            report_num_queries=report_num_queries,
-            report_seed=report_seed or 42,
+        code_path = reranker_path(run_path)
+        if not code_path.exists():
+            raise FileNotFoundError(f"Reranker code not found: {code_path}")
+        code = code_path.read_text(encoding="utf-8")
+
+        train_config = dict(params.get("train") or {})
+        tool_config = train_config.get("search_tools") or []
+        tool_fns = build_search_tools(
+            corpus,
+            tool_config,
+            embeddings_device=device,
+            dataset_name=dataset,
         )
+        if not tool_fns:
+            raise ValueError("Codegen run requires at least one search tool.")
         rerank_name = f"rerank_{dataset}"
         return cls(
             corpus,
             workers=workers,
-            search_fn=artifact.search_fn,
-            tool_fns=artifact.tool_fns,
-            code=artifact.code,
+            search_fn=tool_fns[0],
+            tool_fns=tool_fns,
+            code=code,
             rerank_name=rerank_name,
-            artifact_path=artifact.path,
+            artifact_path=run_path,
         )
 
     def search(self, query, k: int = 10):

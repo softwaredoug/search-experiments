@@ -22,6 +22,7 @@ dev = [
 run = "exps.runner:main"
 query = "exps.query_runner:main"
 diff = "exps.diff:main"
+train = "exps.train_runner:main"
 
 [build-system]
 requires = ["hatchling>=1.24.2"]
