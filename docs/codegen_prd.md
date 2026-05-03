@@ -378,3 +378,33 @@ The following functions are available to generated code, injected into the reran
 
 < Tool description>
 ```
+
+
+## Starting Code
+
+The config might specify the code to start with directly.
+
+If specified w/ continue passed during training, then you ignore the stort code.
+
+This would look like this in the training section of param:
+
+```yaml
+strategy:
+  name: codegen
+  type: codegen
+  params:
+    train:
+      start_code: |
+        def rerank(query, fielded_bm25, **kwargs):
+            docs = fielded_bm25(
+                keywords=query,
+                fields=['title^9.3', 'description^4.1'],
+                operator='and',
+                top_k=10,
+            )
+            return [doc['id'] for doc in docs]
+```
+
+If the tools differ from what's listed, then you should throw an error. 
+
+The simplest way to test is to simply try to run the starting code with the provided tools, and if it throws an error, then the tools don't match the code and you should throw an error that the start function has a mismatch..
