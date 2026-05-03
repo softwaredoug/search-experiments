@@ -17,6 +17,7 @@ from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.runners.run import RunParams, run_benchmark
+from exps.runners.train import TrainParams, train_strategy
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
 
 
@@ -150,22 +151,6 @@ def test_run_benchmark_matches_direct():
     metric_name, metric_fn = metric_for_dataset(params.dataset)
     direct_series = metric_fn(direct_graded)
     pd.testing.assert_series_equal(result.metric_series, direct_series)
-
-
-def test_run_benchmark_train_rounds_requires_codegen():
-    params = RunParams(
-        strategy_path="configs/bm25.yml",
-        base_path="tests/fixtures",
-        dataset="wands",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-        train_rounds=1,
-    )
-    with pytest.raises(ValueError):
-        run_benchmark(params)
 
 
 def test_run_benchmark_agentic_guarded():
@@ -303,31 +288,6 @@ strategy:
     assert not result.metric_series.empty
 
 
-def test_run_benchmark_codegen_rounds_override():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
-
-    params = RunParams(
-        strategy_path="configs/codegen_guarded.yml",
-        base_path="tests/fixtures",
-        dataset="wands",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-        train_rounds=1,
-    )
-    result = run_benchmark(params)
-
-    assert result.codegen_artifact_path is not None
-    metadata_path = Path(result.codegen_artifact_path) / "metadata.json"
-    assert metadata_path.exists()
-    metadata = metadata_path.read_text(encoding="utf-8")
-    assert "\"rounds\": 1" in metadata
-    assert "\"rounds_added\": 1" in metadata
-
-
 def test_run_benchmark_codegen_guarded():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
@@ -341,12 +301,30 @@ def test_run_benchmark_codegen_guarded():
         workers=1,
         device=None,
         no_cache=True,
-        train_rounds=1,
     )
     result = run_benchmark(params)
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+
+
+def test_train_codegen_guarded():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    params = TrainParams(
+        strategy_path="configs/codegen_guarded.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    assert result.artifact_path
 
 
 def test_agentic_stop_iterations():

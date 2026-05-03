@@ -7,6 +7,7 @@ strategy:
       refresh_every: 1
       search_tools:
         - fielded_bm25
+        - e5_base_v2
       edit:
         guards:
           - validation
@@ -24,3 +25,4 @@ strategy:
 
     run:
       top_k: 5
+      path: tests/fixtures/past_runs/20260502_025238
