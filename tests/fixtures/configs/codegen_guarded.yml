@@ -7,7 +7,7 @@ strategy:
       refresh_every: 1
       search_tools:
         - fielded_bm25
-        - e5_base_v2
+        - minilm
       edit:
         guards:
           - validation

@@ -15,4 +15,4 @@ strategy:
           name: search
           dependencies:
             - fielded_bm25
-            - e5_base_v2
+            - minilm
