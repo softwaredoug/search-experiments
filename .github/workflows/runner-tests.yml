@@ -1,0 +1,32 @@
+name: runner-tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  runner-tests:
+    runs-on: ubuntu-latest
+    environment: openai-tests
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run runner tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run pytest tests/test_runners.py
