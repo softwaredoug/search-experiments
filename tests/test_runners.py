@@ -363,6 +363,41 @@ def test_train_codegen_raw_only():
     assert result.artifact_path
 
 
+def test_train_codegen_start_code():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+    params = TrainParams(
+        strategy_path="configs/codegen_start_code.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    assert result.artifact_path
+
+
+def test_train_codegen_start_code_mismatch():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+    params = TrainParams(
+        strategy_path="configs/codegen_start_code_mismatch.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    with pytest.raises(ValueError, match="start_code does not match configured tools"):
+        train_strategy(params)
+
+
 def test_agentic_stop_iterations():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

@@ -407,4 +407,4 @@ strategy:
 
 If the tools differ from what's listed, then you should throw an error. 
 
-The simplest way to test is to simply try to run the starting code with the provided tools, and if it throws an error, then the tools don't match the code and you should throw an error that the start function has a mismatch..
+The simplest way to test is to simply try to run the starting code with the provided tools, and if it throws an error, then the tools don't match the code and you should throw an error that the start function has a mismatch.

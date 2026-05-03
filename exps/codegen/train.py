@@ -23,7 +23,7 @@ from exps.codegen.tools.runtime import (
     make_training_eval_fn,
 )
 from exps.codegen.types import CodeGenArtifact, CodeGenRunConfig, CodeGenTrainConfig
-from exps.codegen.utils import split_search_tools
+from exps.codegen.utils import load_rerank_fn, split_search_tools
 from exps.tools import build_search_tools, normalize_search_tools
 
 
@@ -96,6 +96,19 @@ def _make_rerank_name_guard(rerank_name: str) -> callable:
         f"Code must define a callable {rerank_name} function with the required signature."
     )
     return guard
+
+
+def _validate_start_code(code: str, rerank_name: str, tool_fns: list[callable]) -> None:
+    try:
+        rerank_fn = load_rerank_fn(code, rerank_name)
+    except Exception as exc:
+        raise ValueError(f"start_code must define a callable {rerank_name} function: {exc}") from exc
+    try:
+        rerank_fn("test query", *tool_fns)
+    except Exception as exc:
+        raise ValueError(
+            "start_code does not match configured tools; verify the rerank signature and search_tools."
+        ) from exc
 
 
 def _start_code(
@@ -209,6 +222,10 @@ def train_codegen_strategy(
     )
     if start_code is None and train_params.get("start_with"):
         raise ValueError("start_with is no longer supported; use train.continue instead.")
+    start_code_from_config = False
+    if start_code is None and train_config.start_code:
+        start_code = train_config.start_code
+        start_code_from_config = True
     if output_dir is None:
         output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
         code_path = reranker_path(output_dir)
@@ -277,6 +294,7 @@ def train_codegen_strategy(
         nonlocal validation_queries_list
         nonlocal tools
         nonlocal test_queries_list
+        nonlocal start_code_from_config
 
         search_tools = build_search_tools(
             corpus,
@@ -294,6 +312,9 @@ def train_codegen_strategy(
         if not search_tools and not raw_tools:
             raise ValueError("Codegen requires at least one search tool.")
         tool_fns = search_tools + raw_tools
+        if start_code_from_config:
+            _validate_start_code(code_path.read_text(encoding="utf-8"), rerank_name, tool_fns)
+            start_code_from_config = False
         search_tool_names = [tool.__name__ for tool in search_tools]
         search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
         raw_tool_names = [tool.__name__ for tool in raw_tools]

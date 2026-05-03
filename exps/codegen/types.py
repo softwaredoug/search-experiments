@@ -30,6 +30,7 @@ class CodeGenTrainConfig(BaseModel):
     search_tools: list = Field(default_factory=lambda: ["bm25"])
     try_out_patch: bool = True
     continue_from: str | bool | None = Field(default=None, alias="continue")
+    start_code: str | None = None
 
 
 class CodeGenRunConfig(BaseModel):

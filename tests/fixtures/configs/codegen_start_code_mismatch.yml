@@ -1,0 +1,26 @@
+strategy:
+  name: codegen_start_code_mismatch_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      refresh_every: 1
+      search_tools:
+        - bm25
+      start_code: |
+        def rerank_doug_blog(query, bm25, fielded_bm25, **kwargs):
+            docs = bm25(query, top_k=5)
+            return [doc["id"] for doc in docs]
+      edit:
+        guards:
+          - validation
+      eval:
+        train_query_fraction: 0.2
+        validation_query_fraction: 0.2
+        training_seed: 123
+        validation_seed: 456
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
