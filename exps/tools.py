@@ -594,9 +594,15 @@ def _load_reranker_fn(path: Path, dataset_name: str | None) -> tuple[callable, s
         if reranker_fn is not None:
             return reranker_fn, fn_name
     reranker_fn = getattr(module, "rerank", None)
-    if reranker_fn is None:
-        raise ValueError(f"No rerank function found in {path}")
-    return reranker_fn, "rerank"
+    if reranker_fn is not None:
+        return reranker_fn, "rerank"
+    for name in sorted(module.__dict__):
+        if not name.startswith("rerank_"):
+            continue
+        candidate = getattr(module, name)
+        if callable(candidate):
+            return candidate, name
+    raise ValueError(f"No rerank function found in {path}")
 
 
 def make_codegen_tool(

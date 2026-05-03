@@ -7,3 +7,7 @@ def rerank_wands(query, fielded_bm25, search_embeddings, **kwargs):
     ib = {str(d['id']) for d in b}; ie = {str(d['id']) for d in e}
     for i in ib & ie: s[i] = s.get(i,0.0)+0.01
     return [k for k,_ in sorted(s.items(), key=lambda x:x[1], reverse=True)][:10]
+
+
+def rerank_doug_blog(query, fielded_bm25, search_embeddings, **kwargs):
+    return rerank_wands(query, fielded_bm25, search_embeddings, **kwargs)

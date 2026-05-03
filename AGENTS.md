@@ -48,7 +48,7 @@ Keep changes small, testable, and aligned with existing patterns.
 
 When a problem is reported, create a runner test first.
 
-- Always use small data (few queries, WANDS dataset, 1 training round).
+- Always use small data (few queries, doug_blog dataset, 1 training round).
 - Always run end-to-end; avoid mocking.
 - Runner test requirements live in `docs/runner_tests_prd.md`.
 - Assume `OPENAI_API_KEY` is set; fail loudly if missing.

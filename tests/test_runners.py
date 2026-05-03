@@ -25,7 +25,7 @@ def test_run_benchmark_wands_bm25_all_params():
     params = RunParams(
         strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=2,
         seed=123,
         workers=1,
@@ -49,7 +49,7 @@ def test_diff_benchmark_wands_bm25_all_params():
         strategy_a_path="configs/bm25.yml",
         strategy_b_path="configs/bm25.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         query=None,
         k=5,
         num_queries=2,
@@ -71,8 +71,8 @@ def test_diff_benchmark_wands_query_results():
         strategy_a_path="configs/bm25.yml",
         strategy_b_path="configs/bm25.yml",
         base_path="tests/fixtures",
-        dataset="wands",
-        query="salon chair",
+        dataset="doug_blog",
+        query="bm25",
         k=5,
         num_queries=1,
         seed=123,
@@ -93,8 +93,8 @@ def test_run_benchmark_query_results():
     params = RunParams(
         strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
-        dataset="wands",
-        query="salon chair",
+        dataset="doug_blog",
+        query="bm25",
         k=5,
         seed=123,
         workers=1,
@@ -121,7 +121,7 @@ def test_run_benchmark_matches_direct():
     params = RunParams(
         strategy_path="configs/bm25.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=2,
         seed=123,
         workers=1,
@@ -160,7 +160,7 @@ def test_run_benchmark_agentic_guarded():
     params = RunParams(
         strategy_path="configs/agentic.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
@@ -216,7 +216,7 @@ strategy:
     params = RunParams(
         strategy_path=str(config_path),
         base_path=None,
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
@@ -236,7 +236,7 @@ def test_run_benchmark_agentic_codegen_fixture_nonzero():
     params = RunParams(
         strategy_path="configs/agentic_w_codegen.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=2,
         seed=123,
         workers=1,
@@ -275,7 +275,7 @@ strategy:
     params = RunParams(
         strategy_path=str(config_path),
         base_path=None,
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
@@ -295,7 +295,7 @@ def test_run_benchmark_codegen_guarded():
     params = RunParams(
         strategy_path="configs/codegen_guarded.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
@@ -315,7 +315,7 @@ def test_train_codegen_guarded():
     params = TrainParams(
         strategy_path="configs/codegen_guarded.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
@@ -436,7 +436,7 @@ def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
     params = RunParams(
         strategy_path="configs/embedding_e5_base_v2.yml",
         base_path="tests/fixtures",
-        dataset="wands",
+        dataset="doug_blog",
         num_queries=1,
         seed=123,
         workers=1,
