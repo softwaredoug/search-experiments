@@ -345,6 +345,24 @@ def test_train_codegen_with_get_corpus():
     assert result.artifact_path
 
 
+def test_train_codegen_raw_only():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+    params = TrainParams(
+        strategy_path="configs/codegen_raw_only.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    assert result.artifact_path
+
+
 def test_agentic_stop_iterations():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

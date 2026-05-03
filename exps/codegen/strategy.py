@@ -84,9 +84,11 @@ class CodeGenSearchStrategy(SearchStrategy):
             embeddings_device=device,
             dataset_name=dataset,
         )
-        if not tool_fns:
+        if not tool_fns and not raw_tools:
             raise ValueError("Codegen run requires at least one search tool.")
         tool_fns = tool_fns + raw_tools
+        if not tool_fns:
+            raise ValueError("Codegen run requires at least one search tool.")
         rerank_name = f"rerank_{dataset}"
         return cls(
             corpus,

@@ -111,6 +111,11 @@ def _start_code(
             f"    docs = {primary_tool_name}"
             f"(query, fields=['title^9.3', 'description^4.1'], operator='or', top_k={top_k})\n"
         )
+    elif primary_tool_name == "get_corpus":
+        call = (
+            "    corpus = get_corpus()\n"
+            f"    docs = corpus.head({top_k}).to_dict('records')\n"
+        )
     else:
         call = f"    docs = {primary_tool_name}(query, top_k={top_k})\n"
     return (
@@ -285,7 +290,7 @@ def train_codegen_strategy(
             embeddings_device=device,
             dataset_name=dataset,
         )
-        if not search_tools:
+        if not search_tools and not raw_tools:
             raise ValueError("Codegen requires at least one search tool.")
         tool_fns = search_tools + raw_tools
         search_tool_names = [tool.__name__ for tool in search_tools]
@@ -294,8 +299,12 @@ def train_codegen_strategy(
         raw_tool_docs = [tool.__doc__ or "" for tool in raw_tools]
         tool_params = search_tool_names.copy()
         tool_params.extend(raw_tool_names)
-        primary_search_tool = search_tools[0]
-        primary_tool_name = search_tool_names[0]
+        if search_tools:
+            primary_search_tool = search_tools[0]
+            primary_tool_name = search_tool_names[0]
+        else:
+            primary_search_tool = raw_tools[0]
+            primary_tool_name = raw_tool_names[0]
 
         training_seed = eval_cfg.training_seed + round_idx
         validation_seed = eval_cfg.validation_seed + round_idx
