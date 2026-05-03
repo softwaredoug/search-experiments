@@ -1,0 +1,35 @@
+strategy:
+  name: codegen_minimarco
+  type: codegen
+  params:
+    train:
+      model: gpt-5
+      refresh_every: 3
+      search_tools:
+        - bm25
+        - query_rewrite
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 10
+              max_cols: 120
+          - overfit:
+              model: openai/gpt-5-mini
+      eval:
+        train_query_fraction: 0.20
+        validation_query_fraction: 0.80
+        training_seed: 5678
+        validation_seed: 1234
+        eval_margin: 0.002
+      system_prompt: |
+        Your task is to improve the reranker code so it returns more relevant results.
+
+        Use apply_patch to edit the reranker module.
+        Use run_reranker to inspect single queries and run_evals for NDCG.
+        If NDCG does not improve, revert with revert_changes.
+
+        DO NOT rename the function in the code. You MUST keep the signature the same.
+
+    run:
+      top_k: 10
