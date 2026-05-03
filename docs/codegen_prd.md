@@ -61,7 +61,7 @@ and returns a list of product IDs in the order you think best matches the query.
 
 In the end, the training process actually *creates* a strategy. The training is not "part of" the strategy, the training creates a CodeGenSearchStrategy.
 
-For N rounds (from --train.rounds), this will start a new agent, load the last rounds python file, prompt the agent with the system prompt above, and then the agent will propose edits to the code. The proposed code will be run against a holdout set, and if the NDCG goes up, the changes are accepted. If not, they are rejected.
+For N rounds (from --rounds), this will start a new agent, load the last rounds python file, prompt the agent with the system prompt above, and then the agent will propose edits to the code. The proposed code will be run against a holdout set, and if the NDCG goes up, the changes are accepted. If not, they are rejected.
 
 Then a new python file is output and the cycle repeats until rounds is complete.
 
@@ -232,14 +232,14 @@ Generated code should live in
 
 ## Training continuation
 
-For the runner add a train.continue flag (--train.continue)                                                       
-                                                                                                                  
-Right now, this would get implemented for codegen, and anything else should throw an error.                       
-                                                                                                                  
-When this is set, you find the latest codegen run of the current dataset and use the last rerank function         
-there to continue training.                                                                                       
+Training is run via `uv run train` with `--continue`.
 
-You copy the artifacts over to a new run and continue training.                                                   
+Right now, this is implemented for codegen only, and anything else should throw an error.
+
+When this is set, you find the latest codegen run of the current dataset and use the last rerank function
+there to continue training.
+
+You copy the artifacts over to a new run and continue training.
 
 IE we're training wands. If this is the latest ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/                                  
 
@@ -249,12 +249,12 @@ The config tells you to run 10 rounds. So you keep going 10 more rounds, up to 1
 
 You copy rounds.jsonl from the original run, and continue to append to it (so now we should have 14)
 
-If a path is provided to --train.continue, don't use the latest, use the provided path. This allows users to continue from any point, not just the latest.
+If a path is provided to --continue, don't use the latest, use the provided path. This allows users to continue from any point, not just the latest.
 
 
 ## Training rounds
 
-The command line argument train.rounds (--train.rounds 10) controls the number of rounds and is intended to be used instead of editing configs.
+The command line argument --rounds (e.g. `--rounds 10`) controls the number of rounds and is intended to be used instead of editing configs.
 
 
 ## Refreshing training sets

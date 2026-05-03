@@ -16,7 +16,7 @@ They're meant to stimulate the code as if run from the command line.
 
 - Use the smaller wands dataset. Or tmdb if needed.
 - Use num_queries=10 or something small to keep runtime down.
-- If testing training, set train.rounds=1 or 2 to keep runtime down.
+- If testing training, set rounds=1 or 2 (or pass --rounds) to keep runtime down.
 - Use tiny models like gpt-5-mini at the most
 
 Even with these, tests will be slow. That's ok
