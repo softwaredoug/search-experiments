@@ -3,7 +3,8 @@ strategy:
   type: codegen
   params:
     train:
-      model: gpt-5
+      model: gpt-5.5
+      reasoning: "xhigh"
       refresh_every: 3
       search_tools:
         - get_corpus
@@ -66,7 +67,14 @@ strategy:
         Use run_reranker to inspect single queries and run_evals for NDCG.
         If NDCG does not improve, revert with revert_changes.
 
+        You start with BM25 on raw corpus stats. But try to improve on it. The goal: find a better
+        lexical retrieval function. 
+
+        This is a passage dataset ONLY has description. No _title_. Find a better passage ranker.
+
         DO NOT rename the function in the code. You MUST keep the signature the same.
 
     run:
       top_k: 10
+      path: runs/codegen/minimarco/codegen_minimarco/20260503_221958
+
