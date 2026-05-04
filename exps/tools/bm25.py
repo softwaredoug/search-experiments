@@ -106,7 +106,7 @@ def make_fielded_bm25_tool(corpus):
     def fielded_bm25(
         keywords: str,
         fields: list[str],
-        operator: Literal["and", "or"] = "or",
+        operator: Literal["and", "or", "phrase"] = "or",
         top_k: int = 5,
         k1: float = 1.2,
         b: float = 0.75,
@@ -117,8 +117,9 @@ def make_fielded_bm25_tool(corpus):
         Args:
             keywords: The search query string.
             fields: Weighted fields to search, e.g. ["title^9.3", "description^4.1"].
-            operator: How to combine search terms: and/or. AND requires every term
-                to appear in at least one field.
+            operator: How to combine search terms: and/or/phrase. AND requires every
+                term to appear in at least one field. PHRASE treats the entire query
+                as a phrase and scores the token list as a single term.
             top_k: The number of top results to return.
             k1: BM25 k1 parameter.
             b: BM25 b parameter.
@@ -137,23 +138,33 @@ def make_fielded_bm25_tool(corpus):
         similarity = bm25_similarity(k1=k1, b=b)
         require_mask = None
 
-        for token in query_tokens:
+        if operator == "phrase":
+            if not query_tokens:
+                return []
             field_scores = []
             for field_name, weight in parsed_fields:
                 snowball_name = f"{field_name}_snowball"
-                term_match = corpus[snowball_name].array.score(token, similarity=similarity)
+                term_match = corpus[snowball_name].array.score(query_tokens, similarity=similarity)
                 field_scores.append(term_match * weight)
-            term_scores = sum(field_scores) if field_scores else 0
-            scores += term_scores
-            if operator == "and":
-                term_present = sum(field_scores) > 0
-                require_mask = term_present if require_mask is None else (require_mask & term_present)
+            scores += sum(field_scores) if field_scores else 0
+        else:
+            for token in query_tokens:
+                field_scores = []
+                for field_name, weight in parsed_fields:
+                    snowball_name = f"{field_name}_snowball"
+                    term_match = corpus[snowball_name].array.score(token, similarity=similarity)
+                    field_scores.append(term_match * weight)
+                term_scores = sum(field_scores) if field_scores else 0
+                scores += term_scores
+                if operator == "and":
+                    term_present = sum(field_scores) > 0
+                    require_mask = term_present if require_mask is None else (require_mask & term_present)
 
-        if operator == "and":
-            if require_mask is not None:
-                scores = scores * require_mask
-        elif operator != "or":
-            raise ValueError("operator must be 'and' or 'or'")
+            if operator == "and":
+                if require_mask is not None:
+                    scores = scores * require_mask
+            elif operator != "or":
+                raise ValueError("operator must be 'and', 'or', or 'phrase'")
 
         top_k_indices = np.argsort(scores)[-top_k:][::-1]
         scores = scores[top_k_indices]

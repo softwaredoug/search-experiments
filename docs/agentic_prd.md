@@ -145,7 +145,8 @@ The fielded BM25 tool accepts a weighted list of fields and an operator:
     operator: and
 ```
 
-Only title and description are supported.
+Operators: and, or, phrase. Phrase treats the query tokens as a single phrase and
+scores the token list as one term. Only title and description are supported.
 
 ## Harness constraints
 

@@ -153,6 +153,29 @@ def test_fielded_bm25_matches_bm25_strategy():
     assert np.allclose(tool_scores, scores)
 
 
+def test_fielded_bm25_phrase_operator():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [0, 1, 2],
+            "title": ["blue chair", "red chair", "chair blue"],
+            "description": [
+                "blue chair for desk",
+                "red chair for desk",
+                "chair in blue color",
+            ],
+        }
+    )
+    tool = tools_mod.make_fielded_bm25_tool(corpus)
+    results = tool(
+        keywords="blue chair",
+        fields=["title^9.3", "description^4.1"],
+        operator="phrase",
+        top_k=3,
+    )
+    assert isinstance(results, list)
+    assert len(results) == 3
+
+
 def test_codegen_tool_missing_dependencies_raises(tmp_path):
     reranker_path = Path(tmp_path) / "reranker.py"
     reranker_path.write_text(
