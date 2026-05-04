@@ -400,6 +400,369 @@ def test_train_codegen_start_code_mismatch():
         train_strategy(params)
 
 
+def test_agentic_raw_tool_rejected(tmp_path):
+    config_path = tmp_path / "agentic_raw_tool.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_raw_tool_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use the search tool to find products.
+    search_tools:
+      - get_corpus
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="raw search tool"):
+        run_benchmark(params)
+
+
+def test_agentic_dataset_specific_tool_rejected(tmp_path):
+    config_path = tmp_path / "agentic_wands_tool.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_wands_tool_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use the search tool to find products.
+    search_tools:
+      - bm25_wands
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="only available for wands dataset"):
+        run_benchmark(params)
+
+
+def test_agentic_few_shot_happy_path(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    config_path = tmp_path / "agentic_few_shot.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_few_shot_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    few_shot:
+      - sample_judgments:
+          num_rows: 4
+    search_tools:
+      - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
+def test_agentic_few_shot_missing_column_raises(tmp_path):
+    config_path = tmp_path / "agentic_few_shot_bad_col.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_few_shot_bad_col_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    few_shot:
+      - sample_judgments:
+          num_rows: 4
+          columns:
+            - missing_col
+    search_tools:
+      - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="few_shot column not found"):
+        run_benchmark(params)
+
+
+def test_train_codegen_continue_from_fixture():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    continue_from = "tests/fixtures/past_runs/20260502_025238"
+    params = TrainParams(
+        strategy_path="configs/codegen_guarded.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+        continue_from=continue_from,
+    )
+    result = train_strategy(params)
+
+    assert result.artifact_path
+    assert result.metadata["continued_from"] == str(Path(continue_from).expanduser())
+    assert result.metadata["previous_rounds"] > 0
+    assert result.metadata["rounds"] == result.metadata["previous_rounds"] + 1
+    round_name = f"reranker_round_{result.metadata['rounds']}.py"
+    round_path = Path(result.artifact_path) / round_name
+    assert round_path.exists()
+
+
+def test_train_codegen_continue_missing_path(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    missing_path = tmp_path / "nope"
+    params = TrainParams(
+        strategy_path="configs/codegen_guarded.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+        continue_from=str(missing_path),
+    )
+    with pytest.raises(FileNotFoundError):
+        train_strategy(params)
+
+
+def test_run_codegen_without_trained_run(monkeypatch, tmp_path):
+    config_path = tmp_path / "codegen_no_run.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: codegen_no_run_fixture
+  type: codegen
+  params:
+    train:
+      search_tools:
+        - bm25
+    run: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("exps.codegen.strategy.find_latest_codegen_run", lambda *_: None)
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="No trained codegen run found"):
+        run_benchmark(params)
+
+
+def test_agentic_codegen_tool_dependency_mismatch(tmp_path):
+    reranker_dir = tmp_path / "codegen_dependency_mismatch"
+    reranker_dir.mkdir()
+    reranker_path = reranker_dir / "reranker.py"
+    reranker_path.write_text(
+        """
+def rerank_doug_blog(query, fielded_bm25, **kwargs):
+    docs = fielded_bm25(
+        query,
+        fields=['title^9.3', 'description^4.1'],
+        operator='or',
+        top_k=5,
+    )
+    return [doc['id'] for doc in docs]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "agentic_codegen_dep.yml"
+    config_path.write_text(
+        f"""
+strategy:
+  name: agentic_codegen_dep_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - codegen:
+          path: {reranker_dir}
+          name: search
+          dependencies:
+            - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="codegen tool missing dependencies"):
+        run_benchmark(params)
+
+
+def test_agentic_codegen_tool_return_fields_validation(tmp_path):
+    reranker_dir = tmp_path / "codegen_return_fields"
+    reranker_dir.mkdir()
+    reranker_path = reranker_dir / "reranker.py"
+    reranker_path.write_text(
+        """
+def rerank_doug_blog(query, bm25, **kwargs):
+    docs = bm25(query, top_k=5)
+    return [doc['id'] for doc in docs]
+""".lstrip(),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "agentic_codegen_return_fields.yml"
+    config_path.write_text(
+        f"""
+strategy:
+  name: agentic_codegen_return_fields_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - codegen:
+          path: {reranker_dir}
+          name: search
+          dependencies:
+            - bm25
+          return_fields:
+            - missing_col
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="return_fields not found in corpus"):
+        run_benchmark(params)
+
+
+def test_train_codegen_raw_tool_list(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    config_path = tmp_path / "codegen_raw_list.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: codegen_raw_list_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - raw:
+            - get_corpus
+      edit:
+        guards:
+          - validation
+      eval:
+        train_query_fraction: 0.2
+        validation_query_fraction: 0.2
+        training_seed: 123
+        validation_seed: 456
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = TrainParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    assert result.artifact_path
+
+
 def test_agentic_stop_iterations():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
