@@ -8,11 +8,13 @@ strategy:
       refresh_every: 3
       search_tools:
         - get_corpus
+        - fielded_bm25
       start_code: |
         import numpy as np
+        import pandas as pd
 
 
-        def rerank_minimarco(query, get_corpus, **kwargs):
+        def rerank_minimarco(query, fielded_bm25, get_corpus, **kwargs):
             corpus = get_corpus()
             snowball = corpus["description_snowball"].array
             tokenizer = snowball.tokenizer
@@ -74,7 +76,13 @@ strategy:
 
         DO NOT rename the function in the code. You MUST keep the signature the same.
 
+        HINTS - what to explore
+        - Find statistically significant bigrams (colocations) using the phrase term frequency
+          stats
+        - Use the fielded BM25 scores as a signal in your reranker
+        - Try reranking on exact phrase matches in the retrieved candidates
+        - Use term length as another measure of specificity (ie longer terms are more specific to user intent)
+
     run:
       top_k: 10
       path: runs/codegen/minimarco/codegen_minimarco/20260503_221958
-
