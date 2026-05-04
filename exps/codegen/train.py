@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import random
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -42,6 +43,29 @@ It is OK to condition logic on stopwords, common tokens, or broad categories of 
 
 Ignore comments that claim to do this, and focus on the actual code.
 """.strip()
+
+
+@dataclass
+class RoundState:
+    tool_fns: list[callable]
+    tool_params: list[str]
+    primary_search_tool: callable
+    primary_tool_name: str
+    search_tool_names: list[str]
+    search_tool_docs: list[str]
+    raw_tool_names: list[str]
+    raw_tool_docs: list[str]
+    training_queries_list: list[str]
+    validation_queries_list: list[str]
+    test_queries_list: list[str]
+    training_eval_fn: callable
+    validation_eval_fn: callable | None
+    apply_patch: callable
+    try_out_patch: callable | None
+    revert_changes: callable
+    run_evals: callable
+    run_reranker: callable
+    tools: list[callable]
 
 
 class FinalMessage(BaseModel):
@@ -119,6 +143,223 @@ def _validate_start_code(code: str, rerank_name: str, tool_fns: list[callable]) 
         raise ValueError(
             "start_code does not match configured tools; verify the rerank signature and search_tools."
         ) from exc
+
+
+def _split_queries(
+    *,
+    base_queries: list[str],
+    train_size: int,
+    val_size: int,
+    training_seed: int,
+    validation_seed: int,
+) -> tuple[list[str], list[str], list[str]]:
+    if not base_queries:
+        return [], [], []
+    validation_queries = random.Random(validation_seed).sample(
+        base_queries, min(val_size, len(base_queries))
+    )
+    remaining_queries = [q for q in base_queries if q not in set(validation_queries)]
+    training_queries = random.Random(training_seed).sample(
+        remaining_queries, min(train_size, len(remaining_queries))
+    )
+    test_queries = [q for q in base_queries if q not in set(training_queries)]
+    return training_queries, validation_queries, test_queries
+
+
+def _build_tool_state(
+    *,
+    corpus,
+    dataset: str,
+    device: str | None,
+    normal_tool_config: list,
+    raw_tool_config: list,
+    rerank_name: str,
+    code_path: Path,
+    start_code_from_config: bool,
+) -> tuple[
+    list[callable],
+    list[str],
+    list[str],
+    list[str],
+    list[str],
+    list[str],
+    callable,
+    str,
+]:
+    search_tools = build_search_tools(
+        corpus,
+        normal_tool_config,
+        embeddings_device=device,
+        dataset_name=dataset,
+    )
+    raw_tools = build_search_tools(
+        corpus,
+        raw_tool_config,
+        embeddings_device=device,
+        dataset_name=dataset,
+        context="raw",
+    )
+    if not search_tools and not raw_tools:
+        raise ValueError("Codegen requires at least one search tool.")
+    tool_fns = search_tools + raw_tools
+    if start_code_from_config:
+        _validate_start_code(code_path.read_text(encoding="utf-8"), rerank_name, tool_fns)
+    search_tool_names = [tool.__name__ for tool in search_tools]
+    search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
+    raw_tool_names = [tool.__name__ for tool in raw_tools]
+    raw_tool_docs = [tool.__doc__ or "" for tool in raw_tools]
+    tool_params = search_tool_names + raw_tool_names
+    if search_tools:
+        primary_search_tool = search_tools[0]
+        primary_tool_name = search_tool_names[0]
+    else:
+        primary_search_tool = raw_tools[0]
+        primary_tool_name = raw_tool_names[0]
+    return (
+        tool_fns,
+        tool_params,
+        search_tool_names,
+        search_tool_docs,
+        raw_tool_names,
+        raw_tool_docs,
+        primary_search_tool,
+        primary_tool_name,
+    )
+
+
+def _build_round_state(
+    *,
+    round_idx: int,
+    corpus,
+    judgments,
+    dataset: str,
+    device: str | None,
+    workers: int,
+    eval_cfg,
+    train_config: CodeGenTrainConfig,
+    run_config: CodeGenRunConfig,
+    base_queries: list[str],
+    train_size: int,
+    val_size: int,
+    guardrails: list[callable],
+    validation_enabled: bool,
+    rerank_name: str,
+    code_path: Path,
+    normal_tool_config: list,
+    raw_tool_config: list,
+    start_code_from_config: bool,
+) -> RoundState:
+    (
+        tool_fns,
+        tool_params,
+        search_tool_names,
+        search_tool_docs,
+        raw_tool_names,
+        raw_tool_docs,
+        primary_search_tool,
+        primary_tool_name,
+    ) = _build_tool_state(
+        corpus=corpus,
+        dataset=dataset,
+        device=device,
+        normal_tool_config=normal_tool_config,
+        raw_tool_config=raw_tool_config,
+        rerank_name=rerank_name,
+        code_path=code_path,
+        start_code_from_config=start_code_from_config,
+    )
+
+    training_seed = eval_cfg.training_seed + round_idx
+    validation_seed = eval_cfg.validation_seed + round_idx
+    training_queries_list, validation_queries_list, test_queries_list = _split_queries(
+        base_queries=base_queries,
+        train_size=train_size,
+        val_size=val_size,
+        training_seed=training_seed,
+        validation_seed=validation_seed,
+    )
+    training_eval_fn = make_training_eval_fn(
+        corpus=corpus,
+        judgments=judgments,
+        tool_fns=tool_fns,
+        rerank_name=rerank_name,
+        seed=training_seed,
+        num_queries=len(training_queries_list),
+        queries=training_queries_list,
+        workers=workers,
+    )
+    validation_eval_fn = None
+    if validation_enabled:
+        validation_eval_fn = make_eval_guardrail(
+            corpus=corpus,
+            judgments=judgments,
+            tool_fns=tool_fns,
+            rerank_name=rerank_name,
+            seed=validation_seed,
+            num_queries=len(validation_queries_list),
+            queries=validation_queries_list,
+            workers=workers,
+        )
+    apply_patch, try_out_patch, revert_changes = make_patch_fn(
+        search_fn=primary_search_tool,
+        corpus=corpus,
+        code_dir=str(code_path.parent),
+        tool_fns=tool_fns,
+        module_name=code_path.stem,
+        function_name=rerank_name,
+        guardrail_fns=guardrails,
+        training_eval_fn=training_eval_fn,
+        validation_eval_fn=validation_eval_fn,
+        eval_margin=eval_cfg.eval_margin,
+    )
+
+    run_evals, run_reranker = make_eval_tools(
+        corpus=corpus,
+        judgments=judgments,
+        tool_fns=tool_fns,
+        rerank_name=rerank_name,
+        code_path=code_path,
+        seed=training_seed,
+        num_queries=len(training_queries_list),
+        queries=training_queries_list,
+        workers=workers,
+    )
+    tools = [*tool_fns[: len(search_tool_names)], apply_patch, run_reranker, run_evals, revert_changes]
+    if train_config.try_out_patch:
+        tools.append(try_out_patch)
+
+    if not code_path.exists():
+        code_path.write_text(
+            _start_code(
+                rerank_name,
+                run_config.top_k,
+                tool_params=tool_params,
+                primary_tool_name=primary_tool_name,
+            ),
+            encoding="utf-8",
+        )
+
+    return RoundState(
+        tool_fns=tool_fns,
+        tool_params=tool_params,
+        primary_search_tool=primary_search_tool,
+        primary_tool_name=primary_tool_name,
+        search_tool_names=search_tool_names,
+        search_tool_docs=search_tool_docs,
+        raw_tool_names=raw_tool_names,
+        raw_tool_docs=raw_tool_docs,
+        training_queries_list=training_queries_list,
+        validation_queries_list=validation_queries_list,
+        test_queries_list=test_queries_list,
+        training_eval_fn=training_eval_fn,
+        validation_eval_fn=validation_eval_fn,
+        apply_patch=apply_patch,
+        try_out_patch=try_out_patch,
+        revert_changes=revert_changes,
+        run_evals=run_evals,
+        run_reranker=run_reranker,
+        tools=tools,
+    )
 
 
 def _start_code(
@@ -276,148 +517,36 @@ def train_codegen_strategy(
     refresh_every = train_config.refresh_every or train_config.rounds
     if refresh_every <= 0:
         raise ValueError("refresh_every must be >= 1")
-    search_tools = None
-    search_tool_names = None
-    search_tool_docs = None
-    tool_params = None
-    primary_search_tool = None
-    primary_tool_name = None
-    tool_fns = None
-    raw_tool_names: list[str] = []
-    raw_tool_docs: list[str] = []
-    training_queries_list: list[str] = []
-    validation_queries_list: list[str] = []
-    test_queries_list: list[str] = []
-    tools = None
-
-    def _refresh_round_state(round_idx: int) -> None:
-        nonlocal search_tools
-        nonlocal search_tool_names
-        nonlocal search_tool_docs
-        nonlocal tool_params
-        nonlocal primary_search_tool
-        nonlocal primary_tool_name
-        nonlocal tool_fns
-        nonlocal raw_tool_names
-        nonlocal raw_tool_docs
-        nonlocal training_queries_list
-        nonlocal validation_queries_list
-        nonlocal tools
-        nonlocal test_queries_list
-        nonlocal start_code_from_config
-
-        search_tools = build_search_tools(
-            corpus,
-            normal_tool_config,
-            embeddings_device=device,
-            dataset_name=dataset,
-        )
-        raw_tools = build_search_tools(
-            corpus,
-            raw_tool_config,
-            embeddings_device=device,
-            dataset_name=dataset,
-            context="raw",
-        )
-        if not search_tools and not raw_tools:
-            raise ValueError("Codegen requires at least one search tool.")
-        tool_fns = search_tools + raw_tools
-        if start_code_from_config:
-            _validate_start_code(code_path.read_text(encoding="utf-8"), rerank_name, tool_fns)
-            start_code_from_config = False
-        search_tool_names = [tool.__name__ for tool in search_tools]
-        search_tool_docs = [tool.__doc__ or "" for tool in search_tools]
-        raw_tool_names = [tool.__name__ for tool in raw_tools]
-        raw_tool_docs = [tool.__doc__ or "" for tool in raw_tools]
-        tool_params = search_tool_names.copy()
-        tool_params.extend(raw_tool_names)
-        if search_tools:
-            primary_search_tool = search_tools[0]
-            primary_tool_name = search_tool_names[0]
-        else:
-            primary_search_tool = raw_tools[0]
-            primary_tool_name = raw_tool_names[0]
-
-        training_seed = eval_cfg.training_seed + round_idx
-        validation_seed = eval_cfg.validation_seed + round_idx
-        validation_queries_list = random.Random(validation_seed).sample(
-            base_queries, min(val_size, len(base_queries))
-        )
-        remaining_queries = [q for q in base_queries if q not in set(validation_queries_list)]
-        training_queries_list = random.Random(training_seed).sample(
-            remaining_queries, min(train_size, len(remaining_queries))
-        )
-        test_queries_list = [q for q in base_queries if q not in set(training_queries_list)]
-        training_eval_fn = make_training_eval_fn(
-            corpus=corpus,
-            judgments=judgments,
-            tool_fns=tool_fns,
-            rerank_name=rerank_name,
-            seed=training_seed,
-            num_queries=len(training_queries_list),
-            queries=training_queries_list,
-            workers=workers,
-        )
-        validation_eval_fn = None
-        if validation_enabled:
-            validation_eval_fn = make_eval_guardrail(
-                corpus=corpus,
-                judgments=judgments,
-                tool_fns=tool_fns,
-                rerank_name=rerank_name,
-                seed=validation_seed,
-                num_queries=len(validation_queries_list),
-                queries=validation_queries_list,
-                workers=workers,
-            )
-
-        apply_patch, try_out_patch, revert_changes = make_patch_fn(
-            search_fn=primary_search_tool,
-            tool_fns=tool_fns,
-            corpus=corpus,
-            code_dir=str(output_dir),
-            module_name="reranker",
-            function_name=rerank_name,
-            guardrail_fns=guardrails,
-            training_eval_fn=training_eval_fn,
-            validation_eval_fn=validation_eval_fn,
-            eval_margin=eval_cfg.eval_margin,
-        )
-
-        run_evals, run_reranker = make_eval_tools(
-            corpus=corpus,
-            judgments=judgments,
-            tool_fns=tool_fns,
-            rerank_name=rerank_name,
-            code_path=code_path,
-            seed=training_seed,
-            num_queries=len(training_queries_list),
-            queries=training_queries_list,
-            workers=workers,
-        )
-
-        tools = [*search_tools, apply_patch, run_reranker, run_evals, revert_changes]
-        if train_config.try_out_patch:
-            tools.append(try_out_patch)
-
-        if not code_path.exists():
-            code_path.write_text(
-                _start_code(
-                    rerank_name,
-                    run_config.top_k,
-                    tool_params=tool_params,
-                    primary_tool_name=primary_tool_name,
-                ),
-                encoding="utf-8",
-            )
+    round_state: RoundState | None = None
     total_rounds = previous_rounds + train_config.rounds
     if previous_rounds == 0 and not rounds_log_path.exists():
-        _refresh_round_state(previous_rounds)
+        round_state = _build_round_state(
+            round_idx=previous_rounds,
+            corpus=corpus,
+            judgments=judgments,
+            dataset=dataset,
+            device=device,
+            workers=workers,
+            eval_cfg=eval_cfg,
+            train_config=train_config,
+            run_config=run_config,
+            base_queries=base_queries,
+            train_size=train_size,
+            val_size=val_size,
+            guardrails=guardrails,
+            validation_enabled=validation_enabled,
+            rerank_name=rerank_name,
+            code_path=code_path,
+            normal_tool_config=normal_tool_config,
+            raw_tool_config=raw_tool_config,
+            start_code_from_config=start_code_from_config,
+        )
+        start_code_from_config = False
         baseline_code = code_path.read_text(encoding="utf-8")
         baseline_strategy = CodeGenSearchStrategy(
             corpus,
-            search_fn=primary_search_tool,
-            tool_fns=tool_fns,
+            search_fn=round_state.primary_search_tool,
+            tool_fns=round_state.tool_fns,
             code=baseline_code,
             rerank_name=rerank_name,
             workers=workers,
@@ -431,11 +560,11 @@ def train_codegen_strategy(
         )
         baseline_ndcg = float(ndcgs(baseline_results).mean()) if not baseline_results.empty else 0.0
         baseline_test_ndcg = 0.0
-        if test_queries_list:
+        if round_state.test_queries_list:
             baseline_test_results = run_strategy(
                 baseline_strategy,
                 judgments,
-                queries=test_queries_list,
+                queries=round_state.test_queries_list,
                 seed=report_seed,
                 cache=False,
             )
@@ -453,16 +582,39 @@ def train_codegen_strategy(
             "message": None,
             "mean_ndcg": baseline_ndcg,
             "mean_ndcg_test": baseline_test_ndcg,
-            "training_query_count": len(training_queries_list),
-            "validation_query_count": len(validation_queries_list),
-            "test_query_count": len(test_queries_list),
+            "training_query_count": len(round_state.training_queries_list),
+            "validation_query_count": len(round_state.validation_queries_list),
+            "test_query_count": len(round_state.test_queries_list),
         }
         round_summaries.append(baseline_record)
         rounds_log_path.write_text(json.dumps(baseline_record) + "\n", encoding="utf-8")
     for round_idx in range(previous_rounds, total_rounds):
         refresh_round = (round_idx - previous_rounds) % refresh_every == 0
         if refresh_round:
-            _refresh_round_state(round_idx)
+            round_state = _build_round_state(
+                round_idx=round_idx,
+                corpus=corpus,
+                judgments=judgments,
+                dataset=dataset,
+                device=device,
+                workers=workers,
+                eval_cfg=eval_cfg,
+                train_config=train_config,
+                run_config=run_config,
+                base_queries=base_queries,
+                train_size=train_size,
+                val_size=val_size,
+                guardrails=guardrails,
+                validation_enabled=validation_enabled,
+                rerank_name=rerank_name,
+                code_path=code_path,
+                normal_tool_config=normal_tool_config,
+                raw_tool_config=raw_tool_config,
+                start_code_from_config=start_code_from_config,
+            )
+            start_code_from_config = False
+        if round_state is None:
+            raise ValueError("Codegen round state was not initialized.")
 
         print(f"Starting training round {round_idx + 1}/{total_rounds}...")
         code = code_path.read_text(encoding="utf-8")
@@ -470,15 +622,15 @@ def train_codegen_strategy(
             train_config.system_prompt,
             dataset=dataset,
             rerank_name=rerank_name,
-            search_tool_names=search_tool_names or [],
-            search_tool_docs=search_tool_docs or [],
-            raw_tool_names=raw_tool_names,
-            raw_tool_docs=raw_tool_docs,
-            rerank_params=["query", *(tool_params or []), "**kwargs"],
+            search_tool_names=round_state.search_tool_names,
+            search_tool_docs=round_state.search_tool_docs,
+            raw_tool_names=round_state.raw_tool_names,
+            raw_tool_docs=round_state.raw_tool_docs,
+            rerank_params=["query", *round_state.tool_params, "**kwargs"],
             code=code,
         )
         agent = OpenAIAgent(
-            tools=tools,
+            tools=round_state.tools,
             model="openai/" + train_config.model,
             response_model=FinalMessage,
             reasoning_level=train_config.reasoning,
@@ -490,8 +642,8 @@ def train_codegen_strategy(
         code = code_path.read_text(encoding="utf-8")
         codegen_strategy = CodeGenSearchStrategy(
             corpus,
-            search_fn=primary_search_tool,
-            tool_fns=tool_fns,
+            search_fn=round_state.primary_search_tool,
+            tool_fns=round_state.tool_fns,
             code=code,
             rerank_name=rerank_name,
             workers=workers,
@@ -505,11 +657,11 @@ def train_codegen_strategy(
         )
         mean_ndcg = float(ndcgs(results_codegen).mean()) if not results_codegen.empty else 0.0
         mean_test_ndcg = 0.0
-        if test_queries_list:
+        if round_state.test_queries_list:
             results_test = run_strategy(
                 codegen_strategy,
                 judgments,
-                queries=test_queries_list,
+                queries=round_state.test_queries_list,
                 seed=report_seed,
                 cache=False,
             )
@@ -529,9 +681,9 @@ def train_codegen_strategy(
             "message": resp.message if resp else None,
             "mean_ndcg": mean_ndcg,
             "mean_ndcg_test": mean_test_ndcg,
-            "training_query_count": len(training_queries_list),
-            "validation_query_count": len(validation_queries_list),
-            "test_query_count": len(test_queries_list),
+            "training_query_count": len(round_state.training_queries_list),
+            "validation_query_count": len(round_state.validation_queries_list),
+            "test_query_count": len(round_state.test_queries_list),
         }
         round_summaries.append(round_record)
         rounds_log_path.write_text(
@@ -543,6 +695,8 @@ def train_codegen_strategy(
         round_code_path.write_text(code, encoding="utf-8")
 
     final_code = code_path.read_text(encoding="utf-8")
+    if round_state is None:
+        raise ValueError("Codegen round state was not initialized.")
     metadata = {
         "dataset": dataset,
         "strategy_name": strategy_name,
@@ -562,8 +716,8 @@ def train_codegen_strategy(
         "validation_seed": eval_cfg.validation_seed,
         "train_query_fraction": eval_cfg.train_query_fraction,
         "validation_query_fraction": eval_cfg.validation_query_fraction,
-        "num_training_queries": len(training_queries_list),
-        "num_validation_queries": len(validation_queries_list),
+        "num_training_queries": len(round_state.training_queries_list),
+        "num_validation_queries": len(round_state.validation_queries_list),
         "base_query_count": len(base_queries),
         "report_seed": report_seed,
         "report_num_queries": report_num_queries,
@@ -575,6 +729,6 @@ def train_codegen_strategy(
         reranker_path=code_path,
         code=final_code,
         metadata=metadata,
-        search_fn=primary_search_tool,
-        tool_fns=search_tools,
+        search_fn=round_state.primary_search_tool,
+        tool_fns=round_state.tool_fns,
     )
