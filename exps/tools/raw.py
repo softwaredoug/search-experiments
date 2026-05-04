@@ -13,12 +13,35 @@ def make_get_corpus_tool(corpus):
 
         SearchArray API (lexical statistics) lives on the .array attribute of
         snowball columns, e.g. corpus["title_snowball"].array:
-        - score(token, similarity=...): BM25-style scores
+
+        ## Tokenizing terms + phrases
+
+        Everything below assumes tokenized terms. The tokenizer can be accessed
+        through corpus["description_snowball"].array.tokenizer
+
+        As the filed implies _snowball will snowball tokenize:
+
+        tokenizer("tokenized REd apples") -> ["token", "red", "appl"]
+
+        In search array, search with terms by passing a tokens
+        Search with phrases by passing a list of tokens
+
+        ## Scoring functions
+
+        ### BM25:
+
+        - score(token): BM25 score of term
+        - score([token1, token2, ...], similarity=...): BM25 score of phrase "token1 token2 ..."
+
+        ### Direct tf stats
         - termfreqs(token): term frequency per doc
+        - termfreqs([token1, token2, ...]): term frequencies for phrase "token1 token2 ..." per doc
+
+        ### Direct df stats
         - docfreq(token): document frequency
+
+        ### Other
         - doclengths(): document lengths
-        - positions(token): positions per doc
-        - tokenizer: access with corpus["description_snowball"].array.tokenizer
         """
         return corpus
 
