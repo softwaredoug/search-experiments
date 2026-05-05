@@ -24,7 +24,6 @@ class TrainParams(BaseModel):
     workers: int = 1
     device: str | None = None
     rounds: int | None = None
-    continue_from: str | None = None
 
 
 class TrainResult(BaseModel):
@@ -81,8 +80,6 @@ def train_strategy(params: TrainParams) -> TrainResult:
     train_params = dict(strategy_params.get("train") or {})
     if params.rounds is not None:
         train_params["rounds"] = params.rounds
-    if params.continue_from is not None:
-        train_params["continue"] = params.continue_from
     strategy_params["train"] = train_params
 
     dataset = get_dataset(
@@ -96,6 +93,7 @@ def train_strategy(params: TrainParams) -> TrainResult:
         corpus=dataset.corpus,
         judgments=dataset.judgments,
         params=strategy_params,
+        run_path=strategy_config.path,
         device=params.device,
         workers=params.workers,
         report_num_queries=params.num_queries,

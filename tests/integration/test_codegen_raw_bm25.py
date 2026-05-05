@@ -53,6 +53,7 @@ def rerank_doug_blog(query, get_corpus, **kwargs):
 strategy:
   name: codegen_raw_bm25_fixture
   type: codegen
+  path: {codegen_dir}
   params:
     train:
       model: gpt-5-mini
@@ -73,7 +74,6 @@ strategy:
         Improve the reranker.
     run:
       top_k: 5
-      path: {codegen_dir}
 """.lstrip(),
         encoding="utf-8",
     )

@@ -1,6 +1,7 @@
 strategy:
   name: codegen_minimarco
   type: codegen
+  path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
   params:
     train:
       model: gpt-5.5
@@ -54,8 +55,6 @@ strategy:
           - length:
               max_lines: 10
               max_cols: 120
-          - overfit:
-              model: openai/gpt-5-mini
       eval:
         train_query_fraction: 0.20
         validation_query_fraction: 0.80
@@ -67,6 +66,8 @@ strategy:
 
         Use apply_patch to edit the reranker module.
         Use run_reranker to inspect single queries and run_evals for NDCG.
+        Use grep to explore past runs in a path holding previous codegen experiments for ideas / what to avoid.
+
         If NDCG does not improve, revert with revert_changes.
 
         You start with BM25 on raw corpus stats. But try to improve on it. The goal: find a better
@@ -82,7 +83,8 @@ strategy:
         - Use the fielded BM25 scores as a signal in your reranker
         - Try reranking on exact phrase matches in the retrieved candidates
         - Use term length as another measure of specificity (ie longer terms are more specific to user intent)
+        - Try different stopword removal opproaches (but don't apply it to short queries)
+        - Look in logs where there was ALMOST a 0.002 improvement and see what the code changes were. Try to understand why they were close but not quite there - maybe you can mitigate the downsides to get a net improvement?
 
     run:
       top_k: 10
-      path: runs/codegen/minimarco/codegen_minimarco/20260503_221958

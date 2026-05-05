@@ -1,10 +1,16 @@
-from typing import List, Dict, Optional, Literal, Callable, Tuple
-from pydantic import BaseModel, Field
-import pandas as pd
-from exps.logging_utils import log_to_stdout
-from cheat_at_search.agent.openai_agent import OpenAIAgent
-from functools import lru_cache
+from __future__ import annotations
+
 import os
+import re
+from functools import lru_cache
+from pathlib import Path
+from typing import Callable, Dict, List, Literal, Optional, Tuple
+
+import pandas as pd
+from pydantic import BaseModel, Field
+
+from cheat_at_search.agent.openai_agent import OpenAIAgent
+from exps.logging_utils import log_to_stdout
 
 
 logger = log_to_stdout(logger_name="code")
@@ -150,6 +156,75 @@ def make_guardrail_checker(
             return f"Code does not comply with guardrails:\n{issues}"
 
     return code_guardrails
+
+
+def make_run_path_grep_tool(run_path: Path) -> Callable[[str, str, int, int], dict]:
+    base_path = Path(run_path).expanduser().resolve()
+
+    def grep_run_path(
+        pattern: str,
+        file_glob: str = "**/*",
+        max_matches: int = 50,
+        max_file_size_kb: int = 512,
+    ) -> dict:
+        """Search previous codegen run files for a regex pattern.
+
+        Typical files to inspect:
+        - rounds.jsonl (per-round summaries)
+        - codegen.log (training logs)
+        - reranker.py and reranker_round_*.py (generated code)
+        - metadata.json (run metadata)
+
+        Args:
+            pattern: Regex pattern to search for.
+            file_glob: Glob pattern under the run path to scan.
+            max_matches: Maximum number of matches to return.
+            max_file_size_kb: Skip files larger than this limit.
+        """
+        if not base_path.exists():
+            return {"matches": [], "error": f"run path not found: {base_path}"}
+
+        try:
+            regex = re.compile(pattern)
+        except re.error as exc:
+            return {"matches": [], "error": f"invalid regex: {exc}"}
+        print(f"!GREP Searching for pattern '{pattern}' in files matching '{file_glob}' under {base_path}...")
+
+        matches = []
+        skipped = []
+        truncated = False
+        for path in sorted(base_path.rglob(file_glob)):
+            if len(matches) >= max_matches:
+                truncated = True
+                break
+            if path.is_dir():
+                continue
+            try:
+                size_kb = path.stat().st_size / 1024
+            except OSError:
+                skipped.append(str(path))
+                continue
+            if size_kb > max_file_size_kb:
+                skipped.append(f"{path} (size {size_kb:.1f}kb > {max_file_size_kb}kb)")
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                skipped.append(f"{path} (non-utf8)")
+                continue
+            except OSError:
+                skipped.append(str(path))
+                continue
+            for line_num, line in enumerate(text.splitlines(), start=1):
+                if regex.search(line):
+                    matches.append({"file": str(path), "line": line_num, "text": line})
+                    if len(matches) >= max_matches:
+                        truncated = True
+                        break
+        return {"matches": matches, "truncated": truncated, "skipped": skipped}
+
+    grep_run_path.__name__ = "grep_run_path"
+    return grep_run_path
 
 
 def make_patch_fn(

@@ -17,6 +17,7 @@ class StrategyConfig:
     name: str
     type: str
     params: dict[str, Any]
+    path: str | None = None
 
 
 STRATEGY_TYPES = {
@@ -50,7 +51,10 @@ def load_strategy_config(path: str | Path, *, base_path: str | Path | None = Non
     params = strategy.get("params") or {}
     if not isinstance(params, dict):
         raise ValueError("'strategy.params' must be a mapping when provided.")
-    return StrategyConfig(name=name, type=str(type_name), params=params)
+    path = strategy.get("path")
+    if path is not None and not isinstance(path, str):
+        raise ValueError("'strategy.path' must be a string when provided.")
+    return StrategyConfig(name=name, type=str(type_name), params=params, path=path)
 
 
 def resolve_strategy_class(type_name: str):

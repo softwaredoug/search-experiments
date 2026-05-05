@@ -46,6 +46,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         strategy_name: str | None = None,
         report_num_queries: int | None = None,
         report_seed: int | None = None,
+        run_path: str | Path | None = None,
         **kwargs,
     ):
         if dataset is None:
@@ -53,12 +54,13 @@ class CodeGenSearchStrategy(SearchStrategy):
         if strategy_name is None:
             raise ValueError("Codegen strategy requires strategy name.")
         run_config = dict(params.get("run") or {})
-        run_path = run_config.get("path")
+        if "path" in run_config:
+            raise ValueError("run.path is no longer supported; use strategy.path instead.")
         if run_path is None:
             run_path = find_latest_codegen_run(dataset, strategy_name)
             if run_path is None:
                 raise ValueError(
-                    "No trained codegen run found. Run `uv run train` or set run.path."
+                    "No trained codegen run found. Run `uv run train` or set strategy.path."
                 )
         run_path = Path(run_path).expanduser()
         if not run_path.exists():

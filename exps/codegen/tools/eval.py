@@ -229,7 +229,7 @@ def make_judgments_tool(query_to_corpus, max_grade=2, min_grade=0):
            Returns list of human evaluations. Empty if query not in ground truth.
         """
         K = 10
-        print(f"Getting human judgments for query: {user_query}")
+        logger.info("Getting human judgments for query: %s", user_query)
         labeled = query_to_corpus.loc[query_to_corpus['query'] == user_query]
         if len(labeled) == 0:
             return []

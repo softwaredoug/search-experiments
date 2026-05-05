@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import random
-import shutil
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,10 +12,11 @@ from exps.codegen.tools.code import (
     make_guardrail_checker,
     make_length_validator,
     make_patch_fn,
+    make_run_path_grep_tool,
 )
 from pydantic import BaseModel, Field
 
-from exps.codegen.io import find_latest_codegen_run, make_codegen_dir, reranker_path, write_metadata
+from exps.codegen.io import make_codegen_dir, reranker_path, write_metadata
 from exps.codegen.prompts import build_system_prompt
 from exps.codegen.strategy import CodeGenSearchStrategy
 from exps.codegen.tools.runtime import (
@@ -25,6 +26,7 @@ from exps.codegen.tools.runtime import (
 )
 from exps.codegen.types import CodeGenArtifact, CodeGenRunConfig, CodeGenTrainConfig
 from exps.codegen.utils import load_rerank_fn, split_search_tools
+from exps.logging_utils import log_to_path_and_stdout
 from exps.tools import build_search_tools, normalize_search_tools
 
 
@@ -312,6 +314,7 @@ def _build_round_state(
         validation_eval_fn=validation_eval_fn,
         eval_margin=eval_cfg.eval_margin,
     )
+    grep_run_path = make_run_path_grep_tool(code_path.parent)
 
     run_evals, run_reranker = make_eval_tools(
         corpus=corpus,
@@ -324,7 +327,14 @@ def _build_round_state(
         queries=training_queries_list,
         workers=workers,
     )
-    tools = [*tool_fns[: len(search_tool_names)], apply_patch, run_reranker, run_evals, revert_changes]
+    tools = [
+        *tool_fns[: len(search_tool_names)],
+        apply_patch,
+        run_reranker,
+        run_evals,
+        grep_run_path,
+        revert_changes,
+    ]
     if train_config.try_out_patch:
         tools.append(try_out_patch)
 
@@ -389,33 +399,14 @@ def _start_code(
     )
 
 
-def _resolve_continuation(
-    continue_from: str | bool | None,
-    *,
-    dataset: str,
-    strategy_name: str,
-) -> tuple[Path | None, int, str | None]:
-    if not continue_from:
-        return None, 0, None
-
-    if isinstance(continue_from, str) and continue_from != "latest":
-        continue_path = Path(continue_from).expanduser()
-    else:
-        continue_path = find_latest_codegen_run(dataset, strategy_name)
-    if continue_path is None:
-        raise FileNotFoundError(
-            f"No prior codegen runs found for dataset={dataset} strategy={strategy_name}."
-        )
-    if not continue_path.exists():
-        raise FileNotFoundError(f"continue path not found: {continue_path}")
-
+def _resolve_path_continuation(path: Path) -> tuple[int, str | None]:
     previous_rounds = 0
-    rounds_log = continue_path / "rounds.jsonl"
+    rounds_log = path / "rounds.jsonl"
     if rounds_log.exists():
         with rounds_log.open("r", encoding="utf-8") as handle:
             previous_rounds = sum(1 for _ in handle)
 
-    round_files = list(continue_path.glob("reranker_round_*.py"))
+    round_files = list(path.glob("reranker_round_*.py"))
     if round_files:
 
         def _round_num(path: Path) -> int:
@@ -428,13 +419,14 @@ def _resolve_continuation(
         last_round_path = max(round_files, key=_round_num)
         previous_rounds = max(_round_num(last_round_path), previous_rounds, 0)
         start_code = last_round_path.read_text(encoding="utf-8")
-        return continue_path, previous_rounds, start_code
+        return previous_rounds, start_code
 
-    prior_reranker = continue_path / "reranker.py"
-    if not prior_reranker.exists():
-        raise FileNotFoundError(f"No reranker code found in {continue_path}")
-    start_code = prior_reranker.read_text(encoding="utf-8")
-    return continue_path, previous_rounds, start_code
+    prior_reranker = path / "reranker.py"
+    if prior_reranker.exists():
+        start_code = prior_reranker.read_text(encoding="utf-8")
+        return previous_rounds, start_code
+
+    return previous_rounds, None
 
 
 def train_codegen_strategy(
@@ -444,6 +436,7 @@ def train_codegen_strategy(
     corpus,
     judgments,
     params: dict,
+    run_path: str | Path | None = None,
     device: str | None = None,
     workers: int = 1,
     report_num_queries: int | None = None,
@@ -454,6 +447,8 @@ def train_codegen_strategy(
         raise ValueError("Codegen training requires judgments.")
     train_params = params.get("train") or {}
     run_params = params.get("run") or {}
+    if "path" in run_params:
+        raise ValueError("run.path is no longer supported; use strategy.path instead.")
     train_config = CodeGenTrainConfig.model_validate(train_params)
     run_config = CodeGenRunConfig.model_validate(run_params)
 
@@ -465,27 +460,34 @@ def train_codegen_strategy(
     normal_tool_config, raw_tool_config = split_search_tools(tool_config)
     normalized_tools = normalize_search_tools(normal_tool_config)
 
-    continue_from = train_config.continue_from
-    continue_path, previous_rounds, start_code = _resolve_continuation(
-        continue_from,
-        dataset=dataset,
-        strategy_name=strategy_name,
-    )
-    if start_code is None and train_params.get("start_with"):
-        raise ValueError("start_with is no longer supported; use train.continue instead.")
+    if train_config.continue_from or "continue" in train_params:
+        raise ValueError("train.continue is no longer supported; use strategy.path instead.")
+    if train_params.get("start_with"):
+        raise ValueError("start_with is no longer supported; use strategy.path instead.")
     start_code_from_config = False
-    if start_code is None and train_config.start_code:
-        start_code = train_config.start_code
-        start_code_from_config = True
-    if output_dir is None:
-        output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
+    previous_rounds = 0
+    start_code = None
+    continue_from = None
+    if run_path is not None:
+        output_dir = Path(run_path).expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
         code_path = reranker_path(output_dir)
-    if continue_path is not None:
-        rounds_log = continue_path / "rounds.jsonl"
-        if rounds_log.exists():
-            shutil.copyfile(rounds_log, output_dir / "rounds.jsonl")
+        previous_rounds, start_code = _resolve_path_continuation(output_dir)
+        continue_from = str(output_dir) if previous_rounds > 0 else None
+    else:
+        if train_config.start_code:
+            start_code = textwrap.dedent(train_config.start_code).lstrip()
+            start_code_from_config = True
+        if output_dir is None:
+            output_dir = make_codegen_dir(dataset, strategy_name, run_started_at=run_started_at)
+            code_path = reranker_path(output_dir)
     if start_code is not None:
         code_path.write_text(start_code, encoding="utf-8")
+
+    log_path = output_dir / "codegen.log"
+    train_logger = log_to_path_and_stdout("codegen.train", log_path)
+    log_to_path_and_stdout("code", log_path)
+    log_to_path_and_stdout("eval", log_path)
 
     eval_cfg = train_config.eval
     query_cols = ["query"]
@@ -616,7 +618,7 @@ def train_codegen_strategy(
         if round_state is None:
             raise ValueError("Codegen round state was not initialized.")
 
-        print(f"Starting training round {round_idx + 1}/{total_rounds}...")
+        train_logger.info("Starting training round %s/%s...", round_idx + 1, total_rounds)
         code = code_path.read_text(encoding="utf-8")
         system_prompt = build_system_prompt(
             train_config.system_prompt,
@@ -670,9 +672,12 @@ def train_codegen_strategy(
             )
         round_ndcgs.append(mean_ndcg)
         round_test_ndcgs.append(mean_test_ndcg)
-        print(
-            f"Round {round_idx + 1}/{total_rounds} mean NDCG: {mean_ndcg:.4f} "
-            f"(test {mean_test_ndcg:.4f})"
+        train_logger.info(
+            "Round %s/%s mean NDCG: %.4f (test %.4f)",
+            round_idx + 1,
+            total_rounds,
+            mean_ndcg,
+            mean_test_ndcg,
         )
         round_record = {
             "round": round_idx + 1,
@@ -704,7 +709,7 @@ def train_codegen_strategy(
         "model": train_config.model,
         "rounds": total_rounds,
         "rounds_added": train_config.rounds,
-        "continued_from": str(continue_path) if continue_from else None,
+        "continued_from": continue_from,
         "previous_rounds": previous_rounds,
         "refresh_every": refresh_every,
         "search_tools": normalized_tools,

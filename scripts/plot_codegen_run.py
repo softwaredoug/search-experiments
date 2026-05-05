@@ -116,10 +116,32 @@ def _plot_rounds(
     plt.plot(rounds, ndcgs, color="#4c78a8", linewidth=2)
     plt.scatter(rounds, ndcgs, color=colors, s=60, zorder=3)
 
+    annotations = []
     for record, x, y in zip(records, rounds, ndcgs):
         label = record.get("short_name") or f"round {record.get('round', '')}"
         if isinstance(y, (int, float)):
-            plt.annotate(label, (x, y), textcoords="offset points", xytext=(0, 8), ha="center")
+            annotations.append(
+                plt.annotate(
+                    label,
+                    (x, y),
+                    textcoords="offset points",
+                    xytext=(0, 0),
+                    ha="right",
+                    va="top",
+                    rotation=-45,
+                    rotation_mode="anchor",
+                )
+            )
+
+    if annotations:
+        fig = plt.gcf()
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        for annotation in annotations:
+            bbox = annotation.get_window_extent(renderer=renderer)
+            width_points = bbox.width * 72.0 / fig.dpi
+            height_points = bbox.height * 72.0 / fig.dpi
+            annotation.set_position((width_points, -height_points))
 
     plt.title(title)
     plt.xlabel("Round")

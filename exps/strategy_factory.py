@@ -99,6 +99,7 @@ def create_strategy(
             build_kwargs["report_num_queries"] = report_num_queries
             if report_seed is not None:
                 build_kwargs["report_seed"] = report_seed
+            build_kwargs["run_path"] = strategy_config.path
         if strategy_config.type == "agentic":
             build_kwargs["judgments"] = judgments
         strategy = strategy_cls.build(params, **build_kwargs)

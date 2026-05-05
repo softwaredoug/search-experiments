@@ -231,26 +231,27 @@ Generated code should live in
 ~/.search-experiments/codegen/<dataset>/<strategy_name>/<timestamp>/reranker.py
 
 
-## Training continuation
+## Training / run path
 
-Training is run via `uv run train` with `--continue`.
+Codegen strategies accept a top-level `path` on the strategy. This path is used for both training
+and running.
 
-Right now, this is implemented for codegen only, and anything else should throw an error.
+```
+strategy:
+  name: codegen_example
+  type: codegen
+  path: ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/
+  params:
+    train: ...
+    run: ...
+```
 
-When this is set, you find the latest codegen run of the current dataset and use the last rerank function
-there to continue training.
+- When running, the codegen strategy loads the reranker from `strategy.path`.
+- When training, if `strategy.path` is present, training continues from the latest round in that
+  directory (or starts fresh if no reranker exists).
+- `strategy.path` takes precedence over any `start_code`.
 
-You copy the artifacts over to a new run and continue training.
-
-IE we're training wands. If this is the latest ~/.search-experiments/codegen/wands/codegen_sample/20260427_181259/                                  
-
-The last round there is rerank_round_4.py
-
-The config tells you to run 10 rounds. So you keep going 10 more rounds, up to 14
-
-You copy rounds.jsonl from the original run, and continue to append to it (so now we should have 14)
-
-If a path is provided to --continue, don't use the latest, use the provided path. This allows users to continue from any point, not just the latest.
+Older config fields like `train.continue` and `run.path` are no longer supported.
 
 
 ## Training rounds
@@ -385,7 +386,7 @@ The following functions are available to generated code, injected into the reran
 
 The config might specify the code to start with directly.
 
-If specified w/ continue passed during training, then you ignore the stort code.
+If a strategy path is provided during training, then you ignore the start code.
 
 This would look like this in the training section of param:
 
@@ -409,3 +410,8 @@ strategy:
 If the tools differ from what's listed, then you should throw an error. 
 
 The simplest way to test is to simply try to run the starting code with the provided tools, and if it throws an error, then the tools don't match the code and you should throw an error that the start function has a mismatch.
+
+## Scan past run traces
+
+A codegen-only tool should exist for the agent to grep through the past run traces
+under the configured codegen run path (not exposed to agentic tools).

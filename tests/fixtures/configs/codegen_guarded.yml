@@ -1,6 +1,7 @@
 strategy:
   name: codegen_guarded_fixture
   type: codegen
+  path: tests/fixtures/past_runs/20260502_025238
   params:
     train:
       model: gpt-5-mini
@@ -26,4 +27,3 @@ strategy:
 
     run:
       top_k: 5
-      path: tests/fixtures/past_runs/20260502_025238

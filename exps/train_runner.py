@@ -44,13 +44,6 @@ def main() -> None:
         help="Override codegen training rounds.",
     )
     parser.add_argument(
-        "--continue",
-        dest="continue_from",
-        nargs="?",
-        const="latest",
-        help="Continue training from latest run or from the given path.",
-    )
-    parser.add_argument(
         "--summary-csv",
         help="Write summary stats to CSV (appends if exists).",
     )
@@ -64,7 +57,6 @@ def main() -> None:
         workers=args.workers,
         device=args.device,
         rounds=args.rounds,
-        continue_from=args.continue_from,
     )
     result = train_strategy(params)
     print(f"Codegen artifact: {result.artifact_path}")
