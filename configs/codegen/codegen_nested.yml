@@ -7,7 +7,7 @@ strategy:
       refresh_every: 3
       search_tools:
         - codegen:
-            path: runs/codegen/codegen_guarded/20260502_025238
+            path: runs/codegen/wands/codegen_guarded/20260502_025238
             name: search
             dependencies:
               - fielded_bm25
