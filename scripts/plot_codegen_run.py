@@ -92,7 +92,12 @@ def _slugify(value: str) -> str:
 
 
 def _plot_rounds(
-    records: list[dict], *, title: str, metric_key: str, output_path: Path
+    records: list[dict],
+    *,
+    title: str,
+    metric_key: str,
+    output_path: Path,
+    baseline: float | None = None,
 ) -> None:
     if not records:
         return
@@ -113,12 +118,21 @@ def _plot_rounds(
             colors.append("#d62728")
 
     plt.figure(figsize=(10, 6))
+    ax = plt.gca()
     plt.plot(rounds, ndcgs, color="#4c78a8", linewidth=2)
     plt.scatter(rounds, ndcgs, color=colors, s=60, zorder=3)
+
+    y_limits = ax.get_ylim()
+    if baseline is not None:
+        ax.axhspan(0, baseline, color="#f1e4cf", alpha=0.35, zorder=0)
+        ax.axhline(baseline, color="#a08b6c", linestyle=":", linewidth=1.5)
+        ax.set_ylim(y_limits)
 
     annotations = []
     for record, x, y in zip(records, rounds, ndcgs):
         label = record.get("short_name") or f"round {record.get('round', '')}"
+        if label == "baseline" and record.get("round") == 0:
+            label = "start"
         if isinstance(y, (int, float)):
             annotations.append(
                 plt.annotate(
@@ -142,6 +156,21 @@ def _plot_rounds(
             width_points = bbox.width * 72.0 / fig.dpi
             height_points = bbox.height * 72.0 / fig.dpi
             annotation.set_position((width_points, -height_points))
+
+    if baseline is not None:
+        y_min, y_max = y_limits
+        y_offset = (y_max - y_min) * 0.035
+        label_y = max(y_min, baseline - y_offset)
+        x_min, x_max = ax.get_xlim()
+        ax.text(
+            x_max,
+            label_y,
+            "BM25 baseline",
+            ha="right",
+            va="top",
+            color="#a08b6c",
+            alpha=0.6,
+        )
 
     plt.title(title)
     plt.xlabel("Round")
@@ -196,6 +225,13 @@ def main() -> None:
     records = _load_rounds(run_path)
     _print_rounds(records)
     metric_key = "mean_ndcg" if args.metric == "full" else "mean_ndcg_test"
+    baseline_map = {
+        "wands": 0.5408,
+        "esci": 0.2895,
+    }
+    baseline = None
+    if metric_key == "mean_ndcg":
+        baseline = baseline_map.get(args.dataset)
     title = args.title or f"Codegen run: {run_path} ({args.metric})"
     if args.title:
         filename = _slugify(args.title)
@@ -211,7 +247,13 @@ def main() -> None:
             ]
         )
     output_path = Path(args.output_dir) / f"{filename}.png"
-    _plot_rounds(records, title=title, metric_key=metric_key, output_path=output_path)
+    _plot_rounds(
+        records,
+        title=title,
+        metric_key=metric_key,
+        output_path=output_path,
+        baseline=baseline,
+    )
     print(f"Wrote plot: {output_path}")
 
 
