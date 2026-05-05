@@ -19,6 +19,7 @@ class RunParams(BaseModel):
     strategy_path: str
     base_path: str | None = None
     dataset: DatasetName = "wands"
+    codegen_run_round: int | None = None
     num_queries: int | None = None
     query: str | None = None
     k: int = 10
@@ -181,6 +182,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         judgments=judgments,
         report_num_queries=params.num_queries,
         report_seed=params.seed,
+        codegen_run_round=params.codegen_run_round,
     )
     codegen_artifact_path = getattr(strategy, "artifact_path", None)
     codegen_artifact_path = (

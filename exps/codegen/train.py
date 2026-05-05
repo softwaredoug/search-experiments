@@ -590,6 +590,8 @@ def train_codegen_strategy(
         }
         round_summaries.append(baseline_record)
         rounds_log_path.write_text(json.dumps(baseline_record) + "\n", encoding="utf-8")
+        baseline_code_path = output_dir / "reranker_round_0.py"
+        baseline_code_path.write_text(baseline_code, encoding="utf-8")
     for round_idx in range(previous_rounds, total_rounds):
         refresh_round = (round_idx - previous_rounds) % refresh_every == 0
         if refresh_round:

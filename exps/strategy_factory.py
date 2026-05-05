@@ -74,6 +74,7 @@ def create_strategy(
     judgments=None,
     report_num_queries: int | None = None,
     report_seed: int | None = None,
+    codegen_run_round: int | None = None,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
@@ -100,6 +101,7 @@ def create_strategy(
             if report_seed is not None:
                 build_kwargs["report_seed"] = report_seed
             build_kwargs["run_path"] = strategy_config.path
+            build_kwargs["codegen_run_round"] = codegen_run_round
         if strategy_config.type == "agentic":
             build_kwargs["judgments"] = judgments
         strategy = strategy_cls.build(params, **build_kwargs)

@@ -47,6 +47,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         report_num_queries: int | None = None,
         report_seed: int | None = None,
         run_path: str | Path | None = None,
+        codegen_run_round: int | None = None,
         **kwargs,
     ):
         if dataset is None:
@@ -66,7 +67,10 @@ class CodeGenSearchStrategy(SearchStrategy):
         if not run_path.exists():
             raise FileNotFoundError(f"Codegen run path not found: {run_path}")
 
-        code_path = reranker_path(run_path)
+        if codegen_run_round is not None:
+            code_path = run_path / f"reranker_round_{codegen_run_round}.py"
+        else:
+            code_path = reranker_path(run_path)
         if not code_path.exists():
             raise FileNotFoundError(f"Reranker code not found: {code_path}")
         code = code_path.read_text(encoding="utf-8")
