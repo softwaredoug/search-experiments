@@ -1,0 +1,135 @@
+{
+  "base_query_count": 480,
+  "continued_from": null,
+  "dataset": "wands",
+  "eval_margin": 0.001,
+  "messages": [
+    "Updated reranker to stably promote documents whose title contains all query tokens and/or the exact query phrase. This conservative, lexical key boosts strong matches without broadly reordering results. Mean NDCG improved on evals and passed validation thresholds.",
+    "Updated reranker to improve relevance. Key changes: it now considers both title and description, prioritizes exact phrase matches in the title, ensures full token coverage across title+description, uses token match counts as tie-breakers, and favors earlier phrase positions in titles. Validation NDCG improved from 0.5971 to 0.6017.",
+    "Reranker improved and validated. I replaced the function to: 1) increase the candidate pool (top_k=20), and 2) leverage spelling/acronym variants from query_rewrite. The new scoring prioritizes: title startswith \u2192 title contains \u2192 all tokens of at least one variant are present \u2192 token count in title \u2192 variant in description \u2192 position of original query. This yielded a validated NDCG improvement \u2265 0.001 and increased training mean NDCG from 0.6017 to 0.6040.",
+    "I attempted multiple targeted edits to the reranker to improve validation NDCG (>= +0.001), including: leveraging rewrite phrase signals, combined title+description phrase checks, improved tokenization (handling sizes with 'x', apostrophes, ampersands), token overlap adjustments, and ordering tweaks in the sort key. While a few combinations yielded small gains (up to about +0.000874), none consistently surpassed the required +0.001 improvement threshold on the validation set. Since no patch met the acceptance guardrails, I did not apply any changes and left the original reranker code intact.",
+    "No code changes were applied. I explored multiple small, generalizable tweaks (e.g., leveraging query rewrites in title/any-text checks, expanding token coverage using rewrite variants, adjusting feature order, and adding light tie-breakers). While a few variants yielded slight NDCG gains on validation (up to ~+0.00055), none met the required +0.001 improvement threshold; those patches were therefore rejected by the guardrails. I\u2019ve left the reranker unchanged to avoid regressions."
+  ],
+  "model": "gpt-5",
+  "num_training_queries": 96,
+  "num_validation_queries": 384,
+  "previous_rounds": 0,
+  "refresh_every": 3,
+  "report_num_queries": null,
+  "report_seed": 42,
+  "rerank_name": "rerank_wands",
+  "round_ndcgs": [
+    0.5893900818919445,
+    0.5909287547607219,
+    0.5937803895888842,
+    0.5951648564632914,
+    0.5951648564632914,
+    0.5951648564632914
+  ],
+  "round_summaries": [
+    {
+      "mean_ndcg": 0.5893900818919445,
+      "mean_ndcg_test": 0.587822030852489,
+      "message": null,
+      "round": 0,
+      "short_name": "baseline",
+      "summary": "Initial reranker baseline",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    },
+    {
+      "mean_ndcg": 0.5909287547607219,
+      "mean_ndcg_test": 0.5893953741965104,
+      "message": "Updated reranker to stably promote documents whose title contains all query tokens and/or the exact query phrase. This conservative, lexical key boosts strong matches without broadly reordering results. Mean NDCG improved on evals and passed validation thresholds.",
+      "round": 1,
+      "short_name": "Promote title phrase",
+      "summary": "- Keep original search order but apply a stable sort that prioritizes: (1) titles containing all query tokens (after simple punctuation normalization) and (2) titles containing the exact query phrase.\n- No aggressive rewrites or heavy rescoring; minimal, safe reordering to prefer strong lexical matches in titles.\n- Improves relevance for queries where exact terms appear in the product title (e.g., brand/model/phrase-specific searches) while avoiding broader ranking changes.",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    },
+    {
+      "mean_ndcg": 0.5937803895888842,
+      "mean_ndcg_test": 0.5918066657634465,
+      "message": "Updated reranker to improve relevance. Key changes: it now considers both title and description, prioritizes exact phrase matches in the title, ensures full token coverage across title+description, uses token match counts as tie-breakers, and favors earlier phrase positions in titles. Validation NDCG improved from 0.5971 to 0.6017.",
+      "round": 2,
+      "short_name": "Better title+desc rank",
+      "summary": "Reranker now ranks by: (1) phrase present in title, (2) full token coverage over title+description, (3) token count in title, (4) phrase present in description, and (5) earlier phrase position in title. This boosted mean NDCG on validation from 0.5971 to 0.6017.",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    },
+    {
+      "mean_ndcg": 0.5951648564632914,
+      "mean_ndcg_test": 0.5929468633804512,
+      "message": "Reranker improved and validated. I replaced the function to: 1) increase the candidate pool (top_k=20), and 2) leverage spelling/acronym variants from query_rewrite. The new scoring prioritizes: title startswith \u2192 title contains \u2192 all tokens of at least one variant are present \u2192 token count in title \u2192 variant in description \u2192 position of original query. This yielded a validated NDCG improvement \u2265 0.001 and increased training mean NDCG from 0.6017 to 0.6040.",
+      "round": 3,
+      "short_name": "Variants + top_k=20",
+      "summary": "- Pull 20 candidates instead of 10 for stronger re-ranking headroom.\n- Use query_rewrite to build variant list; reward documents that contain all tokens of at least one variant.\n- Keep strong exact title signals (startswith, contains) and original query position tie-breaker.\n- Validation NDCG improved beyond threshold; training mean NDCG rose to 0.6040.",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    },
+    {
+      "mean_ndcg": 0.5951648564632914,
+      "mean_ndcg_test": 0.578448418612353,
+      "message": "I attempted multiple targeted edits to the reranker to improve validation NDCG (>= +0.001), including: leveraging rewrite phrase signals, combined title+description phrase checks, improved tokenization (handling sizes with 'x', apostrophes, ampersands), token overlap adjustments, and ordering tweaks in the sort key. While a few combinations yielded small gains (up to about +0.000874), none consistently surpassed the required +0.001 improvement threshold on the validation set. Since no patch met the acceptance guardrails, I did not apply any changes and left the original reranker code intact.",
+      "round": 4,
+      "short_name": "No change",
+      "summary": "Multiple small heuristic improvements showed minor NDCG gains but failed to exceed the +0.001 validation threshold, so the reranker was left unchanged to avoid regressions or overfitting.",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    },
+    {
+      "mean_ndcg": 0.5951648564632914,
+      "mean_ndcg_test": 0.578448418612353,
+      "message": "No code changes were applied. I explored multiple small, generalizable tweaks (e.g., leveraging query rewrites in title/any-text checks, expanding token coverage using rewrite variants, adjusting feature order, and adding light tie-breakers). While a few variants yielded slight NDCG gains on validation (up to ~+0.00055), none met the required +0.001 improvement threshold; those patches were therefore rejected by the guardrails. I\u2019ve left the reranker unchanged to avoid regressions.",
+      "round": 5,
+      "short_name": "No-op (guardrails)",
+      "summary": "Tried several compact edits: (1) add rewrite-aware title/any-text boosts, (2) expand token set using rewrites, (3) minor key ordering/tie-breakers. Best validation delta was ~+0.00055, below the +0.001 requirement, so all patches were rejected. Reranker remains as-is.",
+      "test_query_count": 384,
+      "training_query_count": 96,
+      "validation_query_count": 384
+    }
+  ],
+  "round_test_ndcgs": [
+    0.587822030852489,
+    0.5893953741965104,
+    0.5918066657634465,
+    0.5929468633804512,
+    0.578448418612353,
+    0.578448418612353
+  ],
+  "rounds": 5,
+  "rounds_added": 5,
+  "search_tools": [
+    {
+      "config": {
+        "dependencies": [
+          "fielded_bm25",
+          "e5_base_v2"
+        ],
+        "name": "search",
+        "path": "runs/codegen/codegen_guarded/20260502_025238"
+      },
+      "guards": [],
+      "name": "codegen"
+    },
+    {
+      "config": {
+        "max_alternatives": 5,
+        "model": "gpt-5-mini"
+      },
+      "guards": [],
+      "name": "query_rewrite"
+    }
+  ],
+  "start_with": null,
+  "strategy_name": "codegen_nested",
+  "train_query_fraction": 0.2,
+  "training_seed": 5678,
+  "validation_query_fraction": 0.8,
+  "validation_seed": 1234
+}
