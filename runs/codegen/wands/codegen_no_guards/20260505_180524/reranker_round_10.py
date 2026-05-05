@@ -244,7 +244,7 @@ def rerank_wands(query, fielded_bm25, search_embeddings, **kwargs):
     alt_queries = build_alt_queries(query)
 
     # Retrieve candidates
-    bm25_or = fielded_bm25(query, fields=['title^9.3', 'description^4.1'], operator='or', top_k=120, k1=1.3, b=0.7)
+    bm25_or = fielded_bm25(query, fields=['title^9.3', 'description^4.1'], operator='or', top_k=100, k1=1.3, b=0.7)
     bm25_phrase = fielded_bm25(query, fields=['title^9.3', 'description^4.1'], operator='phrase', top_k=60, k1=1.2, b=0.75)
     # Only use AND when query has more than 1 token to avoid over-restriction
     if len(q_tokens) > 1:
@@ -661,4 +661,3 @@ def rerank_wands(query, fielded_bm25, search_embeddings, **kwargs):
     # Sort by score desc and return top 10 IDs
     scored.sort(key=lambda x: x[0], reverse=True)
     return [sid for _, sid in scored[:10]]
-
