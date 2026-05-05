@@ -26,12 +26,14 @@ def make_bm25_tool(
 
         Args:
             keywords: The search query string.
-            top_k: The number of top results to return (max 20).
+            top_k: The number of top results to return (max 100).
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
+        if top_k > 100:
+            raise ValueError("top_k must be <= 100")
         bm25_scores = np.zeros(len(corpus))
         similarity = None
         if k1 is not None or b is not None:
@@ -120,7 +122,7 @@ def make_fielded_bm25_tool(corpus):
             operator: How to combine search terms: and/or/phrase. AND requires every
                 term to appear in at least one field. PHRASE treats the entire query
                 as a phrase and scores the token list as a single term.
-            top_k: The number of top results to return.
+            top_k: The number of top results to return (max 100).
             k1: BM25 k1 parameter.
             b: BM25 b parameter.
 
@@ -128,6 +130,8 @@ def make_fielded_bm25_tool(corpus):
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
+        if top_k > 100:
+            raise ValueError("top_k must be <= 100")
         if not isinstance(fields, list):
             raise ValueError("fields must be a list of weighted field strings.")
         parsed_fields = _parse_weighted_fields(fields)

@@ -120,8 +120,8 @@ def make_codegen_tool(
         **kwargs,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search the corpus, return top results."""
-        if top_k > 20:
-            return "Error! top_k must be <= 20."
+        if top_k > 100:
+            return "Error! top_k must be <= 100."
         reranker_results = reranker_fn(query=query, **dependency_map, **kwargs)
         results = []
         for rank, item in enumerate(reranker_results or []):

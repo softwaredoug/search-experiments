@@ -44,10 +44,12 @@ def make_embedding_tool(
 
         Args:
             question: The search query string - natural language query
-            top_k: The number of top results to return (max 20).
+            top_k: The number of top results to return (max 100).
 
         This is an embedding search over concatenated title + description.
         """
+        if top_k > 100:
+            raise ValueError("top_k must be <= 100")
         if query_prefix:
             question = f"{query_prefix}{question}"
         query_embedded = model.encode(question)

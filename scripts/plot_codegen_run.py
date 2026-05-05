@@ -98,9 +98,14 @@ def _plot_rounds(
     metric_key: str,
     output_path: Path,
     baseline: float | None = None,
+    until_round: int | None = None,
 ) -> None:
     if not records:
         return
+    if until_round is not None:
+        records = [record for record in records if record.get("round") is not None and record.get("round") <= until_round]
+        if not records:
+            return
     rounds = [record.get("round") for record in records]
     ndcgs = [record.get(metric_key) for record in records]
     deltas = [
@@ -214,6 +219,11 @@ def main() -> None:
         "--title",
         help="Override chart title.",
     )
+    parser.add_argument(
+        "--until-round",
+        type=int,
+        help="Only plot rounds up to and including this value.",
+    )
     args = parser.parse_args()
 
     run_path = (
@@ -253,6 +263,7 @@ def main() -> None:
         metric_key=metric_key,
         output_path=output_path,
         baseline=baseline,
+        until_round=args.until_round,
     )
     print(f"Wrote plot: {output_path}")
 

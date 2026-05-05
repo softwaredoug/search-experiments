@@ -126,8 +126,8 @@ def make_guarded_search_tool(
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]] | str:
         """Search tool wrapper that enforces configured guard checks."""
-        if top_k > 20:
-            return "Error! top_k must be <= 20."
+        if top_k > 100:
+            return "Error! top_k must be <= 100."
         params = {
             "tool_name": name,
             "query": query,

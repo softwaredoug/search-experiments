@@ -7,10 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CodeGenEvalConfig(BaseModel):
-    train_query_fraction: float = 0.1
-    validation_query_fraction: float = 0.1
-    training_seed: int = 5678
-    validation_seed: int = 1234
+    train_fraction: float = 0.1
+    seed: int = 1234
     eval_margin: float = 0.003
 
 

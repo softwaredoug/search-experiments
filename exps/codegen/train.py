@@ -151,21 +151,17 @@ def _split_queries(
     *,
     base_queries: list[str],
     train_size: int,
-    val_size: int,
-    training_seed: int,
-    validation_seed: int,
+    seed: int,
 ) -> tuple[list[str], list[str], list[str]]:
     if not base_queries:
         return [], [], []
-    validation_queries = random.Random(validation_seed).sample(
-        base_queries, min(val_size, len(base_queries))
-    )
-    remaining_queries = [q for q in base_queries if q not in set(validation_queries)]
-    training_queries = random.Random(training_seed).sample(
-        remaining_queries, min(train_size, len(remaining_queries))
-    )
-    test_queries = [q for q in base_queries if q not in set(training_queries)]
-    return training_queries, validation_queries, test_queries
+    if train_size >= len(base_queries):
+        return list(base_queries), [], []
+    shuffled = list(base_queries)
+    random.Random(seed).shuffle(shuffled)
+    training_queries = shuffled[:train_size]
+    validation_queries = shuffled[train_size:]
+    return training_queries, validation_queries, list(validation_queries)
 
 
 def _build_tool_state(
@@ -242,7 +238,6 @@ def _build_round_state(
     run_config: CodeGenRunConfig,
     base_queries: list[str],
     train_size: int,
-    val_size: int,
     guardrails: list[callable],
     validation_enabled: bool,
     rerank_name: str,
@@ -271,14 +266,11 @@ def _build_round_state(
         start_code_from_config=start_code_from_config,
     )
 
-    training_seed = eval_cfg.training_seed + round_idx
-    validation_seed = eval_cfg.validation_seed + round_idx
+    training_seed = eval_cfg.seed + round_idx
     training_queries_list, validation_queries_list, test_queries_list = _split_queries(
         base_queries=base_queries,
         train_size=train_size,
-        val_size=val_size,
-        training_seed=training_seed,
-        validation_seed=validation_seed,
+        seed=training_seed,
     )
     training_eval_fn = make_training_eval_fn(
         corpus=corpus,
@@ -291,13 +283,13 @@ def _build_round_state(
         workers=workers,
     )
     validation_eval_fn = None
-    if validation_enabled:
+    if validation_enabled and validation_queries_list:
         validation_eval_fn = make_eval_guardrail(
             corpus=corpus,
             judgments=judgments,
             tool_fns=tool_fns,
             rerank_name=rerank_name,
-            seed=validation_seed,
+            seed=training_seed,
             num_queries=len(validation_queries_list),
             queries=validation_queries_list,
             workers=workers,
@@ -501,12 +493,9 @@ def train_codegen_strategy(
         base_queries = list(available_queries)
         report_count = len(base_queries)
 
-    train_size = int(len(base_queries) * eval_cfg.train_query_fraction)
-    val_size = int(len(base_queries) * eval_cfg.validation_query_fraction)
-    if base_queries and eval_cfg.train_query_fraction > 0 and train_size == 0:
+    train_size = int(len(base_queries) * eval_cfg.train_fraction)
+    if base_queries and eval_cfg.train_fraction > 0 and train_size == 0:
         train_size = 1
-    if base_queries and eval_cfg.validation_query_fraction > 0 and val_size == 0:
-        val_size = 1
 
     guardrails, validation_enabled = _parse_guardrails(train_config.edit.guards)
     guardrails.append(_make_rerank_name_guard(rerank_name))
@@ -534,7 +523,6 @@ def train_codegen_strategy(
             run_config=run_config,
             base_queries=base_queries,
             train_size=train_size,
-            val_size=val_size,
             guardrails=guardrails,
             validation_enabled=validation_enabled,
             rerank_name=rerank_name,
@@ -607,7 +595,6 @@ def train_codegen_strategy(
                 run_config=run_config,
                 base_queries=base_queries,
                 train_size=train_size,
-                val_size=val_size,
                 guardrails=guardrails,
                 validation_enabled=validation_enabled,
                 rerank_name=rerank_name,
@@ -719,10 +706,8 @@ def train_codegen_strategy(
         "round_summaries": round_summaries,
         "round_ndcgs": round_ndcgs,
         "round_test_ndcgs": round_test_ndcgs,
-        "training_seed": eval_cfg.training_seed,
-        "validation_seed": eval_cfg.validation_seed,
-        "train_query_fraction": eval_cfg.train_query_fraction,
-        "validation_query_fraction": eval_cfg.validation_query_fraction,
+        "seed": eval_cfg.seed,
+        "train_fraction": eval_cfg.train_fraction,
         "num_training_queries": len(round_state.training_queries_list),
         "num_validation_queries": len(round_state.validation_queries_list),
         "base_query_count": len(base_queries),

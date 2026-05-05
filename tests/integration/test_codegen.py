@@ -58,10 +58,8 @@ strategy:
               max_lines: 5
               max_cols: 120
       eval:
-        train_query_fraction: 0.2
-        validation_query_fraction: 0.2
-        training_seed: 123
-        validation_seed: 456
+        train_fraction: 0.2
+        seed: 123
         eval_margin: 0.0
       system_prompt: |
         Improve the reranker.
@@ -183,10 +181,8 @@ strategy:
         guards:
           - validation
       eval:
-        train_query_fraction: 0.2
-        validation_query_fraction: 0.2
-        training_seed: 123
-        validation_seed: 456
+        train_fraction: 0.2
+        seed: 123
         eval_margin: 0.0
       system_prompt: |
         Improve the reranker.
@@ -235,10 +231,8 @@ strategy:
         guards:
           - validation
       eval:
-        train_query_fraction: 0.2
-        validation_query_fraction: 0.2
-        training_seed: 123
-        validation_seed: 456
+        train_fraction: 0.2
+        seed: 123
         eval_margin: 0.0
       system_prompt: |
         Improve the reranker.
@@ -291,10 +285,8 @@ strategy:
         guards:
           - validation
       eval:
-        train_query_fraction: 0.2
-        validation_query_fraction: 0.2
-        training_seed: 123
-        validation_seed: 456
+        train_fraction: 0.2
+        seed: 123
         eval_margin: 0.0
       system_prompt: |
         Improve the reranker.
@@ -372,10 +364,8 @@ strategy:
         guards:
           - validation
       eval:
-        train_query_fraction: 0.2
-        validation_query_fraction: 0.2
-        training_seed: 123
-        validation_seed: 456
+        train_fraction: 0.2
+        seed: 123
         eval_margin: 0.0
       system_prompt: |
         Improve the reranker.

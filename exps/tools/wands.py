@@ -147,12 +147,14 @@ def make_wands_bm25_tool(
             keywords: The search query string.
             product_categories: Optional category filters. Categorization may be imperfect;
                 consider searching both with and without categories.
-            top_k: The number of top results to return (max 20).
+            top_k: The number of top results to return (max 100).
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
+        if top_k > 100:
+            raise ValueError("top_k must be <= 100")
         print(f"B - Searching WANDS for keywords: {keywords} with categories: {product_categories}")
         indices = _category_indices(category_index, product_categories)
         if indices is None:
@@ -223,10 +225,12 @@ def make_wands_embedding_tool(
         Args:
             product_description: The product being looked for.
             product_categories: Optional category filters.
-            top_k: The number of top results to return (max 20).
+            top_k: The number of top results to return (max 100).
 
         This is an embedding search over concatenated title + description.
         """
+        if top_k > 100:
+            raise ValueError("top_k must be <= 100")
         print(f"E - Searching WANDS for query: {product_description} with categories: {product_categories}")
         if query_prefix:
             question = f"{query_prefix}{product_description}"

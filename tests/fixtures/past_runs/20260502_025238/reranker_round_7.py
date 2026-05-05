@@ -1,6 +1,6 @@
 def rerank_wands(query, fielded_bm25, search_embeddings, **kwargs):
-    b = fielded_bm25(query, fields=['title^10.5','description^3.9'], operator='or', top_k=80)
-    e = search_embeddings(query, top_k=30)
+    b = fielded_bm25(query, fields=['title^10.5','description^3.9'], operator='or', top_k=20)
+    e = search_embeddings(query, top_k=20)
     s = {}; k = 35.0
     for i,d in enumerate(b): s[str(d['id'])] = s.get(str(d['id']),0.0)+0.5/(k+i+1.0)
     for i,d in enumerate(e): s[str(d['id'])] = s.get(str(d['id']),0.0)+0.5/(k+i+1.0)
