@@ -1,0 +1,17 @@
+timestamp,dataset,round,metric,mean_mrr,median_mrr,strategy_path,run_path
+20260505_153002,minimarco,0,mrr,0.4913473062644333,0.3333333333333333,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153024,minimarco,1,mrr,0.5115393609868748,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153046,minimarco,2,mrr,0.5105929726095472,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153107,minimarco,4,mrr,0.5153344149200503,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153127,minimarco,5,mrr,0.5211932532374521,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153144,minimarco,6,mrr,0.5252506650296705,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153201,minimarco,7,mrr,0.5315245987897922,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_153219,minimarco,8,mrr,0.5349820222748399,0.5,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_160813,msmarco,0,mrr,0.1896984013280575,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_163814,msmarco,1,mrr,0.19745070951016508,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_170925,msmarco,2,mrr,0.1953892641106108,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_174215,msmarco,4,mrr,0.1954402601537272,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_183026,msmarco,5,mrr,0.19741904307090555,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_192255,msmarco,6,mrr,0.1988928116614363,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_201153,msmarco,7,mrr,0.19815840041842905,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459
+20260505_205039,msmarco,8,mrr,0.19905273570746349,0.0,configs/codegen/codegen_minimarco.yml,runs/codegen/minimarco/codegen_minimarco/20260504_033459

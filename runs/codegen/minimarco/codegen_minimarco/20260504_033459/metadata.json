@@ -1,0 +1,50 @@
+{
+  "base_query_count": 543,
+  "continued_from": "runs/codegen/minimarco/codegen_minimarco/20260504_033459",
+  "dataset": "minimarco",
+  "eval_margin": 0.002,
+  "messages": [
+    "Reranker improvement process completed successfully."
+  ],
+  "model": "gpt-5.5",
+  "num_training_queries": 108,
+  "num_validation_queries": 434,
+  "previous_rounds": 7,
+  "refresh_every": 3,
+  "report_num_queries": null,
+  "report_seed": 42,
+  "rerank_name": "rerank_minimarco",
+  "round_ndcgs": [
+    0.18265203849513575
+  ],
+  "round_summaries": [
+    {
+      "mean_ndcg": 0.18265203849513575,
+      "mean_ndcg_test": 0.18025405397829472,
+      "message": "Reranker improvement process completed successfully.",
+      "round": 8,
+      "short_name": "Retuned Lexical Scoring",
+      "summary": "Updated the MiniMARCO reranker with a slightly lower BM25 saturation/term-frequency weighting, a modestly stronger exact-bigram boost, and a new long-query stopword for generic vacation context. The patch was accepted by validation checks.",
+      "test_query_count": 435,
+      "training_query_count": 108,
+      "validation_query_count": 434
+    }
+  ],
+  "round_test_ndcgs": [
+    0.18025405397829472
+  ],
+  "rounds": 8,
+  "rounds_added": 1,
+  "search_tools": [
+    {
+      "config": {},
+      "guards": [],
+      "name": "fielded_bm25"
+    }
+  ],
+  "strategy_name": "codegen_minimarco",
+  "train_query_fraction": 0.2,
+  "training_seed": 5678,
+  "validation_query_fraction": 0.8,
+  "validation_seed": 1234
+}
