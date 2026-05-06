@@ -1,5 +1,5 @@
 strategy:
-  name: codegen_nested
+  name: codegen_rewrite
   type: codegen
   params:
     train:
