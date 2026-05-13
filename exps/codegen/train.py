@@ -540,6 +540,7 @@ def train_codegen_strategy(
             normal_tool_config=normal_tool_config,
             raw_tool_config=raw_tool_config,
             start_code_from_config=start_code_from_config,
+            code_logger=code_logger,
         )
         start_code_from_config = False
         baseline_code = code_path.read_text(encoding="utf-8")
