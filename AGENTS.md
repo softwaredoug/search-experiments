@@ -3,6 +3,10 @@
 This file guides agentic coding tools working in this repository.
 Keep changes small, testable, and aligned with existing patterns.
 
+## Docs / requirements
+
+Scan docs / requirements for detailed guidance on specific features.
+
 ## Project Overview
 
 - Project name: exps
