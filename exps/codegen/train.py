@@ -8,7 +8,7 @@ from pathlib import Path
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.search import ndcgs, run_strategy
-from exps.codegen.tools.code import (
+from cheat_at_search.tools.code import (
     make_guardrail_checker,
     make_length_validator,
     make_patch_fn,

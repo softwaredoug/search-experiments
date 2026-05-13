@@ -1,6 +1,6 @@
 """Codegen tooling (vendored + runtime helpers)."""
 
-from exps.codegen.tools.code import (  # noqa: F401
+from cheat_at_search.tools.code import (  # noqa: F401
     Edit,
     EditResult,
     EvalResult,
@@ -9,10 +9,11 @@ from exps.codegen.tools.code import (  # noqa: F401
     make_guardrail_checker,
     make_length_validator,
     make_patch_fn,
+    make_run_path_grep_tool,
     set_code_to,
     set_to_start_code,
 )
-from exps.codegen.tools.eval import (  # noqa: F401
+from cheat_at_search.tools.eval import (  # noqa: F401
     CodeGenSearchStrategy,
     EvalResults,
     QueryEvalResult,
@@ -34,6 +35,7 @@ __all__ = [
     "make_guardrail_checker",
     "make_length_validator",
     "make_patch_fn",
+    "make_run_path_grep_tool",
     "set_code_to",
     "set_to_start_code",
     "CodeGenSearchStrategy",
