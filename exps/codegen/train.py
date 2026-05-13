@@ -82,7 +82,11 @@ class FinalMessage(BaseModel):
     )
 
 
-def _parse_guardrails(raw_guards: list[dict]) -> tuple[list, bool]:
+def _parse_guardrails(
+    raw_guards: list[dict],
+    *,
+    logger=None,
+) -> tuple[list, bool]:
     guardrails = []
     validation_enabled = False
     if not raw_guards:
@@ -107,6 +111,7 @@ def _parse_guardrails(raw_guards: list[dict]) -> tuple[list, bool]:
                     prompt=prompt,
                     model=model,
                     reasoning=reasoning,
+                    logger=logger,
                 )
             )
         elif name == "validation":
@@ -245,6 +250,7 @@ def _build_round_state(
     normal_tool_config: list,
     raw_tool_config: list,
     start_code_from_config: bool,
+    code_logger,
 ) -> RoundState:
     (
         tool_fns,
@@ -305,8 +311,9 @@ def _build_round_state(
         training_eval_fn=training_eval_fn,
         validation_eval_fn=validation_eval_fn,
         eval_margin=eval_cfg.eval_margin,
+        logger=code_logger,
     )
-    grep_run_path = make_run_path_grep_tool(code_path.parent)
+    grep_run_path = make_run_path_grep_tool(code_path.parent, logger=code_logger)
 
     run_evals, run_reranker = make_eval_tools(
         corpus=corpus,
@@ -478,7 +485,7 @@ def train_codegen_strategy(
 
     log_path = output_dir / "codegen.log"
     train_logger = log_to_path_and_stdout("codegen.train", log_path)
-    log_to_path_and_stdout("code", log_path)
+    code_logger = log_to_path_and_stdout("code", log_path)
     log_to_path_and_stdout("eval", log_path)
 
     eval_cfg = train_config.eval
@@ -497,7 +504,10 @@ def train_codegen_strategy(
     if base_queries and eval_cfg.train_fraction > 0 and train_size == 0:
         train_size = 1
 
-    guardrails, validation_enabled = _parse_guardrails(train_config.edit.guards)
+    guardrails, validation_enabled = _parse_guardrails(
+        train_config.edit.guards,
+        logger=code_logger,
+    )
     guardrails.append(_make_rerank_name_guard(rerank_name))
 
     messages: list[str] = []
@@ -602,6 +612,7 @@ def train_codegen_strategy(
                 normal_tool_config=normal_tool_config,
                 raw_tool_config=raw_tool_config,
                 start_code_from_config=start_code_from_config,
+                code_logger=code_logger,
             )
             start_code_from_config = False
         if round_state is None:
