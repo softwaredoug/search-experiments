@@ -4,7 +4,7 @@ This task primarilly exists for you, the agent, to do on demand.
 
 Turn an experiment here into a notebook in literate programming style.
 
-You MUST match the implementation here very closely. IE agentic, use agent_run, search functions here slighly modified for a notebook. If your notebook does NOT actually recreate the behavior of the experiment, its a failure.
+You MUST match the implementation here very closely. If your notebook does NOT actually recreate the behavior of the experiment, its a failure.
 
 Your guidance should come from the description of the yml file. That's your lord, savior, guidance. Your gospel and source of truth.
 
@@ -120,21 +120,11 @@ Notebooks should be placed in the `notebooks/` directory. They can be organized 
 
 They should be named according to the strategy and dataset they correspond to, for easy identification. For example, a notebook for the BM25 strategy on the MSMarco dataset could be named `bm25_ms_marco.ipynb`.
 
-
-### Steps for codegen training notebook
-
-- Coding / eval tools should be brought in from cheat-at-search
-- The codegen train runner here parses yaml config, creates guardrails, tools, etc. You shouldn't do that, just put in what's needed directly in the notebook
-- First demonstrate a single training run.
-- Finally instantiate the training loop for some number of rounds
-
-
 ### Steps for 'run' commands
 
 When recreating 'run' commands
 
 Make sure what's central to the notebook is a SearchStrategy implementation that demonstrates teh experiment. Instantiate the strategy, call run_strategy to get results dataframes. Use cheat_at_search's ndcgs/mrrs helpers to give summary eval metrics. 
-
 
 ### Ignore these params
 
@@ -142,6 +132,25 @@ While I'll ask you to create a notebook given a config + command, you should ign
 
 --no-cache (run_strategy cache only)
 --device
+
+### Ignore path param
+
+The path param helps restart runs locally, but in a notebook assume a fresh run.
+
+## Strategy specific guides
+
+### Agentic notebooks
+
+For yml with strategy:agentic, see docs/notebooks_agentic.prd
+
+### Codegen notebooks
+
+For yml with strategy:codegen, see docs/notebooks_codegen.prd
+
+## Testing
+
+Required, after notebook generation you do the following:
+
 
 ### Testing whether your notebooks are parsable
 
@@ -159,15 +168,3 @@ To validate the notebook
 
 1. Run the notebook (it should use the manual path on its own, skipping gdrive)
 2. Confirm it executes. Its ok if it times out, its probably doing the work its supposed to
-
-### Ignore path param
-
-The path param helps restart runs locally, but in a notebook assume a fresh run.
-
-### Incorporating tools
-
-When brining tools from the codebase into this repo, some important requirements must be satisfied
-
-First the type annotations of the tools must be respected. These are interpreted into a schema to be enforced when the agent calls the tool. If the agent calls the tool with the wrong params, an error will be thrown. This is important to prevent the agent from calling tools in ways that don't make sense, and to help guide it towards calling tools correctly.
-
-Second, the name and description of the tool must be respected, as they are important for the agent to know when and how to call the tool.
