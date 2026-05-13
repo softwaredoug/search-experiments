@@ -2,7 +2,9 @@
 
 This task primarilly exists for you, the agent, to do on demand.
 
-Turn an experiment here into a notebook in literate programming style. You MUST match the implementation here very closely. IE agentic, use agent_run, search functions here slighly modified for a notebook.
+Turn an experiment here into a notebook in literate programming style.
+
+You MUST match the implementation here very closely. IE agentic, use agent_run, search functions here slighly modified for a notebook. If your notebook does NOT actually recreate the behavior of the experiment, its a failure.
 
 Your guidance should come from the description of the yml file. That's your lord, savior, guidance. Your gospel and source of truth.
 
@@ -60,11 +62,12 @@ This code should exist near the top to mount gdrive
 ```
 !pip install git+https://github.com/softwaredoug/cheat-at-search.git@<commit_hash>
 from cheat_at_search.data_dir import mount
-mount(use_gdrive=True)    # colab, share data across notebook runs on gdrive
-# mount(use_gdrive=False) # <- colab without gdrive
-# from pathlib import Path
-# manual_path=str(Path.home() / ".search-experiments" / "cheat-at-search")
-# mount(use_gdrive=False, manual_path="/path/to/directory")  # <- force data path to specific directory, ie you're running locally.
+try:
+    mount(use_gdrive=True)
+except ImportError:
+    from pathlib import Path
+    manual_path = str(Path.home() / ".search-experiments" / "cheat-at-search")
+    mount(use_gdrive=False, manual_path=manual_path)
 ```
 
 ### Importing dataset + loading keys
@@ -144,12 +147,27 @@ While I'll ask you to create a notebook given a config + command, you should ign
 
 You should have jupyter as a dev dependency, you should test the parsinig and notebook generation with jupyter at the command line.
 
-### Run tests
+### Run tests to confirm notebooks meet requirements
 
 Always run the test
 
- uv run pytest tests/unit/test_notebook_descriptions.py
+ uv run pytest tests/unit/test_notebooks.py
+
+### Run the notebook
+
+To validate the notebook
+
+1. Run the notebook (it should use the manual path on its own, skipping gdrive)
+2. Confirm it executes. Its ok if it times out, its probably doing the work its supposed to
 
 ### Ignore path param
 
 The path param helps restart runs locally, but in a notebook assume a fresh run.
+
+### Incorporating tools
+
+When brining tools from the codebase into this repo, some important requirements must be satisfied
+
+First the type annotations of the tools must be respected. These are interpreted into a schema to be enforced when the agent calls the tool. If the agent calls the tool with the wrong params, an error will be thrown. This is important to prevent the agent from calling tools in ways that don't make sense, and to help guide it towards calling tools correctly.
+
+Second, the name and description of the tool must be respected, as they are important for the agent to know when and how to call the tool.
