@@ -45,6 +45,8 @@ Assume they're created for educational purposes for readers of
 * They CAN depend on cheat-at-search, as long as its tied to a commit hash. It would be the hash of this repo at the time of notebook creation. This allows you to use cheat-at-search's data loading, key management, and evaluation helpers without worrying about whether the user has the right version of cheat-at-search installed.
 * They can also depend on SearchArray for full text search
 
+Inspect cheat at search and what you can do by navigating this repo https://github.com/softwaredoug/cheat-at-search
+
 
 ### Dataset dependencies
 

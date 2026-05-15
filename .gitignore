@@ -12,3 +12,5 @@ dist/
 build/
 .DS_Store
 agentic/traces/
+.ipynb_checkpoints/
+*-checkpoint.ipynb
