@@ -25,7 +25,9 @@ We can see overfitting when we look at the non-test queries.
 uv run train --strategy configs/codegen/codegen_minimarco.yml --dataset minimarco 
 ```
 
-On Minimarco, we see a steady climb
+Run output [here](https://github.com/softwaredoug/search-experiments/tree/main/runs/codegen/minimarco/codegen_minimarco/20260504_033459)
+
+On Minimarco, we see a steady climb every round
 
 ![no guards](/assets/minimarco_lexical_retrieval.png)
 
