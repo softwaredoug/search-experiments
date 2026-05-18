@@ -19,7 +19,16 @@ We can see overfitting when we look at the non-test queries.
 
 ![no guards](/assets/No_validation_test_data.png)
 
+## BM25 run
 
+```
+uv run train --strategy configs/codegen/codegen_minimarco.yml --dataset minimarco 
+```
 
+On Minimarco, we see a steady climb
 
+![no guards](/assets/minimarco_lexical_retrieval.png)
 
+On MSMarco, we see a plateau
+
+![no guards](/assets/msmarco_lexical_retrieval.png)
