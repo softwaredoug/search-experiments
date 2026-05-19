@@ -313,7 +313,17 @@ def _build_round_state(
         eval_margin=eval_cfg.eval_margin,
         logger=code_logger,
     )
-    grep_run_path = make_run_path_grep_tool(code_path.parent, logger=code_logger)
+    grep_run_path = make_run_path_grep_tool(
+        code_path.parent,
+        files={
+            "rounds.jsonl": "per-round summaries",
+            "codegen.log": "training log",
+            "metadata.json": "run metadata",
+            "reranker_round_*.py": "per-round reranker snapshots",
+        },
+        module_name=code_path.stem,
+        logger=code_logger,
+    )
 
     run_evals, run_reranker = make_eval_tools(
         corpus=corpus,
