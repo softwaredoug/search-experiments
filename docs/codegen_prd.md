@@ -6,7 +6,7 @@ to optimize python code for the best NDCG / MRR.
 It starts with a simple baseline, and proposes code changes. Changes then get rejected outside the agentic loop
 if the agent's proposed code doesn't actually improve a holdout.
 
-This has a *training process* which other strategies do not have. That means when calling "run" it trains, then with the final trained product, it runs on the dataset and produces results.
+This has a *training process* which other strategies do not have. That's done via `uv run train` to produce a final artifact using code generation / autoresearch. The `run` command loads a trained artifact (latest run or `strategy.path`) and evaluates it.
 
 Below are some detailed requirements.
 
@@ -28,8 +28,9 @@ strategy:
             guards:
         # Eval tool setup
         eval:
-            num_training_queries: 200
-            num_validation_queries: 100
+          train_fraction: 0.20
+          seed: 1234
+          eval_margin: 0.001
         model: gpt-5-mini
         reasoning: medium
         refresh_every: 10
@@ -39,17 +40,16 @@ strategy:
 
              Edit the reranker python module using apply_patch method.
 
-             You can run the reranker using the 'run_reranker' function, which takes a query and returns ranked, matching
-             products.
+             You can run the reranker using the 'search' function, which takes a query and returns ranked matches.
 
-             You can evaluate the reranker using the 'run_evals' function, which returns NDCG scores for all queries and mean NDCG. Your goal is to
+             You can evaluate the reranker using the 'evaluate' function, which returns training NDCG deltas and mean NDCG. Your goal is to
              increase mean NDCG.
 
              Experiment with the current reranker by calling it with test queries. Improve the reranker based on the behavior you observe. Make edits and test while you edit.
 
-             If NDCG does not go up after your edits, revert your changes using the 'revert_changes' function.
+             If NDCG does not go up after your edits, iterate on the patch and re-evaluate.
 
-Your code MUST have a function rerank_wands. It takes the query first, followed by search tools, then **kwargs,
+Your code MUST have a function reranker. It takes the query and top_k first, followed by search tools, then **kwargs,
 and returns a list of product IDs in the order you think best matches the query.
 
              Here are some examples of user queries, product titles, and human labels (Relevant, Partially Relevant, Irrelevant) that
@@ -68,20 +68,20 @@ Then a new python file is output and the cycle repeats until rounds is complete.
 
 ## What does 'run' do
 
-Run for one of these strategies first executes the training task, produces the strategy that will be run on the dataset the user asked for.
+Run for one of these strategies loads a trained artifact and executes it on the dataset the user asked for.
 
 
-## Starting code
+## Reranker code
 
-Starting code is the following:
+The reranker code may look like the following when provided fielded_bm25 tool
 
 ```
-def rerank(query, fielded_bm25, **kwargs):
+def reranker(query, top_k, fielded_bm25, **kwargs):
     docs = fielded_bm25(
-        keywords=query,
+        query,
         fields=['title^9.3', 'description^4.1'],
-        operator='and',
-        top_k=10,
+        operator='or',
+        top_k=top_k,
     )
     return [doc['id'] for doc in docs]
 ```
@@ -89,10 +89,11 @@ def rerank(query, fielded_bm25, **kwargs):
 Its a function that takes
 
 1. A query string (first)
-2. One or more search_tools (ie bm25, etc) as listed
-3. **kwargs for runtime-only args (ignore unless instructed)
+2. A top_k parameter
+3. One or more search_tools (ie bm25, etc) as listed
+4. **kwargs for runtime-only args (ignore unless instructed)
 
-It then returns the top 10 results for the query.
+It then returns the top results for the query.
 
 That's the code that will be patched by the patching tools driven by an agent.
 
@@ -106,7 +107,7 @@ These might have various guardrails that block changes, etc. For example, here's
 apply_patch_ng, try_out_patch_ng, revert_changes_ng = make_patch_fn(
     search_fn=search_wands,
     corpus=corpus,
-    module_name="rerank_wands",
+    module_name="reranker",
     training_eval_fn=None,
     code_dir="/content"
 )
@@ -158,12 +159,12 @@ from pydantic import BaseModel, Field
 
 
 original_source = """
-def rerank(query, fielded_bm25):
+def reranker(query, top_k, fielded_bm25):
     docs = fielded_bm25(
-        keywords=query,
+        query,
         fields=['title^9.3', 'description^4.1'],
-        operator='and',
-        top_k=10,
+        operator='or',
+        top_k=top_k,
     )
     return [doc['id'] for doc in docs]
 """
@@ -189,18 +190,19 @@ Reranker code to improve:
 
 
 tools = [# -------
-         # Tools to propose changes, as 
+         # Tools to propose changes, as
          # configured in the yaml with guardrails, etc
          apply_patch_ng,     # Edit the reranker with a patch. Will reject if overfit.
-         revert_changes_ng,  # Restore the reranker to the last version
 
          # -------
          # Tools to inspect changes
-         # Either the listed search tool available or 
-         # implicit (run_reranker/run_evals)
+         # Either the listed search tool available or
+         # implicit (search/evaluate)
          fielded_bm25,  # The raw search tool (from earlier), what we inject into the reranker code. This is what the reranker uses to get results, so the agent can call this directly to see what the BM25 results are for a query.
-         run_reranker, # Run on one query (optionally label results)
-         run_evals,    # Run on test set, getting per-query NDCG and mean NDCG
+         search,        # Run on one query
+         evaluate,      # Evaluate a proposed patch on training queries without saving it
+         commit_patch,  # Apply a patch to the reranker code
+         grep,          # Search run artifacts for context
 ]
 
 search_client = OpenAIAgent(tools=tools,
@@ -215,9 +217,9 @@ resp: FinalMessage = search_client.loop()
 
 Its important the model only knows about the training set its using. And whether or not it succeeds at improving the holdout. It doesn't get to see the holdout directly to avoid overfitting.
 
-That's what the 'validation_guardrail' is for. It runs the proposed code on a holdout set, and rejects changes that don't improve the holdout.
+That's what the validation guard is for. It runs the proposed code on a holdout set, and rejects changes that don't improve the holdout.
 
-Validation is now explicit: include `validation` in `edit.guards` when you want the guardrail applied. Guardrails are only enforced when listed.
+Validation is explicit: include `validation` in `edit.guards` when you want validation queries passed into the patch tools. Guardrails are only enforced when listed.
 
 
 ## Codegen location

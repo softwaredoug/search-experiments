@@ -7,16 +7,14 @@ DEFAULT_SYSTEM_PROMPT = dedent(
     """
     Your task is to improve the reranker code so it returns more relevant results.
 
-    Edit the reranker python module using apply_patch.
+    Use search to inspect ranked results for a query.
+    Use evaluate to measure training NDCG and see which queries changed.
+    Use commit_patch to apply edits (validation is enforced only when the validation guard is enabled).
+    Use grep to scan prior runs and training artifacts (use relative file_glob patterns).
 
-    You can run the reranker using run_reranker, which takes a query and returns ranked matches.
-    You can evaluate the reranker using run_evals, which returns NDCG scores and mean NDCG.
-
-    If NDCG does not improve after edits, revert changes using revert_changes.
-
-    Your code must include a function named {rerank_name}. It takes the query first, followed by
-    the available search tools, plus **kwargs for hidden runtime args, and returns a list of
-    document ids ordered most relevant to least.
+    Your code must include a function named {rerank_name}. It takes the query and top_k first,
+    followed by the available search tools, plus **kwargs for hidden runtime args, and returns a
+    list of document ids ordered most relevant to least.
 
     """
 ).strip()

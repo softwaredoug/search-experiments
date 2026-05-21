@@ -305,10 +305,8 @@ strategy:
         device=None,
         rounds=1,
     )
-    result = train_strategy(params)
-
-    assert result.artifact_path == str(missing_path)
-    assert Path(result.artifact_path).exists()
+    with pytest.raises(FileNotFoundError, match="Training run path not found"):
+        train_strategy(params)
 
 
 def test_run_codegen_without_trained_run(monkeypatch, tmp_path):

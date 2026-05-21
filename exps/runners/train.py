@@ -11,6 +11,7 @@ from exps.codegen.train import train_codegen_strategy
 from exps.datasets import DatasetName, get_dataset
 from exps.strategy_config import load_strategy_config
 from exps.strategy_factory import requires_bm25, strategy_params_for_config
+from exps.train_runs import make_train_run_dir
 
 
 class TrainParams(BaseModel):
@@ -87,13 +88,25 @@ def train_strategy(params: TrainParams) -> TrainResult:
         workers=params.workers,
         ensure_snowball=requires_bm25(strategy_config.type, strategy_params),
     )
+    if strategy_config.path:
+        run_path = Path(strategy_config.path).expanduser()
+        if not run_path.exists():
+            raise FileNotFoundError(f"Training run path not found: {run_path}")
+        if not run_path.is_dir():
+            raise ValueError(f"Training run path must be a directory: {run_path}")
+    else:
+        run_path = make_train_run_dir(
+            dataset=params.dataset,
+            strategy_name=strategy_config.name,
+            strategy_type=strategy_config.type,
+        )
     artifact = train_codegen_strategy(
         strategy_name=strategy_config.name,
         dataset=params.dataset,
         corpus=dataset.corpus,
         judgments=dataset.judgments,
         params=strategy_params,
-        run_path=strategy_config.path,
+        run_path=run_path,
         device=params.device,
         workers=params.workers,
         report_num_queries=params.num_queries,

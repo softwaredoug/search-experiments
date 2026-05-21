@@ -96,7 +96,7 @@ class CodeGenSearchStrategy(SearchStrategy):
         tool_fns = tool_fns + raw_tools
         if not tool_fns:
             raise ValueError("Codegen run requires at least one search tool.")
-        rerank_name = f"rerank_{dataset}"
+        rerank_name = "reranker"
         return cls(
             corpus,
             workers=workers,
@@ -110,7 +110,10 @@ class CodeGenSearchStrategy(SearchStrategy):
     def search(self, query, k: int = 10):
         try:
             rerank_fn = load_rerank_fn(self.code, self.rerank_name)
-            doc_ids = rerank_fn(query, *self.tool_fns)[:k]
+            try:
+                doc_ids = rerank_fn(query, k, *self.tool_fns)[:k]
+            except TypeError:
+                doc_ids = rerank_fn(query, *self.tool_fns)[:k]
             scores = np.arange(len(doc_ids), 0, -1)
             top_k_ilocs = []
             for doc_id in doc_ids:

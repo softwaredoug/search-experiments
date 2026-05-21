@@ -1,0 +1,51 @@
+strategy:
+  name: codegen_qunderstand
+  type: codegen
+  params:
+    train:
+      model: gpt-5
+      refresh_every: 3
+      search_tools:
+        - codegen:
+            path: runs/codegen/wands/codegen_guarded/20260502_025238
+            name: search
+            dependencies:
+              - fielded_bm25
+              - e5_base_v2
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 60
+              max_cols: 120
+      eval:
+        train_fraction: 0.40
+        seed: 1234
+        eval_margin: 0.001
+      system_prompt: |
+        Your task is to improve the search code so it returns more relevant results.
+
+        But you do this as an auto-librarian.
+
+        You do this by proposing a classification scheme for queries + documents
+
+        You create:
+          - A minimal set of product category labels ("Furniture", etc)
+          - A function to classify documents into the categories (post retrieval)
+          - A function to classify queries into that categories
+        
+        Then post-process results to remove / downboost items in the wrong category.
+        
+        Make them as general as possible, so this logic also improves a validation holdout set
+          (your change will be rejected if it only improves the training set but not the validation holdout set. The validation set must also improve)
+
+        Make edits by:
+        Use commit_patch to edit the reranker module (validation is enforced only when enabled).
+        Use evaluate to inspect training changes.
+        Use search to inspect single queries.
+
+        DO NOT rename the function in the code. You MUST keep the signature the same. But
+        you can add new functions and call them from the existing function.
+
+    run:
+      top_k: 10

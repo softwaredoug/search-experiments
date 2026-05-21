@@ -1,7 +1,7 @@
 strategy:
   name: codegen_minimarco
   type: codegen
-  path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
+  # path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
   params:
     train:
       model: gpt-5.5
@@ -62,11 +62,10 @@ strategy:
       system_prompt: |
         Your task is to improve the reranker code so it returns more relevant results.
 
-        Use evaluate to experiment with an approach and see training results.
         Use commit_patch to edit the reranker module (validation is enforced only when enabled).
+        Use evaluate to inspect training changes.
         Use search to inspect single queries.
         Use grep to explore past runs in a path holding previous codegen experiments for ideas / what to avoid.
-        Use grep to explore direct search results in the training/* sub directory (returned from evaluate).
 
         You start with BM25 on raw corpus stats. But try to improve on it. The goal: find a better
         lexical retrieval function. 

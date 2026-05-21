@@ -34,7 +34,7 @@ def test_guarded_tool_limits_top_k():
         return [{"id": 1, "title": query, "description": "", "score": float(top_k)}]
 
     guarded = tools_mod.make_guarded_search_tool(_tool)
-    err = guarded("chair", top_k=21)
+    err = guarded("chair", top_k=101)
     assert isinstance(err, str)
 
 

@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from exps.codegen.results import Rounds
+
 
 class CodeGenEvalConfig(BaseModel):
     train_fraction: float = 0.1
@@ -43,5 +45,6 @@ class CodeGenArtifact(BaseModel):
     reranker_path: Path
     code: str
     metadata: dict[str, Any]
+    rounds: Rounds
     search_fn: callable
     tool_fns: list[callable]
