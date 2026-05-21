@@ -278,7 +278,9 @@ class Codegen:
             mean_ndcg=baseline_ndcg,
             mean_test_ndcg=baseline_test_ndcg,
             training_query_count=len(self.training_queries_list),
-            validation_query_count=len(self.validation_queries_list),
+            validation_query_count=(
+                len(self.validation_queries_list) if self.validation_enabled else 0
+            ),
             test_query_count=len(self.test_queries_list),
         )
         baseline_code_path = self.output_dir / "reranker_round_0.py"
@@ -357,7 +359,9 @@ class Codegen:
             mean_ndcg=mean_ndcg,
             mean_test_ndcg=mean_test_ndcg,
             training_query_count=len(self.training_queries_list),
-            validation_query_count=len(self.validation_queries_list),
+            validation_query_count=(
+                len(self.validation_queries_list) if self.validation_enabled else 0
+            ),
             test_query_count=len(self.test_queries_list),
         )
         round_code_path = self.output_dir / f"reranker_round_{self.current_round + 1}.py"
@@ -500,7 +504,9 @@ def train_codegen_strategy(
         "seed": codegen.eval_cfg.seed,
         "train_fraction": codegen.eval_cfg.train_fraction,
         "num_training_queries": len(codegen.training_queries_list),
-        "num_validation_queries": len(codegen.validation_queries_list),
+        "num_validation_queries": (
+            len(codegen.validation_queries_list) if codegen.validation_enabled else 0
+        ),
         "base_query_count": len(codegen.base_queries),
         "report_seed": report_seed,
         "report_num_queries": report_num_queries,

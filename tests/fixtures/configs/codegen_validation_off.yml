@@ -1,0 +1,22 @@
+strategy:
+  name: codegen_validation_off_fixture
+  type: codegen
+  path: __RUN_PATH__
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - bm25
+      edit:
+        guards: []
+      eval:
+        train_fraction: 0.5
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5

@@ -1,0 +1,29 @@
+strategy:
+  name: codegen_raw_tool_list_fixture
+  type: codegen
+  path: __RUN_PATH__
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - raw:
+            - get_corpus
+      start_code: |
+        def rerank_doug_blog(query, get_corpus, **kwargs):
+            corpus = get_corpus()
+            top_k = int(kwargs.get("top_k", 5))
+            return [str(doc_id) for doc_id in corpus.head(top_k)["doc_id"].tolist()]
+      edit:
+        guards:
+          - length
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5

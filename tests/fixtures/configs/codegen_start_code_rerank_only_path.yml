@@ -1,0 +1,27 @@
+strategy:
+  name: codegen_start_code_rerank_only_fixture
+  type: codegen
+  path: __RUN_PATH__
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - bm25
+      start_code: |
+        def rerank_doug_blog(query, bm25, **kwargs):
+            docs = bm25(query, top_k=5)
+            return [doc["id"] for doc in docs]
+      edit:
+        guards:
+          - length
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
