@@ -268,6 +268,32 @@ def test_run_benchmark_agentic_codegen_fixture_nonzero():
     assert (result.metric_series > 0).any()
 
 
+def test_train_codegen_guarded_wands_ndcg_nonzero(tmp_path: Path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for codegen tests.")
+
+    run_path = tmp_path / "codegen_guarded_wands"
+    config_path = _write_fixture_config(
+        tmp_path,
+        "codegen_guarded_wands_small.yml",
+        run_path,
+    )
+    params = TrainParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="wands",
+        num_queries=2,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    rounds = _load_rounds(Path(result.artifact_path))
+    assert rounds[0]["mean_ndcg"] > 0.0
+
+
 def test_train_codegen_start_code_rerank_only_wrapper(tmp_path: Path):
     run_path = tmp_path / "codegen_rerank_only"
     config_path = _write_fixture_config(

@@ -1,0 +1,26 @@
+strategy:
+  name: codegen_guarded_wands_small
+  type: codegen
+  path: __RUN_PATH__
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+        - e5_base_v2
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 10
+              max_cols: 120
+      eval:
+        train_fraction: 0.20
+        seed: 1234
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 10
