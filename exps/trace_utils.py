@@ -16,5 +16,4 @@ def build_agentic_trace_root(
         strategy_name=strategy_name,
         strategy_type="agentic",
         run_started_at=run_started_at,
-        purpose="trace",
     )

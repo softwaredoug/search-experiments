@@ -159,7 +159,7 @@ See docs/agentic_filesystem_prd.md
 Agentic runs record tool calls and outputs under a working folder rooted at:
 
 ```
-~/.search-experiments/agentic/traces/<dataset>/<strategy_name>/<timestamp>
+~/.search-experiments/agentic/<dataset>/<strategy_name>/<timestamp>
 ```
 
 This path is created via the shared run-folder utility so that run/train commands use a consistent layout.

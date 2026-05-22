@@ -28,7 +28,6 @@ def make_codegen_dir(
         strategy_name=strategy_name,
         strategy_type="codegen",
         run_started_at=run_started_at,
-        purpose="train",
     )
 
 

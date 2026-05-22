@@ -17,5 +17,4 @@ def make_train_run_dir(
         strategy_name=strategy_name,
         strategy_type=strategy_type,
         run_started_at=run_started_at,
-        purpose="train",
     )

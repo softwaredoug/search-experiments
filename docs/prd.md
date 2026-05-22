@@ -99,7 +99,7 @@ All runners use a shared utility to create working folders for each strategy run
 - Training (codegen, etc):
   `~/.search-experiments/<strategy_type>/<dataset>/<strategy_name>/<timestamp>`
 - Agentic traces:
-  `~/.search-experiments/agentic/traces/<dataset>/<strategy_name>/<timestamp>`
+  `~/.search-experiments/agentic/<dataset>/<strategy_name>/<timestamp>`
 
 ## Strategy Agnostic Scripts
 
