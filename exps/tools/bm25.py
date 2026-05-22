@@ -63,14 +63,15 @@ def make_bm25_tool(
 
         results = []
         for _, row in top_rows.iterrows():
-            results.append(
-                {
-                    "id": row.get("doc_id", row.name),
-                    "title": row.get("title", ""),
-                    "description": row.get("description", ""),
-                    "score": row.get("score", 0.0),
-                }
-            )
+            result = {
+                "id": row.get("doc_id", row.name),
+                "title": row.get("title", ""),
+                "description": row.get("description", ""),
+                "score": row.get("score", 0.0),
+            }
+            if "path" in top_rows.columns:
+                result["path"] = row.get("path", "")
+            results.append(result)
         return results
 
     return search_bm25
@@ -177,14 +178,15 @@ def make_fielded_bm25_tool(corpus):
 
         results = []
         for _, row in top_rows.iterrows():
-            results.append(
-                {
-                    "id": row.get("doc_id"),
-                    "title": row.get("title", ""),
-                    "description": row.get("description", ""),
-                    "score": row.get("score", 0.0),
-                }
-            )
+            result = {
+                "id": row.get("doc_id"),
+                "title": row.get("title", ""),
+                "description": row.get("description", ""),
+                "score": row.get("score", 0.0),
+            }
+            if "path" in top_rows.columns:
+                result["path"] = row.get("path", "")
+            results.append(result)
         return results
 
     return fielded_bm25
