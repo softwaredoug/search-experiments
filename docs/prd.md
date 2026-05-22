@@ -92,6 +92,15 @@ When a strategy is run on a dataset, the results might cached to disk by run_str
 
 You can force the cache to be bypassed with cache=False to run_strategy. The user controls with --no-cache (this only affects run_strategy results, not BM25 indices or embeddings).
 
+## Run / train working folders
+
+All runners use a shared utility to create working folders for each strategy run.
+
+- Training (codegen, etc):
+  `~/.search-experiments/<strategy_type>/<dataset>/<strategy_name>/<timestamp>`
+- Agentic traces:
+  `~/.search-experiments/agentic/traces/<dataset>/<strategy_name>/<timestamp>`
+
 ## Strategy Agnostic Scripts
 
 The different scripts here that compare strategies should take as "--strategy" argument a yml file. 

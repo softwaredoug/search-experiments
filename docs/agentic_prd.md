@@ -154,6 +154,16 @@ File system tools allow the agent to search the file system using standard comma
 
 See docs/agentic_filesystem_prd.md
 
+### Agentic trace folders
+
+Agentic runs record tool calls and outputs under a working folder rooted at:
+
+```
+~/.search-experiments/agentic/traces/<dataset>/<strategy_name>/<timestamp>
+```
+
+This path is created via the shared run-folder utility so that run/train commands use a consistent layout.
+
 
 ## Harness constraints
 

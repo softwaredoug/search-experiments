@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 
 from exps.paths import SEARCH_EXPERIMENTS_ROOT
+from exps.run_dirs import make_strategy_run_dir
 
 
 CODEGEN_ROOT = SEARCH_EXPERIMENTS_ROOT / "codegen"
@@ -23,10 +23,13 @@ def find_latest_codegen_run(dataset: str, strategy_name: str) -> Path | None:
 def make_codegen_dir(
     dataset: str, strategy_name: str, *, run_started_at: str | None = None
 ) -> Path:
-    timestamp = run_started_at or datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    output_dir = CODEGEN_ROOT / dataset / strategy_name / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
+    return make_strategy_run_dir(
+        dataset=dataset,
+        strategy_name=strategy_name,
+        strategy_type="codegen",
+        run_started_at=run_started_at,
+        purpose="train",
+    )
 
 
 def reranker_path(output_dir: Path) -> Path:

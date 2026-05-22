@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
-from exps.paths import SEARCH_EXPERIMENTS_ROOT
+from exps.run_dirs import make_strategy_run_dir
 
 
 def make_train_run_dir(
@@ -13,7 +12,10 @@ def make_train_run_dir(
     strategy_type: str,
     run_started_at: str | None = None,
 ) -> Path:
-    timestamp = run_started_at or datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    output_dir = SEARCH_EXPERIMENTS_ROOT / strategy_type / dataset / strategy_name / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
+    return make_strategy_run_dir(
+        dataset=dataset,
+        strategy_name=strategy_name,
+        strategy_type=strategy_type,
+        run_started_at=run_started_at,
+        purpose="train",
+    )

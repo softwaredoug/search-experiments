@@ -15,7 +15,7 @@ from exps.agentic import (
     trace_logger,
 )
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
-from exps.trace_utils import dataset_from_trace_path, slugify
+from exps.run_dirs import dataset_from_trace_path, slugify
 from exps.tools import (
     build_search_tools,
     normalize_search_tools,

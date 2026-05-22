@@ -232,6 +232,8 @@ Generated code should live in
 
 ~/.search-experiments/codegen/<dataset>/<strategy_name>/<timestamp>/reranker.py
 
+This directory is created via the shared run-folder utility used by run/train commands.
+
 
 ## Training / run path
 
