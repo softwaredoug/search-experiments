@@ -212,6 +212,39 @@ def test_run_benchmark_agentic_filesystem_tools():
     assert result.summary["tool_calls_mean"] >= 0.0
 
 
+def test_run_benchmark_agentic_filesystem_traces(tmp_path, monkeypatch):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    trace_root = tmp_path / "search-experiments"
+    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
+    monkeypatch.setattr("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", trace_root)
+
+    params = RunParams(
+        strategy_path="configs/agentic_filesystem.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+    trace_base = trace_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
+    assert trace_base.exists()
+    run_dirs = sorted([path for path in trace_base.iterdir() if path.is_dir()])
+    assert run_dirs
+    query_dirs = [path for path in run_dirs[-1].iterdir() if path.is_dir()]
+    assert query_dirs
+    log_files = list(query_dirs[0].glob("*.log"))
+    assert log_files
+
+
 def test_run_benchmark_agentic_codegen_tool(tmp_path):
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

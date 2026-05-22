@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+
+import pandas as pd
 from fnmatch import fnmatch
 
 
@@ -49,26 +51,39 @@ def _ensure_filesystem_columns(corpus) -> None:
     if "contents" in corpus.columns:
         raise ValueError("Corpus already has a 'contents' column; refusing to overwrite.")
 
-    paths = []
-    contents = []
-    for idx, row in corpus.iterrows():
-        title = row.get("title", "")
-        description = row.get("description", "")
-        if title is None:
-            title = ""
-        if description is None:
-            description = ""
-        doc_id = row.get("doc_id", idx)
-        if doc_id is None:
-            doc_id = idx
-        title_slug = _slugify(str(title)) or "document"
-        id_slug = _slugify(str(doc_id)) or str(doc_id)
-        path = f"/{title_slug}-{id_slug}.txt"
-        paths.append(path)
-        contents.append(_format_contents(str(title), str(description)))
+    title_series = corpus.get("title")
+    if title_series is None:
+        title_series = pd.Series("", index=corpus.index)
+    title_series = title_series.fillna("").astype(str)
 
-    corpus["path"] = paths
-    corpus["contents"] = contents
+    description_series = corpus.get("description")
+    if description_series is None:
+        description_series = pd.Series("", index=corpus.index)
+    description_series = description_series.fillna("").astype(str)
+
+    doc_id_series = corpus.get("doc_id")
+    if doc_id_series is None:
+        doc_id_series = pd.Series(corpus.index, index=corpus.index)
+    doc_id_series = doc_id_series.fillna("").astype(str)
+
+    title_slug = (
+        title_series.str.lower()
+        .str.replace(r"[^a-z0-9]+", "-", regex=True)
+        .str.replace(r"-+", "-", regex=True)
+        .str.strip("-")
+    )
+    title_slug = title_slug.mask(title_slug == "", "document")
+
+    id_slug = (
+        doc_id_series.str.lower()
+        .str.replace(r"[^a-z0-9]+", "-", regex=True)
+        .str.replace(r"-+", "-", regex=True)
+        .str.strip("-")
+    )
+    id_slug = id_slug.mask(id_slug == "", doc_id_series)
+
+    corpus["path"] = "/" + title_slug + "-" + id_slug + ".txt"
+    corpus["contents"] = "Title: " + title_series + "\n\nDescription: " + description_series
     attrs["_filesystem_indexed"] = True
 
 
