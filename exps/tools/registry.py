@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from exps.tools.bm25 import make_bm25_tool, make_fielded_bm25_tool
+from exps.tools.bash_tool import make_bash_tool, make_bash_wands_tool
 from exps.tools.codegen import make_codegen_tool
 from exps.tools.embeddings import make_embedding_tool
 from exps.tools.filesystem import (
@@ -22,6 +23,8 @@ from exps.tools.wands import (
 TOOL_REGISTRY = {
     "bm25": {"builder": make_bm25_tool, "kind": "agentic"},
     "fielded_bm25": {"builder": make_fielded_bm25_tool, "kind": "agentic"},
+    "bash": {"builder": make_bash_tool, "kind": "agentic"},
+    "bash_wands": {"builder": make_bash_wands_tool, "kind": "agentic"},
     "minilm": {"builder": make_embedding_tool, "kind": "agentic"},
     "embeddings": {"builder": make_embedding_tool, "kind": "agentic"},
     "codegen": {"builder": make_codegen_tool, "kind": "agentic"},

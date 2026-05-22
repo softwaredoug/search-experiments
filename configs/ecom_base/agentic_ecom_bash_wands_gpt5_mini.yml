@@ -1,0 +1,21 @@
+strategy:
+  name: agentic_ecom_bash_wands_gpt5_mini
+  type: agentic
+  description: |
+    Agentic search using the sandboxed bash filesystem tool over the WANDS dataset.
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use the bash tool to find relevant products.
+
+      The bash tool runs inside a sandboxed container. It executes commands in /corpus,
+      which is the mounted dataset directory. Use shell commands to search files and
+      then return results per the SearchResults schema.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+    search_tools:
+      - bash_wands

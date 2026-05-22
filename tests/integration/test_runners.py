@@ -5,6 +5,7 @@ See docs/runner_tests_prd.md for requirements.
 
 import json
 import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -504,6 +505,63 @@ strategy:
           model: gpt-5-mini
           max_alternatives: 2
       - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
+def _docker_available() -> bool:
+    try:
+        subprocess.run(
+            ["docker", "info"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    return True
+
+
+def test_run_benchmark_agentic_bash_tool(tmp_path, monkeypatch):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+    if not _docker_available():
+        pytest.skip("Docker is required for bash tool integration test.")
+
+    trace_root = tmp_path / "search-experiments"
+    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
+    monkeypatch.setattr("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", trace_root)
+    monkeypatch.setattr("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", trace_root)
+
+    config_path = tmp_path / "agentic_bash.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_bash_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use the bash tool to search /corpus for relevant products.
+    search_tools:
+      - bash
 """.lstrip(),
         encoding="utf-8",
     )

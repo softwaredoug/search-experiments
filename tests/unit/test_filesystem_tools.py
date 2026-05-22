@@ -134,3 +134,22 @@ def test_cat_missing_path_raises():
     cat_tool = make_filesystem_cat_tool(corpus)
     with pytest.raises(ValueError, match="No file found"):
         cat_tool("/missing.txt")
+
+
+def test_long_title_truncates_filename():
+    long_title = "x" * 400
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [12345],
+            "title": [long_title],
+            "description": ["desc"],
+        }
+    )
+    ls_tool = make_filesystem_ls_tool(corpus)
+    paths = ls_tool("/", "**/*.txt", max_results=5)
+    assert len(paths) == 1
+    path = paths[0]
+    filename = path.lstrip("/")
+    assert len(filename) <= 200
+    assert "12345" in filename
+    assert filename.endswith(".txt")

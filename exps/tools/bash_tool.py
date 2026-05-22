@@ -1,0 +1,45 @@
+from __future__ import annotations
+
+from exps.tools.bash_service import start_bash_service
+from exps.tools.filesystem_index import ensure_filesystem_on_disk
+
+
+def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
+    if not dataset_name:
+        raise ValueError("bash tool requires dataset_name")
+    dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant=variant)
+    service = start_bash_service(dataset_dir)
+
+    def bash(command: str, timeout: int = 30, agent_state=None) -> str:
+        """Execute a bash command inside the sandboxed filesystem service.
+
+        Commands run inside /corpus which maps to the dataset directory.
+        """
+        return service.execute(command, timeout=timeout)
+
+    bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
+    bash.__doc__ = (
+        "Execute bash commands inside the sandboxed filesystem service. "
+        f"Search within {dataset_dir}. Commands run in /corpus."
+    )
+    return bash
+
+
+def make_bash_tool(
+    corpus,
+    *,
+    dataset_name: str | None = None,
+    tool_config: dict | None = None,
+    **_unused,
+):
+    return _make_bash_tool(corpus, dataset_name=dataset_name, variant="default")
+
+
+def make_bash_wands_tool(
+    corpus,
+    *,
+    dataset_name: str | None = None,
+    tool_config: dict | None = None,
+    **_unused,
+):
+    return _make_bash_tool(corpus, dataset_name=dataset_name, variant="wands")

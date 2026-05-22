@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from pathlib import PurePosixPath
@@ -22,6 +23,20 @@ def _slugify_series(values: pd.Series) -> pd.Series:
         .str.replace(r"-+", "-", regex=True)
         .str.strip("-")
     )
+
+
+def _build_filename(title_slug: str, id_slug: str, *, max_len: int = 200) -> str:
+    base = f"{title_slug}-{id_slug}.txt"
+    if len(base) <= max_len:
+        return base
+    digest = hashlib.sha1(base.encode("utf-8")).hexdigest()[:8]
+    suffix = f"-{digest}-{id_slug}.txt"
+    max_title_len = max_len - len(suffix)
+    if max_title_len < 1:
+        truncated_title = title_slug[:1] if title_slug else "d"
+        return f"{truncated_title}{suffix}"
+    truncated_title = title_slug[:max_title_len]
+    return f"{truncated_title}{suffix}"
 
 
 def _normalize_dir(path: str) -> str:
@@ -124,7 +139,11 @@ def _default_path_builder(
 ) -> pd.Series:
     title_slug = _slugify_series(title_series).mask(lambda s: s == "", "document")
     id_slug = _slugify_series(doc_id_series).mask(lambda s: s == "", doc_id_series)
-    return "/" + title_slug + "-" + id_slug + ".txt"
+    filenames = [
+        _build_filename(title, doc_id)
+        for title, doc_id in zip(title_slug.tolist(), id_slug.tolist())
+    ]
+    return pd.Series([f"/{name}" for name in filenames], index=title_series.index)
 
 
 def _wands_path_builder(
@@ -134,7 +153,13 @@ def _wands_path_builder(
 ) -> pd.Series:
     title_slug = _slugify_series(title_series).mask(lambda s: s == "", "document")
     id_slug = _slugify_series(doc_id_series).mask(lambda s: s == "", doc_id_series)
-    base_name = title_slug + "-" + id_slug + ".txt"
+    base_name = pd.Series(
+        [
+            _build_filename(title, doc_id)
+            for title, doc_id in zip(title_slug.tolist(), id_slug.tolist())
+        ],
+        index=title_series.index,
+    )
 
     category_series = corpus.get("category")
     if category_series is None:
@@ -197,7 +222,7 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
         return sorted(matches)
 
     def grep(pattern: str, glob: str, num_results: int = 50) -> list[dict[str, str]]:
-        """Search for a pattern in files matching the glob, at most 50 results."""
+        """Search for a regex pattern in files matching the glob, at most 50 results."""
         if num_results > 50:
             raise ValueError("num_results must be <= 50")
         if num_results <= 0:

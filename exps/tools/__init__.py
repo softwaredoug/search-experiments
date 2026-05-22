@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from exps.tools.bm25 import make_bm25_tool, make_fielded_bm25_tool
+from exps.tools.bash_tool import make_bash_tool, make_bash_wands_tool
 from exps.tools.builder import (
     build_search_tools,
     make_guarded_search_tool,
@@ -49,6 +50,8 @@ __all__ = [
     "guard_disallow_similar_queries",
     "guard_query_min_length",
     "make_bm25_tool",
+    "make_bash_tool",
+    "make_bash_wands_tool",
     "make_check_features_wands_tool",
     "make_codegen_tool",
     "make_embedding_tool",

@@ -195,7 +195,7 @@ def build_search_tools(
             if dataset_name != "wands":
                 raise ValueError(f"{tool_name} is only available for wands dataset.")
         builder = entry["builder"]
-        if tool_name in {"codegen", "query_rewrite"}:
+        if tool_name in {"codegen", "query_rewrite", "bash", "bash_wands"}:
             tool_fn = builder(
                 corpus,
                 tool_config=tool.get("config") or {},

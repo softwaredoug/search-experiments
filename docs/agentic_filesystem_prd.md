@@ -104,3 +104,44 @@ Tool names:
 - `ls_wands`
 - `grep_wands`
 - `cat_wands`
+
+### Raw filesystem / bash tool
+
+If the tool `bash` is used, then direct bash commands are allowed.
+
+Instead of searching a pandas dataframe, you should write the corpus to the actual file system. 
+
+It should be written to 
+
+<search experimetns root>/filesystem/<dataset_name>/
+
+Here <search experimetns root> is the data / working directory (ie ~/.search-experiments) for this repo
+
+If this exists, do not regenerate it.
+
+Now the agent can invoke `bash` commands to search the file system directly.
+
+Tell the agent the directory the data is stored and that's where it should search. 
+
+### Docker container with service 
+
+Start a docker container with a small service that takes a bash command, executes it, and returns the results. This is a
+more secure way to allow bash commands without giving the agent direct access to the file system.
+
+Just use built in http server libraries in python to do this. The service should be started when the tool is created and
+stopped when the tool is destroyed.
+
+It should basically mount the data directory and have an endpoint like /execute that takes a bash command, executes it,
+and returns the results.
+
+The docker container should mount the <search experimetns root>/filesystem/<dataset_name>/ directory to /corpus in the
+container, and the service should execute bash commands in that directory.
+
+### Dataset specific
+
+Note if 
+
+bash_wands
+
+is use, then the WANDS data should be written to the filesystem with the category/subcategory structure as described
+above. The service should also be aware of this structure and execute commands in the correct directory.
