@@ -214,9 +214,14 @@ class Codegen:
                 "reranker_round_*.py": "per-round reranker snapshots",
             },
         )
+        search_tool, evaluate_tool, commit_patch_tool, grep_tool = self.reranker.tools()
+
         return [
             *[tool.fn for tool in self.search_tool_state.search_tools],
-            *self.reranker.tools(),
+            search_tool,
+            evaluate_tool,
+            commit_patch_tool,
+            grep_tool,
         ]
 
     def _refresh_round_state(self, round_idx: int) -> None:

@@ -5,7 +5,7 @@ description = "Pseudo relevance feedback benchmarks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git@20ea5bf537eea7d12e1388fb975561c48a691f8c",
+    "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git@f00a5bb572fcc4c23e88b8f2f754e16ff5ba1c42",
     "pyyaml>=6.0.2",
 ]
 
