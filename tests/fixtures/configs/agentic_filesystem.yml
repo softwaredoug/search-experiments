@@ -1,0 +1,13 @@
+strategy:
+  name: agentic_filesystem_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use filesystem tools to find the most relevant products.
+      Use grep to find matching files, cat to read them, and then rank results.
+    search_tools:
+      - ls
+      - grep
+      - cat

@@ -10,6 +10,11 @@ from exps.tools.builder import (
 )
 from exps.tools.codegen import make_codegen_tool
 from exps.tools.embeddings import make_embedding_tool
+from exps.tools.filesystem import (
+    make_filesystem_cat_tool,
+    make_filesystem_grep_tool,
+    make_filesystem_ls_tool,
+)
 from exps.tools.guards import (
     GUARDS,
     _minilm_guard_model,
@@ -44,6 +49,9 @@ __all__ = [
     "make_check_features_wands_tool",
     "make_codegen_tool",
     "make_embedding_tool",
+    "make_filesystem_cat_tool",
+    "make_filesystem_grep_tool",
+    "make_filesystem_ls_tool",
     "make_fielded_bm25_tool",
     "make_get_corpus_tool",
     "make_guarded_search_tool",

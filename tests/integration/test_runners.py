@@ -191,6 +191,27 @@ def test_run_benchmark_agentic_guarded():
     assert result.summary["tool_calls_std"] >= 0.0
 
 
+def test_run_benchmark_agentic_filesystem_tools():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/agentic_filesystem.yml",
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert result.summary["tool_calls_mean"] >= 0.0
+
+
 def test_run_benchmark_agentic_codegen_tool(tmp_path):
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

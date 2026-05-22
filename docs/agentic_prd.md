@@ -148,6 +148,13 @@ The fielded BM25 tool accepts a weighted list of fields and an operator:
 Operators: and, or, phrase. Phrase treats the query tokens as a single phrase and
 scores the token list as one term. Only title and description are supported.
 
+### Grep + File system tools
+
+File system tools allow the agent to search the file system using standard commands like "ls", "cat", and "grep". It involves writing an index for the dataset on the filesystem and then giving the agent grep, ls, cat to search the file system.
+
+See docs/agentic_filesystem_prd.md
+
+
 ## Harness constraints
 
 Some params require wrapping the agentic loop itself in a harness to drive execution.

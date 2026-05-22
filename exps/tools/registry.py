@@ -3,6 +3,11 @@ from __future__ import annotations
 from exps.tools.bm25 import make_bm25_tool, make_fielded_bm25_tool
 from exps.tools.codegen import make_codegen_tool
 from exps.tools.embeddings import make_embedding_tool
+from exps.tools.filesystem import (
+    make_filesystem_cat_tool,
+    make_filesystem_grep_tool,
+    make_filesystem_ls_tool,
+)
 from exps.tools.query_rewrite import make_query_rewrite_tool
 from exps.tools.raw import make_get_corpus_tool
 from exps.tools.wands import (
@@ -19,6 +24,9 @@ TOOL_REGISTRY = {
     "codegen": {"builder": make_codegen_tool, "kind": "agentic"},
     "query_rewrite": {"builder": make_query_rewrite_tool, "kind": "agentic"},
     "get_corpus": {"builder": make_get_corpus_tool, "kind": "raw"},
+    "ls": {"builder": make_filesystem_ls_tool, "kind": "agentic"},
+    "grep": {"builder": make_filesystem_grep_tool, "kind": "agentic"},
+    "cat": {"builder": make_filesystem_cat_tool, "kind": "agentic"},
     "e5_base_v2": {
         "builder": lambda corpus, device=None: make_embedding_tool(
             corpus,
