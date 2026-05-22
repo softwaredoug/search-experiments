@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 import pandas as pd
-from fnmatch import fnmatch
+from fnmatch import fnmatch, translate
 
 
 def _slugify(value: str) -> str:
@@ -32,6 +32,10 @@ def _normalize_glob(prefix: str, glob: str) -> str:
     if glob.startswith("/"):
         return glob
     return f"{prefix}{glob}"
+
+
+def _glob_to_regex(glob: str) -> re.Pattern:
+    return re.compile(translate(glob))
 
 
 def _format_contents(title: str, description: str) -> str:
@@ -89,6 +93,7 @@ def _ensure_filesystem_columns(corpus) -> None:
 
 def make_filesystem_ls_tool(corpus):
     _ensure_filesystem_columns(corpus)
+    path_series = corpus["path"].astype(str)
 
     def ls(path: str, glob: str, max_results: int = 50) -> list[str]:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
@@ -98,13 +103,11 @@ def make_filesystem_ls_tool(corpus):
             return []
         prefix = _normalize_dir(path)
         pattern = _normalize_glob(prefix, glob)
-        matches = []
-        for item in corpus["path"].astype(str):
-            if not item.startswith(prefix):
-                continue
-            if fnmatch(item, pattern):
-                matches.append(item)
-        return sorted(matches)[: max_results]
+        pattern_re = _glob_to_regex(pattern)
+        mask = path_series.str.startswith(prefix) & path_series.str.match(pattern_re)
+        if not mask.any():
+            return []
+        return path_series[mask].sort_values().head(max_results).tolist()
 
     return ls
 
@@ -119,6 +122,8 @@ def _snippet_from_match(text: str, match: re.Match, window: int = 60) -> str:
 
 def make_filesystem_grep_tool(corpus):
     _ensure_filesystem_columns(corpus)
+    path_series = corpus["path"].astype(str)
+    contents_series = corpus["contents"].astype(str)
 
     def grep(pattern: str, glob: str, num_results: int = 50) -> list[dict[str, str]]:
         """Search for a pattern in files matching the glob, at most 50 results."""
@@ -131,16 +136,22 @@ def make_filesystem_grep_tool(corpus):
         except re.error as exc:
             raise ValueError(f"Invalid regex pattern: {pattern}") from exc
         match_pattern = _normalize_glob("/", glob)
+        match_pattern_re = _glob_to_regex(match_pattern)
         results = []
-        for path, contents in zip(corpus["path"].astype(str), corpus["contents"].astype(str)):
-            if not fnmatch(path, match_pattern):
-                continue
+        path_mask = path_series.str.match(match_pattern_re)
+        if not path_mask.any():
+            return []
+        contents_mask = contents_series[path_mask].str.contains(regex, regex=True, na=False)
+        if not contents_mask.any():
+            return []
+        matched_index = contents_mask[contents_mask].index[:num_results]
+        for idx in matched_index:
+            path = path_series.loc[idx]
+            contents = contents_series.loc[idx]
             match = regex.search(contents)
             if not match:
                 continue
             results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
-            if len(results) >= num_results:
-                break
         return results
 
     return grep
@@ -148,12 +159,21 @@ def make_filesystem_grep_tool(corpus):
 
 def make_filesystem_cat_tool(corpus):
     _ensure_filesystem_columns(corpus)
+    path_series = corpus["path"].astype(str)
+    contents_series = corpus["contents"].astype(str)
+    path_index = None
+    if not path_series.duplicated().any():
+        path_index = dict(zip(path_series.tolist(), contents_series.tolist()))
 
     def cat(path: str) -> str:
         """Return the contents of a file as a string."""
         if not isinstance(path, str) or not path.strip():
             raise ValueError("path must be a non-empty string")
-        matches = corpus.loc[corpus["path"] == path, "contents"]
+        if path_index is not None:
+            if path not in path_index:
+                raise ValueError(f"No file found for path: {path}")
+            return str(path_index[path])
+        matches = contents_series[path_series == path]
         if matches.empty:
             raise ValueError(f"No file found for path: {path}")
         if len(matches) > 1:
