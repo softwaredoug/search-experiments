@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 import pandas as pd
-from fnmatch import fnmatch, translate
+from pathlib import PurePosixPath
 
 
 def _slugify(value: str) -> str:
@@ -34,14 +34,29 @@ def _normalize_glob(prefix: str, glob: str) -> str:
     return f"{prefix}{glob}"
 
 
-def _glob_to_regex(glob: str) -> re.Pattern:
-    return re.compile(translate(glob))
+def _normalize_match_pattern(pattern: str) -> str:
+    normalized = pattern.strip()
+    if normalized.startswith("/"):
+        normalized = normalized[1:]
+    return normalized
 
 
-def _format_contents(title: str, description: str) -> str:
+def _match_glob(pattern: str, path: str) -> bool:
+    normalized_pattern = _normalize_match_pattern(pattern)
+    normalized_path = path[1:] if path.startswith("/") else path
+    path_obj = PurePosixPath(normalized_path)
+    if path_obj.match(normalized_pattern):
+        return True
+    if normalized_pattern.startswith("**/") and "/" not in normalized_path:
+        return path_obj.match(normalized_pattern[3:])
+    return False
+
+
+def _format_contents(title: str, description: str, doc_id: str) -> str:
     title_value = title or ""
     description_value = description or ""
-    return f"Title: {title_value}\n\nDescription: {description_value}"
+    doc_id_value = doc_id or ""
+    return f"# {title_value} (ID: {doc_id_value})\n\n{description_value}"
 
 
 def _ensure_filesystem_columns(corpus) -> None:
@@ -87,13 +102,21 @@ def _ensure_filesystem_columns(corpus) -> None:
     id_slug = id_slug.mask(id_slug == "", doc_id_series)
 
     corpus["path"] = "/" + title_slug + "-" + id_slug + ".txt"
-    corpus["contents"] = "Title: " + title_series + "\n\nDescription: " + description_series
+    corpus["contents"] = (
+        "# "
+        + title_series
+        + " (ID: "
+        + doc_id_series
+        + ")\n\n"
+        + description_series
+    )
     attrs["_filesystem_indexed"] = True
 
 
 def make_filesystem_ls_tool(corpus):
     _ensure_filesystem_columns(corpus)
     path_series = corpus["path"].astype(str)
+    paths = path_series.tolist()
 
     def ls(path: str, glob: str, max_results: int = 50) -> list[str]:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
@@ -103,11 +126,15 @@ def make_filesystem_ls_tool(corpus):
             return []
         prefix = _normalize_dir(path)
         pattern = _normalize_glob(prefix, glob)
-        pattern_re = _glob_to_regex(pattern)
-        mask = path_series.str.startswith(prefix) & path_series.str.match(pattern_re)
-        if not mask.any():
-            return []
-        return path_series[mask].sort_values().head(max_results).tolist()
+        matches = []
+        for item in paths:
+            if not item.startswith(prefix):
+                continue
+            if _match_glob(pattern, item):
+                matches.append(item)
+                if len(matches) >= max_results:
+                    break
+        return sorted(matches)
 
     return ls
 
@@ -124,6 +151,7 @@ def make_filesystem_grep_tool(corpus):
     _ensure_filesystem_columns(corpus)
     path_series = corpus["path"].astype(str)
     contents_series = corpus["contents"].astype(str)
+    path_contents = list(zip(path_series.tolist(), contents_series.tolist()))
 
     def grep(pattern: str, glob: str, num_results: int = 50) -> list[dict[str, str]]:
         """Search for a pattern in files matching the glob, at most 50 results."""
@@ -136,22 +164,16 @@ def make_filesystem_grep_tool(corpus):
         except re.error as exc:
             raise ValueError(f"Invalid regex pattern: {pattern}") from exc
         match_pattern = _normalize_glob("/", glob)
-        match_pattern_re = _glob_to_regex(match_pattern)
         results = []
-        path_mask = path_series.str.match(match_pattern_re)
-        if not path_mask.any():
-            return []
-        contents_mask = contents_series[path_mask].str.contains(regex, regex=True, na=False)
-        if not contents_mask.any():
-            return []
-        matched_index = contents_mask[contents_mask].index[:num_results]
-        for idx in matched_index:
-            path = path_series.loc[idx]
-            contents = contents_series.loc[idx]
+        for path, contents in path_contents:
+            if not _match_glob(match_pattern, path):
+                continue
             match = regex.search(contents)
             if not match:
                 continue
             results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
+            if len(results) >= num_results:
+                break
         return results
 
     return grep

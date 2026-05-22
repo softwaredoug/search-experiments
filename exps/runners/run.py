@@ -166,6 +166,7 @@ def run_benchmark(params: RunParams) -> RunResult:
             params.dataset,
             run_started_at=run_started_at,
         )
+        print(f"Agentic trace root: {trace_path}")
     dataset = get_dataset(
         params.dataset, workers=params.workers, ensure_snowball=requires_bm25
     )
@@ -221,6 +222,13 @@ def run_benchmark(params: RunParams) -> RunResult:
         seed=params.seed,
         cache=not params.no_cache,
     )
+    if trace_path is not None:
+        query_dirs = [path for path in trace_path.iterdir() if path.is_dir()]
+        if not query_dirs:
+            print(
+                "No agentic trace folders were created. If this was a cached run, "
+                "re-run with --no-cache to force tool execution."
+            )
     graded_queries = graded[["query", "query_id"]].drop_duplicates() if not graded.empty else pd.DataFrame()
     if len(graded_queries) != num_queries:
         raise ValueError(

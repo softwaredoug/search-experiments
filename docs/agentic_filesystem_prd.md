@@ -17,12 +17,18 @@ to a "file".
 path: by default, the document title plus ID as a SLUG. IE a document's title is "Red Shoes" and its ID is 123, then the
 path would be /red-shoes-123.txt.
 
-contents: The contents of the file would include a title + description, as follows:
+contents: The contents of the file would include a title + description + doc_id, as follows:
 
 ```
-Title: Red Shoes
+# <Title Text> (ID: <DocID>) 
 
-Description: These are the best red shoes you'll ever find. They're super comfy and stylish.
+<Description Text>
+```
+
+```
+# Red Shoes (ID: 1234)
+
+These are the best red shoes you'll ever find. They're super comfy and stylish.
 ```
 
 ## Tools

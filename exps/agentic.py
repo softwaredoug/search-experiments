@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from time import sleep
+from time import perf_counter, sleep
 from typing import Any, Iterable, Optional
 
 import openai
@@ -35,7 +35,7 @@ Here are some examples of products and relevant / irrelevant results
 
 
 class SearchResultsIds(BaseModel):
-    """The ranked, top 10 search results ordered most relevant to least."""
+    """The ranked, top 10 search result DOC IDs ordered most relevant to least."""
 
     results_summary: str = Field(
         description="The message from you summarizing what you found"
@@ -90,8 +90,23 @@ def call_tool(tool_info: dict[str, ToolAdapter], item, agent_state, logger=None)
     tool_args = tool.args_model.model_validate_json(item.arguments)
 
     logger.info("Calling %s with args %s", tool_name, tool_args)
-    py_resp, json_resp = tool.call(tool_args, agent_state=agent_state)
+    started = perf_counter()
+    try:
+        py_resp, json_resp = tool.call(tool_args, agent_state=agent_state)
+    except Exception as exc:
+        duration_ms = (perf_counter() - started) * 1000
+        logger.exception("Tool %s failed", tool_name)
+        err_msg = f"Error: {exc}"
+        logger.info("output %s", err_msg)
+        logger.info("tool_duration_ms %s %d", tool_name, int(duration_ms))
+        return {
+            "type": "function_call_output",
+            "call_id": item.call_id,
+            "output": err_msg,
+        }
+    duration_ms = (perf_counter() - started) * 1000
     logger.info("output %s", py_resp)
+    logger.info("tool_duration_ms %s %d", tool_name, int(duration_ms))
     return {
         "type": "function_call_output",
         "call_id": item.call_id,
