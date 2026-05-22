@@ -5,6 +5,7 @@ from exps.tools.filesystem import (
     make_filesystem_cat_tool,
     make_filesystem_grep_tool,
     make_filesystem_ls_tool,
+    make_filesystem_ls_wands_tool,
 )
 
 
@@ -27,7 +28,7 @@ def test_filesystem_columns_added_once():
     ls_tool = make_filesystem_ls_tool(corpus)
     assert "path" in corpus.columns
     assert "contents" in corpus.columns
-    assert corpus.attrs.get("_filesystem_indexed") is True
+    assert corpus.attrs.get("_filesystem_indexed") == "default"
 
     cat_tool = make_filesystem_cat_tool(corpus)
     assert cat_tool(corpus.loc[0, "path"]).startswith("# ")
@@ -86,6 +87,46 @@ def test_cat_duplicate_path_raises():
     cat_tool = make_filesystem_cat_tool(corpus)
     with pytest.raises(ValueError, match="Multiple files found"):
         cat_tool(corpus.loc[0, "path"])
+
+
+def test_wands_path_structure():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202, 303],
+            "title": ["Red Shoes", "Ship Wheel", "Brunk Desk"],
+            "description": ["One", "Two", "Three"],
+            "category": ["Decor & Pillows", "Outdoor", ""],
+            "subcategory": ["Wall Decor", "", ""],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    paths = ls_tool("/", "**/*.txt", max_results=10)
+    assert "/decor-pillows/wall-decor/red-shoes-101.txt" in paths
+    assert "/outdoor/ship-wheel-202.txt" in paths
+    assert "/brunk-desk-303.txt" in paths
+
+
+def test_wands_nested_glob_matches():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202],
+            "title": ["Red Rug", "Blue Rug"],
+            "description": ["One", "Two"],
+            "category": ["Rugs", "Rugs"],
+            "subcategory": ["Outdoor", "Indoor"],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    results = ls_tool("/", "/rugs/**/*.txt", max_results=10)
+    assert "/rugs/outdoor/red-rug-101.txt" in results
+    assert "/rugs/indoor/blue-rug-202.txt" in results
+
+
+def test_wands_tools_require_wands_indexing():
+    corpus = _sample_corpus()
+    make_filesystem_ls_tool(corpus)
+    with pytest.raises(ValueError, match="Filesystem already indexed"):
+        make_filesystem_ls_wands_tool(corpus)
 
 
 def test_cat_missing_path_raises():

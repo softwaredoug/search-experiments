@@ -81,3 +81,26 @@ There's existing tool registry plumbing in this code these tools plug into.
 ### Not all tools listed
 
 It's ok, if weird, if only a subset of these tools are listed in the config.
+
+### WANDS filesystem tools
+
+For WANDS, dataset-specific tools use the same tool behavior but construct paths with
+category and subcategory prefixes:
+
+```
+/<category>/<subcategory>/<title-slug>-<id>.txt
+```
+
+When subcategory is missing, the path becomes:
+
+```
+/<category>/<title-slug>-<id>.txt
+```
+
+When both category and subcategory are missing, the path remains at root.
+
+Tool names:
+
+- `ls_wands`
+- `grep_wands`
+- `cat_wands`

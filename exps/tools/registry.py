@@ -5,8 +5,11 @@ from exps.tools.codegen import make_codegen_tool
 from exps.tools.embeddings import make_embedding_tool
 from exps.tools.filesystem import (
     make_filesystem_cat_tool,
+    make_filesystem_cat_wands_tool,
     make_filesystem_grep_tool,
+    make_filesystem_grep_wands_tool,
     make_filesystem_ls_tool,
+    make_filesystem_ls_wands_tool,
 )
 from exps.tools.query_rewrite import make_query_rewrite_tool
 from exps.tools.raw import make_get_corpus_tool
@@ -27,6 +30,9 @@ TOOL_REGISTRY = {
     "ls": {"builder": make_filesystem_ls_tool, "kind": "agentic"},
     "grep": {"builder": make_filesystem_grep_tool, "kind": "agentic"},
     "cat": {"builder": make_filesystem_cat_tool, "kind": "agentic"},
+    "ls_wands": {"builder": make_filesystem_ls_wands_tool, "kind": "agentic"},
+    "grep_wands": {"builder": make_filesystem_grep_wands_tool, "kind": "agentic"},
+    "cat_wands": {"builder": make_filesystem_cat_wands_tool, "kind": "agentic"},
     "e5_base_v2": {
         "builder": lambda corpus, device=None: make_embedding_tool(
             corpus,
