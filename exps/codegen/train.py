@@ -57,7 +57,7 @@ def _ensure_reranker_wrapper(code: str, rerank_name: str) -> str:
         f"\n\n"
         f"def {rerank_name}(query, top_k, *tool_fns, **kwargs):\n"
         f"    try:\n"
-        f"        return {candidate}(query, top_k, *tool_fns, **kwargs)\n"
+        f"        return {candidate}(query, top_k=top_k, *tool_fns, **kwargs)\n"
         f"    except TypeError:\n"
         f"        return {candidate}(query, *tool_fns, **kwargs)\n"
     )

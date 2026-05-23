@@ -34,7 +34,7 @@ def _validate_start_code(code: str, rerank_name: str, tool_fns: list[callable]) 
     try:
         signature = inspect.signature(rerank_fn)
         if "top_k" in signature.parameters:
-            rerank_fn("test query", top_k=10, *tool_fns)
+            rerank_fn("test query", 10, *tool_fns)
         else:
             rerank_fn("test query", *tool_fns)
     except Exception as exc:
