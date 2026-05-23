@@ -228,7 +228,6 @@ strategy:
   name: agentic_orchestrate_fixture
   type: agentic
   params:
-    topology: orchestrate
     model: gpt-5-mini
     reasoning: low
     system_prompt: |
@@ -236,6 +235,7 @@ strategy:
     subagent_system_prompt: |
       You help with tasks searchinging / finding content as instructed.
     search_tools:
+      - delegate_task
       - bm25
 """.lstrip(),
         encoding="utf-8",

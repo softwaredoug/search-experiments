@@ -20,6 +20,17 @@ def _append_tool_output(results: list[dict], output: Any) -> None:
         results.append(output)
 
 
+def _collect_tool_outputs(items: list[dict]) -> list[dict]:
+    results: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "function_call_output":
+            continue
+        _append_tool_output(results, item.get("output"))
+    return results
+
+
 def _log_subagent_outputs(agent_state: dict, items: list[dict]) -> None:
     logger = agent_state.get("trace_logger")
     if logger is None:
@@ -64,12 +75,23 @@ def build_task_tool(
         )
         inputs = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Task: {task}\n"},
+            {
+                "role": "user",
+                "content": (
+                    f"Task: {task}\n"
+                    "Use the available search tools to find results. "
+                    "Do not ask follow-up questions; return tool results."
+                ),
+            },
         ]
         previous_inputs = list(inputs)
         logger = agent_state.get("trace_logger")
-        resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
-        output = resp.output[-1].content[-1].text
-        return output
+        _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
+        new_items = inputs[len(previous_inputs) :]
+        _log_subagent_outputs(agent_state, new_items)
+        results = _collect_tool_outputs(new_items)
+        _log_task_tool_result(agent_state, len(results))
+        return results
 
+    task_tool.__name__ = "delegate_task"
     return task_tool

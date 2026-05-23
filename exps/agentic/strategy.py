@@ -46,6 +46,28 @@ Here are some examples of products and relevant / irrelevant results
 SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
 
 
+def _extract_delegate_task(tool_config: list) -> tuple[list, bool]:
+    remaining: list = []
+    delegate_task = False
+    for entry in tool_config:
+        if isinstance(entry, str) and entry == "delegate_task":
+            delegate_task = True
+            continue
+        if isinstance(entry, dict) and len(entry) == 1 and "delegate_task" in entry:
+            delegate_task = True
+            continue
+        remaining.append(entry)
+    return remaining, delegate_task
+
+
+def _normalize_search_tools_for_cache(tool_config: list) -> list[dict[str, Any]]:
+    filtered, delegate_task = _extract_delegate_task(tool_config)
+    normalized = normalize_search_tools_for_cache(filtered)
+    if delegate_task:
+        normalized.append({"name": "delegate_task", "guards": [], "config": {}})
+    return normalized
+
+
 class SearchResults(BaseModel):
     """The state of the search agent, which can be used to inform future reasoning and tool use."""
     ranked_results: list[str] = Field(
@@ -146,7 +168,6 @@ class AgenticSearchStrategy(SearchStrategy):
         reasoning: str = "medium",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
-        topology: str = "direct",
         subagent_system_prompt: str = SUBAGENT_SYSTEM_PROMPT,
         stop: list | None = None,
         reprompt: str | None = None,
@@ -158,12 +179,11 @@ class AgenticSearchStrategy(SearchStrategy):
         dataset_name = dataset_from_trace_path(trace_path) if trace_path else None
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
-        if topology not in {"direct", "orchestrate"}:
-            raise ValueError("topology must be 'direct' or 'orchestrate'.")
-        self.topology = topology
         self.subagent_system_prompt = subagent_system_prompt
         self.stop = stop
         self.reprompt = reprompt
+        tool_config, delegate_task = _extract_delegate_task(tool_config)
+        self._delegate_task = delegate_task
         self.tools = build_search_tools(
             corpus,
             tool_config,
@@ -218,16 +238,15 @@ class AgenticSearchStrategy(SearchStrategy):
         reprompt = self.reprompt
         if reprompt is not None and not isinstance(reprompt, str):
             raise ValueError("reprompt must be a string when provided.")
-        if self.topology == "orchestrate":
+        tools = list(self.tools)
+        if self._delegate_task:
             task_tool = build_task_tool(
                 search_tools=self.tools,
                 model=self.model,
                 reasoning=self.reasoning,
                 system_prompt=self.subagent_system_prompt,
             )
-            tools = [task_tool, *self.tools]
-        else:
-            tools = self.tools
+            tools.insert(0, task_tool)
         num_loops = 0
         agent = OpenAIAgent(
             tools=tools,
@@ -300,8 +319,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "model": self.model,
             "reasoning": self.reasoning,
             "system_prompt": self.system_prompt,
-            "search_tools": normalize_search_tools_for_cache(self.search_tools),
-            "topology": self.topology,
+            "search_tools": _normalize_search_tools_for_cache(self.search_tools),
             "subagent_system_prompt": self.subagent_system_prompt,
             "stop": self.stop,
             "reprompt": self.reprompt,

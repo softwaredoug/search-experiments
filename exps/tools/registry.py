@@ -14,7 +14,7 @@ from exps.tools.filesystem import (
 )
 from exps.tools.query_rewrite import make_query_rewrite_tool
 from exps.tools.raw import make_get_corpus_tool
-from exps.tools.todo import make_todoread_tool, make_todowrite_tool
+from exps.tools.todo import make_todo_read_tool, make_todo_write_tool
 from exps.tools.wands import (
     make_check_features_wands_tool,
     make_wands_bm25_tool,
@@ -30,8 +30,8 @@ TOOL_REGISTRY = {
     "embeddings": {"builder": make_embedding_tool, "kind": "agentic"},
     "codegen": {"builder": make_codegen_tool, "kind": "agentic"},
     "query_rewrite": {"builder": make_query_rewrite_tool, "kind": "agentic"},
-    "todowrite": {"builder": make_todowrite_tool, "kind": "agentic"},
-    "todoread": {"builder": make_todoread_tool, "kind": "agentic"},
+    "todo_write": {"builder": make_todo_write_tool, "kind": "agentic"},
+    "todo_read": {"builder": make_todo_read_tool, "kind": "agentic"},
     "get_corpus": {"builder": make_get_corpus_tool, "kind": "raw"},
     "ls": {"builder": make_filesystem_ls_tool, "kind": "agentic"},
     "grep": {"builder": make_filesystem_grep_tool, "kind": "agentic"},

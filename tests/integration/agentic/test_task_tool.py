@@ -21,7 +21,10 @@ def test_task_tool_returns_search_results():
         search_tools=tools,
         model="gpt-5-mini",
         reasoning="low",
-        system_prompt=SUBAGENT_SYSTEM_PROMPT,
+        system_prompt=(
+            "Use the provided search tools to answer the task. "
+            "Always call a search tool and return results."
+        ),
     )
 
     results = task_tool("salon chair", agent_state={})

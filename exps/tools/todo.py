@@ -1,40 +1,33 @@
 from __future__ import annotations
 
-from pathlib import Path
+def _todos_list(agent_state: dict | None) -> list[dict]:
+    if agent_state is None:
+        return []
+    todos = agent_state.get("todos")
+    if todos is None:
+        todos = []
+        agent_state["todos"] = todos
+    return todos
 
 
-def _todos_path(agent_state: dict | None) -> Path | None:
-    if not agent_state:
-        return None
-    run_dir = agent_state.get("run_dir")
-    if not run_dir:
-        return None
-    return Path(run_dir) / "todos.txt"
-
-
-def make_todowrite_tool(*_args, **_kwargs):
-    def todowrite(todo: str, status: str, agent_state=None) -> str:
-        """Write a todo entry to todos.txt in the run folder."""
-        path = _todos_path(agent_state)
-        if path is None:
-            return "Error! run_dir not set in agent_state."
-        path.parent.mkdir(parents=True, exist_ok=True)
-        entry = f"{status}\t{todo}".strip() + "\n"
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(entry)
+def make_todo_write_tool(*_args, **_kwargs):
+    def todo_write(todo: str, status: str, agent_state=None) -> str:
+        """Write a todo entry to the in-memory todo list."""
+        print(f"TODO: {todo} (status: {status})")
+        todos = _todos_list(agent_state)
+        todos.append({"todo": todo, "status": status})
         return "OK"
 
-    return todowrite
+    return todo_write
 
 
-def make_todoread_tool(*_args, **_kwargs):
-    def todoread(agent_state=None) -> str:
-        """Read todos.txt from the run folder and return its contents."""
-        path = _todos_path(agent_state)
-        if path is None:
-            return "Error! run_dir not set in agent_state."
-        if not path.exists():
+def make_todo_read_tool(*_args, **_kwargs):
+    def todo_read(agent_state=None) -> str:
+        """Read the in-memory todo list and return its contents."""
+        todos = _todos_list(agent_state)
+        if not todos:
             return ""
-        return path.read_text(encoding="utf-8")
+        lines = [f"{item.get('status', '')}\t{item.get('todo', '')}" for item in todos]
+        return "\n".join(lines) + "\n"
 
-    return todoread
+    return todo_read

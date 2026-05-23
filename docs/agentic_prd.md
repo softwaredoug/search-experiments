@@ -162,15 +162,17 @@ See docs/agentic_filesystem_prd.md
 
 Similar to coding agents, its useful to track todos as the agent thinks of them and to externalize cognition. But the user should explicitly request these
 
-- todowrite: write a todo to the todo list. Takes two params, a string "todo" and a string "status" (ie "in progress", "done", "not started", or whatever you want). This should write to a file in the run folder called "todos.txt" with the todo and status.
-- todoread: reads the todo list and returns it as a string. This should read from the "todos.txt" file in the run folder and return the contents as a string.
+- todo_write: write a todo to the todo list. Takes two params, a string "todo" and a string "status" (ie "in progress", "done", "not started", or whatever you want). This should append to `agent_state["todos"]`.
+- todo_read: reads the todo list and returns it as a string. This should read from `agent_state["todos"]` and return the contents as a string.
 
 Store this on the agent_state
 
 
-### Task tool
+### Delegate task tool
 
-A task
+A delegate_task tool gives a task to a subagent and gets results back.
+
+The subagent gets the same tools as the calling agent, minus the delegate_task tool of course to prevent infinite delegation. The subagent also gets the task description as input which is used as user prompt.
 
 ### Agentic trace folders
 
@@ -205,7 +207,3 @@ If stop is not satisfied, a "reprompt" can be issued as the user message to pass
 ```
     reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
 ```
-
-### TODO tool
-
-A too

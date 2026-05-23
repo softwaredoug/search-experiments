@@ -4,7 +4,6 @@ strategy:
   description: |
     Orchestrated agentic search using the sandboxed bash filesystem tool over the WANDS dataset.
   params:
-    topology: orchestrate
     model: gpt-5-mini
     reasoning: low
     system_prompt: |
@@ -21,4 +20,7 @@ strategy:
       
       The bash tool runs inside a sandboxed container with the corpus
     search_tools:
+      - delegate_task
+      - todoread
+      - todowrite
       - bash_wands
