@@ -1,6 +1,6 @@
 import os
 
-from exps.agentic.strategy import DEFAULT_SYSTEM_PROMPT, SearchResultsIds
+from exps.agentic.strategy import TASK_TOOL_SYSTEM_PROMPT
 from exps.agentic.task import build_task_tool
 from exps.datasets import get_dataset
 from exps.tools import build_search_tools
@@ -21,8 +21,7 @@ def test_task_tool_returns_search_results():
         search_tools=tools,
         model="gpt-5-mini",
         reasoning="low",
-        system_prompt=DEFAULT_SYSTEM_PROMPT,
-        response_model=SearchResultsIds,
+        system_prompt=TASK_TOOL_SYSTEM_PROMPT,
     )
 
     results = task_tool("salon chair", top_k=5, agent_state={})

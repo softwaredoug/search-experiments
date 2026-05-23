@@ -4,7 +4,6 @@ import json
 from typing import Any, Callable
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
-from pydantic import BaseModel
 
 
 def _append_tool_output(results: list[dict], output: Any) -> None:
@@ -33,13 +32,20 @@ def _collect_tool_outputs(items: list[dict]) -> list[dict]:
     return results
 
 
+def _log_subagent_outputs(agent_state: dict, items: list[dict]) -> None:
+    logger = agent_state.get("trace_logger")
+    if logger is None:
+        return
+    for item in items:
+        logger.info("subagent_output %s", item)
+
+
 def build_task_tool(
     *,
     search_tools: list[callable],
     model: str,
     reasoning: str,
     system_prompt: str,
-    response_model: type[BaseModel],
 ) -> Callable[[str, int, dict | None], list[dict]]:
     """Build a task tool for orchestrated agent topologies."""
 
@@ -49,7 +55,6 @@ def build_task_tool(
         agent = OpenAIAgent(
             tools=search_tools,
             model=f"openai/{model}" if "/" not in model else model,
-            response_model=response_model,
             reasoning_level=reasoning,
         )
         inputs = [
@@ -57,8 +62,9 @@ def build_task_tool(
             {"role": "user", "content": f"Task: {task}\nReturn top_k={top_k} results."},
         ]
         previous_inputs = list(inputs)
-        agent.chat(inputs=inputs, agent_state=agent_state)
+        _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state)
         new_items = inputs[len(previous_inputs) :]
+        _log_subagent_outputs(agent_state, new_items)
         results = _collect_tool_outputs(new_items)
         if top_k > 0:
             return results[:top_k]

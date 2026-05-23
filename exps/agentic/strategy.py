@@ -16,6 +16,7 @@ from typing_extensions import Literal
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.run_dirs import dataset_from_trace_path, slugify
 from exps.agentic.examples import append_few_shot_examples
+from exps.agentic.task import build_task_tool
 from exps.tools import (
     build_search_tools,
     normalize_search_tools,
@@ -41,6 +42,9 @@ how close that is to the average furniture shoppers ideal ranking.
 
 Here are some examples of products and relevant / irrelevant results
 """
+
+
+TASK_TOOL_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
 
 
 class SearchResultsIds(BaseModel):
@@ -172,6 +176,7 @@ class AgenticSearchStrategy(SearchStrategy):
         reasoning: str = "medium",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
+        topology: str = "direct",
         stop: list | None = None,
         reprompt: str | None = None,
         embeddings_device: str | None = None,
@@ -182,6 +187,9 @@ class AgenticSearchStrategy(SearchStrategy):
         dataset_name = dataset_from_trace_path(trace_path) if trace_path else None
         tool_config = search_tools or ["bm25"]
         self.search_tools = tool_config
+        if topology not in {"direct", "orchestrate"}:
+            raise ValueError("topology must be 'direct' or 'orchestrate'.")
+        self.topology = topology
         self.stop = stop
         self.reprompt = reprompt
         self.tools = build_search_tools(
@@ -228,19 +236,7 @@ class AgenticSearchStrategy(SearchStrategy):
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
-        query_slug = slugify(query, fallback="query")
-        query_dir = self.trace_path / query_slug
-        if query_dir.exists():
-            counter = 2
-            while True:
-                candidate = self.trace_path / f"{query_slug}_{counter}"
-                try:
-                    candidate.mkdir(parents=True, exist_ok=False)
-                except FileExistsError:
-                    counter += 1
-                    continue
-                query_dir = candidate
-                break
+        query_dir = self.query_path(query)
         inputs = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": query},
@@ -250,15 +246,26 @@ class AgenticSearchStrategy(SearchStrategy):
         reprompt = self.reprompt
         if reprompt is not None and not isinstance(reprompt, str):
             raise ValueError("reprompt must be a string when provided.")
+        if self.topology == "orchestrate":
+            task_tool = build_task_tool(
+                search_tools=self.tools,
+                model=self.model,
+                reasoning=self.reasoning,
+                system_prompt=TASK_TOOL_SYSTEM_PROMPT,
+            )
+            tools = [task_tool]
+        else:
+            tools = self.tools
         num_loops = 0
         agent = OpenAIAgent(
-            tools=self.tools,
+            tools=tools,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
             response_model=SearchResultsIds,
             reasoning_level=self.reasoning,
         )
         with trace_logger(query_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
+            agent_state["trace_logger"] = logger
             while True:
                 previous_inputs = list(inputs)
                 resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state)
@@ -297,6 +304,24 @@ class AgenticSearchStrategy(SearchStrategy):
         )
         return ranked_results, [1.0] * len(ranked_results)
 
+    def query_path(self, query: str) -> Path:
+        if self.trace_path is None:
+            raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
+        query_slug = slugify(query, fallback="query")
+        query_dir = self.trace_path / query_slug
+        if query_dir.exists():
+            counter = 2
+            while True:
+                candidate = self.trace_path / f"{query_slug}_{counter}"
+                try:
+                    candidate.mkdir(parents=True, exist_ok=False)
+                except FileExistsError:
+                    counter += 1
+                    continue
+                query_dir = candidate
+                break
+        return query_dir
+
     @property
     def cache_key(self) -> str:
         payload = {
@@ -305,6 +330,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "reasoning": self.reasoning,
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools_for_cache(self.search_tools),
+            "topology": self.topology,
             "stop": self.stop,
             "reprompt": self.reprompt,
             "embeddings_device": self.embeddings_device,
