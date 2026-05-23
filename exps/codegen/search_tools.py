@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 from pathlib import Path
 
 from exps.codegen.utils import load_rerank_fn
@@ -31,9 +32,10 @@ def _validate_start_code(code: str, rerank_name: str, tool_fns: list[callable]) 
     except Exception as exc:
         raise ValueError(f"start_code must define a callable {rerank_name} function: {exc}") from exc
     try:
-        try:
-            rerank_fn("test query", 10, *tool_fns)
-        except TypeError:
+        signature = inspect.signature(rerank_fn)
+        if "top_k" in signature.parameters:
+            rerank_fn("test query", top_k=10, *tool_fns)
+        else:
             rerank_fn("test query", *tool_fns)
     except Exception as exc:
         raise ValueError(
