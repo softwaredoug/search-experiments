@@ -24,7 +24,7 @@ def test_task_tool_returns_search_results():
         system_prompt=SUBAGENT_SYSTEM_PROMPT,
     )
 
-    results = task_tool("salon chair", top_k=5, agent_state={})
+    results = task_tool("salon chair", agent_state={})
 
     assert isinstance(results, list)
     assert results

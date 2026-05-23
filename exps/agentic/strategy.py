@@ -46,16 +46,8 @@ Here are some examples of products and relevant / irrelevant results
 SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
 
 
-class SearchState(BaseModel):
+class SearchResults(BaseModel):
     """The state of the search agent, which can be used to inform future reasoning and tool use."""
-
-    steps: Optional[list[str]] = Field(
-        description=(
-            "In the form of instructions"
-            "Step-by-step plan that should be followed to find relevant results using the tools available"
-            "Do not incnlude steps already completed"
-        )
-    )
     ranked_results: Optional[list[str]] = Field(
         description="Top ranked search results (their doc_ids) when complete"
     )
@@ -67,7 +59,7 @@ def search(
     inputs: list[dict] | None = None,
     agent_state: Optional[dict] = None,
     model: str = "gpt-5",
-    text_format=SearchState,
+    text_format=SearchResults,
     reasoning: str = "medium",
 ):
     tools = tools or []
@@ -129,7 +121,7 @@ def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
             raise ValueError("Stop condition 'iterations' requires an iterations value.")
         if name == "tool_calls" and "tool_calls" not in params:
             raise ValueError("Stop condition 'tool_calls' requires a tool_calls value.")
-        if name not in {"iterations", "tool_calls", "steps_complete"}:
+        if name not in {"iterations", "tool_calls"}:
             raise ValueError(f"Unknown stop condition: {name}")
         stops.append({"name": name, "params": params})
     return stops
@@ -170,8 +162,6 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("topology must be 'direct' or 'orchestrate'.")
         self.topology = topology
         self.subagent_system_prompt = subagent_system_prompt
-        if stop is None:
-            stop = ["steps_complete"]
         self.stop = stop
         self.reprompt = reprompt
         self.tools = build_search_tools(
@@ -242,7 +232,7 @@ class AgenticSearchStrategy(SearchStrategy):
         agent = OpenAIAgent(
             tools=tools,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=SearchState,
+            response_model=SearchResults,
             reasoning_level=self.reasoning,
         )
         with trace_logger(query_dir) as (logger, trace_path):
@@ -252,29 +242,21 @@ class AgenticSearchStrategy(SearchStrategy):
                 previous_inputs = list(inputs)
                 resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
                 num_loops += 1
-                steps = getattr(resp.output_parsed, "steps", None) or []
-                if steps:
-                    logger.info("agentic_steps %s", steps)
                 tool_calls = agent_state.get("num_tool_calls")
                 if tool_calls is None:
                     tool_calls = _tool_calls_from_inputs(inputs)
                     agent_state["num_tool_calls"] = tool_calls
                 if not stops:
                     break
-                steps_complete = not steps
                 if any(
                     (stopper["name"] == "iterations" and num_loops >= stopper["params"]["iterations"])
                     or (
                         stopper["name"] == "tool_calls"
                         and tool_calls >= stopper["params"]["tool_calls"]
                     )
-                    or (stopper["name"] == "steps_complete" and steps_complete)
                     for stopper in stops
                 ):
                     break
-                if steps:
-                    steps_text = "\n".join(f"- {step}" for step in steps)
-                    inputs.append({"role": "user", "content": f"Steps to follow:\n{steps_text}"})
                 if reprompt:
                     inputs.append({"role": "user", "content": reprompt})
 

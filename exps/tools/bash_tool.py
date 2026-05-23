@@ -22,7 +22,23 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
     def bash(command: str, timeout: int = 30, agent_state=None) -> str:
         """Execute a bash command inside the sandboxed filesystem service.
 
-        Commands run inside /corpus which maps to the dataset directory.
+        Commands run inside /corpus which maps to the dataset directory. There may be
+        subdirectories for any category / subcatgory organization.
+
+        Filenames are document title slug with id txt, ie "red-shoes-1234.txt".
+        Document body is:
+
+        ```
+        <Title> (ID: <ID>)
+
+        <Description + Other Metadata>
+        ```
+
+
+        ```
+        # Red Shoes (ID: 1234)
+
+        These are the best red shoes you'll ever find. They're super comfy and stylish.
         """
         output = service.execute(command, timeout=timeout)
         return _truncate_output(output)

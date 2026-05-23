@@ -39,11 +39,11 @@ def _log_subagent_outputs(agent_state: dict, items: list[dict]) -> None:
         logger.info("subagent_output %s", item)
 
 
-def _log_task_tool_call(agent_state: dict, task: str, top_k: int) -> None:
+def _log_task_tool_call(agent_state: dict, task: str) -> None:
     logger = agent_state.get("trace_logger")
     if logger is None:
         return
-    logger.info("task_tool_call %s", {"task": task, "top_k": top_k})
+    logger.info("task_tool_call %s", {"task": task})
 
 
 def _log_task_tool_result(agent_state: dict, count: int) -> None:
@@ -62,11 +62,11 @@ def build_task_tool(
 ) -> Callable[[str, int, dict | None], list[dict]]:
     """Build a task tool for orchestrated agent topologies."""
 
-    def task_tool(task: str, top_k: int = 10, agent_state: dict | None = None) -> list[dict]:
+    def task_tool(task: str, agent_state: dict | None = None) -> list[dict]:
         """Delegate a search task to a subagent and return tool results."""
         if agent_state is None:
             agent_state = {}
-        _log_task_tool_call(agent_state, task, top_k)
+        _log_task_tool_call(agent_state, task)
         agent = OpenAIAgent(
             tools=search_tools,
             model=f"openai/{model}" if "/" not in model else model,
@@ -75,7 +75,7 @@ def build_task_tool(
         )
         inputs = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Task: {task}\nReturn top_k={top_k} results."},
+            {"role": "user", "content": f"Task: {task}\n"},
         ]
         previous_inputs = list(inputs)
         logger = agent_state.get("trace_logger")
@@ -83,8 +83,6 @@ def build_task_tool(
         new_items = inputs[len(previous_inputs) :]
         _log_subagent_outputs(agent_state, new_items)
         results = _collect_tool_outputs(new_items)
-        if top_k > 0:
-            results = results[:top_k]
         _log_task_tool_result(agent_state, len(results))
         return results
 
