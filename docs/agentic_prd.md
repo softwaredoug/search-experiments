@@ -38,6 +38,8 @@ This calls OpenAI with
 - the query being searched for as the user prompt. 
 - a set of simple search tools that the agent can call to gather info. In this case, BM25 and minilm embedding search. The agent can call these tools with different queries, etc to gather info. The agentic loop continues until the agent decides to stop (or max iterations is reached). Then the final ranked list of results is returned and evaluated.
 
+Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness still applies stop/reprompt logic around that agent loop.
+
 ### Agent state
 
 Everytime we start a search, we initiate "agent_state". That's like a scratchpad for the agentic loop, harness, and tools to track state and prevent illegal operations. See more in "Tool guards" below. 
@@ -117,6 +119,8 @@ IE here's one that rejects repeat queries too similar to previous runs:
 ```
 
 Notice a description of each guard gets appended to the tool description
+
+If a tool raises an exception during a call, the agent receives a string error response instead of crashing the run.
 
 ### Dataset specific tools
 
