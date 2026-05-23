@@ -5,14 +5,9 @@ import json
 
 from cheat_at_search.strategy import SearchStrategy
 
-from exps.agentic.strategy import (
-    DEFAULT_SYSTEM_PROMPT,
-    SearchResultsGraded,
-    agent_run,
-    degrade_hook_check,
-    grades,
-    make_tool_info,
-)
+from cheat_at_search.agent.openai_agent import OpenAIAgent
+
+from exps.agentic.strategy import DEFAULT_SYSTEM_PROMPT, SearchResultsGraded
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.tools import (
     make_bm25_tool,
@@ -80,7 +75,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         return str(title) if title is not None else ""
 
     def search(self, query: str, k: int = 10):
-        validator = degrade_hook_check(query)
+        validator = _degrade_hook_check(query)
         agentic_query = "Find me: " + query
         inputs = [
             {"role": "system", "content": self.system_prompt},
@@ -93,25 +88,24 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
 
         tries = 0
         agent_state = {"past_queries": {}}
-        tool_info = make_tool_info(self.tools)
+        agent = OpenAIAgent(
+            tools=self.tools,
+            model=f"openai/{self.model}" if "/" not in self.model else self.model,
+            response_model=SearchResultsGraded,
+            reasoning_level="medium",
+        )
         resp = None
         while True:
             print("********")
             print(f"ROUND {tries}")
             valid = False
             while not valid:
-                resp, inputs = agent_run(
-                    tool_info,
-                    text_format=SearchResultsGraded,
-                    inputs=inputs,
-                    model=self.model,
-                    agent_state=agent_state,
-                )
-                valid = validator(resp.output_parsed, inputs)
+                resp = agent.loop(inputs=inputs, agent_state=agent_state)
+                valid = validator(resp, inputs)
                 if not valid:
                     print("Validation check failed!")
 
-            graded = grades(query, resp.output_parsed)
+            graded = _grades(query, resp)
             message_back = (
                 "These results can be improved. Can you look at them and fix them?\n\n"
                 "Get creative\n\n"
@@ -131,7 +125,71 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             if tries > 3:
                 break
 
-        ranked_results = [r.doc_id for r in resp.output_parsed.ranked_results][:k]
+        ranked_results = [r.doc_id for r in resp.ranked_results][:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         return ranked_results, [1.0] * len(ranked_results)
+
+
+def _grade_to_emoji(grade):
+    if grade == 0:
+        return "☹️"
+    if grade == 1:
+        return "😑"
+    if grade == 2:
+        return "😃"
+    return "☹️"
+
+
+def _grades(query: str, search_results: SearchResultsGraded):
+    from cheat_at_search.wands_data import labeled_query_products
+
+    query_judgments = labeled_query_products[labeled_query_products["query"] == query]
+    results = []
+    for search_result in search_results.ranked_results:
+        doc_id = search_result.doc_id
+        doc_judgments = query_judgments[query_judgments["doc_id"] == doc_id]
+        if len(doc_judgments) == 0:
+            results.append((doc_id, _grade_to_emoji(None)))
+        else:
+            grade = int(doc_judgments["grade"].values[0])
+            results.append((doc_id, _grade_to_emoji(grade)))
+    return results
+
+
+def _count_smileys(gradeds):
+    count = 0
+    for graded in gradeds:
+        if graded[1] == "😃":
+            count += 1
+    return count
+
+
+def _degrade_hook_check(query: str):
+    def search_degrade_hook(resp, inputs):
+        all_graded = []
+        for input_item in inputs:
+            if hasattr(input_item, "content") and input_item.content is not None:
+                content = input_item.content
+                if content and hasattr(content[-1], "parsed"):
+                    result = content[-1].parsed
+                    if isinstance(result, SearchResultsGraded):
+                        all_graded.append(_grades(query, result))
+        if len(all_graded) > 1:
+            last_smileys = _count_smileys(all_graded[-2])
+            current_smileys = _count_smileys(all_graded[-1])
+            if last_smileys > current_smileys:
+                inputs.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Oh this isn't good, it turns out: You've degraded your relevance, "
+                            f"previously found {last_smileys} relevant results , and now found "
+                            f"{current_smileys}. Please try again"
+                        ),
+                    }
+                )
+                return False
+        return True
+
+    return search_degrade_hook

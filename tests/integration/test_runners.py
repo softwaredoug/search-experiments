@@ -14,7 +14,6 @@ import pytest
 
 from cheat_at_search.search import run_strategy
 
-from exps.agentic.strategy import SearchResultsIds, search
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
@@ -817,85 +816,6 @@ strategy:
         run_benchmark(params)
 
 
-def test_agentic_stop_iterations():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-    reprompt = "Please try again with SearchResultsIds."
-    inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
-    result = search(
-        tools=[],
-        inputs=inputs,
-        stop=[{"iterations": 2}],
-        reprompt=reprompt,
-        model="gpt-5-nano",
-    )
-
-    assert isinstance(result, SearchResultsIds)
-    reprompt_count = sum(
-        1
-        for item in inputs
-        if isinstance(item, dict)
-        and item.get("role") == "user"
-        and item.get("content") == reprompt
-    )
-    assert reprompt_count == 1
-
-
-def test_agentic_stop_tool_calls():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-    def echo_tool(message: str, agent_state=None) -> dict[str, str]:
-        """Return the provided message."""
-        return {"message": message}
-
-    agent_state = {"num_tool_calls": 0}
-    inputs = [
-        {
-            "role": "user",
-            "content": (
-                "Call the echo_tool twice with message 'ping-1' and 'ping-2'. "
-                "Then respond with SearchResultsIds."
-            ),
-        }
-    ]
-    result = search(
-        tools=[echo_tool],
-        inputs=inputs,
-        stop=[{"tool_calls": 2}, {"iterations": 3}],
-        reprompt="Remember to call echo_tool before answering.",
-        agent_state=agent_state,
-        model="gpt-5-nano",
-    )
-
-    assert isinstance(result, SearchResultsIds)
-    assert agent_state["num_tool_calls"] >= 2
-
-
-def test_agentic_reprompt_appends():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-    reprompt = "Try again with a new ordering."
-    inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
-    result = search(
-        tools=[],
-        inputs=inputs,
-        stop=[{"iterations": 3}],
-        reprompt=reprompt,
-        model="gpt-5-nano",
-    )
-
-    assert isinstance(result, SearchResultsIds)
-    reprompt_count = sum(
-        1
-        for item in inputs
-        if isinstance(item, dict)
-        and item.get("role") == "user"
-        and item.get("content") == reprompt
-    )
-    assert reprompt_count == 2
 
 
 def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
