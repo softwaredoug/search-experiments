@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.strategy import SearchStrategy
@@ -106,11 +107,59 @@ def trace_logger(trace_dir: Path):
     trace_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     trace_path = trace_dir / f"{timestamp}.log"
+    logger = logging.getLogger(f"agentic.trace.{trace_dir.name}.{timestamp}")
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(trace_path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.propagate = False
     try:
-        trace_path.touch()
-        yield None, trace_path
+        yield logger, trace_path
     finally:
-        pass
+        handler.close()
+        logger.removeHandler(handler)
+
+
+def _parse_stop_entry(entry: Any) -> tuple[str, dict]:
+    if isinstance(entry, str):
+        return entry, {}
+    if isinstance(entry, dict) and len(entry) == 1:
+        (name, raw_params), = entry.items()
+        if isinstance(raw_params, dict):
+            return name, dict(raw_params)
+        if raw_params is None:
+            return name, {}
+        if name == "iterations":
+            return name, {"iterations": raw_params}
+        if name == "tool_calls":
+            return name, {"tool_calls": raw_params}
+        return name, {"value": raw_params}
+    raise ValueError("Stop entry must be a string or single-key mapping.")
+
+
+def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
+    if not stop_config:
+        return []
+    stops: list[dict[str, Any]] = []
+    for entry in stop_config:
+        name, params = _parse_stop_entry(entry)
+        if name == "iterations" and "iterations" not in params:
+            raise ValueError("Stop condition 'iterations' requires an iterations value.")
+        if name == "tool_calls" and "tool_calls" not in params:
+            raise ValueError("Stop condition 'tool_calls' requires a tool_calls value.")
+        if name not in {"iterations", "tool_calls"}:
+            raise ValueError(f"Unknown stop condition: {name}")
+        stops.append({"name": name, "params": params})
+    return stops
+
+
+def _tool_calls_from_inputs(inputs: list) -> int:
+    count = 0
+    for item in inputs:
+        if isinstance(item, dict) and item.get("type") == "function_call_output":
+            count += 1
+    return count
 
 
 class AgenticSearchStrategy(SearchStrategy):
@@ -198,16 +247,45 @@ class AgenticSearchStrategy(SearchStrategy):
             {"role": "user", "content": query},
         ]
         agent_state = {"num_tool_calls": 0}
-        with trace_logger(query_dir) as (_, trace_path):
-            resp = search(
-                tools=self.tools,
-                inputs=inputs,
-                agent_state=agent_state,
-                model=self.model,
-                reasoning=self.reasoning,
-                text_format=SearchResultsIds,
-            )
-            ranked_results = resp.ranked_results[:k]
+        stops = normalize_stops(self.stop)
+        reprompt = self.reprompt
+        if reprompt is not None and not isinstance(reprompt, str):
+            raise ValueError("reprompt must be a string when provided.")
+        num_loops = 0
+        agent = OpenAIAgent(
+            tools=self.tools,
+            model=f"openai/{self.model}" if "/" not in self.model else self.model,
+            response_model=SearchResultsIds,
+            reasoning_level=self.reasoning,
+        )
+        with trace_logger(query_dir) as (logger, trace_path):
+            logger.info("Query: %s", query)
+            while True:
+                previous_inputs = list(inputs)
+                resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state)
+                new_items = inputs[len(previous_inputs) :]
+                for item in new_items:
+                    logger.info("agentic_output %s", item)
+                num_loops += 1
+                tool_calls = agent_state.get("num_tool_calls")
+                if tool_calls is None:
+                    tool_calls = _tool_calls_from_inputs(inputs)
+                    agent_state["num_tool_calls"] = tool_calls
+                if not stops:
+                    break
+                if any(
+                    (stopper["name"] == "iterations" and num_loops >= stopper["params"]["iterations"])
+                    or (
+                        stopper["name"] == "tool_calls"
+                        and tool_calls >= stopper["params"]["tool_calls"]
+                    )
+                    for stopper in stops
+                ):
+                    break
+                if reprompt:
+                    inputs.append({"role": "user", "content": reprompt})
+
+            ranked_results = resp.output_parsed.ranked_results[:k]
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         self.traces[query] = str(trace_path)
