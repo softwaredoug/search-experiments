@@ -11,7 +11,6 @@ from typing import Any, Optional
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.strategy import SearchStrategy
 from pydantic import BaseModel, Field
-from typing_extensions import Literal
 
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.run_dirs import dataset_from_trace_path, slugify
@@ -59,25 +58,6 @@ class SearchResultsIds(BaseModel):
     ranked_results: list[str] = Field(
         description="Top ranked search results (their doc_ids)"
     )
-
-
-class SearchResult(BaseModel):
-    """A search result and your best guess at relevance."""
-
-    doc_id: int = Field(description="The doc id of the search result")
-    grade: Literal["☹️", "😑", "😃"] = Field(
-        description="How relevant this is to the query, in your estimation"
-    )
-
-
-class SearchResultsGraded(BaseModel):
-    """The ranked, top 10 search results ordered most relevant to least."""
-
-    results_summary: str = Field(
-        description="The message from you summarizing what you found"
-    )
-    ranked_results: list[SearchResult] = Field(description="Ranked search results")
-
 
 
 

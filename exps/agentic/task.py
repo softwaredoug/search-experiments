@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+import json
+from typing import Any, Callable
+
+from cheat_at_search.agent.openai_agent import OpenAIAgent
+from pydantic import BaseModel
+
+
+def _append_tool_output(results: list[dict], output: Any) -> None:
+    if isinstance(output, str):
+        try:
+            output = json.loads(output)
+        except json.JSONDecodeError:
+            return
+    if isinstance(output, list):
+        for item in output:
+            if isinstance(item, dict):
+                results.append(item)
+        return
+    if isinstance(output, dict):
+        results.append(output)
+
+
+def _collect_tool_outputs(items: list[dict]) -> list[dict]:
+    results: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "function_call_output":
+            continue
+        _append_tool_output(results, item.get("output"))
+    return results
+
+
+def build_task_tool(
+    *,
+    search_tools: list[callable],
+    model: str,
+    reasoning: str,
+    system_prompt: str,
+    response_model: type[BaseModel],
+) -> Callable[[str, int, dict | None], list[dict]]:
+    """Build a task tool for orchestrated agent topologies."""
+
+    def task_tool(task: str, top_k: int = 10, agent_state: dict | None = None) -> list[dict]:
+        if agent_state is None:
+            agent_state = {}
+        agent = OpenAIAgent(
+            tools=search_tools,
+            model=f"openai/{model}" if "/" not in model else model,
+            response_model=response_model,
+            reasoning_level=reasoning,
+        )
+        inputs = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Task: {task}\nReturn top_k={top_k} results."},
+        ]
+        previous_inputs = list(inputs)
+        agent.chat(inputs=inputs, agent_state=agent_state)
+        new_items = inputs[len(previous_inputs) :]
+        results = _collect_tool_outputs(new_items)
+        if top_k > 0:
+            return results[:top_k]
+        return results
+
+    return task_tool
