@@ -4,6 +4,15 @@ from exps.tools.bash_service import start_bash_service
 from exps.tools.filesystem_index import ensure_filesystem_on_disk
 
 
+_MAX_OUTPUT_CHARS = 8000
+
+
+def _truncate_output(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n[output truncated]"
+
+
 def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
     if not dataset_name:
         raise ValueError("bash tool requires dataset_name")
@@ -15,7 +24,8 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
 
         Commands run inside /corpus which maps to the dataset directory.
         """
-        return service.execute(command, timeout=timeout)
+        output = service.execute(command, timeout=timeout)
+        return _truncate_output(output)
 
     bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
     bash.__doc__ = (

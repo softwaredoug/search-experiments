@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from exps.strategies.agentic import AgenticSearchStrategy
+from exps.agentic.strategy import AgenticSearchStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy

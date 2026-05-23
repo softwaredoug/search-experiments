@@ -14,7 +14,7 @@ import pytest
 
 from cheat_at_search.search import run_strategy
 
-import exps.agentic
+from exps.agentic.strategy import SearchResultsIds, search
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
@@ -823,7 +823,7 @@ def test_agentic_stop_iterations():
 
     reprompt = "Please try again with SearchResultsIds."
     inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
-    result = exps.agentic.search(
+    result = search(
         tools=[],
         inputs=inputs,
         stop=[{"iterations": 2}],
@@ -831,7 +831,7 @@ def test_agentic_stop_iterations():
         model="gpt-5-nano",
     )
 
-    assert isinstance(result, exps.agentic.SearchResultsIds)
+    assert isinstance(result, SearchResultsIds)
     reprompt_count = sum(
         1
         for item in inputs
@@ -860,7 +860,7 @@ def test_agentic_stop_tool_calls():
             ),
         }
     ]
-    result = exps.agentic.search(
+    result = search(
         tools=[echo_tool],
         inputs=inputs,
         stop=[{"tool_calls": 2}, {"iterations": 3}],
@@ -869,7 +869,7 @@ def test_agentic_stop_tool_calls():
         model="gpt-5-nano",
     )
 
-    assert isinstance(result, exps.agentic.SearchResultsIds)
+    assert isinstance(result, SearchResultsIds)
     assert agent_state["num_tool_calls"] >= 2
 
 
@@ -879,7 +879,7 @@ def test_agentic_reprompt_appends():
 
     reprompt = "Try again with a new ordering."
     inputs = [{"role": "user", "content": "Return SearchResultsIds for any 10 ids."}]
-    result = exps.agentic.search(
+    result = search(
         tools=[],
         inputs=inputs,
         stop=[{"iterations": 3}],
@@ -887,7 +887,7 @@ def test_agentic_reprompt_appends():
         model="gpt-5-nano",
     )
 
-    assert isinstance(result, exps.agentic.SearchResultsIds)
+    assert isinstance(result, SearchResultsIds)
     reprompt_count = sum(
         1
         for item in inputs

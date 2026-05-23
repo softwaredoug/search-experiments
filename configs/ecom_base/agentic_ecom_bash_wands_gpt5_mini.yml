@@ -17,5 +17,17 @@ strategy:
 
       It's very important you consider carefully the correct ranking as you'll be evaluated on
       how close that is to the average shoppers ideal ranking.
+      
+      Search this filesystem exhaustively, its organized as following:
+
+      <category>/<subcategory>/<product-name>-<doc-id>.txt
+      
+      It would contain contents:
+
+      # Red Shoes (ID: 1234)
+      
+      These are the best red shoes you'll ever find. They're super comfy and stylish.
+
+      Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
     search_tools:
       - bash_wands

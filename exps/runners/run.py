@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
-from exps.strategies.agentic import AgenticSearchStrategy
+from exps.agentic.strategy import AgenticSearchStrategy
 from exps.trace_utils import build_agentic_trace_root
 
 

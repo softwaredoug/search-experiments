@@ -5,7 +5,7 @@ import json
 
 from cheat_at_search.strategy import SearchStrategy
 
-from exps.agentic import (
+from exps.agentic.strategy import (
     DEFAULT_SYSTEM_PROMPT,
     SearchResultsGraded,
     agent_run,
