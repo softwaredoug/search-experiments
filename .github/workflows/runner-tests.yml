@@ -50,7 +50,7 @@ jobs:
       - name: Run runner tests (non-codegen)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run pytest -s -vv -rA --durations=10 tests/integration/test_runners.py tests/integration/test_agentic_runners.py
+        run: uv run pytest -s -vv -rA --durations=10 tests/integration/runners tests/integration/agentic
 
   codegen-tests:
     runs-on: ubuntu-latest
@@ -74,4 +74,4 @@ jobs:
       - name: Run codegen runner tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run pytest -s -vv -rA --durations=10 tests/integration/test_codegen_runners.py
+        run: uv run pytest -s -vv -rA --durations=10 tests/integration/codegen
