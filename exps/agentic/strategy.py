@@ -11,7 +11,6 @@ from typing import Any, Optional
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.strategy import SearchStrategy
 from pydantic import BaseModel, Field
-from typing_extensions import Literal
 
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.run_dirs import dataset_from_trace_path, slugify
@@ -47,40 +46,19 @@ Here are some examples of products and relevant / irrelevant results
 SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
 
 
-class SearchResultsIds(BaseModel):
-    """The ranked, top 10 search result DOC IDs ordered most relevant to least."""
+class SearchState(BaseModel):
+    """The state of the search agent, which can be used to inform future reasoning and tool use."""
 
-    results_summary: str = Field(
-        description="The message from you summarizing what you found"
-    )
-    next_plan: str = Field(
+    steps: Optional[list[str]] = Field(
         description=(
             "In the form of instructions"
-            "Instruct an LLM how to improve the search results beyond what you found using"
-            "the tools available"
+            "Step-by-step plan that should be followed to find relevant results using the tools available"
+            "Do not incnlude steps already completed"
         )
     )
-    ranked_results: list[str] = Field(
-        description="Top ranked search results (their doc_ids)"
+    ranked_results: Optional[list[str]] = Field(
+        description="Top ranked search results (their doc_ids) when complete"
     )
-
-
-class SearchResult(BaseModel):
-    """A search result and your best guess at relevance."""
-
-    doc_id: int = Field(description="The doc id of the search result")
-    grade: Literal["☹️", "😑", "😃"] = Field(
-        description="How relevant this is to the query, in your estimation"
-    )
-
-
-class SearchResultsGraded(BaseModel):
-    """The ranked, top 10 search results ordered most relevant to least."""
-
-    results_summary: str = Field(
-        description="The message from you summarizing what you found"
-    )
-    ranked_results: list[SearchResult] = Field(description="Ranked search results")
 
 
 
@@ -89,7 +67,7 @@ def search(
     inputs: list[dict] | None = None,
     agent_state: Optional[dict] = None,
     model: str = "gpt-5",
-    text_format=SearchResultsIds,
+    text_format=SearchState,
     reasoning: str = "medium",
 ):
     tools = tools or []
@@ -151,7 +129,7 @@ def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
             raise ValueError("Stop condition 'iterations' requires an iterations value.")
         if name == "tool_calls" and "tool_calls" not in params:
             raise ValueError("Stop condition 'tool_calls' requires a tool_calls value.")
-        if name not in {"iterations", "tool_calls"}:
+        if name not in {"iterations", "tool_calls", "steps_complete"}:
             raise ValueError(f"Unknown stop condition: {name}")
         stops.append({"name": name, "params": params})
     return stops
@@ -192,6 +170,8 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("topology must be 'direct' or 'orchestrate'.")
         self.topology = topology
         self.subagent_system_prompt = subagent_system_prompt
+        if stop is None:
+            stop = ["steps_complete"]
         self.stop = stop
         self.reprompt = reprompt
         self.tools = build_search_tools(
@@ -255,14 +235,14 @@ class AgenticSearchStrategy(SearchStrategy):
                 reasoning=self.reasoning,
                 system_prompt=self.subagent_system_prompt,
             )
-            tools = [task_tool]
+            tools = [task_tool, *self.tools]
         else:
             tools = self.tools
         num_loops = 0
         agent = OpenAIAgent(
             tools=tools,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=SearchResultsIds,
+            response_model=SearchState,
             reasoning_level=self.reasoning,
         )
         with trace_logger(query_dir) as (logger, trace_path):
@@ -270,30 +250,36 @@ class AgenticSearchStrategy(SearchStrategy):
             agent_state["trace_logger"] = logger
             while True:
                 previous_inputs = list(inputs)
-                resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state)
-                new_items = inputs[len(previous_inputs) :]
-                for item in new_items:
-                    logger.info("agentic_output %s", item)
+                resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
                 num_loops += 1
+                steps = getattr(resp.output_parsed, "steps", None) or []
+                if steps:
+                    logger.info("agentic_steps %s", steps)
                 tool_calls = agent_state.get("num_tool_calls")
                 if tool_calls is None:
                     tool_calls = _tool_calls_from_inputs(inputs)
                     agent_state["num_tool_calls"] = tool_calls
                 if not stops:
                     break
+                steps_complete = not steps
                 if any(
                     (stopper["name"] == "iterations" and num_loops >= stopper["params"]["iterations"])
                     or (
                         stopper["name"] == "tool_calls"
                         and tool_calls >= stopper["params"]["tool_calls"]
                     )
+                    or (stopper["name"] == "steps_complete" and steps_complete)
                     for stopper in stops
                 ):
                     break
+                if steps:
+                    steps_text = "\n".join(f"- {step}" for step in steps)
+                    inputs.append({"role": "user", "content": f"Steps to follow:\n{steps_text}"})
                 if reprompt:
                     inputs.append({"role": "user", "content": reprompt})
 
             ranked_results = resp.output_parsed.ranked_results[:k]
+            logger.info("agentic_output %s", resp.output_parsed)
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         self.traces[query] = str(trace_path)

@@ -7,18 +7,29 @@ strategy:
     topology: orchestrate
     model: gpt-5-mini
     reasoning: low
-    system_prompt: |
-      You take user search queries and orchestrate subagents to find relevant products.
+    first_system_prompt: |
+      You take user search queries to find relevant products.
 
-      Use the task tool to delegate focused searches. Gather results until you have 10 best matches
-      you can find. It's important to return at least 10.
+      Return your steps / a plan. Use the other tools to explore the file system and find results to formulate 
+      or adjust the plan
 
-      Return results per the SearchResults schema with ranked DOC IDs.
+      Once the plan is good, return it.
+
+    processing_system_prompt: |
+      You take user search queries to find relevant products using the plan below.
+
+      You can explore the file system directly or 
+      delegate your steps / ideas to subagents using the task tool
+
+      Use the task tool to delegate searches / parts of your plan
+      
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      It's important to rank them from most to learst relevant.
+
+      Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
     subagent_system_prompt: |
       You help with tasks searchinging / finding content as instructed.
       
-      The bash tool runs inside a sandboxed container. It executes commands in /corpus,
-      which is the mounted dataset directory. Use shell commands to search files and
-      then return results per the SearchResults schema.
+      The bash tool runs inside a sandboxed container with the corpus
     search_tools:
       - bash_wands

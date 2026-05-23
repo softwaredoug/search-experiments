@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from typing import Any, Callable
-
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 
 
@@ -40,6 +39,20 @@ def _log_subagent_outputs(agent_state: dict, items: list[dict]) -> None:
         logger.info("subagent_output %s", item)
 
 
+def _log_task_tool_call(agent_state: dict, task: str, top_k: int) -> None:
+    logger = agent_state.get("trace_logger")
+    if logger is None:
+        return
+    logger.info("task_tool_call %s", {"task": task, "top_k": top_k})
+
+
+def _log_task_tool_result(agent_state: dict, count: int) -> None:
+    logger = agent_state.get("trace_logger")
+    if logger is None:
+        return
+    logger.info("task_tool_result %s", {"result_count": count})
+
+
 def build_task_tool(
     *,
     search_tools: list[callable],
@@ -53,22 +66,26 @@ def build_task_tool(
         """Delegate a search task to a subagent and return tool results."""
         if agent_state is None:
             agent_state = {}
+        _log_task_tool_call(agent_state, task, top_k)
         agent = OpenAIAgent(
             tools=search_tools,
             model=f"openai/{model}" if "/" not in model else model,
             reasoning_level=reasoning,
+            response_model=None,
         )
         inputs = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Task: {task}\nReturn top_k={top_k} results."},
         ]
         previous_inputs = list(inputs)
-        _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state)
+        logger = agent_state.get("trace_logger")
+        _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
         new_items = inputs[len(previous_inputs) :]
         _log_subagent_outputs(agent_state, new_items)
         results = _collect_tool_outputs(new_items)
         if top_k > 0:
-            return results[:top_k]
+            results = results[:top_k]
+        _log_task_tool_result(agent_state, len(results))
         return results
 
     return task_tool

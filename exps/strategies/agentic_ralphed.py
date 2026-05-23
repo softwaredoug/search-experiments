@@ -7,7 +7,7 @@ from cheat_at_search.strategy import SearchStrategy
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 
-from exps.agentic.strategy import DEFAULT_SYSTEM_PROMPT, SearchResultsGraded
+from exps.agentic.strategy import DEFAULT_SYSTEM_PROMPT, SearchState
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.tools import (
     make_bm25_tool,
@@ -91,7 +91,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         agent = OpenAIAgent(
             tools=self.tools,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=SearchResultsGraded,
+            response_model=SearchState,
             reasoning_level="medium",
         )
         resp = None
@@ -141,13 +141,17 @@ def _grade_to_emoji(grade):
     return "☹️"
 
 
-def _grades(query: str, search_results: SearchResultsGraded):
+def _grades(query: str, search_results: SearchState):
     from cheat_at_search.wands_data import labeled_query_products
 
     query_judgments = labeled_query_products[labeled_query_products["query"] == query]
     results = []
-    for search_result in search_results.ranked_results:
-        doc_id = search_result.doc_id
+    ranked_results = search_results.ranked_results or []
+    for doc_id in ranked_results:
+        try:
+            doc_id = int(doc_id)
+        except (TypeError, ValueError):
+            continue
         doc_judgments = query_judgments[query_judgments["doc_id"] == doc_id]
         if len(doc_judgments) == 0:
             results.append((doc_id, _grade_to_emoji(None)))
@@ -173,7 +177,7 @@ def _degrade_hook_check(query: str):
                 content = input_item.content
                 if content and hasattr(content[-1], "parsed"):
                     result = content[-1].parsed
-                    if isinstance(result, SearchResultsGraded):
+                    if isinstance(result, SearchState):
                         all_graded.append(_grades(query, result))
         if len(all_graded) > 1:
             last_smileys = _count_smileys(all_graded[-2])
