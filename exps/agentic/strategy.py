@@ -48,7 +48,7 @@ SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as 
 
 class SearchResults(BaseModel):
     """The state of the search agent, which can be used to inform future reasoning and tool use."""
-    ranked_results: Optional[list[str]] = Field(
+    ranked_results: list[str] = Field(
         description="Top ranked search results (their doc_ids) when complete"
     )
 
@@ -205,13 +205,35 @@ class AgenticSearchStrategy(SearchStrategy):
             )
         return cls(corpus, workers=workers, **build_params)
 
+    def _llm_planning(self, tools, inputs, prompt) -> str:
+        system_prompt = """Look over the search task, the tool you have provided, and the work done thus far and
+formulate detailed TODO list for how to complete the search task with the tools. Listing promising tool directions, etc
+
+        This is a TODO list for an agent to execute the provided tools and complete the search task (not to ask the user follow up questiotns)
+
+        Prioritize 3-5 steps for the agent.
+
+        """
+        system_prompt_idx = next((i for i, input in enumerate(inputs) if input.get("role") == "system"), None)
+        if system_prompt_idx is not None:
+            inputs[system_prompt_idx]["content"] = system_prompt
+        agent = OpenAIAgent(
+            tools=tools,
+            model=f"openai/{self.model}" if "/" not in self.model else self.model,
+            response_model=None,
+            reasoning_level=self.reasoning,
+        )
+        new_inputs = inputs + [{"role": "system", "content": prompt}]
+        resp, _, _ = agent.chat(inputs=new_inputs)
+        return resp.output[-1].content[-1].text
+
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
         query_dir = self.query_path(query)
         inputs = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": query},
+            {"role": "user", "content": "The user's query: " + query},
         ]
         agent_state = {"num_tool_calls": 0}
         stops = normalize_stops(self.stop)
@@ -235,6 +257,9 @@ class AgenticSearchStrategy(SearchStrategy):
             response_model=SearchResults,
             reasoning_level=self.reasoning,
         )
+        plan = self._llm_planning(inputs=inputs, tools=tools, prompt="Before you return results, formulate a plan for this task and tell and return it")
+        print(plan)
+        inputs.append({"role": "user", "content": f"Follow this plan: {plan}\n"})
         with trace_logger(query_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
             agent_state["trace_logger"] = logger
