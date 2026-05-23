@@ -17,18 +17,14 @@ class _FakeOpenAIAgent:
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
 
-    def chat(self, inputs=None, agent_state=None):
+    def chat(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
         if agent_state is not None:
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        result = agentic_mod.SearchResultsIds(
-            results_summary="ok",
-            next_plan="next",
-            ranked_results=["101", "202", "303"],
-        )
+        result = agentic_mod.SearchResults(ranked_results=["101", "202", "303"])
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state

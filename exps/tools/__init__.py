@@ -29,6 +29,7 @@ from exps.tools.guards import (
 from exps.tools.query_rewrite import make_query_rewrite_tool
 from exps.tools.raw import make_get_corpus_tool
 from exps.tools.registry import TOOL_REGISTRY, tool_kind
+from exps.tools.todo import make_todoread_tool, make_todowrite_tool
 from exps.tools.wands import (
     WANDS_CATEGORY_COL,
     WANDS_TOP_CATEGORIES,
@@ -65,6 +66,8 @@ __all__ = [
     "make_get_corpus_tool",
     "make_guarded_search_tool",
     "make_query_rewrite_tool",
+    "make_todoread_tool",
+    "make_todowrite_tool",
     "make_wands_bm25_tool",
     "make_wands_embedding_tool",
     "normalize_search_tools",

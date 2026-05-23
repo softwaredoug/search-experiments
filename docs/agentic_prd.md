@@ -158,6 +158,20 @@ File system tools allow the agent to search the file system using standard comma
 
 See docs/agentic_filesystem_prd.md
 
+### TODO Tool
+
+Similar to coding agents, its useful to track todos as the agent thinks of them and to externalize cognition. But the user should explicitly request these
+
+- todowrite: write a todo to the todo list. Takes two params, a string "todo" and a string "status" (ie "in progress", "done", "not started", or whatever you want). This should write to a file in the run folder called "todos.txt" with the todo and status.
+- todoread: reads the todo list and returns it as a string. This should read from the "todos.txt" file in the run folder and return the contents as a string.
+
+Store this on the agent_state
+
+
+### Task tool
+
+A task
+
 ### Agentic trace folders
 
 Agentic runs record tool calls and outputs under a working folder rooted at:
@@ -191,3 +205,7 @@ If stop is not satisfied, a "reprompt" can be issued as the user message to pass
 ```
     reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
 ```
+
+### TODO tool
+
+A too

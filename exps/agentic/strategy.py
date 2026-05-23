@@ -205,28 +205,6 @@ class AgenticSearchStrategy(SearchStrategy):
             )
         return cls(corpus, workers=workers, **build_params)
 
-    def _llm_planning(self, tools, inputs, prompt) -> str:
-        system_prompt = """Look over the search task, the tool you have provided, and the work done thus far and
-formulate detailed TODO list for how to complete the search task with the tools. Listing promising tool directions, etc
-
-        This is a TODO list for an agent to execute the provided tools and complete the search task (not to ask the user follow up questiotns)
-
-        Prioritize 3-5 steps for the agent.
-
-        """
-        system_prompt_idx = next((i for i, input in enumerate(inputs) if input.get("role") == "system"), None)
-        if system_prompt_idx is not None:
-            inputs[system_prompt_idx]["content"] = system_prompt
-        agent = OpenAIAgent(
-            tools=tools,
-            model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=None,
-            reasoning_level=self.reasoning,
-        )
-        new_inputs = inputs + [{"role": "system", "content": prompt}]
-        resp, _, _ = agent.chat(inputs=new_inputs)
-        return resp.output[-1].content[-1].text
-
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
@@ -257,12 +235,10 @@ formulate detailed TODO list for how to complete the search task with the tools.
             response_model=SearchResults,
             reasoning_level=self.reasoning,
         )
-        plan = self._llm_planning(inputs=inputs, tools=tools, prompt="Before you return results, formulate a plan for this task and tell and return it")
-        print(plan)
-        inputs.append({"role": "user", "content": f"Follow this plan: {plan}\n"})
         with trace_logger(query_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
             agent_state["trace_logger"] = logger
+            agent_state["run_dir"] = str(query_dir)
             while True:
                 previous_inputs = list(inputs)
                 resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
@@ -285,7 +261,7 @@ formulate detailed TODO list for how to complete the search task with the tools.
                 if reprompt:
                     inputs.append({"role": "user", "content": reprompt})
 
-            ranked_results = resp.output_parsed.ranked_results[:k]
+            ranked_results = (resp.output_parsed.ranked_results or [])[:k]
             logger.info("agentic_output %s", resp.output_parsed)
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
