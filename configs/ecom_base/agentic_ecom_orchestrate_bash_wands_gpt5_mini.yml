@@ -1,0 +1,24 @@
+strategy:
+  name: agentic_ecom_orchestrate_bash_wands_gpt5_mini
+  type: agentic
+  description: |
+    Orchestrated agentic search using the sandboxed bash filesystem tool over the WANDS dataset.
+  params:
+    topology: orchestrate
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and orchestrate subagents to find relevant products.
+
+      Use the task tool to delegate focused searches. Gather results until you have 10 best matches
+      you can find. It's important to return at least 10.
+
+      Return results per the SearchResults schema with ranked DOC IDs.
+    subagent_system_prompt: |
+      You help with tasks searchinging / finding content as instructed.
+      
+      The bash tool runs inside a sandboxed container. It executes commands in /corpus,
+      which is the mounted dataset directory. Use shell commands to search files and
+      then return results per the SearchResults schema.
+    search_tools:
+      - bash_wands

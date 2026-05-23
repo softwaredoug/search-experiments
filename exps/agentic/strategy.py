@@ -44,7 +44,7 @@ Here are some examples of products and relevant / irrelevant results
 """
 
 
-TASK_TOOL_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
+SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
 
 
 class SearchResultsIds(BaseModel):
@@ -177,6 +177,7 @@ class AgenticSearchStrategy(SearchStrategy):
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
         topology: str = "direct",
+        subagent_system_prompt: str = SUBAGENT_SYSTEM_PROMPT,
         stop: list | None = None,
         reprompt: str | None = None,
         embeddings_device: str | None = None,
@@ -190,6 +191,7 @@ class AgenticSearchStrategy(SearchStrategy):
         if topology not in {"direct", "orchestrate"}:
             raise ValueError("topology must be 'direct' or 'orchestrate'.")
         self.topology = topology
+        self.subagent_system_prompt = subagent_system_prompt
         self.stop = stop
         self.reprompt = reprompt
         self.tools = build_search_tools(
@@ -251,7 +253,7 @@ class AgenticSearchStrategy(SearchStrategy):
                 search_tools=self.tools,
                 model=self.model,
                 reasoning=self.reasoning,
-                system_prompt=TASK_TOOL_SYSTEM_PROMPT,
+                system_prompt=self.subagent_system_prompt,
             )
             tools = [task_tool]
         else:
@@ -331,6 +333,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools_for_cache(self.search_tools),
             "topology": self.topology,
+            "subagent_system_prompt": self.subagent_system_prompt,
             "stop": self.stop,
             "reprompt": self.reprompt,
             "embeddings_device": self.embeddings_device,

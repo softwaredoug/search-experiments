@@ -50,6 +50,7 @@ def build_task_tool(
     """Build a task tool for orchestrated agent topologies."""
 
     def task_tool(task: str, top_k: int = 10, agent_state: dict | None = None) -> list[dict]:
+        """Delegate a search task to a subagent and return tool results."""
         if agent_state is None:
             agent_state = {}
         agent = OpenAIAgent(

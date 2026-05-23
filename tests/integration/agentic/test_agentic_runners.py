@@ -217,6 +217,46 @@ strategy:
     assert not result.metric_series.empty
 
 
+def test_run_benchmark_agentic_orchestrate_bm25(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    config_path = tmp_path / "agentic_orchestrate.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_orchestrate_fixture
+  type: agentic
+  params:
+    topology: orchestrate
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and orchestrate subagents to find relevant products.
+    subagent_system_prompt: |
+      You help with tasks searchinging / finding content as instructed.
+    search_tools:
+      - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert result.summary["tool_calls_mean"] >= 0.0
+
+
 def test_run_benchmark_agentic_bash_tool(tmp_path, monkeypatch):
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
