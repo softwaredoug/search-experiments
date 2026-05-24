@@ -13,7 +13,10 @@ def _todos_list(agent_state: dict | None) -> list[dict]:
 def make_todo_write_tool(*_args, **_kwargs):
     def todo_write(todo: str, status: str, agent_state=None) -> str:
         """Write a todo entry to the in-memory todo list."""
-        print(f"TODO: {todo} (status: {status})")
+        if agent_state is not None:
+            logger = agent_state.get("trace_logger")
+            if logger is not None:
+                logger.info("todo_write %s", {"todo": todo, "status": status})
         todos = _todos_list(agent_state)
         todos.append({"todo": todo, "status": status})
         return "OK"

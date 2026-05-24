@@ -312,7 +312,6 @@ class AgenticSearchStrategy(SearchStrategy):
 
         num_loops = 0
         baseline_tool_calls = _tool_calls_from_inputs(inputs)
-        logger.info("agent_step_start %s", {"step": step_index, "agent": agent_name})
         while True:
             resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
             num_loops += 1
@@ -352,7 +351,7 @@ class AgenticSearchStrategy(SearchStrategy):
 
         resp = None
         for step_index, (agent_name, prompt_template) in enumerate(workflow_steps, start=1):
-            print(f"Running workflow step {step_index}: agent={agent_name}")
+            logger.info("agent_step_start %s", {"step": step_index, "agent": agent_name})
             if self.workflow:
                 agent_cfg = (self.agents or {}).get(agent_name)
                 if agent_cfg is None:

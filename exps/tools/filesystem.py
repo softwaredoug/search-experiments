@@ -229,7 +229,7 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             "and gently flared arms designed for small spaces."
         )
 
-    def ls(path: str, glob: str, max_results: int = 50) -> list[str]:
+    def ls(path: str, glob: str, max_results: int = 50, agent_state=None) -> list[str] | str:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
         if max_results > 50:
             return "Error! max_results must be <= 50."
@@ -249,7 +249,12 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
                     break
         return sorted(matches)
 
-    def grep(pattern: str, glob: str, num_results: int = 50) -> list[dict[str, str]]:
+    def grep(
+        pattern: str,
+        glob: str,
+        num_results: int = 50,
+        agent_state=None,
+    ) -> list[dict[str, str]] | str:
         """Search for a regex pattern in files matching the glob, at most 50 results."""
         if num_results > 50:
             return "Error! num_results must be <= 50."
@@ -281,26 +286,27 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
             if len(results) >= num_results:
                 break
-        if timing_enabled:
+        if timing_enabled and agent_state is not None:
             scan_ms = (perf_counter() - scan_started) * 1000
             total_ms = compile_ms + scan_ms
-            print(
-                "[fs_grep_timing] pattern=%r glob=%r scanned=%d glob_matched=%d regex_matched=%d "
-                "compile_ms=%.1f scan_ms=%.1f total_ms=%.1f"
-                % (
-                    pattern,
-                    glob,
-                    scanned,
-                    glob_matched,
-                    regex_matched,
-                    compile_ms,
-                    scan_ms,
-                    total_ms,
+            logger = agent_state.get("trace_logger") if agent_state else None
+            if logger is not None:
+                logger.info(
+                    "fs_grep_timing %s",
+                    {
+                        "pattern": pattern,
+                        "glob": glob,
+                        "scanned": scanned,
+                        "glob_matched": glob_matched,
+                        "regex_matched": regex_matched,
+                        "compile_ms": round(compile_ms, 1),
+                        "scan_ms": round(scan_ms, 1),
+                        "total_ms": round(total_ms, 1),
+                    },
                 )
-            )
         return results
 
-    def cat(path: str) -> str:
+    def cat(path: str, agent_state=None) -> str:
         """Return the contents of a file as a string."""
         if not isinstance(path, str) or not path.strip():
             return "Error! path must be a non-empty string."

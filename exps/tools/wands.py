@@ -155,7 +155,13 @@ def make_wands_bm25_tool(
         """
         if top_k > 100:
             raise ValueError("top_k must be <= 100")
-        print(f"B - Searching WANDS for keywords: {keywords} with categories: {product_categories}")
+        if agent_state is not None:
+            logger = agent_state.get("trace_logger")
+            if logger is not None:
+                logger.info(
+                    "wands_bm25 %s",
+                    {"keywords": keywords, "categories": product_categories},
+                )
         indices = _category_indices(category_index, product_categories)
         if indices is None:
             working_corpus = corpus
@@ -232,7 +238,13 @@ def make_wands_embedding_tool(
         """
         if top_k > 100:
             raise ValueError("top_k must be <= 100")
-        print(f"E - Searching WANDS for query: {product_description} with categories: {product_categories}")
+        if agent_state is not None:
+            logger = agent_state.get("trace_logger")
+            if logger is not None:
+                logger.info(
+                    "wands_embeddings %s",
+                    {"query": product_description, "categories": product_categories},
+                )
         if query_prefix:
             question = f"{query_prefix}{product_description}"
         query_embedded = model.encode(question)

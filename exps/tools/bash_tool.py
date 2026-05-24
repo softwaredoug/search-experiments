@@ -41,6 +41,10 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
         These are the best red shoes you'll ever find. They're super comfy and stylish.
         """
         print(command)
+        if agent_state is not None:
+            logger = agent_state.get("trace_logger")
+            if logger is not None:
+                logger.info("bash_command %s", command)
         output = service.execute(command, timeout=timeout)
         return _truncate_output(output)
 
