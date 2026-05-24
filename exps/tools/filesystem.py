@@ -203,6 +203,19 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
     if not path_series.duplicated().any():
         path_index = dict(zip(paths, contents_series.tolist()))
 
+    wands_doc = None
+    if variant == "wands":
+        wands_doc = (
+            "WANDS filesystem layout uses <category>/<subcategory>/<product-name-slug>-<doc-id>.txt. "
+            "Example: /Furniture/Armchairs/sancroft-armchair-1234.txt. "
+            "File contents are:\n\n"
+            "<Title> (ID: <ID>)\n\n<Description>\n\n"
+            "Example file contents:\n\n"
+            "Sancroft Armchair (ID: 1234)\n\n"
+            "A compact armchair with tailored upholstery, a supportive back, "
+            "and gently flared arms designed for small spaces."
+        )
+
     def ls(path: str, glob: str, max_results: int = 50) -> list[str]:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
         if max_results > 50:
@@ -286,6 +299,11 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
         if len(matches) > 1:
             raise ValueError(f"Multiple files found for path: {path}")
         return str(matches.iloc[0])
+
+    if wands_doc:
+        ls.__doc__ = f"{ls.__doc__}\n\n{wands_doc}"
+        grep.__doc__ = f"{grep.__doc__}\n\n{wands_doc}"
+        cat.__doc__ = f"{cat.__doc__}\n\n{wands_doc}"
 
     return ls, grep, cat
 

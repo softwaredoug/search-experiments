@@ -9,12 +9,14 @@ strategy:
     agents:
       search: 
         system_prompt: |
-          You take user search queries and use the provided tools to return relevant results.
+          You take user search queries and use the provided tools to find candidate products
+          
+          - item type is very important ie users searches for a blue couch, then couches are more important than
+            blue things in general.
 
           You can explore the file system directly or delegate focused searches to subagents using the task tool.
 
-          Gather results until you have 10 best matches you can find. It's important to return at least 10.
-          It's important to rank them from most to least relevant.
+          Gather results to find as many potentially relevant products as you can.
 
           Break the task down into todos that connect the task you're asked to do with steps in the 
           underlying tools
@@ -48,7 +50,20 @@ strategy:
           - delegate_task
           - todo_read
           - todo_write
+      gather:
+        system_prompt: |
+          You're a search reranker for e-commerce. Some notes:
+
+          - item type is very important ie users searches for a blue couch, then couches are more important than
+            blue things in general.
+
+          You gather all results so far and find the best ones for the query.
+
+          Find top 10. It's important they're ranked in order of relevance.
+          
+          Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
     workflow:
       - search: Search for products to satisfy the query {query}
       - judge: Are these query results good? Relevant for {query}?
       - search: The results can be improved
+      - gather: Gather the best results found so far for {query} and return the top 10 ranked results.

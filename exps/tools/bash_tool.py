@@ -40,6 +40,7 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
 
         These are the best red shoes you'll ever find. They're super comfy and stylish.
         """
+        print(command)
         output = service.execute(command, timeout=timeout)
         return _truncate_output(output)
 
