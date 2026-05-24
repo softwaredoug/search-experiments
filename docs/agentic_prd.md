@@ -207,3 +207,96 @@ If stop is not satisfied, a "reprompt" can be issued as the user message to pass
 ```
     reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
 ```
+
+
+## Workflow through list of agents
+
+A list of agents is possible
+
+An agentic strategy might look like this:
+
+
+```
+  params:
+    model: gpt-5
+    reasoning: medium
+    agents:
+      planning:
+        system_prompt: |
+          You take user search queries and use a search tool to find products.
+
+          Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+          Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+          Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+          It's very important you consider carefully the correct ranking as you'll be evaluated on
+          how close that is to the average shoppers ideal ranking.
+        search_tools:
+          - delegate_task:
+
+      search:
+        system_prompt: |
+          You take user search queries and use a search tool to find products.
+
+          Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+          Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+          Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+          It's very important you consider carefully the correct ranking as you'll be evaluated on
+          how close that is to the average shoppers ideal ranking.
+        search_tools:
+          - bm25:
+          - minilm:
+
+      eval:
+        system_prompt: |
+          You take user search queries and use a search tool to find products.
+
+          Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+          Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+          Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+          It's very important you consider carefully the correct ranking as you'll be evaluated on
+          how close that is to the average shoppers ideal ranking.
+        search_tools:
+          - delegate_task:
+   workflow:
+     - planning: plan how to best search for {query}
+     - search: find the most relevant results for {query}
+     - eval: evaluate how relevant the results are for {query}
+```
+
+Throughout this whole process, the context is identical.
+
+However, after one agent completes, the system prompt would be patched to the next agent's system prompt, and the tools would be patched to the next agent's tools.
+
+This means that three agents would run, with different system prompts + tools
+
+workflow dictates the order of execution of the agents. The output of one agent does not get passed as input to the next agent, but the context (including agent state) is shared across all agents. So they can communicate implicitly through that.
+
+This is like switching between Plan <-> Build mode in coding agents. Except we're doing it sequentially.
+
+The user prompt is specified in workflow, ie above planning agent gets "plan how to best search for {query}" as user prompt, and the search agent gets "find the most relevant results for {query}" as user prompt, etc. Replacing {query} with the actual query being searched for.
+
+Params like retrying, stopping, etc would all occur WITHIN this, so logically this is 
+
+```
+for work_item in workflow:
+    system_prompt = agents[agent_name].system_prompt
+    user_prompt = workflow[agent_name].user_prompt
+    tools = agents[agent_name].tools
+    while not stop_condition:
+        # Call OpenAIAgent + chat
+        
+        if stop_condition(output):
+            break
+        else:
+            # maybe reprompt or do something else before retrying
+```
+

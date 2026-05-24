@@ -257,6 +257,53 @@ strategy:
     assert result.summary["tool_calls_mean"] >= 0.0
 
 
+def test_run_benchmark_agentic_workflow_agents(tmp_path):
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    config_path = tmp_path / "agentic_workflow.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_workflow_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    agents:
+      planning:
+        system_prompt: |
+          You plan how to search for relevant products.
+        search_tools:
+          - delegate_task
+          - bm25
+      search:
+        system_prompt: |
+          You find relevant products and return ranked DOC IDs.
+        search_tools:
+          - bm25
+    workflow:
+      - planning: plan how to best search for {query}
+      - search: find the most relevant results for {query}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path="tests/fixtures",
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
 def test_run_benchmark_agentic_bash_tool(tmp_path, monkeypatch):
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

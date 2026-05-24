@@ -5,22 +5,50 @@ strategy:
     Orchestrated agentic search using the sandboxed bash filesystem tool over the WANDS dataset.
   params:
     model: gpt-5-mini
-    reasoning: low
-    system_prompt: |
-      You take user search queries and orchestrate subagents to find relevant products.
+    reasoning: medium
+    agents:
+      search: 
+        system_prompt: |
+          You take user search queries and use the provided tools to return relevant results.
 
-      You can explore the file system directly or delegate focused searches to subagents using the task tool.
+          You can explore the file system directly or delegate focused searches to subagents using the task tool.
 
-      Gather results until you have 10 best matches you can find. It's important to return at least 10.
-      It's important to rank them from most to least relevant.
+          Gather results until you have 10 best matches you can find. It's important to return at least 10.
+          It's important to rank them from most to least relevant.
 
-      Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
-    subagent_system_prompt: |
-      You help with tasks searchinging / finding content as instructed.
-      
-      The bash tool runs inside a sandboxed container with the corpus
-    search_tools:
-      - delegate_task
-      - todoread
-      - todowrite
-      - bash_wands
+          Break the task down into todos that connect the task you're asked to do with steps in the 
+          underlying tools
+
+          It's important to track todos as they occur to you. That's important to track what you have already searched for, what you want to search for, and what you have found so far. Use the todo_read / todo_write tool to track this. Mark when todos are done.
+
+          Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
+        subagent_system_prompt: |
+          You help with tasks searchinging / finding content as instructed.
+          
+          The bash tool runs inside a sandboxed container with the corpus
+        search_tools:
+          - delegate_task
+          - todo_read
+          - todo_write
+          - bash_wands
+      judge:
+        system_prompt: |
+          You take the results from the search agent and evaluate how good they are.
+
+          Use the "todo" tool to record what needs to be done to improve search results.
+
+          The search agent is trying to find relevant products based on a user query. You evaluate how good the results are based on how relevant they are to the user query.
+
+          You can ask yourself, how well do these results match what an average shopper would want if they searched for this query? How well do they match the intent of the query?
+
+          You can also consider, did the search agent follow a good process? Did it explore relevant areas? Did it use good search terms? Did it find relevant results but rank them poorly?
+
+          Consider all these factors and give an overall evaluation of how good the search agent's results are.
+        search_tools:
+          - delegate_task
+          - todo_read
+          - todo_write
+    workflow:
+      - search: Search for products to satisfy the query {query}
+      - judge: Are these query results good? Relevant for {query}?
+      - search: The results can be improved
