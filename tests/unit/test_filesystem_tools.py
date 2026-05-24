@@ -65,15 +65,17 @@ def test_grep_finds_matches_case_sensitive():
 def test_grep_invalid_regex_raises():
     corpus = _sample_corpus()
     grep_tool = make_filesystem_grep_tool(corpus)
-    with pytest.raises(ValueError, match="Invalid regex pattern"):
-        grep_tool("[", "**/*.txt", num_results=10)
+    result = grep_tool("[", "**/*.txt", num_results=10)
+    assert isinstance(result, str)
+    assert "Invalid regex pattern" in result
 
 
 def test_ls_max_results_limit():
     corpus = _sample_corpus()
     ls_tool = make_filesystem_ls_tool(corpus)
-    with pytest.raises(ValueError, match="max_results"):
-        ls_tool("/", "**/*.txt", max_results=51)
+    result = ls_tool("/", "**/*.txt", max_results=51)
+    assert isinstance(result, str)
+    assert "max_results" in result
 
 
 def test_cat_duplicate_path_raises():
@@ -85,8 +87,9 @@ def test_cat_duplicate_path_raises():
         }
     )
     cat_tool = make_filesystem_cat_tool(corpus)
-    with pytest.raises(ValueError, match="Multiple files found"):
-        cat_tool(corpus.loc[0, "path"])
+    result = cat_tool(corpus.loc[0, "path"])
+    assert isinstance(result, str)
+    assert "Multiple files found" in result
 
 
 def test_wands_path_structure():
@@ -132,8 +135,25 @@ def test_wands_tools_require_wands_indexing():
 def test_cat_missing_path_raises():
     corpus = _sample_corpus()
     cat_tool = make_filesystem_cat_tool(corpus)
-    with pytest.raises(ValueError, match="No file found"):
-        cat_tool("/missing.txt")
+    result = cat_tool("/missing.txt")
+    assert isinstance(result, str)
+    assert "No file found" in result
+
+
+def test_cat_normalizes_relative_path():
+    corpus = _sample_corpus()
+    cat_tool = make_filesystem_cat_tool(corpus)
+    path = corpus.loc[0, "path"].lstrip("/")
+    contents = cat_tool(path)
+    assert contents.startswith("# Red Shoes (ID: 101)")
+
+
+def test_cat_filename_only_match():
+    corpus = _sample_corpus()
+    cat_tool = make_filesystem_cat_tool(corpus)
+    filename = corpus.loc[1, "path"].split("/")[-1]
+    contents = cat_tool(filename)
+    assert contents.startswith("# Ship Wheel (ID: 202)")
 
 
 def test_long_title_truncates_filename():

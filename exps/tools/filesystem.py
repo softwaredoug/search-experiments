@@ -67,6 +67,19 @@ def _normalize_match_pattern(pattern: str) -> str:
     return normalized
 
 
+def _normalize_path(path: str) -> str:
+    trimmed = path.strip().strip('"').strip("'")
+    if not trimmed:
+        return ""
+    if trimmed.startswith("./"):
+        trimmed = trimmed[2:]
+    if not trimmed.startswith("/"):
+        trimmed = f"/{trimmed}"
+    while "//" in trimmed:
+        trimmed = trimmed.replace("//", "/")
+    return trimmed
+
+
 def _match_glob(pattern: str, path: str) -> bool:
     normalized_pattern = _normalize_match_pattern(pattern)
     normalized_path = path[1:] if path.startswith("/") else path
@@ -219,9 +232,11 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
     def ls(path: str, glob: str, max_results: int = 50) -> list[str]:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
         if max_results > 50:
-            raise ValueError("max_results must be <= 50")
+            return "Error! max_results must be <= 50."
         if max_results <= 0:
             return []
+        if not isinstance(path, str) or not path.strip():
+            return "Error! path must be a non-empty string."
         prefix = _normalize_dir(path)
         pattern = _normalize_glob(prefix, glob)
         matches = []
@@ -237,14 +252,14 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
     def grep(pattern: str, glob: str, num_results: int = 50) -> list[dict[str, str]]:
         """Search for a regex pattern in files matching the glob, at most 50 results."""
         if num_results > 50:
-            raise ValueError("num_results must be <= 50")
+            return "Error! num_results must be <= 50."
         if num_results <= 0:
             return []
         compile_started = perf_counter() if timing_enabled else None
         try:
             regex = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(f"Invalid regex pattern: {pattern}") from exc
+        except re.error:
+            return f"Error! Invalid regex pattern: {pattern}"
         compile_ms = 0.0
         if timing_enabled:
             compile_ms = (perf_counter() - compile_started) * 1000
@@ -288,16 +303,29 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
     def cat(path: str) -> str:
         """Return the contents of a file as a string."""
         if not isinstance(path, str) or not path.strip():
-            raise ValueError("path must be a non-empty string")
+            return "Error! path must be a non-empty string."
+        normalized_path = _normalize_path(path)
+        if not normalized_path:
+            return "Error! path must be a non-empty string."
         if path_index is not None:
-            if path not in path_index:
-                raise ValueError(f"No file found for path: {path}")
-            return str(path_index[path])
-        matches = contents_series[path_series == path]
+            if normalized_path in path_index:
+                return str(path_index[normalized_path])
+            if path in path_index:
+                return str(path_index[path])
+        matches = contents_series[path_series == normalized_path]
+        if matches.empty and normalized_path != path:
+            matches = contents_series[path_series == path]
         if matches.empty:
-            raise ValueError(f"No file found for path: {path}")
+            filename = PurePosixPath(normalized_path or path).name
+            if filename:
+                filename_matches = contents_series[path_series.str.endswith(f"/{filename}")]
+                if len(filename_matches) == 1:
+                    return str(filename_matches.iloc[0])
+                if len(filename_matches) > 1:
+                    return f"Error! Multiple files found for filename: {filename}"
+            return f"Error! No file found for path: {path}"
         if len(matches) > 1:
-            raise ValueError(f"Multiple files found for path: {path}")
+            return f"Error! Multiple files found for path: {path}"
         return str(matches.iloc[0])
 
     if wands_doc:
