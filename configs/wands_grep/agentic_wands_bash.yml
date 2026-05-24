@@ -1,0 +1,18 @@
+strategy:
+  name: agentic_wands_bash
+  type: agentic
+  description: |
+    Agentic search over WANDS using the sandboxed bash tool.
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use filesystem tools to find relevant products.
+
+      Use ls_wands to explore directories, grep_wands to search within files, and cat_wands
+      to inspect specific product files.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*, not paths, in the response.
+    search_tools:
+      - bash_wands

@@ -1,0 +1,21 @@
+strategy:
+  name: agentic_wands_bash_delegate
+  type: agentic
+  description: |
+    Agentic search over WANDS using bash with delegation support.
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use filesystem tools to find relevant products.
+
+      Use ls_wands to explore directories, grep_wands to search within files, and cat_wands
+      to inspect specific product files.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*, not paths, in the response.
+    subagent_system_prompt: |
+      You help with tasks searchinging / finding content as instructed.
+    search_tools:
+      - delegate_task
+      - bash_wands
