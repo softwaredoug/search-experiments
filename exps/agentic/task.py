@@ -62,36 +62,47 @@ def build_task_tool(
 ) -> Callable[[str, int, dict | None], list[dict]]:
     """Build a task tool for orchestrated agent topologies."""
 
+    filtered_search_tools = [
+        tool for tool in search_tools if getattr(tool, "__name__", "") != "delegate_task"
+    ]
+
     def task_tool(task: str, agent_state: dict | None = None) -> list[dict]:
         """Delegate a search task to a subagent and return tool results."""
         if agent_state is None:
             agent_state = {}
+        depth = agent_state.get("delegate_task_depth", 0) + 1
+        if depth > 1:
+            return "Error! delegate_task cannot be nested."
+        agent_state["delegate_task_depth"] = depth
         _log_task_tool_call(agent_state, task)
-        agent = OpenAIAgent(
-            tools=search_tools,
-            model=f"openai/{model}" if "/" not in model else model,
-            reasoning_level=reasoning,
-            response_model=None,
-        )
-        inputs = [
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": (
-                    f"Task: {task}\n"
-                    "Use the available search tools to find results. "
-                    "Do not ask follow-up questions; return tool results."
-                ),
-            },
-        ]
-        previous_inputs = list(inputs)
-        logger = agent_state.get("trace_logger")
-        _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
-        new_items = inputs[len(previous_inputs) :]
-        _log_subagent_outputs(agent_state, new_items)
-        results = _collect_tool_outputs(new_items)
-        _log_task_tool_result(agent_state, len(results))
-        return results
+        try:
+            agent = OpenAIAgent(
+                tools=filtered_search_tools,
+                model=f"openai/{model}" if "/" not in model else model,
+                reasoning_level=reasoning,
+                response_model=None,
+            )
+            inputs = [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Task: {task}\n"
+                        "Use the available search tools to find results. "
+                        "Do not ask follow-up questions; return tool results."
+                    ),
+                },
+            ]
+            previous_inputs = list(inputs)
+            logger = agent_state.get("trace_logger")
+            _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
+            new_items = inputs[len(previous_inputs) :]
+            _log_subagent_outputs(agent_state, new_items)
+            results = _collect_tool_outputs(new_items)
+            _log_task_tool_result(agent_state, len(results))
+            return results
+        finally:
+            agent_state["delegate_task_depth"] = depth - 1
 
     task_tool.__name__ = "delegate_task"
     return task_tool
