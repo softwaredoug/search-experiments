@@ -402,6 +402,7 @@ class AgenticSearchStrategy(SearchStrategy):
 
             ranked_results = (resp.output_parsed.ranked_results or [])[:k] if resp else []
             logger.info("agentic_output %s", resp.output_parsed if resp else None)
+            logger.info("agentic_complete %s", {"query": query, "results": len(ranked_results)})
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         self.traces[query] = str(trace_path)

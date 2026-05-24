@@ -231,23 +231,52 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
 
     def ls(path: str, glob: str, max_results: int = 50, agent_state=None) -> list[str] | str:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
+        limit = max_results
         if max_results > 50:
-            return "Error! max_results must be <= 50."
+            limit = 50
         if max_results <= 0:
             return []
         if not isinstance(path, str) or not path.strip():
             return "Error! path must be a non-empty string."
         prefix = _normalize_dir(path)
+        if glob in {"*", "*/"}:
+            children = []
+            extra = 0
+            seen = set()
+            for item in paths:
+                if not item.startswith(prefix):
+                    continue
+                rest = item[len(prefix):]
+                if not rest:
+                    continue
+                child = rest.split("/", 1)[0]
+                child_path = f"{prefix}{child}" if prefix != "/" else f"/{child}"
+                if child_path in seen:
+                    continue
+                if len(children) < limit:
+                    children.append(child_path)
+                    seen.add(child_path)
+                else:
+                    extra += 1
+            children = sorted(children)
+            if extra:
+                children.append(f"Truncated ({extra} more)")
+            return children
         pattern = _normalize_glob(prefix, glob)
         matches = []
+        extra = 0
         for item in paths:
             if not item.startswith(prefix):
                 continue
             if _match_glob(pattern, item):
-                matches.append(item)
-                if len(matches) >= max_results:
-                    break
-        return sorted(matches)
+                if len(matches) < limit:
+                    matches.append(item)
+                else:
+                    extra += 1
+        matches = sorted(matches)
+        if extra:
+            matches.append(f"Truncated ({extra} more)")
+        return matches
 
     def grep(
         pattern: str,
@@ -256,8 +285,9 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
         agent_state=None,
     ) -> list[dict[str, str]] | str:
         """Search for a regex pattern in files matching the glob, at most 50 results."""
+        limit = num_results
         if num_results > 50:
-            return "Error! num_results must be <= 50."
+            limit = 50
         if num_results <= 0:
             return []
         compile_started = perf_counter() if timing_enabled else None
@@ -273,6 +303,7 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
         scanned = 0
         glob_matched = 0
         regex_matched = 0
+        extra = 0
         scan_started = perf_counter() if timing_enabled else None
         for path, contents in path_contents:
             scanned += 1
@@ -283,9 +314,10 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             if not match:
                 continue
             regex_matched += 1
-            results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
-            if len(results) >= num_results:
-                break
+            if len(results) < limit:
+                results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
+            else:
+                extra += 1
         if timing_enabled and agent_state is not None:
             scan_ms = (perf_counter() - scan_started) * 1000
             total_ms = compile_ms + scan_ms
@@ -304,6 +336,8 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
                         "total_ms": round(total_ms, 1),
                     },
                 )
+        if extra:
+            results.append({"path": "", "snippet": f"Truncated ({extra} more)"})
         return results
 
     def cat(path: str, agent_state=None) -> str:

@@ -70,12 +70,20 @@ def test_grep_invalid_regex_raises():
     assert "Invalid regex pattern" in result
 
 
+def test_grep_truncates_with_message():
+    corpus = _sample_corpus()
+    grep_tool = make_filesystem_grep_tool(corpus)
+    result = grep_tool(".", "**/*.txt", num_results=2)
+    assert isinstance(result, list)
+    assert result[-1]["snippet"].startswith("Truncated (")
+
+
 def test_ls_max_results_limit():
     corpus = _sample_corpus()
     ls_tool = make_filesystem_ls_tool(corpus)
     result = ls_tool("/", "**/*.txt", max_results=51)
-    assert isinstance(result, str)
-    assert "max_results" in result
+    assert isinstance(result, list)
+    assert len(result) == 3
 
 
 def test_cat_duplicate_path_raises():
@@ -107,6 +115,22 @@ def test_wands_path_structure():
     assert "/decor-pillows/wall-decor/red-shoes-101.txt" in paths
     assert "/outdoor/ship-wheel-202.txt" in paths
     assert "/brunk-desk-303.txt" in paths
+
+
+def test_wands_ls_root_lists_categories():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202, 303],
+            "title": ["Red Shoes", "Ship Wheel", "Brunk Desk"],
+            "description": ["One", "Two", "Three"],
+            "category": ["Decor & Pillows", "Outdoor", ""],
+            "subcategory": ["Wall Decor", "", ""],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    results = ls_tool("/", "*", max_results=10)
+    assert "/decor-pillows" in results
+    assert "/outdoor" in results
 
 
 def test_wands_nested_glob_matches():

@@ -11,6 +11,8 @@ strategy:
       Use ls_wands to explore directories, grep_wands to search within files, and cat_wands
       to inspect specific product files.
 
+      It's important to return results ranked from most to least relevant based on the user query.
+
       Gather results until you have 10 best matches you can find. It's important to return at least 10.
       Return the *DOC IDs*, not paths, in the response.
     search_tools:
