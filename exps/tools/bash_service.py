@@ -12,6 +12,7 @@ class BashService:
         self.port = port
 
     def execute(self, command: str, timeout: int = 30) -> str:
+        print(f"Executing bash command on service port {self.port}: {command}")
         payload = json.dumps({"command": command, "timeout": timeout}).encode("utf-8")
         req = request.Request(
             f"http://127.0.0.1:{self.port}/execute",
@@ -24,6 +25,8 @@ class BashService:
         stdout = data.get("stdout", "")
         stderr = data.get("stderr", "")
         exit_code = data.get("exit_code", 1)
+        print("Bash command executed with exit code %s. Stdout bytes: %s, Stderr bytes: %s",
+              exit_code, len(stdout), len(stderr))
         return (
             "exit_code="
             + str(exit_code)

@@ -380,6 +380,8 @@ class AgenticSearchStrategy(SearchStrategy):
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
+        print("*****")
+        print(f"Running agentic search for query: {query}")
         query_dir = self.query_path(query)
         inputs = [{"role": "system", "content": self.system_prompt}]
         agent_state = {"num_tool_calls": 0}
@@ -413,6 +415,8 @@ class AgenticSearchStrategy(SearchStrategy):
             json.dumps({"num_tool_calls": num_tool_calls}, indent=2) + "\n",
             encoding="utf-8",
         )
+        print(f"DONE -- query: {query}, results: {len(ranked_results)}, trace: {trace_path}")
+        print("*****")
         return ranked_results, [1.0] * len(ranked_results)
 
     def query_path(self, query: str) -> Path:
