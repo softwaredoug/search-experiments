@@ -38,7 +38,7 @@ This calls OpenAI with
 - the query being searched for as the user prompt. 
 - a set of simple search tools that the agent can call to gather info. In this case, BM25 and minilm embedding search. The agent can call these tools with different queries, etc to gather info. The agentic loop continues until the agent decides to stop (or max iterations is reached). Then the final ranked list of results is returned and evaluated.
 
-Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness still applies stop/reprompt logic around that agent loop.
+Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness applies validators + stop conditions around that agent loop.
 
 ### Agent state
 
@@ -191,22 +191,41 @@ Some params require wrapping the agentic loop itself in a harness to drive execu
 
 For example, if we want to enforce a certain number of iterations, or a certain number of calls to a tool, we can do that with the harness. The harness can check the agent state after every tool call, and decide whether to continue or not.
 
-### Stopping
+### Stopping / Validating conditionals
 
 One type of param is a "stopper" - when to stop the agentic loop. Even if the agent comes back, we might tell it to try again. Here we see a stopper based on required number of tool calls.
 
 ```
     stop:
-      - tool_calls: 4
+      - tool_calls:
+          prompt: "Please make at least 4 tool calls to gather enough information before returning results."
+          params:
+            num_calls: 4
 ```
 
-### Reprompt
+Here: params are parameters to the stopper. If the condition is not met, then `prompt` will be appended to the context
+as user message and the agent called again
 
-If stop is not satisfied, a "reprompt" can be issued as the user message to pass to the agent as needed, ie:
+### Validators
+
+Validators are just stoppers, but ALL conditions must be met. Validators should be checked in the order they're listed
 
 ```
-    reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
+    validators:
+      - num_results:
+          prompt: "Please return at least 10 results to give the user a good variety to choose from."
+          params:
+            min_results: 10
+    stop:
+      - tool_calls:
+          prompt: "Please make at least 4 tool calls to gather enough information before returning results."
+          params:
+            num_calls: 4
 ```
+
+Logically first validators are checked (in order listed). If any validator fails, its prompt is appended and the loop repeats.
+
+Then stoppers are checked. If any stopper succeeds, the loop ends. If not, the first stopper's prompt is appended and the loop continues.
 
 
 ## Workflow through list of agents
@@ -297,6 +316,5 @@ for work_item in workflow:
         if stop_condition(output):
             break
         else:
-            # maybe reprompt or do something else before retrying
+            # append stopper/validator prompt before retrying
 ```
-

@@ -19,6 +19,8 @@ strategy:
             - disallow_repeated_queries                                                                          
             - query_min_length:
                 min_terms: 3
-    stop:                                                                                                        
-      - iterations: 3                                                                                            
-    reprompt: Those results might be right, but can you do better?
+    stop:
+      - iterations:
+          prompt: Those results might be right, but can you do better?
+          params:
+            iterations: 3

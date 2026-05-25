@@ -151,37 +151,47 @@ def trace_logger(trace_dir: Path):
         logger.removeHandler(handler)
 
 
-def _parse_stop_entry(entry: Any) -> tuple[str, dict]:
-    if isinstance(entry, str):
-        return entry, {}
-    if isinstance(entry, dict) and len(entry) == 1:
-        (name, raw_params), = entry.items()
-        if isinstance(raw_params, dict):
-            return name, dict(raw_params)
-        if raw_params is None:
-            return name, {}
-        if name == "iterations":
-            return name, {"iterations": raw_params}
-        if name == "tool_calls":
-            return name, {"tool_calls": raw_params}
-        return name, {"value": raw_params}
-    raise ValueError("Stop entry must be a string or single-key mapping.")
+def _parse_condition_entry(entry: Any) -> tuple[str, dict]:
+    if not (isinstance(entry, dict) and len(entry) == 1):
+        raise ValueError("Condition entries must be single-key mappings.")
+    (name, raw_params), = entry.items()
+    if not isinstance(raw_params, dict):
+        raise ValueError("Condition params must be a mapping.")
+    return name, dict(raw_params)
 
 
-def normalize_stops(stop_config: list | None) -> list[dict[str, Any]]:
-    if not stop_config:
+def _require_prompt(condition: dict, *, kind: str) -> str:
+    prompt = condition.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError(f"{kind} condition requires a non-empty prompt.")
+    return prompt
+
+
+def normalize_conditions(condition_config: list | None, *, kind: str) -> list[dict[str, Any]]:
+    if not condition_config:
         return []
-    stops: list[dict[str, Any]] = []
-    for entry in stop_config:
-        name, params = _parse_stop_entry(entry)
-        if name == "iterations" and "iterations" not in params:
-            raise ValueError("Stop condition 'iterations' requires an iterations value.")
-        if name == "tool_calls" and "tool_calls" not in params:
-            raise ValueError("Stop condition 'tool_calls' requires a tool_calls value.")
-        if name not in {"iterations", "tool_calls"}:
-            raise ValueError(f"Unknown stop condition: {name}")
-        stops.append({"name": name, "params": params})
-    return stops
+    conditions: list[dict[str, Any]] = []
+    for entry in condition_config:
+        name, params = _parse_condition_entry(entry)
+        prompt = _require_prompt(params, kind=kind)
+        params = dict(params)
+        params.pop("prompt", None)
+        if "params" not in params or not isinstance(params["params"], dict):
+            raise ValueError(f"{kind} condition '{name}' requires params mapping.")
+        params_dict = params["params"]
+        if name == "iterations":
+            if "iterations" not in params_dict:
+                raise ValueError("Condition 'iterations' requires params.iterations.")
+        elif name == "tool_calls":
+            if "num_calls" not in params_dict:
+                raise ValueError("Condition 'tool_calls' requires params.num_calls.")
+        elif name == "num_results":
+            if "min_results" not in params_dict:
+                raise ValueError("Condition 'num_results' requires params.min_results.")
+        else:
+            raise ValueError(f"Unknown {kind} condition: {name}")
+        conditions.append({"name": name, "prompt": prompt, "params": params_dict})
+    return conditions
 
 
 def _tool_calls_from_inputs(inputs: list) -> int:
@@ -190,6 +200,50 @@ def _tool_calls_from_inputs(inputs: list) -> int:
         if isinstance(item, dict) and item.get("type") == "function_call_output":
             count += 1
     return count
+
+
+def _num_results_from_response(resp) -> int:
+    if resp is None:
+        return 0
+    parsed = getattr(resp, "output_parsed", None)
+    if parsed is None:
+        return 0
+    ranked = getattr(parsed, "ranked_results", None)
+    if not ranked:
+        return 0
+    return len(ranked)
+
+
+def _condition_met(condition: dict, *, num_loops: int, tool_calls: int, resp) -> bool:
+    name = condition["name"]
+    params = condition["params"]
+    if name == "iterations":
+        return num_loops >= int(params["iterations"])
+    if name == "tool_calls":
+        return tool_calls >= int(params["num_calls"])
+    if name == "num_results":
+        return _num_results_from_response(resp) >= int(params["min_results"])
+    return False
+
+
+def _first_failed_validator(resp, validators: list[dict[str, Any]], num_loops: int, tool_calls: int) -> str | None:
+    for validator in validators:
+        if not _condition_met(validator, num_loops=num_loops, tool_calls=tool_calls, resp=resp):
+            return validator["prompt"]
+    return None
+
+
+def _first_passing_stopper(stoppers: list[dict[str, Any]], num_loops: int, tool_calls: int, resp) -> dict | None:
+    for stopper in stoppers:
+        if _condition_met(stopper, num_loops=num_loops, tool_calls=tool_calls, resp=resp):
+            return stopper
+    return None
+
+
+def _first_stopper_prompt(stoppers: list[dict[str, Any]], num_loops: int, tool_calls: int, resp) -> str | None:
+    if _first_passing_stopper(stoppers, num_loops, tool_calls, resp):
+        return None
+    return stoppers[0]["prompt"] if stoppers else None
 
 
 class AgenticSearchStrategy(SearchStrategy):
@@ -207,7 +261,7 @@ class AgenticSearchStrategy(SearchStrategy):
         agents: dict | None = None,
         workflow: list | None = None,
         stop: list | None = None,
-        reprompt: str | None = None,
+        validators: list | None = None,
         embeddings_device: str | None = None,
         trace_path: Path | None = None,
     ):
@@ -221,7 +275,7 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("workflow requires agents configuration.")
         self.subagent_system_prompt = subagent_system_prompt
         self.stop = stop
-        self.reprompt = reprompt
+        self.validators = validators
         tool_config, delegate_task = _extract_delegate_task(self.search_tools)
         self._delegate_task = delegate_task
         self.tools = build_search_tools(
@@ -276,7 +330,7 @@ class AgenticSearchStrategy(SearchStrategy):
         inputs: list[dict],
         agent_state: dict,
         stops: list[dict[str, Any]],
-        reprompt: str | None,
+        validators: list[dict[str, Any]],
         logger,
     ):
         _replace_system_prompt(inputs, system_prompt)
@@ -317,19 +371,16 @@ class AgenticSearchStrategy(SearchStrategy):
             num_loops += 1
             tool_calls = _tool_calls_from_inputs(inputs) - baseline_tool_calls
             agent_state["num_tool_calls"] = _tool_calls_from_inputs(inputs)
+            validator_prompt = _first_failed_validator(resp, validators, num_loops, tool_calls)
+            if validator_prompt:
+                inputs.append({"role": "user", "content": validator_prompt})
+                continue
             if not stops:
                 break
-            if any(
-                (stopper["name"] == "iterations" and num_loops >= stopper["params"]["iterations"])
-                or (
-                    stopper["name"] == "tool_calls"
-                    and tool_calls >= stopper["params"]["tool_calls"]
-                )
-                for stopper in stops
-            ):
+            stop_prompt = _first_stopper_prompt(stops, num_loops, tool_calls, resp)
+            if stop_prompt is None:
                 break
-            if reprompt:
-                inputs.append({"role": "user", "content": reprompt})
+            inputs.append({"role": "user", "content": stop_prompt})
 
         logger.info("agent_step_output %s", {"step": step_index, "agent": agent_name, "output": resp.output_parsed})
         return resp, inputs
@@ -341,7 +392,7 @@ class AgenticSearchStrategy(SearchStrategy):
         inputs: list[dict],
         agent_state: dict,
         stops: list[dict[str, Any]],
-        reprompt: str | None,
+        validators: list[dict[str, Any]],
         logger,
     ):
         if self.workflow:
@@ -372,7 +423,7 @@ class AgenticSearchStrategy(SearchStrategy):
                 inputs=inputs,
                 agent_state=agent_state,
                 stops=stops,
-                reprompt=reprompt,
+                validators=validators,
                 logger=logger,
             )
         return resp, inputs
@@ -385,10 +436,8 @@ class AgenticSearchStrategy(SearchStrategy):
         query_dir = self.query_path(query)
         inputs = [{"role": "system", "content": self.system_prompt}]
         agent_state = {"num_tool_calls": 0}
-        stops = normalize_stops(self.stop)
-        reprompt = self.reprompt
-        if reprompt is not None and not isinstance(reprompt, str):
-            raise ValueError("reprompt must be a string when provided.")
+        stops = normalize_conditions(self.stop, kind="stop")
+        validators = normalize_conditions(self.validators, kind="validator")
         with trace_logger(query_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
             agent_state["trace_logger"] = logger
@@ -398,7 +447,7 @@ class AgenticSearchStrategy(SearchStrategy):
                 inputs=inputs,
                 agent_state=agent_state,
                 stops=stops,
-                reprompt=reprompt,
+                validators=validators,
                 logger=logger,
             )
 
@@ -449,7 +498,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "agents": _normalize_agents_for_cache(self.agents),
             "workflow": self.workflow,
             "stop": self.stop,
-            "reprompt": self.reprompt,
+            "validators": self.validators,
             "embeddings_device": self.embeddings_device,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")

@@ -22,5 +22,7 @@ strategy:
           guards:
             - disallow_similar_queries: 0.9
     stop:
-      - tool_calls: 4
-    reprompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
+      - tool_calls:
+          prompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
+          params:
+            num_calls: 4

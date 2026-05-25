@@ -15,6 +15,11 @@ strategy:
 
       Gather results until you have 10 best matches you can find. It's important to return at least 10.
       Return the *DOC IDs*, not paths, in the response.
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
     search_tools:
       - ls_wands
       - grep_wands
