@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+MAX_CONCURRENT = int(os.getenv("EXPS_BASH_MAX_CONCURRENT", "2"))
+SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT)
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         started_at = time.perf_counter()
+        queue_started = started_at
+        SEMAPHORE.acquire()
         if self.path != "/execute":
             self.send_response(404)
             self.end_headers()
+            SEMAPHORE.release()
             return
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length).decode("utf-8")
@@ -22,45 +31,51 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             self.wfile.write(b"Missing command")
+            SEMAPHORE.release()
             return
         try:
-            proc = subprocess.run(
+            try:
+                proc = subprocess.run(
+                    command,
+                    shell=True,
+                    cwd="/corpus",
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                )
+                response = {
+                    "exit_code": proc.returncode,
+                    "stdout": proc.stdout,
+                    "stderr": proc.stderr,
+                }
+            except subprocess.TimeoutExpired:
+                response = {
+                    "exit_code": 124,
+                    "stdout": "",
+                    "stderr": "Command timed out",
+                }
+            elapsed_ms = (time.perf_counter() - started_at) * 1000
+            queued_ms = (time.perf_counter() - queue_started) * 1000
+            stderr_size = len(response.get("stderr", ""))
+            stdout_size = len(response.get("stdout", ""))
+            self.log_message(
+                "bash_command=%r timeout=%s queued_ms=%.2f elapsed_ms=%.2f exit_code=%s stdout_bytes=%s stderr_bytes=%s",
                 command,
-                shell=True,
-                cwd="/corpus",
-                capture_output=True,
-                text=True,
-                timeout=timeout,
+                timeout,
+                queued_ms,
+                elapsed_ms,
+                response.get("exit_code"),
+                stdout_size,
+                stderr_size,
             )
-            response = {
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout,
-                "stderr": proc.stderr,
-            }
-        except subprocess.TimeoutExpired:
-            response = {
-                "exit_code": 124,
-                "stdout": "",
-                "stderr": "Command timed out",
-            }
-        elapsed_ms = (time.perf_counter() - started_at) * 1000
-        stderr_size = len(response.get("stderr", ""))
-        stdout_size = len(response.get("stdout", ""))
-        self.log_message(
-            "bash_command=%r timeout=%s elapsed_ms=%.2f exit_code=%s stdout_bytes=%s stderr_bytes=%s",
-            command,
-            timeout,
-            elapsed_ms,
-            response.get("exit_code"),
-            stdout_size,
-            stderr_size,
-        )
-        body = json.dumps(response).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+            body = json.dumps(response).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        finally:
+            SEMAPHORE.release()
 
 
 def main():
