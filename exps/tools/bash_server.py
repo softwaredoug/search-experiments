@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -50,7 +50,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    server = HTTPServer(("0.0.0.0", 8000), Handler)
+    server = ThreadingHTTPServer(("0.0.0.0", 8000), Handler)
     server.serve_forever()
 
 

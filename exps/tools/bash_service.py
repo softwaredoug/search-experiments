@@ -4,6 +4,7 @@ import atexit
 import json
 import subprocess
 import time
+import uuid
 from pathlib import Path
 from urllib import request
 
@@ -13,6 +14,7 @@ class BashService:
         self.dataset_dir = dataset_dir
         self.container_id: str | None = None
         self.port: str | None = None
+        self.owner_label = f"exps-bash-service-owner={uuid.uuid4().hex}"
 
     def start(self) -> None:
         server_path = Path(__file__).with_name("bash_server.py")
@@ -22,6 +24,10 @@ class BashService:
             "-d",
             "-p",
             "0:8000",
+            "--label",
+            "exps-bash-service",
+            "--label",
+            self.owner_label,
             "-v",
             f"{self.dataset_dir}:/corpus:ro",
             "-v",
@@ -61,7 +67,12 @@ class BashService:
     def stop(self) -> None:
         if not self.container_id:
             return
-        subprocess.run(["docker", "rm", "-f", self.container_id], capture_output=True)
+        subprocess.run(
+            ["docker", "rm", "-f", self.container_id],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         self.container_id = None
         self.port = None
 

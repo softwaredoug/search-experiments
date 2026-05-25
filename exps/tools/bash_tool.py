@@ -1,10 +1,18 @@
 from __future__ import annotations
 
-from exps.tools.bash_service import start_bash_service
+import http.client
+import threading
+from pathlib import Path
+from urllib import error as urllib_error
+
+from exps.tools.bash_service import BashService, start_bash_service
 from exps.tools.filesystem_index import ensure_filesystem_on_disk
 
 
 _MAX_OUTPUT_CHARS = 8000
+_SERVICE_CACHE: dict[tuple[str, str], BashService] = {}
+_SERVICE_LOCKS: dict[tuple[str, str], threading.Lock] = {}
+_CACHE_LOCK = threading.Lock()
 
 
 def _truncate_output(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS) -> str:
@@ -13,11 +21,22 @@ def _truncate_output(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS) -> str:
     return text[:max_chars] + "\n[output truncated]"
 
 
+def _get_service(dataset_dir: str, variant: str) -> tuple[BashService, threading.Lock]:
+    key = (dataset_dir, variant)
+    with _CACHE_LOCK:
+        service = _SERVICE_CACHE.get(key)
+        if service is None or service.port is None:
+            service = start_bash_service(Path(dataset_dir))
+            _SERVICE_CACHE[key] = service
+        lock = _SERVICE_LOCKS.setdefault(key, threading.Lock())
+    return service, lock
+
+
 def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
     if not dataset_name:
         raise ValueError("bash tool requires dataset_name")
     dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant=variant)
-    service = start_bash_service(dataset_dir)
+    service, service_lock = _get_service(str(dataset_dir), variant)
 
     def bash(command: str, timeout: int = 30, agent_state=None) -> str:
         """Execute a bash command inside the sandboxed filesystem service.
@@ -44,13 +63,27 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
             logger = agent_state.get("trace_logger")
             if logger is not None:
                 logger.info("bash_command %s", command)
-        try:
-            output = service.execute(command, timeout=timeout)
-        except TimeoutError:
-            return f"Error! bash command timed out after {timeout}s."
-        except OSError as exc:
-            return f"Error! bash command failed: {exc}"
-        return _truncate_output(output)
+        nonlocal service
+        with service_lock:
+            try:
+                output = service.execute(command, timeout=timeout)
+                return _truncate_output(output)
+            except (TimeoutError, OSError, http.client.RemoteDisconnected, urllib_error.URLError) as exc:
+                if agent_state is not None:
+                    logger = agent_state.get("trace_logger")
+                    if logger is not None:
+                        logger.info("bash_service_restart %s", str(exc))
+                try:
+                    service.stop()
+                except Exception:
+                    pass
+                service = start_bash_service(dataset_dir)
+                _SERVICE_CACHE[(str(dataset_dir), variant)] = service
+                try:
+                    output = service.execute(command, timeout=timeout)
+                    return _truncate_output(output)
+                except (TimeoutError, OSError, http.client.RemoteDisconnected, urllib_error.URLError) as retry_exc:
+                    return f"Error! bash command failed: {retry_exc}"
 
     bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
     bash.__doc__ = (
