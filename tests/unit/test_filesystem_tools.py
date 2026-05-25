@@ -149,6 +149,23 @@ def test_wands_nested_glob_matches():
     assert "/rugs/indoor/blue-rug-202.txt" in results
 
 
+def test_wands_exact_depth_glob_matches():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202, 303],
+            "title": ["Red Rug", "Blue Rug", "Green Rug"],
+            "description": ["One", "Two", "Three"],
+            "category": ["Rugs", "Rugs", "Rugs"],
+            "subcategory": ["Outdoor", "", "Indoor"],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    results = ls_tool("/", "/*/*/*.txt", max_results=10)
+    assert "/rugs/outdoor/red-rug-101.txt" in results
+    assert "/rugs/indoor/green-rug-303.txt" in results
+    assert "/rugs/blue-rug-202.txt" not in results
+
+
 def test_wands_tools_require_wands_indexing():
     corpus = _sample_corpus()
     make_filesystem_ls_tool(corpus)

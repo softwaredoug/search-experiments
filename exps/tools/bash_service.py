@@ -31,14 +31,27 @@ class BashService:
             "-u",
             "/server.py",
         ]
-        proc = subprocess.run(command, capture_output=True, text=True, check=True)
+        try:
+            proc = subprocess.run(command, capture_output=True, text=True, check=True, timeout=30)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Timed out starting bash service container.") from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() if exc.stderr else ""
+            raise RuntimeError(f"Failed to start bash service container. {stderr}") from exc
         self.container_id = proc.stdout.strip()
-        port_proc = subprocess.run(
-            ["docker", "port", self.container_id, "8000"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        try:
+            port_proc = subprocess.run(
+                ["docker", "port", self.container_id, "8000"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Timed out inspecting bash service port.") from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() if exc.stderr else ""
+            raise RuntimeError(f"Failed to inspect bash service port. {stderr}") from exc
         port = port_proc.stdout.strip().split(":")[-1]
         if not port:
             raise RuntimeError("Failed to determine docker port mapping")
@@ -80,10 +93,12 @@ class BashService:
 def start_bash_service(dataset_dir: Path) -> BashService:
     service = BashService(dataset_dir)
     service.start()
+    last_exc = None
     for _ in range(10):
         try:
             service.execute("pwd", timeout=5)
             return service
-        except Exception:
+        except Exception as exc:
+            last_exc = exc
             time.sleep(0.2)
-    return service
+    raise RuntimeError("Bash service did not become ready.") from last_exc

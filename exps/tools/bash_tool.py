@@ -40,12 +40,16 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
 
         These are the best red shoes you'll ever find. They're super comfy and stylish.
         """
-        print(command)
         if agent_state is not None:
             logger = agent_state.get("trace_logger")
             if logger is not None:
                 logger.info("bash_command %s", command)
-        output = service.execute(command, timeout=timeout)
+        try:
+            output = service.execute(command, timeout=timeout)
+        except TimeoutError:
+            return f"Error! bash command timed out after {timeout}s."
+        except OSError as exc:
+            return f"Error! bash command failed: {exc}"
         return _truncate_output(output)
 
     bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
