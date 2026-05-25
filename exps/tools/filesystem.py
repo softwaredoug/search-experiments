@@ -240,9 +240,7 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             return "Error! path must be a non-empty string."
         prefix = _normalize_dir(path)
         if glob in {"*", "*/"}:
-            children = []
-            extra = 0
-            seen = set()
+            child_map: dict[str, bool] = {}
             for item in paths:
                 if not item.startswith(prefix):
                     continue
@@ -251,17 +249,19 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
                     continue
                 child = rest.split("/", 1)[0]
                 child_path = f"{prefix}{child}" if prefix != "/" else f"/{child}"
-                if child_path in seen:
-                    continue
-                if len(children) < limit:
-                    children.append(child_path)
-                    seen.add(child_path)
+                is_dir = "/" in rest
+                if child_path in child_map:
+                    child_map[child_path] = child_map[child_path] or is_dir
                 else:
-                    extra += 1
-            children = sorted(children)
-            if extra:
-                children.append(f"Truncated ({extra} more)")
-            return children
+                    child_map[child_path] = is_dir
+            dir_children = sorted([path for path, is_dir in child_map.items() if is_dir])
+            file_children = sorted([path for path, is_dir in child_map.items() if not is_dir])
+            ordered = dir_children + file_children
+            if len(ordered) > limit:
+                extra = len(ordered) - limit
+                ordered = ordered[:limit]
+                ordered.append(f"Truncated ({extra} more)")
+            return ordered
         pattern = _normalize_glob(prefix, glob)
         matches = []
         extra = 0

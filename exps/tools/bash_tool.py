@@ -15,6 +15,7 @@ from exps.tools.filesystem_index import ensure_filesystem_on_disk, filesystem_ro
 
 
 _MAX_OUTPUT_CHARS = 8000
+_DEFAULT_MAX_TIMEOUT = 30
 _SERVICE_CACHE: dict[int, BashService] = {}
 _SERVICE_LOCKS: dict[int, threading.Lock] = {}
 _CACHE_LOCK = threading.Lock()
@@ -24,6 +25,16 @@ def _truncate_output(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS) -> str:
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "\n[output truncated]"
+
+
+def _parse_exit_code(output: str) -> int | None:
+    if not output.startswith("exit_code="):
+        return None
+    first_line = output.splitlines()[0]
+    try:
+        return int(first_line.split("=", 1)[1])
+    except (IndexError, ValueError):
+        return None
 
 
 def _get_service(port: int) -> tuple[BashService, threading.Lock]:
@@ -91,12 +102,19 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
             if logger is not None:
                 logger.info("bash_command %s", command)
         nonlocal service
+        max_timeout = int(os.getenv("EXPS_BASH_MAX_TIMEOUT", str(_DEFAULT_MAX_TIMEOUT)))
+        effective_timeout = min(timeout, max_timeout)
         with service_lock:
             try:
-                output = service.execute(command, timeout=timeout)
+                output = service.execute(command, timeout=effective_timeout)
+                exit_code = _parse_exit_code(output)
+                if exit_code == 124:
+                    raise RuntimeError(
+                        f"Bash command timed out after {effective_timeout}s."
+                    )
                 return _truncate_output(output)
             except (TimeoutError, OSError, http.client.RemoteDisconnected, urllib_error.URLError) as exc:
-                return f"Error! bash command failed: {exc}"
+                raise RuntimeError(f"Bash command failed: {exc}")
 
     bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
     bash.__doc__ = (

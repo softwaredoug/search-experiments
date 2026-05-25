@@ -133,6 +133,25 @@ def test_wands_ls_root_lists_categories():
     assert "/outdoor" in results
 
 
+def test_wands_ls_root_orders_dirs_before_files():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202, 303],
+            "title": ["Red Shoes", "Ship Wheel", "Brunk Desk"],
+            "description": ["One", "Two", "Three"],
+            "category": ["Decor & Pillows", "Outdoor", ""],
+            "subcategory": ["Wall Decor", "", ""],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    results = ls_tool("/", "*", max_results=10)
+    dirs = [path for path in results if path.count("/") == 1 and not path.endswith(".txt")]
+    files = [path for path in results if path.endswith(".txt")]
+    assert dirs
+    assert files
+    assert results.index(dirs[-1]) < results.index(files[0])
+
+
 def test_wands_nested_glob_matches():
     corpus = pd.DataFrame(
         {
