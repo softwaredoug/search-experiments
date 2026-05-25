@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import http.client
+import os
 import threading
-from pathlib import Path
 from urllib import error as urllib_error
 
-from exps.tools.bash_service import BashService, start_bash_service
-from exps.tools.filesystem_index import ensure_filesystem_on_disk
+from exps.tools.bash_service import (
+    BashService,
+    bash_service_running,
+    ensure_bash_volume,
+    volume_name_for_dataset,
+)
+from exps.tools.filesystem_index import ensure_filesystem_on_disk, filesystem_root
 
 
 _MAX_OUTPUT_CHARS = 8000
-_SERVICE_CACHE: dict[tuple[str, str], BashService] = {}
-_SERVICE_LOCKS: dict[tuple[str, str], threading.Lock] = {}
+_SERVICE_CACHE: dict[int, BashService] = {}
+_SERVICE_LOCKS: dict[int, threading.Lock] = {}
 _CACHE_LOCK = threading.Lock()
 
 
@@ -21,22 +26,44 @@ def _truncate_output(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS) -> str:
     return text[:max_chars] + "\n[output truncated]"
 
 
-def _get_service(dataset_dir: str, variant: str) -> tuple[BashService, threading.Lock]:
-    key = (dataset_dir, variant)
+def _get_service(port: int) -> tuple[BashService, threading.Lock]:
     with _CACHE_LOCK:
-        service = _SERVICE_CACHE.get(key)
-        if service is None or service.port is None:
-            service = start_bash_service(Path(dataset_dir))
-            _SERVICE_CACHE[key] = service
-        lock = _SERVICE_LOCKS.setdefault(key, threading.Lock())
+        service = _SERVICE_CACHE.get(port)
+        if service is None:
+            service = BashService(port)
+            _SERVICE_CACHE[port] = service
+        lock = _SERVICE_LOCKS.setdefault(port, threading.Lock())
     return service, lock
+
+
+def _compose_instructions(*, volume_name: str, port: int) -> str:
+    return (
+        "Start the bash service with:\n"
+        f"EXPS_BASH_VOLUME={volume_name} EXPS_BASH_PORT={port} \\n"
+        "docker compose -f docker-compose.bash.yml up -d"
+    )
 
 
 def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
     if not dataset_name:
         raise ValueError("bash tool requires dataset_name")
+    port = int(os.getenv("EXPS_BASH_PORT", "8000"))
+    dataset_root = filesystem_root(dataset_name)
+    filesystem_created = not dataset_root.exists()
     dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant=variant)
-    service, service_lock = _get_service(str(dataset_dir), variant)
+    volume_name = volume_name_for_dataset(dataset_name)
+    volume_created = ensure_bash_volume(dataset_dir, volume_name=volume_name)
+    if filesystem_created or volume_created:
+        raise RuntimeError(
+            "Bash filesystem or volume created; rerun after starting docker compose. "
+            + _compose_instructions(volume_name=volume_name, port=port)
+        )
+    if not bash_service_running(port):
+        raise RuntimeError(
+            "Bash service is not running. "
+            + _compose_instructions(volume_name=volume_name, port=port)
+        )
+    service, service_lock = _get_service(port)
 
     def bash(command: str, timeout: int = 30, agent_state=None) -> str:
         """Execute a bash command inside the sandboxed filesystem service.
@@ -69,21 +96,7 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
                 output = service.execute(command, timeout=timeout)
                 return _truncate_output(output)
             except (TimeoutError, OSError, http.client.RemoteDisconnected, urllib_error.URLError) as exc:
-                if agent_state is not None:
-                    logger = agent_state.get("trace_logger")
-                    if logger is not None:
-                        logger.info("bash_service_restart %s", str(exc))
-                try:
-                    service.stop()
-                except Exception:
-                    pass
-                service = start_bash_service(dataset_dir)
-                _SERVICE_CACHE[(str(dataset_dir), variant)] = service
-                try:
-                    output = service.execute(command, timeout=timeout)
-                    return _truncate_output(output)
-                except (TimeoutError, OSError, http.client.RemoteDisconnected, urllib_error.URLError) as retry_exc:
-                    return f"Error! bash command failed: {retry_exc}"
+                return f"Error! bash command failed: {exc}"
 
     bash.__name__ = "bash" if variant == "default" else f"bash_{variant}"
     bash.__doc__ = (

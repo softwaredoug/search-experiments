@@ -1,0 +1,15 @@
+services:
+  bash_fs:
+    image: python:3.12-slim
+    command: ["python", "-u", "/server.py"]
+    ports:
+      - "${EXPS_BASH_PORT:-8000}:8000"
+    volumes:
+      - "bash_corpus:/corpus:ro"
+      - "./exps/tools/bash_server.py:/server.py:ro"
+    restart: unless-stopped
+
+volumes:
+  bash_corpus:
+    name: ${EXPS_BASH_VOLUME:-exps-bash-corpus}
+    external: true
