@@ -4,6 +4,7 @@ See docs/runner_tests_prd.md for requirements.
 """
 
 import os
+import socket
 import subprocess
 from pathlib import Path
 
@@ -24,6 +25,15 @@ def _docker_available() -> bool:
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
     return True
+
+
+def _bash_service_available() -> bool:
+    port = int(os.environ.get("EXPS_BASH_PORT", "8000"))
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
 
 
 def test_run_benchmark_agentic_guarded():
@@ -309,6 +319,8 @@ def test_run_benchmark_agentic_bash_tool(tmp_path, monkeypatch):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
     if not _docker_available():
         pytest.skip("Docker is required for bash tool integration test.")
+    if not _bash_service_available():
+        pytest.skip("Bash service is not running for bash tool integration test.")
 
     trace_root = tmp_path / "search-experiments"
     monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)

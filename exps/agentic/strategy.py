@@ -304,6 +304,11 @@ class AgenticSearchStrategy(SearchStrategy):
                 )
                 if result is True:
                     continue
+                logger.info(
+                    "agentic_validator_prompt %s",
+                    {"step": step_index, "agent": agent_name, "validator": validator["name"],
+                     "result": result},
+                )
                 inputs.append({"role": "user", "content": result})
                 break
             else:
@@ -322,6 +327,11 @@ class AgenticSearchStrategy(SearchStrategy):
                         break
                     if stop_prompt is None:
                         stop_prompt = stop_result
+                        logger.info(
+                            "agentic_stopper_prompt %s",
+                            {"step": step_index, "agent": agent_name, "stopper": stopper["name"],
+                             "result": stop_result},
+                        )
                 if stop_prompt is None:
                     break
                 inputs.append({"role": "user", "content": stop_prompt})

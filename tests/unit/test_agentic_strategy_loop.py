@@ -40,7 +40,7 @@ class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
         result = conditions_mod.LLMJudgeResponse(
             graded_results=[
                 conditions_mod.GradedSearchResult(
-                    emoji="🥲",
+                    emoji="😞",
                     title="Red Shoes",
                     doc_id="101",
                 ),
