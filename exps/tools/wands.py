@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Union
 
 import numpy as np
@@ -154,7 +155,7 @@ def make_wands_bm25_tool(
             'description', and 'score' keys.
         """
         if top_k > 100:
-            raise ValueError("top_k must be <= 100")
+            return "Error! top_k must be <= 100."
         if agent_state is not None:
             logger = agent_state.get("trace_logger")
             if logger is not None:
@@ -211,12 +212,14 @@ def make_wands_embedding_tool(
 
     passage_fn = make_passage_fn(document_prefix)
 
+    show_progress = os.getenv("EXPS_EMBEDDING_PROGRESS", "1") != "0"
     embeddings, model = load_or_create_embeddings(
         corpus,
         passage_fn=passage_fn,
         model_name=model_name,
         device=device,
         chunk_size=DEFAULT_CHUNK_SIZE,
+        show_progress=show_progress,
     )
     if model is None:
         model = load_model(model_name, device=device)
