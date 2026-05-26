@@ -1,0 +1,51 @@
+strategy:
+  name: agentic_wands_fs_tools_judge
+  type: agentic
+  description: |
+    Agentic search over WANDS using filesystem tools with LLM judge feedback.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use filesystem tools to find relevant products.
+
+      Use ls_wands to explore directories, grep_wands to search within files, and cat_wands
+      to inspect specific product files.
+
+      It's important to return results ranked from most to least relevant based on the user query.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*, not paths, in the response.
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
+      - llm_judge_relevance:
+          prompt: Please return more relevant results to better help the user find what they're looking for.
+          params:
+            model: gpt-5-mini
+            reasoning: medium
+            judge_prompt: |
+              You are a helpful assistant that judges the relevance of search results to a query.
+
+              Query: {query}
+
+              Results:
+              {results}
+
+              Please rate the relevance of these results to the query using emojis of how well they satisfy the query.
+
+              It's important that the item
+              * Is in the desired category / item type
+              * Preferable, but not required, they match the user's search terms
+
+              Respond as a list of graded results with fields: emoji, title, doc_id.
+    stop:
+      - tool_calls:
+          prompt: Please make at least 16 tool calls to gather enough information before returning results.
+          params:
+            num_calls: 16
+    search_tools:
+      - ls_wands
+      - grep_wands
+      - cat_wands
