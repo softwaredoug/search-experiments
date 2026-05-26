@@ -1,0 +1,23 @@
+strategy:
+  name: agentic_ecom_bm25_fewshot_gpt5_mini
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+
+      Look at the search tools you have, their limitations, how they work, etc when forming your plan.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+    few_shot:
+      - sample_judgments: 
+          num_rows: 6

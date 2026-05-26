@@ -1,0 +1,32 @@
+strategy:
+  name: agentic_wands_fs_tools_few_shot
+  type: agentic
+  description: |
+    Agentic search over WANDS using filesystem tools (ls/grep/cat).
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use filesystem tools to find relevant products.
+
+      Use ls_wands to explore directories, grep_wands to search within files, and cat_wands
+      to inspect specific product files.
+
+      Use delegate_task to describe a more complex search task to a helpful sub-agent that can
+      plan out multiple steps and use tools iteratively to accomplish the task.
+
+      It's important to return results ranked from most to least relevant based on the user query.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*, not paths, in the response.
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
+    search_tools:
+      - ls_wands
+      - grep_wands
+      - cat_wands
+    few_shot:
+      - sample_judgments: 
+          num_rows: 6
