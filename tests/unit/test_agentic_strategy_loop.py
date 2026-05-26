@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 import exps.agentic.strategy as agentic_mod
+from exps.agentic import conditions as conditions_mod
 
 
 class _FakeOpenAIAgent:
@@ -25,6 +26,31 @@ class _FakeOpenAIAgent:
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         result = agentic_mod.SearchResults(ranked_results=["101", "202", "303"])
+        resp = type("Resp", (), {"output_parsed": result})
+        self.last_inputs = inputs
+        self.last_agent_state = agent_state
+        return resp, inputs, 0
+
+
+class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
+    def chat(self, inputs=None, agent_state=None, logger=None):
+        if inputs is None:
+            inputs = []
+        self.calls += 1
+        result = conditions_mod.LLMJudgeResponse(
+            graded_results=[
+                conditions_mod.GradedSearchResult(
+                    emoji="🥲",
+                    title="Red Shoes",
+                    doc_id="101",
+                ),
+                conditions_mod.GradedSearchResult(
+                    emoji="😃",
+                    title="Ship Wheel",
+                    doc_id="202",
+                ),
+            ]
+        )
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -134,6 +160,72 @@ def test_agentic_validator_runs_before_stopper(monkeypatch, tmp_path):
     )
     assert validator_prompt_count == 1
     assert stop_prompt_count == 0
+
+
+def test_llm_judge_validator_appends_prompt(monkeypatch, tmp_path):
+    main_agent = {"instance": None}
+
+    def _agent_factory(*args, **kwargs):
+        response_model = kwargs.get("response_model")
+        if response_model is conditions_mod.LLMJudgeResponse:
+            return _FakeJudgeOpenAIAgent(*args, **kwargs)
+        agent = _FakeOpenAIAgent(*args, **kwargs)
+        main_agent["instance"] = agent
+        return agent
+
+    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _agent_factory)
+    monkeypatch.setattr(conditions_mod, "OpenAIAgent", _agent_factory)
+    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+
+    strategy = agentic_mod.AgenticSearchStrategy(
+        _sample_corpus(),
+        workers=1,
+        model="gpt-5-mini",
+        search_tools=[],
+        validators=[
+            {
+                "llm_judge_relevance": {
+                    "prompt": "Please return more relevant results.",
+                    "params": {
+                        "model": "gpt-5-mini",
+                        "reasoning": "medium",
+                        "judge_prompt": "Query: {query}\nResults:\n{results}",
+                    },
+                }
+            }
+        ],
+        max_loops=2,
+        trace_path=tmp_path,
+    )
+    strategy.search("query", k=2)
+
+    inputs = main_agent["instance"].last_inputs
+    prompt_count = sum(
+        1
+        for item in inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "LLM evaluations" in str(item.get("content"))
+    )
+    assert prompt_count == 1
+
+
+def test_agentic_max_loops_stops(monkeypatch, tmp_path):
+    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgent)
+    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+
+    strategy = agentic_mod.AgenticSearchStrategy(
+        _sample_corpus(),
+        workers=1,
+        model="gpt-5-mini",
+        search_tools=[],
+        validators=[{"num_results": {"prompt": "Need more", "params": {"min_results": 10}}}],
+        max_loops=2,
+        trace_path=tmp_path,
+    )
+    strategy.search("query", k=2)
+
+    assert _FakeOpenAIAgent.last_instance.calls == 2
 
 
 def test_trace_log_records_outputs(monkeypatch, tmp_path, caplog):

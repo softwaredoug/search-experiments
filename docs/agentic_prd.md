@@ -227,6 +227,68 @@ Logically first validators are checked (in order listed). If any validator fails
 
 Then stoppers are checked. If any stopper succeeds, the loop ends. If not, the first stopper's prompt is appended and the loop continues.
 
+The loop also stops after a maximum number of iterations (`max_loops`, default 10) to avoid infinite retries.
+
+### LLM judge validator
+
+Validators can use an LLM judge to provide emoji-based feedback. Example:
+
+```
+    validators:
+      - llm_judge_relevance:
+          prompt: "Please return more relevant results to better help the user find what they're looking for."
+          params:
+            model: gpt-5-mini
+            reasoning: medium
+            judge_prompt: |
+              You are a helpful assistant that judges the relevance of search results to a query.
+
+              Query: {query}
+
+              Results:
+              {results}
+
+              Please rate the relevance of these results to the query using emojis of how well they satisfy the query.
+
+              Respond as a list of graded results with fields: emoji, title, doc_id.
+```
+
+
+### LLM Judge Validator
+
+An LLM Judge validator exists to give emoji-based feedback to the agent on its performance. For example, we can give feedback on the relevance of the results returned by the agent:
+
+```
+    validators:
+      - llm_judge_relevance:
+          prompt: "Please return more relevant results to better help the user find what they're looking for."
+          params:
+            model: gpt-5-mini
+            reasoning: medium
+            judge_prompt: |
+              You are a helpful assistant that judges the relevance of search results to a query.
+
+              Query: {query}
+
+              Results:
+              {results}
+
+              Please rate the relevance of these results to the query using emojis of how well they satisfy the query.
+```
+
+Above results would include title, description, and ID fields for each result.
+
+Some validators, like this, can append to prompt the output of the process to better guide teh agent. So prompted back to the agent would be something like:
+
+```
+Please return more relevant results to better help the user find what they're looking for.
+
+LLM evaluations:
+
+1. 🥲 Red Shoes (ID: 1234)
+2. 😃 Purple Shoes
+```
+
 
 ## Workflow through list of agents
 
