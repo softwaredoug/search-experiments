@@ -181,6 +181,9 @@ def _wands_path_builder(
     category_slug = _slugify_series(category_series)
 
     subcategory_series = corpus.get("subcategory")
+    if subcategory_series is None and "sub_category" in corpus.columns:
+        print("Debug: using sub_category column for WANDS filesystem paths")
+        subcategory_series = corpus.get("sub_category")
     if subcategory_series is None:
         subcategory_series = pd.Series("", index=corpus.index)
     subcategory_series = subcategory_series.fillna("").astype(str)

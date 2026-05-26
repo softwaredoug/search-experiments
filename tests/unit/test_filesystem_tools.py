@@ -117,6 +117,21 @@ def test_wands_path_structure():
     assert "/brunk-desk-303.txt" in paths
 
 
+def test_wands_path_uses_sub_category_column():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [0],
+            "title": ["Solid Wood Platform Bed"],
+            "description": ["A bed frame"],
+            "category": ["Furniture"],
+            "sub_category": ["Bedroom Furniture"],
+        }
+    )
+    ls_tool = make_filesystem_ls_wands_tool(corpus)
+    paths = ls_tool("/", "**/*.txt", max_results=10)
+    assert "/furniture/bedroom-furniture/solid-wood-platform-bed-0.txt" in paths
+
+
 def test_wands_ls_root_lists_categories():
     corpus = pd.DataFrame(
         {
