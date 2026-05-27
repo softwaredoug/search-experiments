@@ -57,6 +57,26 @@ def test_run_benchmark_agentic_guarded():
     assert result.summary["tool_calls_std"] >= 0.0
 
 
+def test_run_benchmark_agentic_wands_bm25_e5_few_shot_delegate():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/cheat-at-search/agentic_wands_bm25_e5_few_shot_delegate.yml",
+        base_path=None,
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
 def test_run_benchmark_agentic_filesystem_tools():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
