@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -119,14 +120,27 @@ def make_guarded_search_tool(
 ):
     name = func_name or tool_fn.__name__
     guards = guards or []
+    tool_sig = inspect.signature(tool_fn)
 
-    def guarded(
-        query: str,
-        top_k: int = 5,
-        agent_state=None,
-    ) -> list[dict[str, Union[str, int, float]]] | str:
+    def _extract_query_arg(bound_args: inspect.BoundArguments) -> Any:
+        if "query" in bound_args.arguments:
+            return bound_args.arguments.get("query")
+        if "keywords" in bound_args.arguments:
+            return bound_args.arguments.get("keywords")
+        for param_name in tool_sig.parameters:
+            if param_name == "agent_state":
+                continue
+            return bound_args.arguments.get(param_name)
+        return None
+
+    def guarded(*args, **kwargs) -> list[dict[str, Union[str, int, float]]] | str:
         """Search tool wrapper that enforces configured guard checks."""
-        if top_k > 100:
+        bound_args = tool_sig.bind_partial(*args, **kwargs)
+        bound_args.apply_defaults()
+        query = _extract_query_arg(bound_args)
+        top_k = bound_args.arguments.get("top_k")
+        agent_state = bound_args.arguments.get("agent_state")
+        if isinstance(top_k, int) and top_k > 100:
             return "Error! top_k must be <= 100."
         params = {
             "tool_name": name,
@@ -142,10 +156,11 @@ def make_guarded_search_tool(
             err = guard_fn(params, agent_state, **guard_params)
             if isinstance(err, str) and err:
                 return err
-        return tool_fn(query, top_k, agent_state)
+        return tool_fn(*args, **kwargs)
 
     guarded.__name__ = name
     guarded.__doc__ = tool_fn.__doc__
+    guarded.__signature__ = tool_sig
     return guarded
 
 
