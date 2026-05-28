@@ -8,6 +8,18 @@ strategy:
       search_tools:
         - fielded_bm25
         - e5_base_v2
+      start_code: |
+        def reranker(query, top_k, fielded_bm25, e5_base_v2, **kwargs):
+            docs = fielded_bm25(
+                query,
+                fields=["title^9.3", "description^4.1"],
+                operator="or",
+                top_k=top_k,
+            )
+            return [str(doc["id"]) for doc in docs]
+
+        def rerank_default(query, top_k, *tool_fns, **kwargs):
+            return reranker(query, top_k, *tool_fns, **kwargs)
       edit:
         guards: []
       eval:
