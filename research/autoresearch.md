@@ -19,6 +19,14 @@ We can see overfitting when we look at the non-test queries.
 
 ![no guards](/assets/No_validation_test_data.png)
 
+On a version with guards on the tools, preventing applying changes when they 
+
+```
+uv run run --strategy configs/codegen/codegen_guarded.yml --dataset wands -rounds 10
+```
+
+![validation guardrails](assets/Validation_guardrails.png)
+
 ## BM25 run
 
 ```
