@@ -17,9 +17,6 @@ strategy:
                 top_k=top_k,
             )
             return [str(doc["id"]) for doc in docs]
-
-        def rerank_default(query, top_k, *tool_fns, **kwargs):
-            return reranker(query, top_k, *tool_fns, **kwargs)
       edit:
         guards: []
       eval:
