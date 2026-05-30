@@ -123,6 +123,24 @@ def _filesystem_root(agent_state: dict | None) -> str:
     return _normalize_root(agent_state.get(FILESYSTEM_ROOT_KEY))
 
 
+def _logging_prefix(agent_state: dict | None) -> str:
+    if not agent_state:
+        return ""
+    prefix = agent_state.get("logging_prefix")
+    if not prefix:
+        return ""
+    return f"{prefix} "
+
+
+def _combine_logging_prefix(agent_state: dict | None, suffix: str) -> str:
+    if agent_state is None:
+        return suffix
+    existing = agent_state.get("logging_prefix")
+    if existing:
+        return f"{existing}.{suffix}"
+    return suffix
+
+
 def _resolve_scoped_path(path: str, agent_state: dict | None) -> tuple[str | None, str | None]:
     if not isinstance(path, str) or not path.strip():
         return None, "Error! path must be a non-empty string."
@@ -444,7 +462,8 @@ def _make_filesystem_tools(
             logger = agent_state.get("trace_logger") if agent_state else None
             if logger is not None:
                 logger.info(
-                    "fs_grep_timing %s",
+                    "%sfs_grep_timing %s",
+                    _logging_prefix(agent_state),
                     {
                         "pattern": pattern,
                         "glob": glob,
@@ -497,12 +516,19 @@ def _make_filesystem_tools(
         if error:
             return error
         scoped_directory = _normalize_root(scoped_directory)
+        if variant == "wands" and scoped_directory == "/":
+            return "Error! search_directory_wands requires a specific WANDS category or subcategory directory."
         subagent_state = dict(agent_state)
         subagent_state[FILESYSTEM_ROOT_KEY] = scoped_directory
         subagent_state[SEARCH_DIRECTORY_DEPTH_KEY] = depth
+        subagent_state["logging_prefix"] = _combine_logging_prefix(agent_state, "sd")
         logger = agent_state.get("trace_logger")
         if logger is not None:
-            logger.info("search_directory_call %s", {"directory": scoped_directory, "prompt": prompt})
+            logger.info(
+                "%ssearch_directory_call %s",
+                _logging_prefix(agent_state),
+                {"directory": scoped_directory, "prompt": prompt},
+            )
         subagent_prompt = system_prompt or (
             "You search a virtual filesystem rooted at {scope}. Use ls, grep, and cat to find relevant files."
         )
@@ -528,7 +554,11 @@ def _make_filesystem_tools(
         _, inputs, _ = agent.chat(inputs=inputs, agent_state=subagent_state, logger=logger)
         results = _collect_tool_outputs(inputs[len(previous_inputs):])
         if logger is not None:
-            logger.info("search_directory_result %s", {"directory": scoped_directory, "result_count": len(results)})
+            logger.info(
+                "%ssearch_directory_result %s",
+                _logging_prefix(agent_state),
+                {"directory": scoped_directory, "result_count": len(results)},
+            )
         return results
 
     if wands_doc:

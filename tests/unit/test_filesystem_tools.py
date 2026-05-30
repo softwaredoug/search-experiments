@@ -357,12 +357,13 @@ def test_search_directory_overwrites_filesystem_root_for_subagent(monkeypatch):
             return None, inputs, {}
 
     monkeypatch.setattr("exps.tools.filesystem.OpenAIAgent", FakeAgent)
-    parent_state = {"filesystem_root": "/", "search_directory_depth": 0}
+    parent_state = {"filesystem_root": "/", "search_directory_depth": 0, "logging_prefix": "root"}
 
     results = search_directory("/", "Find shoes", agent_state=parent_state)
 
     assert results == [{"path": "/red-shoes-101.txt"}]
     assert captured["agent_state"]["filesystem_root"] == "/"
+    assert captured["agent_state"]["logging_prefix"] == "root.sd"
     assert captured["agent_state"] is not parent_state
     assert captured["inputs"][0]["content"] == "Search inside /"
     assert "search_directory" not in captured["tools"]
@@ -403,6 +404,24 @@ def test_search_directory_wands_respects_category_scope(monkeypatch):
     search_directory("/furniture/chairs", "Find chairs", agent_state={})
 
     assert captured["agent_state"]["filesystem_root"] == "/furniture/chairs"
+
+
+def test_search_directory_wands_rejects_root_scope():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["Red Chair"],
+            "description": ["A chair"],
+            "category": ["Furniture"],
+            "subcategory": ["Chairs"],
+        }
+    )
+    search_directory = make_filesystem_search_directory_wands_tool(corpus)
+
+    result = search_directory("/", "Find chairs", agent_state={})
+
+    assert isinstance(result, str)
+    assert "specific WANDS category or subcategory" in result
 
 
 def test_search_directory_auto_added_for_complete_filesystem_toolset():
