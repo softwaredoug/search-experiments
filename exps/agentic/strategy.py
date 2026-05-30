@@ -198,7 +198,7 @@ class AgenticSearchStrategy(SearchStrategy):
         self.system_prompt = system_prompt
         self.corpus = corpus
         self._tool_cache: dict[str, list[callable]] = {}
-        self.tools = self._get_tools(self.search_tools)
+        self.tools = self._get_tools(self.search_tools, system_prompt=self.system_prompt)
         self._workflow_steps = self._prepare_workflow_steps()
         self._lookup = build_doc_id_lookup(corpus)
         self.traces: dict[str, str] = {}
@@ -226,16 +226,19 @@ class AgenticSearchStrategy(SearchStrategy):
                     "agent_name": agent_name,
                     "prompt_template": prompt_template,
                     "system_prompt": step_system_prompt,
-                    "tools": self._get_tools(step_tool_config),
+                    "tools": self._get_tools(step_tool_config, system_prompt=step_system_prompt),
                 }
             )
         return prepared
 
-    def _get_tools(self, tool_config: list | None) -> list[callable]:
+    def _get_tools(self, tool_config: list | None, *, system_prompt: str | None = None) -> list[callable]:
         if not tool_config:
             return []
         cache_key = json.dumps(
-            _normalize_search_tools_for_cache(tool_config),
+            {
+                "tools": _normalize_search_tools_for_cache(tool_config),
+                "system_prompt": system_prompt,
+            },
             sort_keys=True,
             default=str,
         )
@@ -250,6 +253,7 @@ class AgenticSearchStrategy(SearchStrategy):
                     filtered_tools,
                     embeddings_device=self.embeddings_device,
                     dataset_name=self.dataset_name,
+                    system_prompt=system_prompt,
                 )
             )
         else:

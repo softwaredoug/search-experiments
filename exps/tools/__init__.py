@@ -18,6 +18,8 @@ from exps.tools.filesystem import (
     make_filesystem_grep_wands_tool,
     make_filesystem_ls_tool,
     make_filesystem_ls_wands_tool,
+    make_filesystem_search_directory_tool,
+    make_filesystem_search_directory_wands_tool,
 )
 from exps.tools.guards import (
     GUARDS,
@@ -62,6 +64,8 @@ __all__ = [
     "make_filesystem_grep_wands_tool",
     "make_filesystem_ls_tool",
     "make_filesystem_ls_wands_tool",
+    "make_filesystem_search_directory_tool",
+    "make_filesystem_search_directory_wands_tool",
     "make_fielded_bm25_tool",
     "make_get_corpus_tool",
     "make_guarded_search_tool",

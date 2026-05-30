@@ -145,3 +145,37 @@ bash_wands
 
 is use, then the WANDS data should be written to the filesystem with the category/subcategory structure as described
 above. The service should also be aware of this structure and execute commands in the correct directory.
+
+
+### Search Directory tools
+
+A tool `search_directory` delegates the search of a specific directory to a sub-agent.
+
+It receives
+
+* directory: the directory to search
+* prompt: a prompt to give the sub-agent to guide the search
+
+The subagent is effectively 'cding' into that directory and doing a search with the tools it has access to, guided by the prompt.
+
+This works with the "virtual" filesystem tools (ls, cat, grep) and with the raw filesystem tools (bash) and with the WANDS specific tools.
+
+Specifically, we should have
+
+* `search_directory`
+* `search_directory_wands` (which is aware of the category/subcategory structure)
+
+These should (optionally) be created when other file system tools are created. Though it may not be listed in the tools
+section of the config.
+
+#### System Prompt for subagent
+
+When these tools are created in their factory function, a subagent system prompt is provided.
+
+For now, the default will be to take the parent agent's system prompt as the subagent system prompt.
+
+It should be parameterized, if the following variables are listed, then replace them
+
+- {scope} - the directory being searched. This is the "scope" of the search.
+
+Raw bash is not currently supported

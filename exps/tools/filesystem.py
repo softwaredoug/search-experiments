@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from pathlib import PurePosixPath
 from time import perf_counter
 
 import pandas as pd
+from cheat_at_search.agent.openai_agent import OpenAIAgent
+
+
+FILESYSTEM_ROOT_KEY = "filesystem_root"
+SEARCH_DIRECTORY_DEPTH_KEY = "search_directory_depth"
 
 
 def _slugify(value: str) -> str:
@@ -80,6 +86,72 @@ def _normalize_path(path: str) -> str:
     return trimmed
 
 
+def _normalize_root(path: str | None) -> str:
+    if not path:
+        return "/"
+    normalized = _normalize_path(path)
+    if not normalized:
+        return "/"
+    if normalized != "/":
+        normalized = normalized.rstrip("/")
+    return normalized
+
+
+def _contains_path_escape(path: str) -> bool:
+    return ".." in PurePosixPath(path).parts
+
+
+def _is_under_root(path: str, root: str) -> bool:
+    if root == "/":
+        return True
+    return path == root or path.startswith(f"{root}/")
+
+
+def _join_under_root(root: str, path: str) -> str:
+    if path in {"", ".", "./"}:
+        return root
+    if path.startswith("/"):
+        return _normalize_path(path)
+    if root == "/":
+        return _normalize_path(path)
+    return _normalize_path(f"{root}/{path}")
+
+
+def _filesystem_root(agent_state: dict | None) -> str:
+    if agent_state is None:
+        return "/"
+    return _normalize_root(agent_state.get(FILESYSTEM_ROOT_KEY))
+
+
+def _resolve_scoped_path(path: str, agent_state: dict | None) -> tuple[str | None, str | None]:
+    if not isinstance(path, str) or not path.strip():
+        return None, "Error! path must be a non-empty string."
+    root = _filesystem_root(agent_state)
+    if _contains_path_escape(path):
+        return None, f"Error! path is outside filesystem root: {root}"
+    resolved = _join_under_root(root, path.strip())
+    if not _is_under_root(resolved, root):
+        return None, f"Error! path is outside filesystem root: {root}"
+    return resolved, None
+
+
+def _resolve_scoped_glob(glob: str, agent_state: dict | None) -> tuple[str | None, str | None]:
+    if not isinstance(glob, str):
+        return None, "Error! glob must be a string."
+    root = _filesystem_root(agent_state)
+    glob = glob or "*"
+    if _contains_path_escape(glob):
+        return None, f"Error! glob is outside filesystem root: {root}"
+    if glob.startswith("/"):
+        resolved = _normalize_path(glob)
+        if not _is_under_root(resolved, root):
+            return None, f"Error! glob is outside filesystem root: {root}"
+        return resolved, None
+    if root == "/":
+        return glob, None
+    return f"{root}/{glob}", None
+
+
 def _match_glob(pattern: str, path: str) -> bool:
     normalized_pattern = _normalize_match_pattern(pattern)
     normalized_path = path[1:] if path.startswith("/") else path
@@ -88,7 +160,37 @@ def _match_glob(pattern: str, path: str) -> bool:
         return True
     if normalized_pattern.startswith("**/") and "/" not in normalized_path:
         return path_obj.match(normalized_pattern[3:])
+    if "/**/" in normalized_pattern:
+        shallow_pattern = normalized_pattern.replace("/**/", "/")
+        if path_obj.match(shallow_pattern):
+            return True
     return False
+
+
+def _append_tool_output(results: list[dict], output) -> None:
+    if isinstance(output, str):
+        try:
+            output = json.loads(output)
+        except json.JSONDecodeError:
+            return
+    if isinstance(output, list):
+        for item in output:
+            if isinstance(item, dict):
+                results.append(item)
+        return
+    if isinstance(output, dict):
+        results.append(output)
+
+
+def _collect_tool_outputs(items: list[dict]) -> list[dict]:
+    results: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "function_call_output":
+            continue
+        _append_tool_output(results, item.get("output"))
+    return results
 
 
 def _ensure_filesystem_columns(
@@ -208,7 +310,15 @@ def _snippet_from_match(text: str, match: re.Match, window: int = 60) -> str:
     return snippet
 
 
-def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
+def _make_filesystem_tools(
+    corpus,
+    *,
+    variant: str,
+    path_builder: callable,
+    model: str = "gpt-5-mini",
+    reasoning: str = "low",
+    system_prompt: str | None = None,
+):
     _ensure_filesystem_columns(corpus, variant=variant, path_builder=path_builder)
     path_series = corpus["path"].astype(str)
     contents_series = corpus["contents"].astype(str)
@@ -239,9 +349,13 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             limit = 50
         if max_results <= 0:
             return []
-        if not isinstance(path, str) or not path.strip():
-            return "Error! path must be a non-empty string."
-        prefix = _normalize_dir(path)
+        scoped_path, error = _resolve_scoped_path(path, agent_state)
+        if error:
+            return error
+        scoped_glob, error = _resolve_scoped_glob(glob, agent_state)
+        if error:
+            return error
+        prefix = _normalize_dir(scoped_path)
         if glob in {"*", "*/"}:
             child_map: dict[str, bool] = {}
             for item in paths:
@@ -265,7 +379,7 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
                 ordered = ordered[:limit]
                 ordered.append(f"Truncated ({extra} more)")
             return ordered
-        pattern = _normalize_glob(prefix, glob)
+        pattern = _normalize_glob(prefix, scoped_glob)
         matches = []
         extra = 0
         for item in paths:
@@ -301,7 +415,10 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
         compile_ms = 0.0
         if timing_enabled:
             compile_ms = (perf_counter() - compile_started) * 1000
-        match_pattern = _normalize_glob("/", glob)
+        scoped_glob, error = _resolve_scoped_glob(glob, agent_state)
+        if error:
+            return error
+        match_pattern = _normalize_glob("/", scoped_glob)
         results = []
         scanned = 0
         glob_matched = 0
@@ -345,11 +462,9 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
 
     def cat(path: str, agent_state=None) -> str:
         """Return the contents of a file as a string."""
-        if not isinstance(path, str) or not path.strip():
-            return "Error! path must be a non-empty string."
-        normalized_path = _normalize_path(path)
-        if not normalized_path:
-            return "Error! path must be a non-empty string."
+        normalized_path, error = _resolve_scoped_path(path, agent_state)
+        if error:
+            return error
         if path_index is not None:
             if normalized_path in path_index:
                 return str(path_index[normalized_path])
@@ -371,12 +486,62 @@ def _make_filesystem_tools(corpus, *, variant: str, path_builder: callable):
             return f"Error! Multiple files found for path: {path}"
         return str(matches.iloc[0])
 
+    def search_directory(directory: str, prompt: str, agent_state=None) -> list[dict] | str:
+        """Delegate search within a specific directory to a sub-agent."""
+        if agent_state is None:
+            agent_state = {}
+        depth = int(agent_state.get(SEARCH_DIRECTORY_DEPTH_KEY, 0)) + 1
+        if depth > 1:
+            return "Error! search_directory cannot be nested."
+        scoped_directory, error = _resolve_scoped_path(directory, agent_state)
+        if error:
+            return error
+        scoped_directory = _normalize_root(scoped_directory)
+        subagent_state = dict(agent_state)
+        subagent_state[FILESYSTEM_ROOT_KEY] = scoped_directory
+        subagent_state[SEARCH_DIRECTORY_DEPTH_KEY] = depth
+        logger = agent_state.get("trace_logger")
+        if logger is not None:
+            logger.info("search_directory_call %s", {"directory": scoped_directory, "prompt": prompt})
+        subagent_prompt = system_prompt or (
+            "You search a virtual filesystem rooted at {scope}. Use ls, grep, and cat to find relevant files."
+        )
+        subagent_prompt = subagent_prompt.replace("{scope}", scoped_directory)
+        agent = OpenAIAgent(
+            tools=[ls, grep, cat],
+            model=f"openai/{model}" if "/" not in model else model,
+            reasoning_level=reasoning,
+            response_model=None,
+        )
+        inputs = [
+            {"role": "system", "content": subagent_prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"Directory scope: {scoped_directory}\n"
+                    f"Task: {prompt}\n"
+                    "Use only the available filesystem tools. Return useful paths and snippets."
+                ),
+            },
+        ]
+        previous_inputs = list(inputs)
+        _, inputs, _ = agent.chat(inputs=inputs, agent_state=subagent_state, logger=logger)
+        results = _collect_tool_outputs(inputs[len(previous_inputs):])
+        if logger is not None:
+            logger.info("search_directory_result %s", {"directory": scoped_directory, "result_count": len(results)})
+        return results
+
     if wands_doc:
         ls.__doc__ = f"{ls.__doc__}\n\n{wands_doc}"
         grep.__doc__ = f"{grep.__doc__}\n\n{wands_doc}"
         cat.__doc__ = f"{cat.__doc__}\n\n{wands_doc}"
+    if variant == "wands":
+        ls.__name__ = "ls_wands"
+        grep.__name__ = "grep_wands"
+        cat.__name__ = "cat_wands"
+        search_directory.__name__ = "search_directory_wands"
 
-    return ls, grep, cat
+    return ls, grep, cat, search_directory
 
 
 def make_filesystem_ls_tool(corpus):
@@ -391,6 +556,24 @@ def make_filesystem_cat_tool(corpus):
     return _make_filesystem_tools(corpus, variant="default", path_builder=_default_path_builder)[2]
 
 
+def make_filesystem_search_directory_tool(
+    corpus,
+    *,
+    model: str = "gpt-5-mini",
+    reasoning: str = "low",
+    system_prompt: str | None = None,
+    **_unused,
+):
+    return _make_filesystem_tools(
+        corpus,
+        variant="default",
+        path_builder=_default_path_builder,
+        model=model,
+        reasoning=reasoning,
+        system_prompt=system_prompt,
+    )[3]
+
+
 def make_filesystem_ls_wands_tool(corpus):
     return _make_filesystem_tools(corpus, variant="wands", path_builder=_wands_path_builder)[0]
 
@@ -401,3 +584,21 @@ def make_filesystem_grep_wands_tool(corpus):
 
 def make_filesystem_cat_wands_tool(corpus):
     return _make_filesystem_tools(corpus, variant="wands", path_builder=_wands_path_builder)[2]
+
+
+def make_filesystem_search_directory_wands_tool(
+    corpus,
+    *,
+    model: str = "gpt-5-mini",
+    reasoning: str = "low",
+    system_prompt: str | None = None,
+    **_unused,
+):
+    return _make_filesystem_tools(
+        corpus,
+        variant="wands",
+        path_builder=_wands_path_builder,
+        model=model,
+        reasoning=reasoning,
+        system_prompt=system_prompt,
+    )[3]

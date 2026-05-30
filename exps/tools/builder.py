@@ -197,9 +197,16 @@ def build_search_tools(
     embeddings_device: str | None = None,
     dataset_name: str | None = None,
     context: str = "agentic",
+    system_prompt: str | None = None,
 ):
     tools = []
-    for tool in normalize_search_tools(tool_config):
+    normalized_tools = normalize_search_tools(tool_config)
+    tool_names = {tool["name"] for tool in normalized_tools}
+    if {"ls", "grep", "cat"}.issubset(tool_names) and "search_directory" not in tool_names:
+        normalized_tools.append({"name": "search_directory", "guards": [], "config": {}})
+    if {"ls_wands", "grep_wands", "cat_wands"}.issubset(tool_names) and "search_directory_wands" not in tool_names:
+        normalized_tools.append({"name": "search_directory_wands", "guards": [], "config": {}})
+    for tool in normalized_tools:
         tool_name = tool["name"]
         entry = TOOL_REGISTRY.get(tool_name)
         if entry is None:
@@ -216,6 +223,11 @@ def build_search_tools(
                 tool_config=tool.get("config") or {},
                 embeddings_device=embeddings_device,
                 dataset_name=dataset_name,
+            )
+        elif tool_name in {"search_directory", "search_directory_wands"}:
+            tool_fn = builder(
+                corpus,
+                system_prompt=system_prompt,
             )
         elif tool_name == "bm25":
             tool_params = tool.get("config", {}).get("params", {})
