@@ -1,11 +1,11 @@
 strategy:
   name: codegen_minimarco
   type: codegen
-  path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
+  # path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
   params:
     train:
       model: gpt-5.5
-      reasoning: "xhigh"
+      reasoning: "medium"
       refresh_every: 3
       search_tools:
         - get_corpus
