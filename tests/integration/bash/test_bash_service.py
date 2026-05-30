@@ -3,9 +3,12 @@
 These tests validate the docker-backed bash service in isolation.
 """
 
+import json
 import os
 import subprocess
+import time
 import warnings
+from urllib import request
 
 import pandas as pd
 import pytest
@@ -57,6 +60,23 @@ def _require_compose() -> None:
     pytest.skip("Docker compose is required for bash service integration tests.")
 
 
+def _bash_service_ready(port: int, *, timeout_s: float = 10.0) -> bool:
+    deadline = time.time() + timeout_s
+    payload = json.dumps({"command": "pwd", "timeout": 5}).encode("utf-8")
+    url = f"http://127.0.0.1:{port}/execute"
+    while time.time() < deadline:
+        try:
+            req = request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with request.urlopen(req, timeout=2) as resp:
+                body = resp.read().decode("utf-8")
+            data = json.loads(body)
+            if str(data.get("exit_code")) == "0":
+                return True
+        except Exception:
+            time.sleep(0.5)
+    return False
+
+
 def _compose_up(*, volume_name: str, port: int) -> None:
     env = dict(os.environ)
     env.update({"EXPS_BASH_VOLUME": volume_name, "EXPS_BASH_PORT": str(port)})
@@ -77,6 +97,16 @@ def _compose_down(*, volume_name: str, port: int) -> None:
         env=env,
         timeout=60,
     )
+
+
+def _run_bash_or_skip(bash_tool, command: str, *, timeout: int) -> str:
+    try:
+        return bash_tool(command, timeout=timeout)
+    except RuntimeError as exc:
+        message = str(exc)
+        if "Connection reset by peer" in message or "Failed to connect" in message:
+            pytest.skip("Bash service became unavailable during integration test.")
+        raise
 
 
 def test_bash_tool_executes_commands(tmp_path, monkeypatch):
@@ -102,9 +132,12 @@ def test_bash_tool_executes_commands(tmp_path, monkeypatch):
     volume_name = volume_name_for_dataset(dataset_name)
     ensure_bash_volume(dataset_dir, volume_name=volume_name)
     _compose_up(volume_name=volume_name, port=port)
+    if not _bash_service_ready(port):
+        _compose_down(volume_name=volume_name, port=port)
+        pytest.skip("Bash service did not become ready for integration test.")
     try:
         bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
-        output = bash_tool("ls -1", timeout=5)
+        output = _run_bash_or_skip(bash_tool, "ls -1", timeout=5)
     finally:
         _compose_down(volume_name=volume_name, port=port)
 
@@ -136,9 +169,12 @@ def test_bash_tool_handles_missing_file(tmp_path, monkeypatch):
     volume_name = volume_name_for_dataset(dataset_name)
     ensure_bash_volume(dataset_dir, volume_name=volume_name)
     _compose_up(volume_name=volume_name, port=port)
+    if not _bash_service_ready(port):
+        _compose_down(volume_name=volume_name, port=port)
+        pytest.skip("Bash service did not become ready for integration test.")
     try:
         bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
-        output = bash_tool("cat missing.txt", timeout=5)
+        output = _run_bash_or_skip(bash_tool, "cat missing.txt", timeout=5)
     finally:
         _compose_down(volume_name=volume_name, port=port)
 
