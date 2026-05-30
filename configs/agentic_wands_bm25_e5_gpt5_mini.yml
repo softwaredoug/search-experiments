@@ -21,6 +21,8 @@ strategy:
       - sample_judgments: 
           num_rows: 3
           columns:
+           - title
+           - description
            - category
            - features
     search_tools:
