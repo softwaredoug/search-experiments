@@ -46,11 +46,6 @@ strategy:
               * Preferable, but not required, they match the user's search terms
 
               Respond as a list of graded results with fields: emoji, title, doc_id.
-    stop:
-      - tool_calls:
-          prompt: Please make at least 16 tool calls to gather enough information before returning results.
-          params:
-            num_calls: 16
     max_loops: 2
     search_tools:
       - ls_wands
