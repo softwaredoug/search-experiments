@@ -62,8 +62,8 @@ def test_run_benchmark_agentic_wands_bm25_e5_few_shot_delegate():
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
     params = RunParams(
-        strategy_path="configs/cheat-at-search/agentic_wands_bm25_e5_few_shot_delegate.yml",
-        base_path=None,
+        strategy_path="configs/agentic_wands_bm25_e5_few_shot_delegate.yml",
+        base_path="tests/fixtures",
         dataset="wands",
         num_queries=1,
         seed=123,
