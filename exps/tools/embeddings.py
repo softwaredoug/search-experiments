@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Union
 
 import numpy as np
@@ -25,12 +26,14 @@ def make_embedding_tool(
 
     passage_fn = make_passage_fn(document_prefix)
 
+    show_progress = os.getenv("EXPS_EMBEDDING_PROGRESS", "1") != "0"
     embeddings, model = load_or_create_embeddings(
         corpus,
         passage_fn=passage_fn,
         model_name=model_name,
         device=device,
         chunk_size=DEFAULT_CHUNK_SIZE,
+        show_progress=show_progress,
     )
     if model is None:
         model = load_model(model_name, device=device)
