@@ -193,21 +193,77 @@ class AgenticSearchStrategy(SearchStrategy):
         self.stop = stop
         self.validators = validators
         self.max_loops = max_loops if max_loops is not None else self._default_max_loops
-        tool_config, delegate_task = _extract_delegate_task(self.search_tools)
-        self._delegate_task = delegate_task
-        self.tools = build_search_tools(
-            corpus,
-            tool_config,
-            embeddings_device=embeddings_device,
-            dataset_name=self.dataset_name,
-        )
         self.model = model
         self.reasoning = reasoning
         self.system_prompt = system_prompt
+        self.corpus = corpus
+        self._tool_cache: dict[str, list[callable]] = {}
+        self.tools = self._get_tools(self.search_tools)
+        self._workflow_steps = self._prepare_workflow_steps()
         self._lookup = build_doc_id_lookup(corpus)
         self.traces: dict[str, str] = {}
         self.num_tool_calls: dict[str, int] = {}
         super().__init__(corpus, workers=workers)
+
+    def _prepare_workflow_steps(self) -> list[dict[str, Any]]:
+        if self.workflow:
+            workflow_steps = _parse_workflow(self.workflow)
+        else:
+            workflow_steps = [("default", "The user's query: {query}")]
+        prepared = []
+        for agent_name, prompt_template in workflow_steps:
+            if self.workflow:
+                agent_cfg = (self.agents or {}).get(agent_name)
+                if agent_cfg is None:
+                    raise ValueError(f"Unknown workflow agent: {agent_name}")
+                step_system_prompt = agent_cfg.get("system_prompt", self.system_prompt)
+                step_tool_config = agent_cfg.get("search_tools") or []
+            else:
+                step_system_prompt = self.system_prompt
+                step_tool_config = self.search_tools
+            prepared.append(
+                {
+                    "agent_name": agent_name,
+                    "prompt_template": prompt_template,
+                    "system_prompt": step_system_prompt,
+                    "tools": self._get_tools(step_tool_config),
+                }
+            )
+        return prepared
+
+    def _get_tools(self, tool_config: list | None) -> list[callable]:
+        if not tool_config:
+            return []
+        cache_key = json.dumps(
+            _normalize_search_tools_for_cache(tool_config),
+            sort_keys=True,
+            default=str,
+        )
+        cached = self._tool_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        filtered_tools, delegate_task = _extract_delegate_task(tool_config)
+        if filtered_tools:
+            tools = list(
+                build_search_tools(
+                    self.corpus,
+                    filtered_tools,
+                    embeddings_device=self.embeddings_device,
+                    dataset_name=self.dataset_name,
+                )
+            )
+        else:
+            tools = []
+        if delegate_task:
+            task_tool = build_task_tool(
+                search_tools=tools,
+                model=self.model,
+                reasoning=self.reasoning,
+                system_prompt=self.subagent_system_prompt,
+            )
+            tools.insert(0, task_tool)
+        self._tool_cache[cache_key] = tools
+        return tools
 
     @classmethod
     def build(
@@ -244,7 +300,7 @@ class AgenticSearchStrategy(SearchStrategy):
         query: str,
         system_prompt: str,
         user_prompt: str,
-        tool_config: list,
+        tools: list[callable],
         inputs: list[dict],
         agent_state: dict,
         stops: list[dict[str, Any]],
@@ -253,27 +309,7 @@ class AgenticSearchStrategy(SearchStrategy):
     ):
         _replace_system_prompt(inputs, system_prompt)
         inputs.append({"role": "user", "content": user_prompt})
-
-        filtered_tools, delegate_task = _extract_delegate_task(tool_config)
-        if filtered_tools:
-            step_tools_list = list(
-                build_search_tools(
-                    self.corpus,
-                    filtered_tools,
-                    embeddings_device=self.embeddings_device,
-                    dataset_name=self.dataset_name,
-                )
-            )
-        else:
-            step_tools_list = []
-        if delegate_task:
-            task_tool = build_task_tool(
-                search_tools=step_tools_list,
-                model=self.model,
-                reasoning=self.reasoning,
-                system_prompt=self.subagent_system_prompt,
-            )
-            step_tools_list.insert(0, task_tool)
+        step_tools_list = list(tools)
 
         agent = OpenAIAgent(
             tools=step_tools_list,
@@ -349,32 +385,20 @@ class AgenticSearchStrategy(SearchStrategy):
         validators: list[dict[str, Any]],
         logger,
     ):
-        if self.workflow:
-            workflow_steps = _parse_workflow(self.workflow)
-        else:
-            workflow_steps = [("default", "The user's query: {query}")]
-
         resp = None
-        for step_index, (agent_name, prompt_template) in enumerate(workflow_steps, start=1):
-            logger.info("agent_step_start %s", {"step": step_index, "agent": agent_name})
-            if self.workflow:
-                agent_cfg = (self.agents or {}).get(agent_name)
-                if agent_cfg is None:
-                    raise ValueError(f"Unknown workflow agent: {agent_name}")
-                step_system_prompt = agent_cfg.get("system_prompt", self.system_prompt)
-                step_tool_config = agent_cfg.get("search_tools") or []
-            else:
-                step_system_prompt = self.system_prompt
-                step_tool_config = self.search_tools
-
-            user_prompt = prompt_template.format(query=query)
+        for step_index, step in enumerate(self._workflow_steps, start=1):
+            logger.info(
+                "agent_step_start %s",
+                {"step": step_index, "agent": step["agent_name"]},
+            )
+            user_prompt = step["prompt_template"].format(query=query)
             resp, inputs = self._run_workflow_agent(
-                agent_name=agent_name,
+                agent_name=step["agent_name"],
                 step_index=step_index,
                 query=query,
-                system_prompt=step_system_prompt,
+                system_prompt=step["system_prompt"],
                 user_prompt=user_prompt,
-                tool_config=step_tool_config,
+                tools=step["tools"],
                 inputs=inputs,
                 agent_state=agent_state,
                 stops=stops,
