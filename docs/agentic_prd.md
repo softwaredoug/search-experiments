@@ -290,7 +290,7 @@ LLM evaluations:
 ```
 
 
-## Workflow through list of agents
+## Plan through list of agents
 
 A list of agents is possible
 
@@ -347,10 +347,10 @@ An agentic strategy might look like this:
           how close that is to the average shoppers ideal ranking.
         search_tools:
           - delegate_task:
-   workflow:
-     - planning: plan how to best search for {query}
-     - search: find the most relevant results for {query}
-     - eval: evaluate how relevant the results are for {query}
+    plan:
+      - planning: plan how to best search for {query}
+      - search: find the most relevant results for {query}
+      - eval: evaluate how relevant the results are for {query}
 ```
 
 Throughout this whole process, the context is identical.
@@ -359,18 +359,18 @@ However, after one agent completes, the system prompt would be patched to the ne
 
 This means that three agents would run, with different system prompts + tools
 
-workflow dictates the order of execution of the agents. The output of one agent does not get passed as input to the next agent, but the context (including agent state) is shared across all agents. So they can communicate implicitly through that.
+plan dictates the order of execution of the agents. The output of one agent does not get passed as input to the next agent, but the context (including agent state) is shared across all agents. So they can communicate implicitly through that.
 
 This is like switching between Plan <-> Build mode in coding agents. Except we're doing it sequentially.
 
-The user prompt is specified in workflow, ie above planning agent gets "plan how to best search for {query}" as user prompt, and the search agent gets "find the most relevant results for {query}" as user prompt, etc. Replacing {query} with the actual query being searched for.
+The user prompt is specified in plan, ie above planning agent gets "plan how to best search for {query}" as user prompt, and the search agent gets "find the most relevant results for {query}" as user prompt, etc. Replacing {query} with the actual query being searched for.
 
 Params like retrying, stopping, etc would all occur WITHIN this, so logically this is 
 
 ```
-for work_item in workflow:
+for work_item in plan:
     system_prompt = agents[agent_name].system_prompt
-    user_prompt = workflow[agent_name].user_prompt
+    user_prompt = plan[agent_name].user_prompt
     tools = agents[agent_name].tools
     while not stop_condition:
         # Call OpenAIAgent + chat

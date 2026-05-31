@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import exps.agentic.agent as agent_mod
 import exps.agentic.strategy as agentic_mod
 from exps.agentic import conditions as conditions_mod
 
@@ -25,7 +26,7 @@ class _FakeOpenAIAgent:
         if agent_state is not None:
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        result = agentic_mod.SearchResults(ranked_results=["101", "202", "303"])
+        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -68,8 +69,8 @@ def _sample_corpus():
 
 
 def test_agentic_stop_iterations_prompt_appends(monkeypatch, tmp_path):
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),
@@ -94,8 +95,8 @@ def test_agentic_stop_iterations_prompt_appends(monkeypatch, tmp_path):
 
 
 def test_agentic_stop_tool_calls(monkeypatch, tmp_path):
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),
@@ -121,16 +122,16 @@ def test_agentic_validator_runs_before_stopper(monkeypatch, tmp_path):
                 agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
             inputs.append({"type": "function_call_output", "output": {"ok": True}})
             if self.calls == 1:
-                result = agentic_mod.SearchResults(ranked_results=["101", "202", "303"])
+                result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
             else:
-                result = agentic_mod.SearchResults(ranked_results=["101", "202", "303", "404"])
+                result = agent_mod.SearchResults(ranked_results=["101", "202", "303", "404"])
             resp = type("Resp", (), {"output_parsed": result})
             self.last_inputs = inputs
             self.last_agent_state = agent_state
             return resp, inputs, 0
 
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgentWithResults)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgentWithResults)
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),
@@ -173,9 +174,9 @@ def test_llm_judge_validator_appends_prompt(monkeypatch, tmp_path):
         main_agent["instance"] = agent
         return agent
 
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _agent_factory)
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _agent_factory)
     monkeypatch.setattr(conditions_mod, "OpenAIAgent", _agent_factory)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),
@@ -211,8 +212,8 @@ def test_llm_judge_validator_appends_prompt(monkeypatch, tmp_path):
 
 
 def test_agentic_max_loops_stops(monkeypatch, tmp_path):
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),
@@ -229,8 +230,8 @@ def test_agentic_max_loops_stops(monkeypatch, tmp_path):
 
 
 def test_trace_log_records_outputs(monkeypatch, tmp_path, caplog):
-    monkeypatch.setattr(agentic_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agentic_mod, "build_search_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),

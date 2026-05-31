@@ -7,7 +7,7 @@ from cheat_at_search.strategy import SearchStrategy
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 
-from exps.agentic.strategy import DEFAULT_SYSTEM_PROMPT, SearchResults
+from exps.agentic.agent import DEFAULT_SYSTEM_PROMPT, SearchResults
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.tools import (
     make_bm25_tool,

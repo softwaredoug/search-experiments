@@ -1,1 +1,1 @@
-"""Runner entrypoints for benchmark workflows."""
+"""Runner entrypoints for benchmark runs."""

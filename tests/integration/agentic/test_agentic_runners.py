@@ -6,7 +6,6 @@ See docs/runner_tests_prd.md for requirements.
 import os
 import socket
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -287,15 +286,15 @@ strategy:
     assert result.summary["tool_calls_mean"] >= 0.0
 
 
-def test_run_benchmark_agentic_workflow_agents(tmp_path):
+def test_run_benchmark_agentic_plan_agents(tmp_path):
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
-    config_path = tmp_path / "agentic_workflow.yml"
+    config_path = tmp_path / "agentic_plan.yml"
     config_path.write_text(
         """
 strategy:
-  name: agentic_workflow_fixture
+  name: agentic_plan_fixture
   type: agentic
   params:
     model: gpt-5-mini
@@ -312,7 +311,7 @@ strategy:
           You find relevant products and return ranked DOC IDs.
         search_tools:
           - bm25
-    workflow:
+    plan:
       - planning: plan how to best search for {query}
       - search: find the most relevant results for {query}
 """.lstrip(),

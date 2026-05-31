@@ -62,7 +62,7 @@ strategy:
           Find top 10. It's important they're ranked in order of relevance.
           
           Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
-    workflow:
+    plan:
       - search: Search for products to satisfy the query {query}
       - judge: Are these query results good? Relevant for {query}?
       - search: The results can be improved
