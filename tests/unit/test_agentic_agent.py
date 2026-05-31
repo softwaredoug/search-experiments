@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import exps.agentic.agent as agent_mod
+from exps.agentic.agent import trace_logger
 
 
 class _FakeOpenAIAgent:
@@ -56,7 +57,14 @@ def test_agent_runs_single_step(tmp_path):
         search_tools=["bm25"],
         plan=None,
     )
-    result = agent.run(query="query", trace_dir=tmp_path, k=2)
+    with trace_logger(tmp_path) as (logger, trace_path):
+        result = agent.run(
+            query="query",
+            trace_dir=tmp_path,
+            logger=logger,
+            trace_path=trace_path,
+            k=2,
+        )
 
     assert result.output == ["101", "202"]
     assert result.num_tool_calls == 1
@@ -82,7 +90,14 @@ def test_agent_plan_switches_system_prompt(tmp_path):
         ],
     )
 
-    result = agent.run(query="shoes", trace_dir=tmp_path, k=2)
+    with trace_logger(tmp_path) as (logger, trace_path):
+        result = agent.run(
+            query="shoes",
+            trace_dir=tmp_path,
+            logger=logger,
+            trace_path=trace_path,
+            k=2,
+        )
 
     assert len(_FakeOpenAIAgent.instances) == 2
     assert _FakeOpenAIAgent.instances[0].last_inputs[0]["content"] == "planning prompt"
@@ -102,7 +117,14 @@ def test_agent_empty_tools_no_tool_calls(tmp_path):
         search_tools=[],
     )
 
-    result = agent.run(query="query", trace_dir=tmp_path, k=2)
+    with trace_logger(tmp_path) as (logger, trace_path):
+        result = agent.run(
+            query="query",
+            trace_dir=tmp_path,
+            logger=logger,
+            trace_path=trace_path,
+            k=2,
+        )
 
     assert result.num_tool_calls == 0
     assert result.output == ["101", "202"]
@@ -129,7 +151,14 @@ def test_agent_validators_then_stop(
         max_loops=3,
     )
 
-    result = agent.run(query="query", trace_dir=tmp_path, k=2)
+    with trace_logger(tmp_path) as (logger, trace_path):
+        result = agent.run(
+            query="query",
+            trace_dir=tmp_path,
+            logger=logger,
+            trace_path=trace_path,
+            k=2,
+        )
 
     assert result.num_tool_calls == 3
     assert mock_validator.call_count == 2
@@ -157,7 +186,14 @@ def test_agent_plan_formats_user_prompt(tmp_path):
         plan=[{"planning": "plan for {query}"}],
     )
 
-    agent.run(query="blue chair", trace_dir=tmp_path, k=2)
+    with trace_logger(tmp_path) as (logger, trace_path):
+        agent.run(
+            query="blue chair",
+            trace_dir=tmp_path,
+            logger=logger,
+            trace_path=trace_path,
+            k=2,
+        )
 
     user_prompt = _FakeOpenAIAgent.instances[0].last_inputs[1]["content"]
     assert user_prompt == "plan for blue chair"

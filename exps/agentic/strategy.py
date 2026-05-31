@@ -11,6 +11,7 @@ from exps.agentic.agent import (
     SUBAGENT_SYSTEM_PROMPT,
     _normalize_agents_for_cache,
     _normalize_search_tools_for_cache,
+    trace_logger,
 )
 from exps.agentic.examples import append_few_shot_examples
 from exps.mapping import doc_ids_to_indices
@@ -105,7 +106,14 @@ class AgenticSearchStrategy(SearchStrategy):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
         query_dir = self.query_path(query)
-        run_result = self.agent.run(query=query, trace_dir=query_dir, k=k)
+        with trace_logger(query_dir) as (logger, trace_path):
+            run_result = self.agent.run(
+                query=query,
+                trace_dir=query_dir,
+                logger=logger,
+                trace_path=trace_path,
+                k=k,
+            )
         ranked_results = run_result.output if isinstance(run_result.output, list) else []
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)

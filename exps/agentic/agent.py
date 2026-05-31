@@ -376,10 +376,10 @@ class Agent:
         *,
         query: str,
         trace_dir: Path,
+        logger,
+        trace_path: Path,
         k: int = 10,
         format_params: dict[str, Any] | None = None,
-        logger=None,
-        trace_path: Path | None = None,
     ) -> AgentResponse:
         inputs = [{"role": "system", "content": self.system_prompt}]
         agent_state = {"num_tool_calls": 0}
@@ -388,49 +388,25 @@ class Agent:
         format_payload = {"query": query}
         if format_params:
             format_payload.update(format_params)
-        if logger is None:
-            with trace_logger(trace_dir) as (logger, trace_path):
-                logger.info("Query: %s", query)
-                agent_state["trace_logger"] = logger
-                agent_state["run_dir"] = str(trace_dir)
-                resp, _ = self._run_plan(
-                    query=query,
-                    inputs=inputs,
-                    agent_state=agent_state,
-                    stops=stops,
-                    validators=validators,
-                    logger=logger,
-                    format_params=format_payload,
-                )
-                logger.info("agentic_output %s", resp.output_parsed if resp else None)
-                if resp and hasattr(resp.output_parsed, "ranked_results"):
-                    ranked_results = resp.output_parsed.ranked_results or []
-                    logger.info(
-                        "agentic_complete %s",
-                        {"query": query, "results": len(ranked_results)},
-                    )
-        else:
-            if trace_path is None:
-                raise ValueError("trace_path is required when passing a logger.")
-            logger.info("Query: %s", query)
-            agent_state["trace_logger"] = logger
-            agent_state["run_dir"] = str(trace_dir)
-            resp, _ = self._run_plan(
-                query=query,
-                inputs=inputs,
-                agent_state=agent_state,
-                stops=stops,
-                validators=validators,
-                logger=logger,
-                format_params=format_payload,
+        logger.info("Query: %s", query)
+        agent_state["trace_logger"] = logger
+        agent_state["run_dir"] = str(trace_dir)
+        resp, _ = self._run_plan(
+            query=query,
+            inputs=inputs,
+            agent_state=agent_state,
+            stops=stops,
+            validators=validators,
+            logger=logger,
+            format_params=format_payload,
+        )
+        logger.info("agentic_output %s", resp.output_parsed if resp else None)
+        if resp and hasattr(resp.output_parsed, "ranked_results"):
+            ranked_results = resp.output_parsed.ranked_results or []
+            logger.info(
+                "agentic_complete %s",
+                {"query": query, "results": len(ranked_results)},
             )
-            logger.info("agentic_output %s", resp.output_parsed if resp else None)
-            if resp and hasattr(resp.output_parsed, "ranked_results"):
-                ranked_results = resp.output_parsed.ranked_results or []
-                logger.info(
-                    "agentic_complete %s",
-                    {"query": query, "results": len(ranked_results)},
-                )
         num_tool_calls = int(agent_state.get("num_tool_calls", 0))
         output = resp.output_parsed if resp else None
         if output and hasattr(output, "ranked_results"):
