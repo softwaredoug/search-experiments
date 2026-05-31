@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -19,12 +20,10 @@ class _FakeMinilm:
         return np.array([0.0, 1.0])
 
 
-def test_guard_disallow_similar_queries(monkeypatch):
-    monkeypatch.setattr(tools_mod, "_minilm_guard_model", lambda *_args, **_kwargs: _FakeMinilm())
-
+@patch("exps.tools.guards._minilm_guard_model", new=lambda *_args, **_kwargs: _FakeMinilm())
+def test_guard_disallow_similar_queries():
     agent_state = {}
     params = {"tool_name": "search_bm25_guarded", "query": "alpha"}
-
     err = tools_mod.guard_disallow_similar_queries(params, agent_state, threshold=0.9)
     assert err is None
 
