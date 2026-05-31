@@ -378,6 +378,26 @@ strategy:
     assert not result.metric_series.empty
 
 
+def test_run_benchmark_scatter_gather_wands():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/scatter_gather_wands.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+
+
 def test_agentic_raw_tool_rejected(tmp_path):
     config_path = tmp_path / "agentic_raw_tool.yml"
     config_path.write_text(

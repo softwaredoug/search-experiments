@@ -30,10 +30,8 @@ def strategy_params_for_config(
     if device is None:
         device = _default_device()
     if device:
-        if strategy_config.type == "agentic" and "embeddings_device" not in params:
-            tool_names = params.get("search_tools")
-            if tool_names is None or "minilm" in tool_names:
-                params["embeddings_device"] = device
+        if strategy_config.type in {"agentic", "scatter_gather_wands"} and "embeddings_device" not in params:
+            params["embeddings_device"] = device
         if strategy_config.type == "embedding" and "device" not in params:
             params["device"] = device
     return params
@@ -44,7 +42,7 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
         return True
     if strategy_type == "embedding":
         return False
-    if strategy_type == "agentic":
+    if strategy_type in {"agentic", "scatter_gather_wands"}:
         return True
     if strategy_type == "codegen":
         return True
@@ -81,7 +79,7 @@ def create_strategy(
     params = dict(params)
     if device is None:
         device = _default_device()
-    if strategy_config.type == "agentic":
+    if strategy_config.type in {"agentic", "scatter_gather_wands"}:
         if trace_path is None:
             raise ValueError("trace_path is required for agentic strategies.")
         params["trace_path"] = trace_path
@@ -104,6 +102,8 @@ def create_strategy(
             build_kwargs["codegen_run_round"] = codegen_run_round
         if strategy_config.type == "agentic":
             build_kwargs["judgments"] = judgments
+        if strategy_config.type == "scatter_gather_wands":
+            build_kwargs["trace_path"] = trace_path
         strategy = strategy_cls.build(params, **build_kwargs)
     else:
         strategy = strategy_cls(corpus, workers=workers, **params)

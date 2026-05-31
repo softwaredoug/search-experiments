@@ -159,7 +159,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         params.strategy_path, device=params.device, base_path=params.base_path
     )
     trace_path = None
-    if strategy_config.type == "agentic":
+    if strategy_config.type in {"agentic", "scatter_gather_wands"}:
         run_started_at = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         trace_path = build_agentic_trace_root(
             strategy_config.name,

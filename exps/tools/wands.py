@@ -74,6 +74,15 @@ def _build_category_index(corpus, *, category_col: str) -> dict[str, np.ndarray]
     return {key: np.asarray(indices, dtype=int) for key, indices in category_index.items()}
 
 
+def _available_categories(corpus) -> list[str]:
+    if WANDS_CATEGORY_COL not in corpus.columns:
+        return []
+    corpus_categories = set(corpus[WANDS_CATEGORY_COL].dropna().astype(str).tolist())
+    ordered = [cat for cat in WANDS_TOP_CATEGORIES if cat in corpus_categories]
+    missing = sorted(corpus_categories - set(WANDS_TOP_CATEGORIES))
+    return ordered + missing
+
+
 def _category_indices(
     category_index: dict[str, np.ndarray],
     product_categories: str | list[str] | None,
@@ -199,6 +208,30 @@ def make_wands_bm25_tool(
     return search_bm25_wands
 
 
+def make_top_categories_tool(corpus):
+    categories = _available_categories(corpus)
+
+    def top_categories(top_k: int = 5, agent_state=None) -> list[str]:
+        """Return the top WANDS categories in the corpus.
+
+        Args:
+            top_k: Maximum number of categories to return.
+        """
+        if top_k <= 0:
+            return []
+        if agent_state is not None:
+            logger = agent_state.get("trace_logger")
+            if logger is not None:
+                logger.info("wands_top_categories %s", {"top_k": top_k})
+        trimmed = categories[:top_k]
+        remaining = max(len(categories) - top_k, 0)
+        if remaining:
+            trimmed.append(f"truncated ({remaining} other categories)")
+        return trimmed
+
+    return top_categories
+
+
 def make_wands_embedding_tool(
     corpus,
     device: str | None = None,
@@ -289,6 +322,79 @@ def make_wands_embedding_tool(
         return results
 
     return search_embeddings_wands
+
+
+def make_wands_bm25_prefiltered_tool(
+    corpus,
+    title_boost: float = 10.0,
+    description_boost: float = 1.0,
+):
+    base_tool = make_wands_bm25_tool(
+        corpus,
+        title_boost=title_boost,
+        description_boost=description_boost,
+    )
+
+    def search_bm25_wands_prefiltered(
+        keywords: str,
+        category: WandsProductCategory,
+        top_k: int = 5,
+        agent_state=None,
+    ) -> list[dict[str, Union[str, int, float]]]:
+        """Search WANDS BM25 within a single category.
+
+        Args:
+            keywords: The search query string.
+            category: The category to filter by.
+            top_k: The number of top results to return (max 100).
+        """
+        return base_tool(
+            keywords,
+            product_categories=[category],
+            top_k=top_k,
+            agent_state=agent_state,
+        )
+
+    return search_bm25_wands_prefiltered
+
+
+def make_wands_embedding_prefiltered_tool(
+    corpus,
+    device: str | None = None,
+    *,
+    model_name: str | None = None,
+    query_prefix: str | None = None,
+    document_prefix: str | None = None,
+):
+    base_tool = make_wands_embedding_tool(
+        corpus,
+        device=device,
+        model_name=model_name,
+        query_prefix=query_prefix,
+        document_prefix=document_prefix,
+    )
+
+    def search_embeddings_wands_prefiltered(
+        product_description: str,
+        category: WandsProductCategory,
+        top_k: int = 5,
+        agent_state=None,
+    ) -> list[dict[str, Union[str, int, float]]]:
+        """Search WANDS embeddings within a single category.
+
+        Args:
+            product_description: The product being looked for.
+            category: The category to filter by.
+            top_k: The number of top results to return (max 100).
+        """
+        return base_tool(
+            product_description,
+            product_categories=[category],
+            top_k=top_k,
+            agent_state=agent_state,
+        )
+
+    return search_embeddings_wands_prefiltered
 
 
 def make_check_features_wands_tool(corpus):

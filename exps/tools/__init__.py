@@ -37,8 +37,11 @@ from exps.tools.wands import (
     WANDS_TOP_CATEGORIES,
     WandsProductCategory,
     make_check_features_wands_tool,
+    make_top_categories_tool,
     make_wands_bm25_tool,
+    make_wands_bm25_prefiltered_tool,
     make_wands_embedding_tool,
+    make_wands_embedding_prefiltered_tool,
 )
 
 __all__ = [
@@ -56,6 +59,7 @@ __all__ = [
     "make_bash_tool",
     "make_bash_wands_tool",
     "make_check_features_wands_tool",
+    "make_top_categories_tool",
     "make_codegen_tool",
     "make_embedding_tool",
     "make_filesystem_cat_tool",
@@ -73,7 +77,9 @@ __all__ = [
     "make_todo_read_tool",
     "make_todo_write_tool",
     "make_wands_bm25_tool",
+    "make_wands_bm25_prefiltered_tool",
     "make_wands_embedding_tool",
+    "make_wands_embedding_prefiltered_tool",
     "normalize_search_tools",
     "normalize_search_tools_for_cache",
     "split_search_tools",

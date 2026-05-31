@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Type
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
@@ -51,6 +51,13 @@ class SearchResults(BaseModel):
 @dataclass
 class AgentRunResult:
     ranked_results: list[str]
+    trace_path: Path
+    num_tool_calls: int
+
+
+@dataclass
+class AgentResponse:
+    output: BaseModel | None
     trace_path: Path
     num_tool_calls: int
 
@@ -156,6 +163,7 @@ class Agent:
         max_loops: int = 10,
         embeddings_device: str | None = None,
         dataset_name: str | None = None,
+        response_model: Type[BaseModel] | None = SearchResults,
     ):
         self.corpus = corpus
         self.model = model
@@ -172,6 +180,7 @@ class Agent:
         self.max_loops = max_loops
         self.embeddings_device = embeddings_device
         self.dataset_name = dataset_name
+        self.response_model = response_model
         self._lookup = build_doc_id_lookup(corpus)
         self._tool_cache: dict[str, list[callable]] = {}
         self._plan_steps = self._prepare_plan_steps()
@@ -266,7 +275,7 @@ class Agent:
         agent = OpenAIAgent(
             tools=step_tools_list,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=SearchResults,
+            response_model=self.response_model,
             reasoning_level=self.reasoning,
         )
 
@@ -344,6 +353,7 @@ class Agent:
         stops: list[dict[str, Any]],
         validators: list[dict[str, Any]],
         logger,
+        format_params: dict[str, Any],
     ):
         resp = None
         for step_index, step in enumerate(self._plan_steps, start=1):
@@ -351,7 +361,7 @@ class Agent:
                 "agent_step_start %s",
                 {"step": step_index, "agent": step["agent_name"]},
             )
-            user_prompt = step["prompt_template"].format(query=query)
+            user_prompt = step["prompt_template"].format(**format_params)
             resp, inputs = self._run_plan_agent(
                 agent_name=step["agent_name"],
                 step_index=step_index,
@@ -367,11 +377,21 @@ class Agent:
             )
         return resp, inputs
 
-    def run(self, *, query: str, trace_dir: Path, k: int = 10) -> AgentRunResult:
+    def run_response(
+        self,
+        *,
+        query: str,
+        trace_dir: Path,
+        k: int = 10,
+        format_params: dict[str, Any] | None = None,
+    ) -> AgentResponse:
         inputs = [{"role": "system", "content": self.system_prompt}]
         agent_state = {"num_tool_calls": 0}
         stops = normalize_conditions(self.stop, kind="stop")
         validators = normalize_conditions(self.validators, kind="validator")
+        format_payload = {"query": query}
+        if format_params:
+            format_payload.update(format_params)
         with trace_logger(trace_dir) as (logger, trace_path):
             logger.info("Query: %s", query)
             agent_state["trace_logger"] = logger
@@ -383,15 +403,29 @@ class Agent:
                 stops=stops,
                 validators=validators,
                 logger=logger,
+                format_params=format_payload,
             )
-
-            ranked_results = (resp.output_parsed.ranked_results or [])[:k] if resp else []
             logger.info("agentic_output %s", resp.output_parsed if resp else None)
-            logger.info("agentic_complete %s", {"query": query, "results": len(ranked_results)})
-
+            if resp and hasattr(resp.output_parsed, "ranked_results"):
+                ranked_results = resp.output_parsed.ranked_results or []
+                logger.info(
+                    "agentic_complete %s",
+                    {"query": query, "results": len(ranked_results)},
+                )
         num_tool_calls = int(agent_state.get("num_tool_calls", 0))
-        return AgentRunResult(
-            ranked_results=ranked_results,
+        return AgentResponse(
+            output=resp.output_parsed if resp else None,
             trace_path=trace_path,
             num_tool_calls=num_tool_calls,
+        )
+
+    def run(self, *, query: str, trace_dir: Path, k: int = 10) -> AgentRunResult:
+        response = self.run_response(query=query, trace_dir=trace_dir, k=k)
+        ranked_results = []
+        if response.output and hasattr(response.output, "ranked_results"):
+            ranked_results = list(response.output.ranked_results or [])[:k]
+        return AgentRunResult(
+            ranked_results=ranked_results,
+            trace_path=response.trace_path,
+            num_tool_calls=response.num_tool_calls,
         )

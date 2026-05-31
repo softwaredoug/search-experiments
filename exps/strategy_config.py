@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 
+from exps.agentic.scatter_gather import ScatterGatherWandsStrategy
 from exps.agentic.strategy import AgenticSearchStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
@@ -23,6 +24,7 @@ class StrategyConfig:
 STRATEGY_TYPES = {
     BM25Strategy._type: BM25Strategy,
     AgenticSearchStrategy._type: AgenticSearchStrategy,
+    ScatterGatherWandsStrategy._type: ScatterGatherWandsStrategy,
     EmbeddingStrategy._type: EmbeddingStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
 }
