@@ -1,6 +1,8 @@
 import copy
+from unittest.mock import patch
 
 import pandas as pd
+import pytest
 
 import exps.agentic.agent as agent_mod
 
@@ -29,10 +31,21 @@ class _FakeOpenAIAgent:
         return resp, inputs, 0
 
 
-def test_agent_runs_single_step(tmp_path, monkeypatch):
+class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
+    def chat(self, inputs=None, agent_state=None, logger=None):
+        if inputs is None:
+            inputs = []
+        self.calls += 1
+        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        resp = type("Resp", (), {"output_parsed": result})
+        self.last_inputs = copy.deepcopy(inputs)
+        return resp, inputs, 0
+
+
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+def test_agent_runs_single_step(tmp_path):
     _FakeOpenAIAgent.instances = []
-    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     corpus = pd.DataFrame({"doc_id": [101, 202, 303]})
     agent = agent_mod.Agent(
@@ -49,10 +62,10 @@ def test_agent_runs_single_step(tmp_path, monkeypatch):
     assert result.num_tool_calls == 1
 
 
-def test_agent_plan_switches_system_prompt(tmp_path, monkeypatch):
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+def test_agent_plan_switches_system_prompt(tmp_path):
     _FakeOpenAIAgent.instances = []
-    monkeypatch.setattr(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
-    monkeypatch.setattr(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 
     agent = agent_mod.Agent(
         corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
@@ -75,3 +88,76 @@ def test_agent_plan_switches_system_prompt(tmp_path, monkeypatch):
     assert _FakeOpenAIAgent.instances[0].last_inputs[0]["content"] == "planning prompt"
     assert _FakeOpenAIAgent.instances[1].last_inputs[0]["content"] == "search prompt"
     assert result.num_tool_calls == 2
+
+
+@patch("exps.agentic.agent.evaluate_stopper", new=lambda *args, **kwargs: True)
+@patch("exps.agentic.agent.evaluate_validator", new=lambda *args, **kwargs: True)
+@patch("exps.agentic.agent.normalize_conditions", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgentNoTools)
+def test_agent_empty_tools_no_tool_calls(tmp_path):
+    _FakeOpenAIAgent.instances = []
+    agent = agent_mod.Agent(
+        corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+        search_tools=[],
+    )
+
+    result = agent.run(query="query", trace_dir=tmp_path, k=2)
+
+    assert result.num_tool_calls == 0
+    assert result.ranked_results == ["101", "202"]
+
+
+@patch("exps.agentic.agent.evaluate_stopper")
+@patch("exps.agentic.agent.evaluate_validator")
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+def test_agent_validators_then_stop(
+    mock_validator,
+    mock_stopper,
+    tmp_path,
+):
+    _FakeOpenAIAgent.instances = []
+    mock_validator.side_effect = ["Fix results", True, True]
+    mock_stopper.side_effect = ["Try again", True]
+
+    agent = agent_mod.Agent(
+        corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+        search_tools=["bm25"],
+        validators=[{"num_results": {"prompt": "Fix results", "params": {"min_results": 3}}}],
+        stop=[{"iterations": {"prompt": "Try again", "params": {"iterations": 2}}}],
+        max_loops=3,
+    )
+
+    result = agent.run(query="query", trace_dir=tmp_path, k=2)
+
+    assert result.num_tool_calls == 3
+    assert mock_validator.call_count == 2
+    assert mock_stopper.call_count == 1
+
+
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+def test_agent_unknown_plan_agent_raises():
+    with pytest.raises(ValueError, match="Unknown plan agent"):
+        agent_mod.Agent(
+            corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+            agents={"planning": {"system_prompt": "planning", "search_tools": ["bm25"]}},
+            plan=[{"search": "search for {query}"}],
+        )
+
+
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+def test_agent_plan_formats_user_prompt(tmp_path):
+    _FakeOpenAIAgent.instances = []
+    agent = agent_mod.Agent(
+        corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+        agents={"planning": {"system_prompt": "planning", "search_tools": ["bm25"]}},
+        plan=[{"planning": "plan for {query}"}],
+    )
+
+    agent.run(query="blue chair", trace_dir=tmp_path, k=2)
+
+    user_prompt = _FakeOpenAIAgent.instances[0].last_inputs[1]["content"]
+    assert user_prompt == "plan for blue chair"
