@@ -7,20 +7,32 @@ strategy:
     agents:
       select:
         system_prompt: |
+          You're trying to help find products in a furniture / home goods dataset
+
+          Your job is to gather best categories in the dataset to search within. Use
+          the search tools to identify teh best categories that should be zero-ed in and 
+          searched deeper.
+
           Use the provided tools to find the best categories to search within.
         search_tools:
           - bm25_wands
           - top_categories
       scatter:
         system_prompt: |
+          You're trying to help find products in a furniture / home goods dataset for a given search query
+          
           Use the provided tools to find the best results within the assigned category.
         search_tools:
           - bm25_wands_prefiltered
           - e5_base_v2_wands_prefiltered
       gather:
         system_prompt: |
+          You're trying to rerank products from a furniture / home goods dataset for a given query
+          
           Given the candidate search results you've been provided, return the most relevant results.
+
+          It's crucial you rank the most relevant above the least relevant
     plan:
       - select: "Find the best categories to search within for the query: {query}"
-      - scatter: "You're searching category: {category} for the query: {query}. Find the best results within this category."
-      - gather: "Given the results from each category, return the most relevant results to the users query: {query}. Here are the results from each category: {results_by_category}"
+      - scatter: "You're searching category: {category} for the user's query: {query}. Find the best results within this category."
+      - gather: "Rank the most relevant results to the users query: {query}. Rank these results: {results_by_category}"

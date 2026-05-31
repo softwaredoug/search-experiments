@@ -281,13 +281,14 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         logger,
         trace_path: Path,
     ) -> list[str]:
+        formatted_results = self._format_results_by_category(results_by_category)
         gather_dir = query_dir / "gather"
         gather_dir.mkdir(parents=True, exist_ok=True)
         gather_response = self._gather_agent.run(
             query=query,
             trace_dir=gather_dir,
             format_params={
-                "results_by_category": json.dumps(results_by_category),
+                "results_by_category": formatted_results,
                 "query": query,
             },
             logger=logger,
@@ -308,6 +309,30 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             {"doc_ids": ranked_results},
         )
         return ranked_results
+
+    def _format_results_by_category(
+        self,
+        results_by_category: dict[str, list[dict[str, str]]],
+    ) -> str:
+        lines = ["Results by category:"]
+        for category, items in results_by_category.items():
+            lines.append(f"\n## {category}")
+            if not items:
+                lines.append("- (no results)")
+                continue
+            for item in items:
+                doc_id = item.get("id", "")
+                title = item.get("title", "")
+                description = item.get("description", "")
+                category_label = item.get("category", "")
+                lines.append(f"- id: {doc_id}")
+                if title:
+                    lines.append(f"  title: {title}")
+                if description:
+                    lines.append(f"  description: {description}")
+                if category_label:
+                    lines.append(f"  category: {category_label}")
+        return "\n".join(lines)
 
     def search(self, query: str, k: int = 10):
         query_dir = self.query_path(query)

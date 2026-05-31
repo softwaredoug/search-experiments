@@ -45,6 +45,70 @@ def _normalize_tool_config(tool_info: dict) -> dict[str, Any]:
     return {key: value for key, value in tool_info.items() if key != "guards"}
 
 
+def _normalize_columns_config(columns: Any) -> list[dict[str, str]]:
+    if columns is None:
+        return []
+    if isinstance(columns, dict):
+        columns = [columns]
+    if not isinstance(columns, list):
+        raise ValueError("columns must be a mapping or list of mappings.")
+    normalized: list[dict[str, str]] = []
+    for entry in columns:
+        if not isinstance(entry, dict):
+            raise ValueError("columns entries must be mappings.")
+        source = entry.get("source") or entry.get("column")
+        target = entry.get("as") or source
+        if not source or not isinstance(source, str):
+            raise ValueError("columns.source must be a string.")
+        if not target or not isinstance(target, str):
+            raise ValueError("columns.as must be a string.")
+        normalized.append({"source": source, "as": target})
+    return normalized
+
+
+def _build_doc_lookup(corpus) -> dict[str, Any]:
+    if "doc_id" in corpus.columns:
+        return {str(doc_id): idx for idx, doc_id in corpus["doc_id"].items()}
+    return {str(idx): idx for idx in corpus.index}
+
+
+def _wrap_with_columns(
+    *,
+    tool_fn: callable,
+    corpus,
+    columns: list[dict[str, str]],
+) -> callable:
+    lookup = _build_doc_lookup(corpus)
+    for entry in columns:
+        source = entry["source"]
+        if source not in corpus.columns:
+            raise ValueError(f"columns.source not found in corpus: {source}")
+
+    def wrapped(*args, **kwargs):
+        results = tool_fn(*args, **kwargs)
+        if not isinstance(results, list):
+            return results
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            doc_id = item.get("id")
+            if doc_id is None:
+                continue
+            index = lookup.get(str(doc_id))
+            if index is None:
+                continue
+            row = corpus.iloc[index]
+            for entry in columns:
+                item[entry["as"]] = row.get(entry["source"])
+        return results
+
+    wrapped.__name__ = tool_fn.__name__
+    wrapped.__doc__ = tool_fn.__doc__
+    if hasattr(tool_fn, "__signature__"):
+        wrapped.__signature__ = tool_fn.__signature__
+    return wrapped
+
+
 def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
     normalized = []
     for item in tool_config:
@@ -256,6 +320,9 @@ def build_search_tools(
             tool_fn = builder(corpus, device=embeddings_device)
         else:
             tool_fn = builder(corpus)
+        columns = _normalize_columns_config((tool.get("config") or {}).get("columns"))
+        if columns:
+            tool_fn = _wrap_with_columns(tool_fn=tool_fn, corpus=corpus, columns=columns)
         if tool["guards"]:
             guard_lines = ["Guards:"]
             guard_lines.extend(f"- {_guard_doc(guard)}" for guard in tool["guards"])
