@@ -194,6 +194,25 @@ def test_fielded_bm25_accepts_structured_fields():
     assert len(results) == 2
 
 
+def test_fielded_bm25_accepts_unweighted_fields():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [0, 1],
+            "title": ["blue chair", "red sofa"],
+            "description": ["chair for desk", "large sofa"],
+        }
+    )
+    tool = tools_mod.make_fielded_bm25_tool(corpus)
+    results = tool(
+        keywords="blue chair",
+        fields=["title"],
+        operator="or",
+        top_k=2,
+    )
+    assert isinstance(results, list)
+    assert len(results) == 2
+
+
 def test_codegen_tool_missing_dependencies_raises(tmp_path):
     reranker_path = Path(tmp_path) / "reranker.py"
     reranker_path.write_text(

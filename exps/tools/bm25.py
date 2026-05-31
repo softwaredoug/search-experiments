@@ -83,14 +83,16 @@ def _parse_weighted_fields(fields: list) -> list[tuple[str, float]]:
         field_name = None
         weight = None
         if isinstance(field_entry, str):
-            if "^" not in field_entry:
-                raise ValueError("Fields must be strings in the form 'title^9.3'.")
-            field_name, weight_str = field_entry.split("^", 1)
-            field_name = field_name.strip()
-            try:
-                weight = float(weight_str)
-            except ValueError as exc:
-                raise ValueError("Field weights must be numeric.") from exc
+            if "^" in field_entry:
+                field_name, weight_str = field_entry.split("^", 1)
+                field_name = field_name.strip()
+                try:
+                    weight = float(weight_str)
+                except ValueError as exc:
+                    raise ValueError("Field weights must be numeric.") from exc
+            else:
+                field_name = field_entry.strip()
+                weight = 1.0
         elif isinstance(field_entry, (list, tuple)) and len(field_entry) == 2:
             field_name, weight = field_entry
         elif isinstance(field_entry, dict):
