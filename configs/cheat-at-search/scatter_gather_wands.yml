@@ -22,5 +22,5 @@ strategy:
           Given the candidate search results you've been provided, return the most relevant results.
     plan:
       - select: "Find the best categories to search within for the query: {query}"
-      - scatter: "For each category, find the best results within that category. Category: {category}"
+      - scatter: "You're searching category: {category} for the query: {query}. Find the best results within this category."
       - gather: "Given the results from each category, return the most relevant results to the users query: {query}. Here are the results from each category: {results_by_category}"
