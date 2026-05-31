@@ -229,9 +229,29 @@ def build_search_tools(
                 corpus,
                 system_prompt=system_prompt,
             )
+        elif tool_name == "bm25_wands_prefiltered":
+            tool_fn = builder(
+                corpus,
+                **(tool.get("config") or {}),
+            )
+        elif tool_name == "e5_base_v2_wands_prefiltered":
+            tool_fn = builder(
+                corpus,
+                device=embeddings_device,
+                **(tool.get("config") or {}),
+            )
+        elif tool_name == "top_categories":
+            tool_fn = builder(
+                corpus,
+                **(tool.get("config") or {}),
+            )
         elif tool_name == "bm25":
             tool_params = tool.get("config", {}).get("params", {})
             tool_fn = builder(corpus, **tool_params)
+        elif tool_name == "bm25_wands":
+            tool_fn = builder(corpus, **(tool.get("config") or {}))
+        elif tool_name in {"minilm_wands", "e5_base_v2_wands"}:
+            tool_fn = builder(corpus, device=embeddings_device, **(tool.get("config") or {}))
         elif tool_name in {"embeddings", "minilm", "e5_base_v2"}:
             tool_fn = builder(corpus, device=embeddings_device)
         else:

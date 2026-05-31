@@ -63,22 +63,24 @@ TOOL_REGISTRY = {
     },
     "minilm_wands": {"builder": make_wands_embedding_tool, "kind": "agentic"},
     "e5_base_v2_wands": {
-        "builder": lambda corpus, device=None: make_wands_embedding_tool(
+        "builder": lambda corpus, device=None, **kwargs: make_wands_embedding_tool(
             corpus,
             device=device,
             model_name="intfloat/e5-base-v2",
             query_prefix="query: ",
             document_prefix="passage: ",
+            **kwargs,
         ),
         "kind": "agentic",
     },
     "e5_base_v2_wands_prefiltered": {
-        "builder": lambda corpus, device=None: make_wands_embedding_prefiltered_tool(
+        "builder": lambda corpus, device=None, **kwargs: make_wands_embedding_prefiltered_tool(
             corpus,
             device=device,
             model_name="intfloat/e5-base-v2",
             query_prefix="query: ",
             document_prefix="passage: ",
+            **kwargs,
         ),
         "kind": "agentic",
     },

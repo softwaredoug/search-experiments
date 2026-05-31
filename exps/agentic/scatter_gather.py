@@ -9,14 +9,14 @@ from pydantic import BaseModel, Field
 from exps.agentic.agent import Agent, SearchResults, SUBAGENT_SYSTEM_PROMPT, trace_logger
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.run_dirs import slugify
-from exps.tools.wands import WANDS_TOP_CATEGORIES, WandsProductCategory
+from exps.tools.wands import WANDS_CATEGORY_COL
 
 
 class SelectedCategories(BaseModel):
     """Categories selected for scatter/gather runs."""
 
-    categories: list[WandsProductCategory] = Field(
-        description="Selected WANDS categories to search within."
+    categories: list[str] = Field(
+        description="Selected categories to search within."
     )
 
 
@@ -65,6 +65,9 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         if not self._select_agent_cfg or not self._scatter_agent_cfg or not self._gather_agent_cfg:
             raise ValueError("scatter_gather_wands requires select, scatter, and gather agents.")
 
+        self._category_column = self._resolve_category_column()
+        values = self.corpus[self._category_column].dropna().astype(str).tolist()
+        self._available_categories = sorted({value for value in values if value})
         self._validate_agent_tools()
 
         self._select_agent = Agent(
@@ -151,6 +154,38 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             raise ValueError("Plan must include select, scatter, gather in order.")
         return {name: prompt for name, prompt in steps}
 
+    def _extract_tool_column(self, tools: list, *, tool_name: str) -> str | None:
+        for entry in tools:
+            if isinstance(entry, str) and entry == tool_name:
+                return None
+            if isinstance(entry, dict) and len(entry) == 1 and tool_name in entry:
+                config = entry.get(tool_name) or {}
+                if not isinstance(config, dict):
+                    raise ValueError(f"Tool config for {tool_name} must be a mapping.")
+                column = config.get("column")
+                if column is not None and not isinstance(column, str):
+                    raise ValueError(f"{tool_name}.column must be a string.")
+                return column
+        return None
+
+    def _resolve_category_column(self) -> str:
+        select_tools = self._select_agent_cfg.get("search_tools") or []
+        scatter_tools = self._scatter_agent_cfg.get("search_tools") or []
+        select_column = self._extract_tool_column(select_tools, tool_name="top_categories")
+        scatter_column = self._extract_tool_column(
+            scatter_tools,
+            tool_name="bm25_wands_prefiltered",
+        ) or self._extract_tool_column(
+            scatter_tools,
+            tool_name="e5_base_v2_wands_prefiltered",
+        )
+        column = select_column or scatter_column or WANDS_CATEGORY_COL
+        if select_column and scatter_column and select_column != scatter_column:
+            raise ValueError("select/scatter column must match for scatter_gather_wands.")
+        if column not in self.corpus.columns:
+            raise ValueError(f"scatter_gather_wands missing column: {column}")
+        return column
+
     def _validate_agent_tools(self) -> None:
         gather_tools = self._gather_agent_cfg.get("search_tools") or []
         if gather_tools:
@@ -171,10 +206,9 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         )
         if not response.output or not getattr(response.output, "categories", None):
             return []
-        categories = []
-        for category in response.output.categories:
-            if category in WANDS_TOP_CATEGORIES:
-                categories.append(category)
+        categories = [
+            category for category in response.output.categories if category in self._available_categories
+        ]
         trace_path = trace_dir / "summary.json"
         trace_path.write_text(
             json.dumps({"step": "select", "categories": categories}, indent=2) + "\n",
@@ -218,7 +252,9 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                     row = self.corpus.iloc[index]
                     detail["title"] = str(row.get("title", "") or "")
                     detail["description"] = str(row.get("description", "") or "")
-                    detail["category"] = str(row.get("category", category) or category)
+                    detail["category"] = str(
+                        row.get(self._category_column, category) or category
+                    )
                 detailed.append(detail)
             results_by_category[category] = detailed
             scatter_summary = scatter_dir / "summary.json"
@@ -275,11 +311,12 @@ class ScatterGatherWandsStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         query_dir = self.query_path(query)
+        print(query)
         with trace_logger(query_dir) as (logger, trace_path):
             select_dir = query_dir / "select"
             categories = self._select_categories(query, select_dir, logger, trace_path)
             if not categories:
-                categories = WANDS_TOP_CATEGORIES[:3]
+                categories = self._available_categories[:3]
             summary_path = query_dir / "summary.json"
             summary_path.write_text(
                 json.dumps(

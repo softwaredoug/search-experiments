@@ -74,10 +74,10 @@ def _build_category_index(corpus, *, category_col: str) -> dict[str, np.ndarray]
     return {key: np.asarray(indices, dtype=int) for key, indices in category_index.items()}
 
 
-def _available_categories(corpus) -> list[str]:
-    if WANDS_CATEGORY_COL not in corpus.columns:
+def _available_categories(corpus, *, category_col: str) -> list[str]:
+    if category_col not in corpus.columns:
         return []
-    corpus_categories = set(corpus[WANDS_CATEGORY_COL].dropna().astype(str).tolist())
+    corpus_categories = set(corpus[category_col].dropna().astype(str).tolist())
     ordered = [cat for cat in WANDS_TOP_CATEGORIES if cat in corpus_categories]
     missing = sorted(corpus_categories - set(WANDS_TOP_CATEGORIES))
     return ordered + missing
@@ -142,8 +142,10 @@ def make_wands_bm25_tool(
     corpus,
     title_boost: float = 10.0,
     description_boost: float = 1.0,
+    *,
+    category_col: str = WANDS_CATEGORY_COL,
 ):
-    category_index = _build_category_index(corpus, category_col=WANDS_CATEGORY_COL)
+    category_index = _build_category_index(corpus, category_col=category_col)
 
     def search_bm25_wands(
         keywords: str,
@@ -208,8 +210,10 @@ def make_wands_bm25_tool(
     return search_bm25_wands
 
 
-def make_top_categories_tool(corpus):
-    categories = _available_categories(corpus)
+def make_top_categories_tool(corpus, *, column: str = WANDS_CATEGORY_COL):
+    if column not in corpus.columns:
+        raise ValueError(f"Missing {column} column for category filtering.")
+    categories = _available_categories(corpus, category_col=column)
 
     def top_categories(top_k: int = 5, agent_state=None) -> list[str]:
         """Return the top WANDS categories in the corpus.
@@ -239,9 +243,10 @@ def make_wands_embedding_tool(
     model_name: str | None = None,
     query_prefix: str | None = None,
     document_prefix: str | None = None,
+    category_col: str = WANDS_CATEGORY_COL,
 ):
     model_name = model_name or DEFAULT_MODEL_NAME
-    category_index = _build_category_index(corpus, category_col=WANDS_CATEGORY_COL)
+    category_index = _build_category_index(corpus, category_col=category_col)
 
     passage_fn = make_passage_fn(document_prefix)
 
@@ -328,11 +333,14 @@ def make_wands_bm25_prefiltered_tool(
     corpus,
     title_boost: float = 10.0,
     description_boost: float = 1.0,
+    *,
+    column: str = WANDS_CATEGORY_COL,
 ):
     base_tool = make_wands_bm25_tool(
         corpus,
         title_boost=title_boost,
         description_boost=description_boost,
+        category_col=column,
     )
 
     def search_bm25_wands_prefiltered(
@@ -365,6 +373,7 @@ def make_wands_embedding_prefiltered_tool(
     model_name: str | None = None,
     query_prefix: str | None = None,
     document_prefix: str | None = None,
+    column: str = WANDS_CATEGORY_COL,
 ):
     base_tool = make_wands_embedding_tool(
         corpus,
@@ -372,6 +381,7 @@ def make_wands_embedding_prefiltered_tool(
         model_name=model_name,
         query_prefix=query_prefix,
         document_prefix=document_prefix,
+        category_col=column,
     )
 
     def search_embeddings_wands_prefiltered(
