@@ -1,7 +1,7 @@
 [project]
 name = "exps"
 version = "0.1.0"
-description = "Pseudo relevance feedback benchmarks"
+description = "Search experiments benchmarks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
