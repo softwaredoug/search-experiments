@@ -49,15 +49,9 @@ class SearchResults(BaseModel):
 
 
 @dataclass
-class AgentRunResult:
-    ranked_results: list[str]
-    trace_path: Path
-    num_tool_calls: int
-
-
 @dataclass
 class AgentResponse:
-    output: BaseModel | None
+    output: BaseModel | list[str] | None
     trace_path: Path
     num_tool_calls: int
 
@@ -377,7 +371,7 @@ class Agent:
             )
         return resp, inputs
 
-    def run_response(
+    def run(
         self,
         *,
         query: str,
@@ -438,19 +432,11 @@ class Agent:
                     {"query": query, "results": len(ranked_results)},
                 )
         num_tool_calls = int(agent_state.get("num_tool_calls", 0))
+        output = resp.output_parsed if resp else None
+        if output and hasattr(output, "ranked_results"):
+            output = list(output.ranked_results or [])[:k]
         return AgentResponse(
-            output=resp.output_parsed if resp else None,
+            output=output,
             trace_path=trace_path,
             num_tool_calls=num_tool_calls,
-        )
-
-    def run(self, *, query: str, trace_dir: Path, k: int = 10) -> AgentRunResult:
-        response = self.run_response(query=query, trace_dir=trace_dir, k=k)
-        ranked_results = []
-        if response.output and hasattr(response.output, "ranked_results"):
-            ranked_results = list(response.output.ranked_results or [])[:k]
-        return AgentRunResult(
-            ranked_results=ranked_results,
-            trace_path=response.trace_path,
-            num_tool_calls=response.num_tool_calls,
         )

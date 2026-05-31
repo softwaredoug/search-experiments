@@ -106,7 +106,7 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
         query_dir = self.query_path(query)
         run_result = self.agent.run(query=query, trace_dir=query_dir, k=k)
-        ranked_results = run_result.ranked_results
+        ranked_results = run_result.output if isinstance(run_result.output, list) else []
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
         self.traces[query] = str(run_result.trace_path)

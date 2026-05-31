@@ -163,13 +163,13 @@ class ScatterGatherWandsStrategy(SearchStrategy):
 
     def _select_categories(self, query: str, trace_dir: Path, logger, trace_path: Path) -> list[str]:
         trace_dir.mkdir(parents=True, exist_ok=True)
-        response = self._select_agent.run_response(
+        response = self._select_agent.run(
             query=query,
             trace_dir=trace_dir,
             logger=logger,
             trace_path=trace_path,
         )
-        if not response.output or not response.output.categories:
+        if not response.output or not getattr(response.output, "categories", None):
             return []
         categories = []
         for category in response.output.categories:
@@ -200,7 +200,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         for category in categories:
             scatter_dir = query_dir / "scatter" / slugify(category, fallback="category")
             scatter_dir.mkdir(parents=True, exist_ok=True)
-            response = self._scatter_agent.run_response(
+            response = self._scatter_agent.run(
                 query=query,
                 trace_dir=scatter_dir,
                 format_params={"category": category, "query": query},
@@ -208,8 +208,8 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 trace_path=trace_path,
             )
             doc_ids = []
-            if response.output and response.output.ranked_results:
-                doc_ids = list(response.output.ranked_results)
+            if isinstance(response.output, list):
+                doc_ids = list(response.output)
             detailed = []
             for doc_id in doc_ids:
                 detail = {"id": str(doc_id), "title": "", "description": "", "category": category}
@@ -247,7 +247,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
     ) -> list[str]:
         gather_dir = query_dir / "gather"
         gather_dir.mkdir(parents=True, exist_ok=True)
-        gather_response = self._gather_agent.run_response(
+        gather_response = self._gather_agent.run(
             query=query,
             trace_dir=gather_dir,
             format_params={
@@ -258,8 +258,8 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             trace_path=trace_path,
         )
         ranked_results: list[str] = []
-        if gather_response.output and gather_response.output.ranked_results:
-            ranked_results = list(gather_response.output.ranked_results)
+        if isinstance(gather_response.output, list):
+            ranked_results = list(gather_response.output)
         ranked_results = ranked_results[:10]
         gather_summary = gather_dir / "summary.json"
         gather_summary.write_text(

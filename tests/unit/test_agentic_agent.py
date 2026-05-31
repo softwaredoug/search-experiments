@@ -58,7 +58,7 @@ def test_agent_runs_single_step(tmp_path):
     )
     result = agent.run(query="query", trace_dir=tmp_path, k=2)
 
-    assert result.ranked_results == ["101", "202"]
+    assert result.output == ["101", "202"]
     assert result.num_tool_calls == 1
 
 
@@ -105,7 +105,7 @@ def test_agent_empty_tools_no_tool_calls(tmp_path):
     result = agent.run(query="query", trace_dir=tmp_path, k=2)
 
     assert result.num_tool_calls == 0
-    assert result.ranked_results == ["101", "202"]
+    assert result.output == ["101", "202"]
 
 
 @patch("exps.agentic.agent.evaluate_stopper")
