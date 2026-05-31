@@ -77,18 +77,39 @@ def make_bm25_tool(
     return search_bm25
 
 
-def _parse_weighted_fields(fields: list[str]) -> list[tuple[str, float]]:
-    parsed_fields = []
+def _parse_weighted_fields(fields: list) -> list[tuple[str, float]]:
+    parsed_fields: list[tuple[str, float]] = []
     for field_entry in fields:
-        if not isinstance(field_entry, str) or "^" not in field_entry:
+        field_name = None
+        weight = None
+        if isinstance(field_entry, str):
+            if "^" not in field_entry:
+                raise ValueError("Fields must be strings in the form 'title^9.3'.")
+            field_name, weight_str = field_entry.split("^", 1)
+            field_name = field_name.strip()
+            try:
+                weight = float(weight_str)
+            except ValueError as exc:
+                raise ValueError("Field weights must be numeric.") from exc
+        elif isinstance(field_entry, (list, tuple)) and len(field_entry) == 2:
+            field_name, weight = field_entry
+        elif isinstance(field_entry, dict):
+            if "field" in field_entry:
+                field_name = field_entry.get("field")
+            elif "name" in field_entry:
+                field_name = field_entry.get("name")
+            elif len(field_entry) == 1:
+                field_name, weight = next(iter(field_entry.items()))
+            if weight is None:
+                weight = field_entry.get("weight")
+        else:
             raise ValueError("Fields must be strings in the form 'title^9.3'.")
-        field_name, weight_str = field_entry.split("^", 1)
-        field_name = field_name.strip()
+
         if field_name not in {"title", "description"}:
             raise ValueError("Fields must be title or description.")
         try:
-            weight = float(weight_str)
-        except ValueError as exc:
+            weight = float(weight)
+        except (TypeError, ValueError) as exc:
             raise ValueError("Field weights must be numeric.") from exc
         parsed_fields.append((field_name, weight))
     if not parsed_fields:
