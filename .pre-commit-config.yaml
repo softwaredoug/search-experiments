@@ -6,3 +6,14 @@ repos:
         entry: uv run pytest tests/unit
         language: system
         pass_filenames: false
+      - id: uv-check-lock
+        name: uv lock is current
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
+      - id: flake8
+        name: flake8
+        entry: uv run flake8
+        language: system
+        types: [python]
