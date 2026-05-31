@@ -161,8 +161,14 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             if "prefiltered" not in tool_name:
                 raise ValueError("scatter tools must be prefiltered.")
 
-    def _select_categories(self, query: str, trace_dir: Path, logger) -> list[str]:
-        response = self._select_agent.run_response(query=query, trace_dir=trace_dir)
+    def _select_categories(self, query: str, trace_dir: Path, logger, trace_path: Path) -> list[str]:
+        trace_dir.mkdir(parents=True, exist_ok=True)
+        response = self._select_agent.run_response(
+            query=query,
+            trace_dir=trace_dir,
+            logger=logger,
+            trace_path=trace_path,
+        )
         if not response.output or not response.output.categories:
             return []
         categories = []
@@ -181,11 +187,97 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             )
         return categories
 
+    def _gather_category_results(
+        self,
+        *,
+        query: str,
+        categories: list[str],
+        query_dir: Path,
+        logger,
+        trace_path: Path,
+    ) -> dict[str, list[dict[str, str]]]:
+        results_by_category: dict[str, list[dict[str, str]]] = {}
+        for category in categories:
+            scatter_dir = query_dir / "scatter" / slugify(category, fallback="category")
+            scatter_dir.mkdir(parents=True, exist_ok=True)
+            response = self._scatter_agent.run_response(
+                query=query,
+                trace_dir=scatter_dir,
+                format_params={"category": category, "query": query},
+                logger=logger,
+                trace_path=trace_path,
+            )
+            doc_ids = []
+            if response.output and response.output.ranked_results:
+                doc_ids = list(response.output.ranked_results)
+            detailed = []
+            for doc_id in doc_ids:
+                detail = {"id": str(doc_id), "title": "", "description": "", "category": category}
+                index = self._lookup.get(str(doc_id)) if self._lookup else None
+                if index is not None:
+                    row = self.corpus.iloc[index]
+                    detail["title"] = str(row.get("title", "") or "")
+                    detail["description"] = str(row.get("description", "") or "")
+                    detail["category"] = str(row.get("category", category) or category)
+                detailed.append(detail)
+            results_by_category[category] = detailed
+            scatter_summary = scatter_dir / "summary.json"
+            scatter_summary.write_text(
+                json.dumps(
+                    {"step": "scatter", "category": category, "doc_ids": doc_ids},
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            logger.info(
+                "scatter_gather_scatter_results %s",
+                {"category": category, "doc_ids": doc_ids},
+            )
+        return results_by_category
+
+    def _gather_final_results(
+        self,
+        *,
+        query: str,
+        query_dir: Path,
+        results_by_category: dict[str, list[dict[str, str]]],
+        logger,
+        trace_path: Path,
+    ) -> list[str]:
+        gather_dir = query_dir / "gather"
+        gather_dir.mkdir(parents=True, exist_ok=True)
+        gather_response = self._gather_agent.run_response(
+            query=query,
+            trace_dir=gather_dir,
+            format_params={
+                "results_by_category": json.dumps(results_by_category),
+                "query": query,
+            },
+            logger=logger,
+            trace_path=trace_path,
+        )
+        ranked_results: list[str] = []
+        if gather_response.output and gather_response.output.ranked_results:
+            ranked_results = list(gather_response.output.ranked_results)
+        ranked_results = ranked_results[:10]
+        gather_summary = gather_dir / "summary.json"
+        gather_summary.write_text(
+            json.dumps({"step": "gather", "doc_ids": ranked_results}, indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
+        logger.info(
+            "scatter_gather_gather_results %s",
+            {"doc_ids": ranked_results},
+        )
+        return ranked_results
+
     def search(self, query: str, k: int = 10):
         query_dir = self.query_path(query)
-        with trace_logger(query_dir) as (logger, _):
+        with trace_logger(query_dir) as (logger, trace_path):
             select_dir = query_dir / "select"
-            categories = self._select_categories(query, select_dir, logger)
+            categories = self._select_categories(query, select_dir, logger, trace_path)
             if not categories:
                 categories = WANDS_TOP_CATEGORIES[:3]
             summary_path = query_dir / "summary.json"
@@ -205,54 +297,19 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 "scatter_gather_scatter_count %s",
                 {"query": query, "scatter_count": len(categories), "categories": categories},
             )
-            results_by_category: dict[str, list[str]] = {}
-            for category in categories:
-                scatter_dir = query_dir / "scatter" / slugify(category, fallback="category")
-                response = self._scatter_agent.run_response(
-                    query=query,
-                    trace_dir=scatter_dir,
-                    format_params={"category": category, "query": query},
-                )
-                doc_ids = []
-                if response.output and response.output.ranked_results:
-                    doc_ids = list(response.output.ranked_results)
-                results_by_category[category] = doc_ids
-                scatter_summary = scatter_dir / "summary.json"
-                scatter_summary.write_text(
-                    json.dumps(
-                        {"step": "scatter", "category": category, "doc_ids": doc_ids},
-                        indent=2,
-                    )
-                    + "\n",
-                    encoding="utf-8",
-                )
-                logger.info(
-                    "scatter_gather_scatter_results %s",
-                    {"category": category, "doc_ids": doc_ids},
-                )
-
-            gather_dir = query_dir / "gather"
-            gather_response = self._gather_agent.run_response(
+            results_by_category = self._gather_category_results(
                 query=query,
-                trace_dir=gather_dir,
-                format_params={
-                    "results_by_category": json.dumps(results_by_category),
-                    "query": query,
-                },
+                categories=categories,
+                query_dir=query_dir,
+                logger=logger,
+                trace_path=trace_path,
             )
-            ranked_results: list[str] = []
-            if gather_response.output and gather_response.output.ranked_results:
-                ranked_results = list(gather_response.output.ranked_results)
-            ranked_results = ranked_results[:10]
-            gather_summary = gather_dir / "summary.json"
-            gather_summary.write_text(
-                json.dumps({"step": "gather", "doc_ids": ranked_results}, indent=2)
-                + "\n",
-                encoding="utf-8",
-            )
-            logger.info(
-                "scatter_gather_gather_results %s",
-                {"doc_ids": ranked_results},
+            ranked_results = self._gather_final_results(
+                query=query,
+                query_dir=query_dir,
+                results_by_category=results_by_category,
+                logger=logger,
+                trace_path=trace_path,
             )
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
