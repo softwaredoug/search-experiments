@@ -1,0 +1,29 @@
+strategy:
+  name: scatter_gather_wands_cat_subcat
+  type: scatter_gather_wands
+  params:
+    model: gpt-5-mini
+    reasoning: medium
+    agents:
+      select:
+        system_prompt: |
+          Use the provided tools to find the best categories to search within.
+        search_tools:
+          - bm25_wands
+          - top_categories:
+              column: cat_subcat
+      scatter:
+        system_prompt: |
+          Use the provided tools to find the best results within the assigned category.
+        search_tools:
+          - bm25_wands_prefiltered:
+              column: cat_subcat
+          - e5_base_v2_wands_prefiltered:
+              column: cat_subcat
+      gather:
+        system_prompt: |
+          Given the candidate search results you've been provided, return the most relevant results.
+    plan:
+      - select: "Find the best categories to search within for the query: {query}"
+      - scatter: "For each category, find the best results for {query} within that bucket. Category: {category}"
+      - gather: "Given the results from each category, return the most relevant results to the users query: {query}. Here are the results from each category: {results_by_category}"
