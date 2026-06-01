@@ -5,9 +5,13 @@ These tests validate the docker-backed bash service in isolation.
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 import warnings
+from pathlib import Path
+from unittest.mock import patch
 from urllib import request
 
 import pandas as pd
@@ -44,6 +48,28 @@ def _docker_compose_available() -> bool:
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
     return True
+
+
+_TEMP_ROOT: Path | None = None
+
+
+def _temp_root() -> Path:
+    global _TEMP_ROOT
+    if _TEMP_ROOT is None:
+        _TEMP_ROOT = Path(tempfile.mkdtemp())
+    return _TEMP_ROOT
+
+
+def _cleanup_temp_root() -> None:
+    global _TEMP_ROOT
+    if _TEMP_ROOT is None:
+        return
+    shutil.rmtree(_TEMP_ROOT, ignore_errors=True)
+    _TEMP_ROOT = None
+
+
+_BASH_PORT_EXEC = 8010
+_BASH_PORT_MISSING = 8011
 
 
 def _require_docker() -> None:
@@ -109,74 +135,72 @@ def _run_bash_or_skip(bash_tool, command: str, *, timeout: int) -> str:
         raise
 
 
-def test_bash_tool_executes_commands(tmp_path, monkeypatch):
-    _require_docker()
-    _require_compose()
-
-    trace_root = tmp_path / "search-experiments"
-    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
-    monkeypatch.setattr("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", trace_root)
-
-    dataset_name = "bash_fixture"
-    port = 8010
-    monkeypatch.setenv("EXPS_BASH_PORT", str(port))
-
-    corpus = pd.DataFrame(
-        {
-            "title": ["alpha", "beta"],
-            "description": ["alpha", "beta"],
-            "doc_id": ["1", "2"],
-        }
-    )
-    dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant="default")
-    volume_name = volume_name_for_dataset(dataset_name)
-    ensure_bash_volume(dataset_dir, volume_name=volume_name)
-    _compose_up(volume_name=volume_name, port=port)
-    if not _bash_service_ready(port):
-        _compose_down(volume_name=volume_name, port=port)
-        pytest.skip("Bash service did not become ready for integration test.")
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch.dict(os.environ, {"EXPS_BASH_PORT": str(_BASH_PORT_EXEC)})
+def test_bash_tool_executes_commands(_filesystem_root, _paths_root):
     try:
-        bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
-        output = _run_bash_or_skip(bash_tool, "ls -1", timeout=5)
+        _require_docker()
+        _require_compose()
+        dataset_name = "bash_fixture"
+
+        corpus = pd.DataFrame(
+            {
+                "title": ["alpha", "beta"],
+                "description": ["alpha", "beta"],
+                "doc_id": ["1", "2"],
+            }
+        )
+        dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant="default")
+        volume_name = volume_name_for_dataset(dataset_name)
+        ensure_bash_volume(dataset_dir, volume_name=volume_name)
+        _compose_up(volume_name=volume_name, port=_BASH_PORT_EXEC)
+        if not _bash_service_ready(_BASH_PORT_EXEC):
+            _compose_down(volume_name=volume_name, port=_BASH_PORT_EXEC)
+            pytest.skip("Bash service did not become ready for integration test.")
+        try:
+            bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
+            output = _run_bash_or_skip(bash_tool, "ls -1", timeout=5)
+        finally:
+            _compose_down(volume_name=volume_name, port=_BASH_PORT_EXEC)
     finally:
-        _compose_down(volume_name=volume_name, port=port)
+        _cleanup_temp_root()
 
     assert "exit_code=0" in output
     assert "alpha-1.txt" in output
     assert "beta-2.txt" in output
 
 
-def test_bash_tool_handles_missing_file(tmp_path, monkeypatch):
-    _require_docker()
-    _require_compose()
-
-    trace_root = tmp_path / "search-experiments"
-    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
-    monkeypatch.setattr("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", trace_root)
-
-    dataset_name = "bash_fixture_missing"
-    port = 8011
-    monkeypatch.setenv("EXPS_BASH_PORT", str(port))
-
-    corpus = pd.DataFrame(
-        {
-            "title": ["alpha"],
-            "description": ["alpha"],
-            "doc_id": ["1"],
-        }
-    )
-    dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant="default")
-    volume_name = volume_name_for_dataset(dataset_name)
-    ensure_bash_volume(dataset_dir, volume_name=volume_name)
-    _compose_up(volume_name=volume_name, port=port)
-    if not _bash_service_ready(port):
-        _compose_down(volume_name=volume_name, port=port)
-        pytest.skip("Bash service did not become ready for integration test.")
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch.dict(os.environ, {"EXPS_BASH_PORT": str(_BASH_PORT_MISSING)})
+def test_bash_tool_handles_missing_file(_filesystem_root, _paths_root):
     try:
-        bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
-        output = _run_bash_or_skip(bash_tool, "cat missing.txt", timeout=5)
+        _require_docker()
+        _require_compose()
+        dataset_name = "bash_fixture_missing"
+
+        corpus = pd.DataFrame(
+            {
+                "title": ["alpha"],
+                "description": ["alpha"],
+                "doc_id": ["1"],
+            }
+        )
+        dataset_dir = ensure_filesystem_on_disk(corpus, dataset_name=dataset_name, variant="default")
+        volume_name = volume_name_for_dataset(dataset_name)
+        ensure_bash_volume(dataset_dir, volume_name=volume_name)
+        _compose_up(volume_name=volume_name, port=_BASH_PORT_MISSING)
+        if not _bash_service_ready(_BASH_PORT_MISSING):
+            _compose_down(volume_name=volume_name, port=_BASH_PORT_MISSING)
+            pytest.skip("Bash service did not become ready for integration test.")
+        try:
+            bash_tool = make_bash_tool(corpus, dataset_name=dataset_name)
+            output = _run_bash_or_skip(bash_tool, "cat missing.txt", timeout=5)
+        finally:
+            _compose_down(volume_name=volume_name, port=_BASH_PORT_MISSING)
     finally:
-        _compose_down(volume_name=volume_name, port=port)
+        _cleanup_temp_root()
 
     assert "exit_code=1" in output
     assert "No such file" in output

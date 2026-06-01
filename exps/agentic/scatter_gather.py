@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 from exps.agentic.agent import Agent, SearchResults, SUBAGENT_SYSTEM_PROMPT, trace_logger
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.run_dirs import slugify
+from exps.tools import normalize_search_tools_for_cache
 from exps.tools.wands import WANDS_CATEGORY_COL
 
 
@@ -232,6 +234,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
     ) -> dict[str, list[dict[str, str]]]:
         results_by_category: dict[str, list[dict[str, str]]] = {}
         for category in categories:
+            print(f"Search category: {category}")
             scatter_dir = query_dir / "scatter" / slugify(category, fallback="category")
             scatter_dir.mkdir(parents=True, exist_ok=True)
             response = self._scatter_agent.run(
@@ -375,6 +378,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             )
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
+            print(f"{query} DONE")
             return ranked_results[:k], [1.0] * len(ranked_results[:k])
 
     def query_path(self, query: str) -> Path:
@@ -394,3 +398,33 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 query_dir = candidate
                 break
         return query_dir
+
+    @property
+    def cache_key(self) -> str:
+        agents_payload = {}
+        for name, cfg in {
+            "select": self._select_agent_cfg,
+            "scatter": self._scatter_agent_cfg,
+            "gather": self._gather_agent_cfg,
+        }.items():
+            if cfg is None:
+                continue
+            tools = normalize_search_tools_for_cache(cfg.get("search_tools") or [])
+            agents_payload[name] = {
+                "system_prompt": cfg.get("system_prompt"),
+                "search_tools": tools,
+            }
+        payload = {
+            "type": self._type,
+            "model": self.model,
+            "reasoning": self.reasoning,
+            "plan": self._plan_prompts,
+            "agents": agents_payload,
+            "stop": self.stop,
+            "validators": self.validators,
+            "max_loops": self.max_loops,
+            "embeddings_device": self.embeddings_device,
+            "category_column": self._category_column,
+        }
+        serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+        return hashlib.md5(serialized).hexdigest()

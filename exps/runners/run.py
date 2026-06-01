@@ -25,6 +25,7 @@ class RunParams(BaseModel):
     k: int = 10
     seed: int = 42
     workers: int = 1
+    batch_size: int | None = None
     binary_relevance: str | None = None
     device: str | None = None
     no_cache: bool = False
@@ -221,6 +222,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         num_queries=num_queries,
         seed=params.seed,
         cache=not params.no_cache,
+        batch_size=params.batch_size,
     )
     if trace_path is not None:
         query_dirs = [path for path in trace_path.iterdir() if path.is_dir()]

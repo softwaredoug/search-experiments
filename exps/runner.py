@@ -100,6 +100,11 @@ def main() -> None:
         help="Number of worker processes for indexing/search.",
     )
     parser.add_argument(
+        "--batch-size",
+        type=int,
+        help="Batch size for run_strategy query processing.",
+    )
+    parser.add_argument(
         "--binary-relevance",
         help=(
             "Comma-separated fields to treat as binary relevance "
@@ -132,6 +137,7 @@ def main() -> None:
             k=args.k,
             seed=args.seed,
             workers=args.workers,
+            batch_size=args.batch_size,
             binary_relevance=args.binary_relevance,
             device=args.device,
             no_cache=args.no_cache,
@@ -173,6 +179,7 @@ def main() -> None:
         num_queries=args.num_queries,
         seed=args.seed,
         workers=args.workers,
+        batch_size=args.batch_size,
         binary_relevance=args.binary_relevance,
         device=args.device,
         no_cache=args.no_cache,

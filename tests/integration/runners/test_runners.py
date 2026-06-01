@@ -4,6 +4,7 @@ See docs/runner_tests_prd.md for requirements.
 """
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -148,15 +149,11 @@ def test_run_benchmark_matches_direct():
     pd.testing.assert_series_equal(result.metric_series, direct_series)
 
 
-
-
-
-
-def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
+@patch("exps.runners.run.get_dataset")
+@patch("cheat_at_search.embeddings._cache_root")
+def test_run_benchmark_embedding_prefixes(mock_cache_root, mock_get_dataset, tmp_path):
     def fake_cache_root():
         return tmp_path
-
-    monkeypatch.setattr("cheat_at_search.embeddings._cache_root", fake_cache_root)
 
     corpus = pd.DataFrame(
         {
@@ -175,7 +172,8 @@ def test_run_benchmark_embedding_prefixes(monkeypatch, tmp_path):
     )
 
     dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
-    monkeypatch.setattr("exps.runners.run.get_dataset", lambda *args, **kwargs: dataset)
+    mock_cache_root.side_effect = fake_cache_root
+    mock_get_dataset.return_value = dataset
 
     params = RunParams(
         strategy_path="configs/embedding_e5_base_v2.yml",

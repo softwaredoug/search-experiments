@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
@@ -28,9 +30,35 @@ def _sample_corpus():
     )
 
 
+_SEARCH_DIRECTORY_CAPTURED: dict[str, object] = {}
+
+
+class _SearchDirectoryAgent:
+    def __init__(self, tools, model, reasoning_level, response_model=None):
+        _SEARCH_DIRECTORY_CAPTURED["tools"] = [tool.__name__ for tool in tools]
+        _SEARCH_DIRECTORY_CAPTURED["model"] = model
+        _SEARCH_DIRECTORY_CAPTURED["reasoning"] = reasoning_level
+
+    def chat(self, *, inputs, agent_state, logger=None):
+        _SEARCH_DIRECTORY_CAPTURED["inputs"] = inputs
+        _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
+        inputs = list(inputs)
+        inputs.append({"type": "function_call_output", "output": '[{"path": "/red-shoes-101.txt"}]'})
+        return None, inputs, {}
+
+
+class _SearchDirectoryWandsAgent:
+    def __init__(self, tools, model, reasoning_level, response_model=None):
+        pass
+
+    def chat(self, *, inputs, agent_state, logger=None):
+        _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
+        return None, inputs, {}
+
+
 def test_filesystem_columns_added_once():
     corpus = _sample_corpus()
-    ls_tool = make_filesystem_ls_tool(corpus)
+    make_filesystem_ls_tool(corpus)
     assert "path" in corpus.columns
     assert "contents" in corpus.columns
     assert corpus.attrs.get("_filesystem_indexed") == "default"
@@ -333,8 +361,9 @@ def test_cat_rejects_absolute_path_outside_filesystem_root():
     assert "outside filesystem root" in result
 
 
-def test_search_directory_overwrites_filesystem_root_for_subagent(monkeypatch):
-    captured = {}
+@patch("exps.tools.filesystem.OpenAIAgent", _SearchDirectoryAgent)
+def test_search_directory_overwrites_filesystem_root_for_subagent():
+    _SEARCH_DIRECTORY_CAPTURED.clear()
     corpus = _sample_corpus()
     search_directory = make_filesystem_search_directory_tool(
         corpus,
@@ -343,30 +372,15 @@ def test_search_directory_overwrites_filesystem_root_for_subagent(monkeypatch):
         system_prompt="Search inside {scope}",
     )
 
-    class FakeAgent:
-        def __init__(self, tools, model, reasoning_level, response_model=None):
-            captured["tools"] = [tool.__name__ for tool in tools]
-            captured["model"] = model
-            captured["reasoning"] = reasoning_level
-
-        def chat(self, *, inputs, agent_state, logger=None):
-            captured["inputs"] = inputs
-            captured["agent_state"] = agent_state
-            inputs = list(inputs)
-            inputs.append({"type": "function_call_output", "output": '[{"path": "/red-shoes-101.txt"}]'})
-            return None, inputs, {}
-
-    monkeypatch.setattr("exps.tools.filesystem.OpenAIAgent", FakeAgent)
     parent_state = {"filesystem_root": "/", "search_directory_depth": 0, "logging_prefix": "root"}
-
     results = search_directory("/", "Find shoes", agent_state=parent_state)
 
     assert results == [{"path": "/red-shoes-101.txt"}]
-    assert captured["agent_state"]["filesystem_root"] == "/"
-    assert captured["agent_state"]["logging_prefix"] == "root.sd"
-    assert captured["agent_state"] is not parent_state
-    assert captured["inputs"][0]["content"] == "Search inside /"
-    assert "search_directory" not in captured["tools"]
+    assert _SEARCH_DIRECTORY_CAPTURED["agent_state"]["filesystem_root"] == "/"
+    assert _SEARCH_DIRECTORY_CAPTURED["agent_state"]["logging_prefix"] == "root.sd"
+    assert _SEARCH_DIRECTORY_CAPTURED["agent_state"] is not parent_state
+    assert _SEARCH_DIRECTORY_CAPTURED["inputs"][0]["content"] == "Search inside /"
+    assert "search_directory" not in _SEARCH_DIRECTORY_CAPTURED["tools"]
 
 
 def test_search_directory_rejects_nested_calls():
@@ -378,8 +392,9 @@ def test_search_directory_rejects_nested_calls():
     assert result == "Error! search_directory cannot be nested."
 
 
-def test_search_directory_wands_respects_category_scope(monkeypatch):
-    captured = {}
+@patch("exps.tools.filesystem.OpenAIAgent", _SearchDirectoryWandsAgent)
+def test_search_directory_wands_respects_category_scope():
+    _SEARCH_DIRECTORY_CAPTURED.clear()
     corpus = pd.DataFrame(
         {
             "doc_id": [1],
@@ -391,19 +406,9 @@ def test_search_directory_wands_respects_category_scope(monkeypatch):
     )
     search_directory = make_filesystem_search_directory_wands_tool(corpus)
 
-    class FakeAgent:
-        def __init__(self, tools, model, reasoning_level, response_model=None):
-            pass
-
-        def chat(self, *, inputs, agent_state, logger=None):
-            captured["agent_state"] = agent_state
-            return None, inputs, {}
-
-    monkeypatch.setattr("exps.tools.filesystem.OpenAIAgent", FakeAgent)
-
     search_directory("/furniture/chairs", "Find chairs", agent_state={})
 
-    assert captured["agent_state"]["filesystem_root"] == "/furniture/chairs"
+    assert _SEARCH_DIRECTORY_CAPTURED["agent_state"]["filesystem_root"] == "/furniture/chairs"
 
 
 def test_search_directory_wands_rejects_root_scope():

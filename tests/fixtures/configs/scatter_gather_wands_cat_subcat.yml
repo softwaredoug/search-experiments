@@ -1,19 +1,14 @@
 strategy:
-  name: scatter_gather_wands_cat_subcat
+  name: scatter_gather_wands_cat_subcat_fixture
   type: scatter_gather_wands
   params:
     model: gpt-5-mini
-    reasoning: medium
+    reasoning: low
     agents:
       select:
         system_prompt: |
-          You're trying to help find products in a furniture / home goods dataset
-
-          Your job is to gather best categories in the dataset to search within. Use
-          the search tools to identify teh best categories that should be zero-ed in and
-          searched deeper.
-
           Use the provided tools to find the best categories to search within.
+          Use the exact category string returned by the tools.
         search_tools:
           - bm25_wands:
               columns:
@@ -23,21 +18,14 @@ strategy:
               column: cat_subcat
       scatter:
         system_prompt: |
-          You're trying to help find products in a furniture / home goods dataset for a given search query
-
           Use the provided tools to find the best results within the assigned category.
+          Use the exact category string provided.
         search_tools:
           - bm25_wands_prefiltered:
               column: cat_subcat
-          - e5_base_v2_wands_prefiltered:
-              column: cat_subcat
       gather:
         system_prompt: |
-          You're trying to rerank products from a furniture / home goods dataset for a given query
-
           Given the candidate search results you've been provided, return the most relevant results.
-
-          It's crucial you rank the most relevant above the least relevant
     plan:
       - select: "Find the best categories to search within for the query: {query}"
       - scatter: "You're searching category: {category} for the user's query: {query}. Find the best results within this category."

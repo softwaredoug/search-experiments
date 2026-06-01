@@ -48,6 +48,12 @@ Scan docs / requirements for detailed guidance on specific features.
 - Run a single test:
   - `uv run pytest tests/unit/test_bm25.py::test_bm25_wands_ndcg_sanity`
 
+## Test Expectations
+
+- Use `unittest.mock.patch` decorators for mocking.
+- Prefer pytest fixtures for setup/data; avoid `monkeypatch`.
+- Use `patch.dict` decorators when you need environment overrides.
+
 ## Test-Driven Flow
 
 When a problem is reported, create a runner test first.

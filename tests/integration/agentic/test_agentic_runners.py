@@ -4,8 +4,12 @@ See docs/runner_tests_prd.md for requirements.
 """
 
 import os
+import shutil
 import socket
 import subprocess
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -33,6 +37,24 @@ def _bash_service_available() -> bool:
             return True
     except OSError:
         return False
+
+
+_TEMP_ROOT: Path | None = None
+
+
+def _temp_root() -> Path:
+    global _TEMP_ROOT
+    if _TEMP_ROOT is None:
+        _TEMP_ROOT = Path(tempfile.mkdtemp())
+    return _TEMP_ROOT
+
+
+def _cleanup_temp_root() -> None:
+    global _TEMP_ROOT
+    if _TEMP_ROOT is None:
+        return
+    shutil.rmtree(_TEMP_ROOT, ignore_errors=True)
+    _TEMP_ROOT = None
 
 
 def test_run_benchmark_agentic_guarded():
@@ -97,37 +119,37 @@ def test_run_benchmark_agentic_filesystem_tools():
     assert result.summary["tool_calls_mean"] >= 0.0
 
 
-def test_run_benchmark_agentic_filesystem_traces(tmp_path, monkeypatch):
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_run_benchmark_agentic_filesystem_traces(run_dirs_root, _paths_root):
+    try:
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
 
-    trace_root = tmp_path / "search-experiments"
-    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
-    monkeypatch.setattr("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", trace_root)
+        params = RunParams(
+            strategy_path="configs/agentic_filesystem.yml",
+            base_path="tests/fixtures",
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            no_cache=True,
+        )
+        result = run_benchmark(params)
+        assert result.metric_series is not None
+        assert not result.metric_series.empty
 
-    params = RunParams(
-        strategy_path="configs/agentic_filesystem.yml",
-        base_path="tests/fixtures",
-        dataset="doug_blog",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-    )
-    result = run_benchmark(params)
-
-    assert result.metric_series is not None
-    assert not result.metric_series.empty
-
-    trace_base = trace_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
-    assert trace_base.exists()
-    run_dirs = sorted([path for path in trace_base.iterdir() if path.is_dir()])
-    assert run_dirs
-    query_dirs = [path for path in run_dirs[-1].iterdir() if path.is_dir()]
-    assert query_dirs
-    log_files = list(query_dirs[0].glob("*.log"))
-    assert log_files
+        trace_base = run_dirs_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
+        assert trace_base.exists()
+        run_dirs = sorted([path for path in trace_base.iterdir() if path.is_dir()])
+        assert run_dirs
+        query_dirs = [path for path in run_dirs[-1].iterdir() if path.is_dir()]
+        assert query_dirs
+        log_files = list(query_dirs[0].glob("*.log"))
+        assert log_files
+    finally:
+        _cleanup_temp_root()
 
 
 def test_run_benchmark_agentic_codegen_tool(tmp_path):
@@ -333,22 +355,21 @@ strategy:
     assert not result.metric_series.empty
 
 
-def test_run_benchmark_agentic_bash_tool(tmp_path, monkeypatch):
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-    if not _docker_available():
-        pytest.skip("Docker is required for bash tool integration test.")
-    if not _bash_service_available():
-        pytest.skip("Bash service is not running for bash tool integration test.")
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_run_benchmark_agentic_bash_tool(_filesystem_root, _run_dirs_root, _paths_root):
+    try:
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+        if not _docker_available():
+            pytest.skip("Docker is required for bash tool integration test.")
+        if not _bash_service_available():
+            pytest.skip("Bash service is not running for bash tool integration test.")
 
-    trace_root = tmp_path / "search-experiments"
-    monkeypatch.setattr("exps.paths.SEARCH_EXPERIMENTS_ROOT", trace_root)
-    monkeypatch.setattr("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", trace_root)
-    monkeypatch.setattr("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", trace_root)
-
-    config_path = tmp_path / "agentic_bash.yml"
-    config_path.write_text(
-        """
+        config_path = _temp_root() / "agentic_bash.yml"
+        config_path.write_text(
+            """
 strategy:
   name: agentic_bash_fixture
   type: agentic
@@ -360,19 +381,21 @@ strategy:
     search_tools:
       - bash
 """.lstrip(),
-        encoding="utf-8",
-    )
-    params = RunParams(
-        strategy_path=str(config_path),
-        base_path=None,
-        dataset="doug_blog",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-    )
-    result = run_benchmark(params)
+            encoding="utf-8",
+        )
+        params = RunParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            no_cache=True,
+        )
+        result = run_benchmark(params)
+    finally:
+        _cleanup_temp_root()
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
@@ -396,6 +419,27 @@ def test_run_benchmark_scatter_gather_wands():
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+
+
+def test_run_benchmark_scatter_gather_wands_cat_subcat_query():
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
+
+    params = RunParams(
+        strategy_path="configs/scatter_gather_wands_cat_subcat.yml",
+        base_path="tests/fixtures",
+        dataset="wands",
+        query="floating bed",
+        k=5,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    result = run_benchmark(params)
+
+    assert result.query_results is not None
+    assert not result.query_results.empty
 
 
 def test_agentic_raw_tool_rejected(tmp_path):

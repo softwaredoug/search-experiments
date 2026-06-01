@@ -4,7 +4,7 @@ import os
 from typing import Union
 
 import numpy as np
-from typing_extensions import Literal
+from typing_extensions import TypeAlias
 
 from cheat_at_search.embeddings import (
     DEFAULT_CHUNK_SIZE,
@@ -37,28 +37,7 @@ WANDS_TOP_CATEGORIES = [
     "Shop Product Type",
     "Browse By Brand",
 ]
-WandsProductCategory = Literal[
-    "Furniture",
-    "Home Improvement",
-    "Décor & Pillows",
-    "Outdoor",
-    "Storage & Organization",
-    "Lighting",
-    "Rugs",
-    "Bed & Bath",
-    "Kitchen & Tabletop",
-    "Baby & Kids",
-    "School Furniture and Supplies",
-    "Appliances",
-    "Holiday Décor",
-    "Commercial Business Furniture",
-    "Pet",
-    "Contractor",
-    "Sale",
-    "Foodservice",
-    "Shop Product Type",
-    "Browse By Brand",
-]
+WandsProductCategory: TypeAlias = str
 WANDS_CATEGORY_COL = "category"
 
 

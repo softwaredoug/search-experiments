@@ -6,6 +6,7 @@ See docs/runner_tests_prd.md for requirements.
 import os
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -309,7 +310,8 @@ strategy:
         train_strategy(params)
 
 
-def test_run_codegen_without_trained_run(monkeypatch, tmp_path):
+@patch("exps.codegen.strategy.find_latest_codegen_run", lambda *_: None)
+def test_run_codegen_without_trained_run(tmp_path):
     config_path = tmp_path / "codegen_no_run.yml"
     config_path.write_text(
         """
@@ -325,7 +327,6 @@ strategy:
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("exps.codegen.strategy.find_latest_codegen_run", lambda *_: None)
     params = RunParams(
         strategy_path=str(config_path),
         base_path=None,

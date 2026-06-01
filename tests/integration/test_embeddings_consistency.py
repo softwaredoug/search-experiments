@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -58,7 +60,8 @@ class DirectEmbeddingStrategy(SearchStrategy):
         return top_k, scores[top_k]
 
 
-def test_embedding_strategy_matches_direct_minilm(tmp_path, monkeypatch):
+@patch("cheat_at_search.embeddings._cache_root")
+def test_embedding_strategy_matches_direct_minilm(mock_cache_root, tmp_path):
     pytest.importorskip("sentence_transformers")
 
     dataset = get_dataset("wands", ensure_snowball=False)
@@ -73,12 +76,8 @@ def test_embedding_strategy_matches_direct_minilm(tmp_path, monkeypatch):
     doc_ids = judgments["doc_id"].unique().tolist()
     corpus = corpus[corpus["doc_id"].isin(doc_ids)].reset_index(drop=True)
 
-    monkeypatch.setattr(
-        "cheat_at_search.embeddings._cache_root",
-        lambda: tmp_path,
-    )
-
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    mock_cache_root.return_value = tmp_path
     direct = DirectEmbeddingStrategy(corpus, model_name=model_name)
     cached = EmbeddingStrategy(
         corpus,
