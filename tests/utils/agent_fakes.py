@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 from exps.agentic.agent import SearchResults
 
 
@@ -35,8 +37,9 @@ class FakeOpenAIAgent:
         self.calls += 1
         self.chat_calls += 1
         script = self._next_script()
-        output = self._run_script(inputs, script)
+        output = self._run_script(inputs, script, agent_state)
         resp = type("Resp", (), {"output_parsed": output})
+        self.last_inputs = copy.deepcopy(inputs)
         return resp, inputs, 0
 
     def _build_output(self):
@@ -64,7 +67,7 @@ class FakeOpenAIAgent:
         self._script_index += 1
         return script
 
-    def _run_script(self, inputs, script):
+    def _run_script(self, inputs, script, agent_state):
         output = None
         for step in script or []:
             if "function_call" in step:
@@ -77,19 +80,32 @@ class FakeOpenAIAgent:
                 for tool in self.tools:
                     if getattr(tool, "__name__", None) == name:
                         tool_found = True
-                        if params is None:
-                            tool()
-                        elif isinstance(params, dict):
-                            tool(**params)
-                        else:
-                            tool(params)
-                        inputs.append({"type": "function_call_output", "output": {"ok": True}})
+                        tool_output = self._call_tool(tool, params, agent_state)
+                        if tool_output is None:
+                            tool_output = {"ok": True}
+                        inputs.append({"type": "function_call_output", "output": tool_output})
                         break
                 if not tool_found:
                     raise ValueError(f"Tool '{name}' not found in FakeOpenAIAgent.tools")
             if "output" in step:
                 output = self._normalize_output(step["output"])
         return output
+
+    def _call_tool(self, tool, params, agent_state):
+        if params is None:
+            try:
+                return tool(agent_state=agent_state)
+            except TypeError:
+                return tool()
+        if isinstance(params, dict):
+            try:
+                return tool(**params, agent_state=agent_state)
+            except TypeError:
+                return tool(**params)
+        try:
+            return tool(params, agent_state=agent_state)
+        except TypeError:
+            return tool(params)
 
     def _normalize_output(self, output):
         if output is None:
