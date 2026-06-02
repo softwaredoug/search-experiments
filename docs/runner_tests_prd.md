@@ -1,5 +1,7 @@
 ## Runner tests
 
+Runner tests should be used sparringly to confirm the plumbing works. They're integration tests that exercise external libraries and APIs.
+
 This code is architected so that the command line arguments match 1-1 with a "Runner" object
 
 Notice the runners.py and the exp/runners/ module
@@ -8,7 +10,7 @@ Notice the tests in tests/integration/test_runners.py
 
 ### How runner tests should work
 
-Runner tests are end to end. They use OPENAI and test fixtures when agentic strategies are involved. They run the entire pipeline, from strategy instantiation to evaluation.
+Runner tests are INTEGRATION. They use OPENAI and test fixtures when agentic strategies are involved. They run the entire pipeline, from strategy instantiation to evaluation.
 
 They're meant to stimulate the code as if run from the command line.
 
