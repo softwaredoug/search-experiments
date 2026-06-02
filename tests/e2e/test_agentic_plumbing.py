@@ -207,6 +207,7 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
+@patch.dict("os.environ", {"OPENAI_API_KEY": "stub"})
 def test_agentic_query_rewrite_tool_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
