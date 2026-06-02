@@ -21,8 +21,30 @@ def _temp_root() -> Path:
     return _TEMP_ROOT
 
 
-def _build_fake_agent(*args, **kwargs):
-    return FakeOpenAIAgent(*args, **kwargs)
+def _build_fake_agent(
+    *,
+    script: list[dict] | None = None,
+    scripts: list[list[dict]] | None = None,
+    doc_ids: list[str] | None = None,
+    categories: list[str] | None = None,
+    instances: list[FakeOpenAIAgent] | None = None,
+):
+    resolved_scripts = scripts
+    if resolved_scripts is None and script is not None:
+        resolved_scripts = [script]
+
+    def _factory(*args, **kwargs):
+        agent = FakeOpenAIAgent(*args, **kwargs)
+        agent.scripts = resolved_scripts
+        if doc_ids is not None:
+            agent.doc_ids = list(doc_ids)
+        if categories is not None:
+            agent.categories = list(categories)
+        if instances is not None:
+            instances.append(agent)
+        return agent
+
+    return _factory
 
 
 def _cleanup_temp_root() -> None:
@@ -55,9 +77,7 @@ def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embed
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_hello_world_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
@@ -69,6 +89,7 @@ def test_agentic_hello_world_e2e(
         judgments = doug_blog_dataset.judgments
         dataset_elapsed_s = 0.0
         embedding_elapsed_s = 0.0
+        instances: list[FakeOpenAIAgent] = []
 
         def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
             nonlocal embedding_elapsed_s
@@ -86,10 +107,8 @@ def test_agentic_hello_world_e2e(
         mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
         mock_load_model.side_effect = lambda *_args, **_kwargs: None
 
-        FakeOpenAIAgent.calls = 0
         doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
-        original_script = FakeOpenAIAgent.script
-        FakeOpenAIAgent.script = [
+        script = [
             {
                 "function_call": {
                     "name": "search_embeddings",
@@ -127,14 +146,18 @@ strategy:
             device=None,
             no_cache=True,
         )
-        started_at = time.perf_counter()
-        result = run_benchmark(params)
-        elapsed_s = time.perf_counter() - started_at
+        with patch(
+            "exps.agentic.agent.build_openai_agent",
+            side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+        ):
+            started_at = time.perf_counter()
+            result = run_benchmark(params)
+            elapsed_s = time.perf_counter() - started_at
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
         assert result.summary["tool_calls_mean"] >= 1.0
-        assert FakeOpenAIAgent.calls >= 1
+        assert sum(agent.chat_calls for agent in instances) >= 1
         assert mock_load_or_create_embeddings.call_count >= 1
         assert elapsed_s > 0.0
 
@@ -148,16 +171,13 @@ strategy:
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_hello_world_fixture"
         assert trace_base.exists()
     finally:
-        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_guarded_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
@@ -167,10 +187,9 @@ def test_agentic_guarded_e2e(
     try:
         corpus = doug_blog_dataset.corpus
         judgments = doug_blog_dataset.judgments
-        FakeOpenAIAgent.calls = 0
+        instances: list[FakeOpenAIAgent] = []
         doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
-        original_script = FakeOpenAIAgent.script
-        FakeOpenAIAgent.script = [
+        script = [
             {
                 "function_call": {
                     "name": "search_bm25",
@@ -214,28 +233,29 @@ strategy:
             device=None,
             no_cache=True,
         )
-        result = _run_with_embeddings(
-            params,
-            corpus=corpus,
-            judgments=judgments,
-            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-            mock_load_model=mock_load_model,
-        )
+        with patch(
+            "exps.agentic.agent.build_openai_agent",
+            side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+        ):
+            result = _run_with_embeddings(
+                params,
+                corpus=corpus,
+                judgments=judgments,
+                mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+                mock_load_model=mock_load_model,
+            )
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
         assert result.summary["tool_calls_mean"] >= 1.0
-        assert FakeOpenAIAgent.calls >= 1
+        assert sum(agent.chat_calls for agent in instances) >= 1
     finally:
-        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_filesystem_e2e(
-    _build_agent,
     _filesystem_root,
     _paths_root,
     tmp_path,
@@ -243,10 +263,9 @@ def test_agentic_filesystem_e2e(
 ):
     try:
         corpus = doug_blog_dataset.corpus
-        FakeOpenAIAgent.calls = 0
+        instances: list[FakeOpenAIAgent] = []
         doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
-        original_script = FakeOpenAIAgent.script
-        FakeOpenAIAgent.script = [
+        script = [
             {
                 "function_call": {
                     "name": "ls",
@@ -287,14 +306,17 @@ strategy:
             device=None,
             no_cache=True,
         )
-        result = run_benchmark(params)
+        with patch(
+            "exps.agentic.agent.build_openai_agent",
+            side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+        ):
+            result = run_benchmark(params)
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
-        assert FakeOpenAIAgent.calls >= 1
+        assert sum(agent.chat_calls for agent in instances) >= 1
 
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
         assert trace_base.exists()
     finally:
-        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()

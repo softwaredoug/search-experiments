@@ -17,28 +17,22 @@ def build_agent_script(
 
 
 class FakeOpenAIAgent:
-    calls = 0
-    chat_calls = 0
-    doc_ids: list[str] = []
-    categories: list[str] = []
-    script: list[dict] | None = None
-    scripts: list[list[dict]] | None = None
-    last_instance: "FakeOpenAIAgent" | None = None
-
     def __init__(self, tools, model, response_model, reasoning_level):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.calls = 0
         self.chat_calls = 0
         self._script_index = 0
-        FakeOpenAIAgent.last_instance = self
+        self.doc_ids: list[str] = []
+        self.categories: list[str] = []
+        self.scripts: list[list[dict]] | None = None
 
     def chat(self, *, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
-        FakeOpenAIAgent.calls += 1
-        FakeOpenAIAgent.chat_calls += 1
+        self.calls += 1
         self.chat_calls += 1
         script = self._next_script()
         output = self._run_script(inputs, script)
@@ -51,24 +45,24 @@ class FakeOpenAIAgent:
             return None
         fields = getattr(model, "model_fields", None)
         if fields and "categories" in fields:
-            return model(categories=list(FakeOpenAIAgent.categories))
+            return model(categories=list(self.categories))
         if fields and "ranked_results" in fields:
-            return model(ranked_results=list(FakeOpenAIAgent.doc_ids))
+            return model(ranked_results=list(self.doc_ids))
         try:
             return model()
         except TypeError:
-            return SearchResults(ranked_results=list(FakeOpenAIAgent.doc_ids))
+            return SearchResults(ranked_results=list(self.doc_ids))
 
     def _next_script(self) -> list[dict]:
-        if FakeOpenAIAgent.scripts is not None:
-            if self._script_index >= len(FakeOpenAIAgent.scripts):
-                raise ValueError("FakeOpenAIAgent.scripts missing script for call.")
-            script = FakeOpenAIAgent.scripts[self._script_index]
+        if self.scripts is None:
+            raise ValueError("FakeOpenAIAgent.scripts must be set for scripted tool calls.")
+        if self._script_index >= len(self.scripts):
+            script = self.scripts[-1]
             self._script_index += 1
             return script
-        if FakeOpenAIAgent.script is None:
-            raise ValueError("FakeOpenAIAgent.script must be set for scripted tool calls.")
-        return FakeOpenAIAgent.script
+        script = self.scripts[self._script_index]
+        self._script_index += 1
+        return script
 
     def _run_script(self, inputs, script):
         output = None

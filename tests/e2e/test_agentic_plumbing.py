@@ -16,8 +16,30 @@ def _fake_bash_builder(_corpus, **_kwargs):
     return bash
 
 
-def _build_fake_agent(*args, **kwargs):
-    return FakeOpenAIAgent(*args, **kwargs)
+def _build_fake_agent(
+    *,
+    script: list[dict] | None = None,
+    scripts: list[list[dict]] | None = None,
+    doc_ids: list[str] | None = None,
+    categories: list[str] | None = None,
+    instances: list[FakeOpenAIAgent] | None = None,
+):
+    resolved_scripts = scripts
+    if resolved_scripts is None and script is not None:
+        resolved_scripts = [script]
+
+    def _factory(*args, **kwargs):
+        agent = FakeOpenAIAgent(*args, **kwargs)
+        agent.scripts = resolved_scripts
+        if doc_ids is not None:
+            agent.doc_ids = list(doc_ids)
+        if categories is not None:
+            agent.categories = list(categories)
+        if instances is not None:
+            instances.append(agent)
+        return agent
+
+    return _factory
 
 
 def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embeddings, mock_load_model):
@@ -61,19 +83,16 @@ def _run_with_wands_embeddings(params, *, corpus, judgments, mock_load_or_create
 @patch("exps.runners.run.get_dataset")
 @patch("exps.tools.wands.load_or_create_embeddings")
 @patch("exps.tools.wands.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
+    script = [
         {
             "function_call": {
                 "name": "search_bm25_wands",
@@ -94,39 +113,37 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
         device=None,
         no_cache=True,
     )
-    result = _run_with_wands_embeddings(
-        params,
-        corpus=fake_wands_dataset.corpus,
-        judgments=fake_wands_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = _run_with_wands_embeddings(
+            params,
+            corpus=fake_wands_dataset.corpus,
+            judgments=fake_wands_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    assert FakeOpenAIAgent.calls >= 1
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.runners.run.get_dataset")
 @patch("exps.tools.wands.load_or_create_embeddings")
 @patch("exps.tools.wands.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_scatter_gather_wands_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
     categories = fake_wands_dataset.corpus["cat_subcat"].dropna().astype(str).unique().tolist()
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
-        {"output": {"categories": categories[:2], "ranked_results": doc_ids}}
-    ]
+    script = [{"output": {"categories": categories[:2], "ranked_results": doc_ids}}]
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands.yml",
@@ -139,39 +156,42 @@ def test_scatter_gather_wands_e2e(
         device=None,
         no_cache=True,
     )
-    result = _run_with_wands_embeddings(
-        params,
-        corpus=fake_wands_dataset.corpus,
-        judgments=fake_wands_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(
+            script=script,
+            doc_ids=doc_ids,
+            categories=categories[:2],
+            instances=instances,
+        ),
+    ):
+        result = _run_with_wands_embeddings(
+            params,
+            corpus=fake_wands_dataset.corpus,
+            judgments=fake_wands_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    assert FakeOpenAIAgent.calls >= 1
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.runners.run.get_dataset")
 @patch("exps.tools.wands.load_or_create_embeddings")
 @patch("exps.tools.wands.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_scatter_gather_wands_cat_subcat_query_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
     categories = fake_wands_dataset.corpus["cat_subcat"].dropna().astype(str).unique().tolist()
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
-        {"output": {"categories": categories[:2], "ranked_results": doc_ids}}
-    ]
+    script = [{"output": {"categories": categories[:2], "ranked_results": doc_ids}}]
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands_cat_subcat.yml",
@@ -185,35 +205,40 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
         device=None,
         no_cache=True,
     )
-    result = _run_with_wands_embeddings(
-        params,
-        corpus=fake_wands_dataset.corpus,
-        judgments=fake_wands_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(
+            script=script,
+            doc_ids=doc_ids,
+            categories=categories[:2],
+            instances=instances,
+        ),
+    ):
+        result = _run_with_wands_embeddings(
+            params,
+            corpus=fake_wands_dataset.corpus,
+            judgments=fake_wands_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.query_results is not None
     assert not result.query_results.empty
-    assert FakeOpenAIAgent.calls >= 1
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 @patch.dict("os.environ", {"OPENAI_API_KEY": "stub"})
 def test_agentic_query_rewrite_tool_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
     doug_blog_dataset,
 ):
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
+    script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_query_rewrite_e2e.yml"
     config_path.write_text(
@@ -245,33 +270,34 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = _run_with_embeddings(
-        params,
-        corpus=doug_blog_dataset.corpus,
-        judgments=doug_blog_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = _run_with_embeddings(
+            params,
+            corpus=doug_blog_dataset.corpus,
+            judgments=doug_blog_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_orchestrate_bm25_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
     doug_blog_dataset,
 ):
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
+    script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_orchestrate.yml"
     config_path.write_text(
@@ -303,34 +329,34 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = _run_with_embeddings(
-        params,
-        corpus=doug_blog_dataset.corpus,
-        judgments=doug_blog_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = _run_with_embeddings(
+            params,
+            corpus=doug_blog_dataset.corpus,
+            judgments=doug_blog_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    assert FakeOpenAIAgent.calls >= 1
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_plan_agents_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
     doug_blog_dataset,
 ):
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
+    script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_plan.yml"
     config_path.write_text(
@@ -370,17 +396,21 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = _run_with_embeddings(
-        params,
-        corpus=doug_blog_dataset.corpus,
-        judgments=doug_blog_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = _run_with_embeddings(
+            params,
+            corpus=doug_blog_dataset.corpus,
+            judgments=doug_blog_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch.dict(
@@ -388,12 +418,10 @@ strategy:
     {"bash": {"builder": _fake_bash_builder, "kind": "agentic"}},
     clear=False,
 )
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
-def test_agentic_bash_tool_e2e(_build_agent, tmp_path, doug_blog_dataset):
-    FakeOpenAIAgent.calls = 0
+def test_agentic_bash_tool_e2e(tmp_path, doug_blog_dataset):
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
+    script = [
         {
             "function_call": {
                 "name": "bash",
@@ -430,11 +458,15 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = run_benchmark(params)
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = run_benchmark(params)
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 def test_agentic_raw_tool_rejected_e2e(tmp_path):
@@ -499,11 +531,10 @@ strategy:
         run_benchmark(params)
 
 
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
-def test_agentic_few_shot_happy_path_e2e(_build_agent, tmp_path, doug_blog_dataset):
+def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
+    script = [
         {
             "function_call": {
                 "name": "search_bm25",
@@ -542,11 +573,15 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = run_benchmark(params)
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = run_benchmark(params)
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 def test_agentic_few_shot_missing_column_raises_e2e(tmp_path):
@@ -585,14 +620,10 @@ strategy:
         run_benchmark(params)
 
 
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
-def test_agentic_validator_tool_calls_e2e(_build_agent, tmp_path, doug_blog_dataset):
-    FakeOpenAIAgent.calls = 0
-    FakeOpenAIAgent.chat_calls = 0
+def test_agentic_validator_tool_calls_e2e(tmp_path, doug_blog_dataset):
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    original_scripts = FakeOpenAIAgent.scripts
-    FakeOpenAIAgent.scripts = [
+    scripts = [
         [
             {
                 "function_call": {
@@ -621,10 +652,9 @@ def test_agentic_validator_tool_calls_e2e(_build_agent, tmp_path, doug_blog_data
             {"output": {"ranked_results": doc_ids}},
         ],
     ]
-    try:
-        config_path = tmp_path / "agentic_validator_tool_calls.yml"
-        config_path.write_text(
-            """
+    config_path = tmp_path / "agentic_validator_tool_calls.yml"
+    config_path.write_text(
+        """
 strategy:
   name: agentic_validator_tool_calls_fixture
   type: agentic
@@ -641,29 +671,29 @@ strategy:
           params:
             num_calls: 3
 """.lstrip(),
-            encoding="utf-8",
-        )
-        params = RunParams(
-            strategy_path=str(config_path),
-            base_path=None,
-            dataset="doug_blog",
-            num_queries=1,
-            seed=123,
-            workers=1,
-            batch_size=1,
-            device=None,
-            no_cache=True,
-        )
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device=None,
+        no_cache=True,
+    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
+    ):
         result = run_benchmark(params)
 
-        assert result.metric_series is not None
-        assert not result.metric_series.empty
-        assert FakeOpenAIAgent.chat_calls == 3
-        assert FakeOpenAIAgent.last_instance is not None
-        assert FakeOpenAIAgent.last_instance.chat_calls == 3
-    finally:
-        FakeOpenAIAgent.script = original_script
-        FakeOpenAIAgent.scripts = original_scripts
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 3
 
 
 def test_agentic_codegen_tool_dependency_mismatch_e2e(tmp_path):
@@ -765,12 +795,10 @@ strategy:
         run_benchmark(params)
 
 
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
-def test_agentic_codegen_tool_e2e(_build_agent, tmp_path, doug_blog_dataset):
-    FakeOpenAIAgent.calls = 0
+def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
+    script = [
         {
             "function_call": {
                 "name": "search",
@@ -826,25 +854,26 @@ strategy:
         device=None,
         no_cache=True,
     )
-    result = run_benchmark(params)
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = run_benchmark(params)
 
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_codegen_fixture_nonzero_e2e(
-    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     doug_blog_dataset,
 ):
-    FakeOpenAIAgent.calls = 0
+    instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
-    original_script = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = [
+    script = [
         {
             "function_call": {
                 "name": "search",
@@ -865,14 +894,18 @@ def test_agentic_codegen_fixture_nonzero_e2e(
         device=None,
         no_cache=True,
     )
-    result = _run_with_embeddings(
-        params,
-        corpus=doug_blog_dataset.corpus,
-        judgments=doug_blog_dataset.judgments,
-        mock_load_or_create_embeddings=mock_load_or_create_embeddings,
-        mock_load_model=mock_load_model,
-    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
+    ):
+        result = _run_with_embeddings(
+            params,
+            corpus=doug_blog_dataset.corpus,
+            judgments=doug_blog_dataset.judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    FakeOpenAIAgent.script = original_script
+    assert sum(agent.chat_calls for agent in instances) >= 1
