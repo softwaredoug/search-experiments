@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeOpenAIAgent, build_agent_script
+from tests.utils.agent_fakes import FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -27,21 +27,6 @@ def _cleanup_temp_root() -> None:
         return
     shutil.rmtree(_TEMP_ROOT, ignore_errors=True)
     _TEMP_ROOT = None
-
-
-def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
-    FakeOpenAIAgent.calls = 0
-    FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(count).tolist()]
-
-
-def _set_fake_script(*, tool_name: str | None, params: dict | None = None) -> list[dict] | None:
-    original = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = build_agent_script(
-        tool_name=tool_name,
-        params=params,
-        output=None,
-    )
-    return original
 
 
 def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embeddings, mock_load_model):
@@ -71,6 +56,7 @@ def test_agentic_hello_world_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
+    tmp_path,
     doug_blog_dataset,
 ):
     try:
@@ -95,15 +81,39 @@ def test_agentic_hello_world_e2e(
         mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
         mock_load_model.side_effect = lambda *_args, **_kwargs: None
 
-        _set_fake_doc_ids(corpus)
-        original_script = _set_fake_script(
-            tool_name="search_embeddings",
-            params={"question": "salon chair", "top_k": 5},
+        FakeOpenAIAgent.calls = 0
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        original_script = FakeOpenAIAgent.script
+        FakeOpenAIAgent.script = [
+            {
+                "function_call": {
+                    "name": "search_embeddings",
+                    "params": {"question": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ]
+
+        config_path = tmp_path / "agentic_hello_world.yml"
+        config_path.write_text(
+            """
+strategy:
+  name: agentic_hello_world_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+    search_tools:
+      - e5_base_v2
+""".lstrip(),
+            encoding="utf-8",
         )
 
         params = RunParams(
-            strategy_path="configs/agentic_hello_world.yml",
-            base_path="tests/fixtures",
+            strategy_path=str(config_path),
+            base_path=None,
             dataset="doug_blog",
             num_queries=1,
             seed=123,
@@ -145,20 +155,51 @@ def test_agentic_guarded_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
+    tmp_path,
     doug_blog_dataset,
 ):
     try:
         corpus = doug_blog_dataset.corpus
         judgments = doug_blog_dataset.judgments
-        _set_fake_doc_ids(corpus)
-        original_script = _set_fake_script(
-            tool_name="search_bm25",
-            params={"keywords": "salon chair", "top_k": 5},
+        FakeOpenAIAgent.calls = 0
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        original_script = FakeOpenAIAgent.script
+        FakeOpenAIAgent.script = [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ]
+
+        config_path = tmp_path / "agentic.yml"
+        config_path.write_text(
+            """
+strategy:
+  name: agentic_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - embeddings:
+          guards:
+            - query_min_length:
+                min_terms: 3
+""".lstrip(),
+            encoding="utf-8",
         )
 
         params = RunParams(
-            strategy_path="configs/agentic.yml",
-            base_path="tests/fixtures",
+            strategy_path=str(config_path),
+            base_path=None,
             dataset="doug_blog",
             num_queries=1,
             seed=123,
@@ -187,18 +228,45 @@ def test_agentic_guarded_e2e(
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, doug_blog_dataset):
+def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, tmp_path, doug_blog_dataset):
     try:
         corpus = doug_blog_dataset.corpus
-        _set_fake_doc_ids(corpus)
-        original_script = _set_fake_script(
-            tool_name="ls",
-            params={"path": ".", "glob": "**/*"},
+        FakeOpenAIAgent.calls = 0
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        original_script = FakeOpenAIAgent.script
+        FakeOpenAIAgent.script = [
+            {
+                "function_call": {
+                    "name": "ls",
+                    "params": {"path": ".", "glob": "**/*"},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ]
+
+        config_path = tmp_path / "agentic_filesystem.yml"
+        config_path.write_text(
+            """
+strategy:
+  name: agentic_filesystem_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      You take user search queries and use filesystem tools to find the most relevant products.
+      Use grep to find matching files, cat to read them, and then rank results.
+    search_tools:
+      - ls
+      - grep
+      - cat
+""".lstrip(),
+            encoding="utf-8",
         )
 
         params = RunParams(
-            strategy_path="configs/agentic_filesystem.yml",
-            base_path="tests/fixtures",
+            strategy_path=str(config_path),
+            base_path=None,
             dataset="doug_blog",
             num_queries=1,
             seed=123,

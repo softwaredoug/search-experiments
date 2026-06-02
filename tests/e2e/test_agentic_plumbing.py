@@ -4,13 +4,8 @@ from unittest.mock import patch
 
 import pytest
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeOpenAIAgent, build_agent_script
+from tests.utils.agent_fakes import FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
-
-
-def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
-    FakeOpenAIAgent.calls = 0
-    FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(count).tolist()]
 
 
 def _fake_bash_builder(_corpus, **_kwargs):
@@ -19,21 +14,6 @@ def _fake_bash_builder(_corpus, **_kwargs):
 
     bash.__name__ = "bash"
     return bash
-
-
-def _set_fake_script(*, tool_name: str | None, params: dict | None = None) -> list[dict] | None:
-    original = FakeOpenAIAgent.script
-    FakeOpenAIAgent.script = build_agent_script(
-        tool_name=tool_name,
-        params=params,
-        output=None,
-    )
-    return original
-
-
-def _set_fake_categories(corpus, *, count: int = 2) -> None:
-    categories = corpus["cat_subcat"].dropna().astype(str).unique().tolist()
-    FakeOpenAIAgent.categories = categories[:count]
 
 
 def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embeddings, mock_load_model):
@@ -85,11 +65,18 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    _set_fake_doc_ids(fake_wands_dataset.corpus)
-    original_script = _set_fake_script(
-        tool_name="search_bm25_wands",
-        params={"keywords": "floating bed", "top_k": 5},
-    )
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {
+            "function_call": {
+                "name": "search_bm25_wands",
+                "params": {"keywords": "floating bed", "top_k": 5},
+            }
+        },
+        {"output": {"ranked_results": doc_ids}},
+    ]
 
     params = RunParams(
         strategy_path="configs/agentic_wands_bm25_e5_few_shot_delegate.yml",
@@ -127,9 +114,13 @@ def test_scatter_gather_wands_e2e(
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    _set_fake_doc_ids(fake_wands_dataset.corpus)
-    _set_fake_categories(fake_wands_dataset.corpus)
-    original_script = _set_fake_script(tool_name=None)
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
+    categories = fake_wands_dataset.corpus["cat_subcat"].dropna().astype(str).unique().tolist()
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {"output": {"categories": categories[:2], "ranked_results": doc_ids}}
+    ]
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands.yml",
@@ -167,9 +158,13 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
     fake_wands_dataset,
 ):
     mock_get_dataset.return_value = fake_wands_dataset
-    _set_fake_doc_ids(fake_wands_dataset.corpus)
-    _set_fake_categories(fake_wands_dataset.corpus)
-    original_script = _set_fake_script(tool_name=None)
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
+    categories = fake_wands_dataset.corpus["cat_subcat"].dropna().astype(str).unique().tolist()
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {"output": {"categories": categories[:2], "ranked_results": doc_ids}}
+    ]
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands_cat_subcat.yml",
@@ -207,8 +202,10 @@ def test_agentic_query_rewrite_tool_e2e(
     tmp_path,
     doug_blog_dataset,
 ):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(tool_name=None)
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_query_rewrite_e2e.yml"
     config_path.write_text(
@@ -262,8 +259,10 @@ def test_agentic_orchestrate_bm25_e2e(
     tmp_path,
     doug_blog_dataset,
 ):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(tool_name=None)
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_orchestrate.yml"
     config_path.write_text(
@@ -318,8 +317,10 @@ def test_agentic_plan_agents_e2e(
     tmp_path,
     doug_blog_dataset,
 ):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(tool_name=None)
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_plan.yml"
     config_path.write_text(
@@ -379,8 +380,18 @@ strategy:
 )
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
 def test_agentic_bash_tool_e2e(tmp_path, doug_blog_dataset):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(tool_name="bash")
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {
+            "function_call": {
+                "name": "bash",
+                "params": None,
+            }
+        },
+        {"output": {"ranked_results": doc_ids}},
+    ]
 
     config_path = tmp_path / "agentic_bash.yml"
     config_path.write_text(
@@ -480,10 +491,17 @@ strategy:
 
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
 def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
-    original_script = _set_fake_script(
-        tool_name="search_bm25",
-        params={"keywords": "salon chair", "top_k": 5},
-    )
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {
+            "function_call": {
+                "name": "search_bm25",
+                "params": {"keywords": "salon chair", "top_k": 5},
+            }
+        },
+        {"output": {"ranked_results": doc_ids}},
+    ]
     config_path = tmp_path / "agentic_few_shot.yml"
     config_path.write_text(
         """
@@ -658,11 +676,18 @@ strategy:
 
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
 def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(
-        tool_name="search",
-        params={"query": "salon chair", "top_k": 10},
-    )
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {
+            "function_call": {
+                "name": "search",
+                "params": {"query": "salon chair", "top_k": 10},
+            }
+        },
+        {"output": {"ranked_results": doc_ids}},
+    ]
     codegen_dir = tmp_path / "codegen_run"
     codegen_dir.mkdir()
     reranker_path = codegen_dir / "reranker.py"
@@ -724,11 +749,18 @@ def test_agentic_codegen_fixture_nonzero_e2e(
     mock_load_or_create_embeddings,
     doug_blog_dataset,
 ):
-    _set_fake_doc_ids(doug_blog_dataset.corpus)
-    original_script = _set_fake_script(
-        tool_name="search",
-        params={"query": "salon chair", "top_k": 5},
-    )
+    FakeOpenAIAgent.calls = 0
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    original_script = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = [
+        {
+            "function_call": {
+                "name": "search",
+                "params": {"query": "salon chair", "top_k": 5},
+            }
+        },
+        {"output": {"ranked_results": doc_ids}},
+    ]
 
     params = RunParams(
         strategy_path="configs/agentic_w_codegen.yml",
