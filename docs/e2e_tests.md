@@ -14,6 +14,7 @@ Like these tests, the tests
 - Use an inline yaml in the test that defines the strategy
 - Runs the strategy
 - Confirms behavior
+ - Do not reference configs/ paths; inline yaml only
 
 Unlike these tests, we:
 

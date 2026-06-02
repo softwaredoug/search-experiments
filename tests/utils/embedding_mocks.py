@@ -14,7 +14,7 @@ class MockEmbeddingModel:
     query_vectors: dict[str, np.ndarray]
     dim: int = 3
 
-    def encode(self, inputs: str | Iterable[str]):
+    def encode(self, inputs: str | Iterable[str], **_kwargs):
         if isinstance(inputs, str):
             return self._encode_single(inputs)
         vectors = [self._encode_single(text) for text in inputs]

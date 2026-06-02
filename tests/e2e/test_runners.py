@@ -1,4 +1,4 @@
-"""Runner integration tests.
+"""Runner e2e tests.
 
 See docs/runner_tests_prd.md for requirements.
 """
@@ -15,12 +15,49 @@ from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.runners.run import RunParams, run_benchmark
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
+from tests.utils.embedding_mocks import build_mock_embeddings
 
 
-def test_run_benchmark_wands_bm25_all_params():
+def _write_bm25_config(tmp_path):
+    config_path = tmp_path / "bm25.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: bm25_fixture
+  type: bm25
+  params:
+    k1: 1.2
+    b: 0.75
+    title_boost: 9.3
+    description_boost: 4.1
+""".lstrip(),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def _write_embedding_config(tmp_path):
+    config_path = tmp_path / "embedding_e5_base_v2.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: embedding_e5_fixture
+  type: embedding
+  params:
+    model_name: sentence-transformers/all-MiniLM-L6-v2
+    query_prefix: "query: "
+    document_prefix: "passage: "
+""".lstrip(),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_run_benchmark_wands_bm25_all_params(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
     params = RunParams(
-        strategy_path="configs/bm25.yml",
-        base_path="tests/fixtures",
+        strategy_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         num_queries=2,
         seed=123,
@@ -40,11 +77,12 @@ def test_run_benchmark_wands_bm25_all_params():
     assert result.summary["tool_calls_std"] == 0.0
 
 
-def test_diff_benchmark_wands_bm25_all_params():
+def test_diff_benchmark_wands_bm25_all_params(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
     params = DiffParams(
-        strategy_a_path="configs/bm25.yml",
-        strategy_b_path="configs/bm25.yml",
-        base_path="tests/fixtures",
+        strategy_a_path=str(config_path),
+        strategy_b_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         query=None,
         k=5,
@@ -62,11 +100,12 @@ def test_diff_benchmark_wands_bm25_all_params():
     assert "diff" in result.diff_table.columns
 
 
-def test_diff_benchmark_wands_query_results():
+def test_diff_benchmark_wands_query_results(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
     params = DiffParams(
-        strategy_a_path="configs/bm25.yml",
-        strategy_b_path="configs/bm25.yml",
-        base_path="tests/fixtures",
+        strategy_a_path=str(config_path),
+        strategy_b_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         query="bm25",
         k=5,
@@ -85,10 +124,11 @@ def test_diff_benchmark_wands_query_results():
     assert len(result.query_results_b) == 5
 
 
-def test_run_benchmark_query_results():
+def test_run_benchmark_query_results(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
     params = RunParams(
-        strategy_path="configs/bm25.yml",
-        base_path="tests/fixtures",
+        strategy_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         query="bm25",
         k=5,
@@ -113,10 +153,11 @@ def test_run_benchmark_query_results():
         assert "description" in example
 
 
-def test_run_benchmark_matches_direct():
+def test_run_benchmark_matches_direct(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
     params = RunParams(
-        strategy_path="configs/bm25.yml",
-        base_path="tests/fixtures",
+        strategy_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         num_queries=2,
         seed=123,
@@ -151,33 +192,44 @@ def test_run_benchmark_matches_direct():
 
 @patch("exps.runners.run.get_dataset")
 @patch("cheat_at_search.embeddings._cache_root")
-def test_run_benchmark_embedding_prefixes(mock_cache_root, mock_get_dataset, tmp_path):
+@patch("exps.strategies.embedding.load_or_create_embeddings")
+@patch("exps.strategies.embedding.load_model")
+def test_run_benchmark_embedding_prefixes(
+    mock_load_model,
+    mock_load_or_create_embeddings,
+    mock_cache_root,
+    mock_get_dataset,
+    tmp_path,
+    doug_blog_dataset,
+):
     def fake_cache_root():
         return tmp_path
 
-    corpus = pd.DataFrame(
-        {
-            "doc_id": list(range(10)),
-            "title": [f"Doc {i}" for i in range(10)],
-            "description": [f"Description {i}" for i in range(10)],
-        }
-    )
-    judgments = pd.DataFrame(
-        {
-            "query_id": [1],
-            "query": ["blue jeans"],
-            "doc_id": [0],
-            "grade": [1],
-        }
-    )
-
+    corpus = doug_blog_dataset.corpus
+    judgments = doug_blog_dataset.judgments
     dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
     mock_cache_root.side_effect = fake_cache_root
     mock_get_dataset.return_value = dataset
+    model_holder: dict[str, object] = {}
 
+    def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
+        embeddings, model = build_mock_embeddings(
+            corpus,
+            judgments,
+            passage_fn,
+            dim=3,
+            seed=123,
+        )
+        model_holder["model"] = model
+        return embeddings, model
+
+    mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
+    mock_load_model.side_effect = lambda *_args, **_kwargs: model_holder.get("model")
+
+    config_path = _write_embedding_config(tmp_path)
     params = RunParams(
-        strategy_path="configs/embedding_e5_base_v2.yml",
-        base_path="tests/fixtures",
+        strategy_path=str(config_path),
+        base_path=None,
         dataset="doug_blog",
         num_queries=1,
         seed=123,
