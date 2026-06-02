@@ -33,16 +33,6 @@ def _cleanup_temp_root() -> None:
     _TEMP_ROOT = None
 
 
-def _write_fixture_config(tmp_path: Path, fixture_name: str, run_path: Path) -> Path:
-    template_path = Path("tests/fixtures/configs") / fixture_name
-    content = template_path.read_text(encoding="utf-8")
-    content = content.replace("__RUN_PATH__", str(run_path))
-    run_path.mkdir(parents=True, exist_ok=True)
-    config_path = tmp_path / fixture_name
-    config_path.write_text(content, encoding="utf-8")
-    return config_path
-
-
 def _load_rounds(path: Path) -> list[dict]:
     rounds_path = path / "rounds.jsonl"
     payload = rounds_path.read_text(encoding="utf-8").splitlines()
@@ -637,10 +627,38 @@ strategy:
 @pytest.mark.skip(reason="Flaky/slow in CI; embedding step times out")
 def test_codegen_guarded_wands_ndcg_nonzero_e2e(tmp_path: Path):
     run_path = tmp_path / "codegen_guarded_wands"
-    config_path = _write_fixture_config(
-        tmp_path,
-        "codegen_guarded_wands_small.yml",
-        run_path,
+    run_path.mkdir(parents=True, exist_ok=True)
+    config_path = tmp_path / "codegen_guarded_wands_small.yml"
+    config_path.write_text(
+        f"""
+strategy:
+  name: codegen_guarded_wands_small
+  type: codegen
+  path: {run_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+        - e5_base_v2
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 10
+              max_cols: 120
+      eval:
+        train_fraction: 0.20
+        seed: 1234
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 10
+""".lstrip(),
+        encoding="utf-8",
     )
     params = TrainParams(
         strategy_path=str(config_path),
@@ -662,10 +680,39 @@ def test_codegen_guarded_wands_ndcg_nonzero_e2e(tmp_path: Path):
 def test_codegen_start_code_rerank_only_wrapper_e2e(_paths_root, tmp_path: Path):
     try:
         run_path = tmp_path / "codegen_rerank_only"
-        config_path = _write_fixture_config(
-            tmp_path,
-            "codegen_start_code_rerank_only_path.yml",
-            run_path,
+        run_path.mkdir(parents=True, exist_ok=True)
+        config_path = tmp_path / "codegen_start_code_rerank_only_path.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_start_code_rerank_only_fixture
+  type: codegen
+  path: {run_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - bm25
+      start_code: |
+        def rerank_doug_blog(query, bm25, **kwargs):
+            docs = bm25(query, top_k=5)
+            return [doc["id"] for doc in docs]
+      edit:
+        guards:
+          - length
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
         )
         params = TrainParams(
             strategy_path=str(config_path),
@@ -692,10 +739,41 @@ def test_codegen_start_code_rerank_only_wrapper_e2e(_paths_root, tmp_path: Path)
 def test_codegen_path_uses_start_code_e2e(_paths_root, tmp_path: Path):
     try:
         run_path = tmp_path / "codegen_start_code_marker"
-        config_path = _write_fixture_config(
-            tmp_path,
-            "codegen_start_code_path_marker.yml",
-            run_path,
+        run_path.mkdir(parents=True, exist_ok=True)
+        config_path = tmp_path / "codegen_start_code_path_marker.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_start_code_path_marker_fixture
+  type: codegen
+  path: {run_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - get_corpus
+      start_code: |
+        START_CODE_SENTINEL = True
+
+        def reranker(query, top_k, get_corpus, **kwargs):
+            corpus = get_corpus()
+            return [str(doc_id) for doc_id in corpus.head(top_k)["doc_id"].tolist()]
+      edit:
+        guards:
+          - length
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
         )
         params = TrainParams(
             strategy_path=str(config_path),
@@ -721,10 +799,35 @@ def test_codegen_path_uses_start_code_e2e(_paths_root, tmp_path: Path):
 def test_codegen_validation_guard_toggle_e2e(_paths_root, tmp_path: Path):
     try:
         run_path_on = tmp_path / "codegen_validation_on"
-        config_path_on = _write_fixture_config(
-            tmp_path,
-            "codegen_validation_on.yml",
-            run_path_on,
+        run_path_on.mkdir(parents=True, exist_ok=True)
+        config_path_on = tmp_path / "codegen_validation_on.yml"
+        config_path_on.write_text(
+            f"""
+strategy:
+  name: codegen_validation_on_fixture
+  type: codegen
+  path: {run_path_on}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - bm25
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.5
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
         )
         params_on = TrainParams(
             strategy_path=str(config_path_on),
@@ -745,10 +848,34 @@ def test_codegen_validation_guard_toggle_e2e(_paths_root, tmp_path: Path):
         assert rounds_on[0]["validation_query_count"] > 0
 
         run_path_off = tmp_path / "codegen_validation_off"
-        config_path_off = _write_fixture_config(
-            tmp_path,
-            "codegen_validation_off.yml",
-            run_path_off,
+        run_path_off.mkdir(parents=True, exist_ok=True)
+        config_path_off = tmp_path / "codegen_validation_off.yml"
+        config_path_off.write_text(
+            f"""
+strategy:
+  name: codegen_validation_off_fixture
+  type: codegen
+  path: {run_path_off}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - bm25
+      edit:
+        guards: []
+      eval:
+        train_fraction: 0.5
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
         )
         params_off = TrainParams(
             strategy_path=str(config_path_off),
@@ -775,10 +902,41 @@ def test_codegen_validation_guard_toggle_e2e(_paths_root, tmp_path: Path):
 def test_codegen_raw_tool_list_runner_e2e(_paths_root, tmp_path: Path):
     try:
         run_path = tmp_path / "codegen_raw_tool_list"
-        config_path = _write_fixture_config(
-            tmp_path,
-            "codegen_raw_tool_list.yml",
-            run_path,
+        run_path.mkdir(parents=True, exist_ok=True)
+        config_path = tmp_path / "codegen_raw_tool_list.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_raw_tool_list_fixture
+  type: codegen
+  path: {run_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - raw:
+            - get_corpus
+      start_code: |
+        def rerank_doug_blog(query, get_corpus, **kwargs):
+            corpus = get_corpus()
+            top_k = int(kwargs.get("top_k", 5))
+            return [str(doc_id) for doc_id in corpus.head(top_k)["doc_id"].tolist()]
+      edit:
+        guards:
+          - length
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
         )
         train_params = TrainParams(
             strategy_path=str(config_path),
