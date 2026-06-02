@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from exps.paths import SEARCH_EXPERIMENTS_ROOT
-from exps.run_dirs import make_strategy_run_dir
+from exps.paths import make_strategy_run_dir
 
 
 CODEGEN_ROOT = SEARCH_EXPERIMENTS_ROOT / "codegen"

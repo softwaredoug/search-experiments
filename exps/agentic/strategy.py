@@ -15,7 +15,7 @@ from exps.agentic.agent import (
 )
 from exps.agentic.examples import append_few_shot_examples
 from exps.mapping import doc_ids_to_indices
-from exps.run_dirs import dataset_from_trace_path, slugify
+from exps.paths import dataset_from_trace_path, slugify
 from exps.tools import normalize_search_tools
 
 

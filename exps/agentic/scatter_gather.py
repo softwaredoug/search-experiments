@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from exps.agentic.agent import Agent, SearchResults, SUBAGENT_SYSTEM_PROMPT, trace_logger
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
-from exps.run_dirs import slugify
+from exps.paths import slugify
 from exps.tools import normalize_search_tools_for_cache
 from exps.tools.wands import WANDS_CATEGORY_COL
 

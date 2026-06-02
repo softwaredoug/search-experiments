@@ -120,8 +120,7 @@ def test_run_benchmark_agentic_filesystem_tools():
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-def test_run_benchmark_agentic_filesystem_traces(run_dirs_root, _paths_root):
+def test_run_benchmark_agentic_filesystem_traces(_paths_root):
     try:
         if not os.environ.get("OPENAI_API_KEY"):
             raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
@@ -140,7 +139,7 @@ def test_run_benchmark_agentic_filesystem_traces(run_dirs_root, _paths_root):
         assert result.metric_series is not None
         assert not result.metric_series.empty
 
-        trace_base = run_dirs_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
+        trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
         assert trace_base.exists()
         run_dirs = sorted([path for path in trace_base.iterdir() if path.is_dir()])
         assert run_dirs
@@ -356,9 +355,8 @@ strategy:
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.run_dirs.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-def test_run_benchmark_agentic_bash_tool(_filesystem_root, _run_dirs_root, _paths_root):
+def test_run_benchmark_agentic_bash_tool(_filesystem_root, _paths_root):
     try:
         if not os.environ.get("OPENAI_API_KEY"):
             raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")

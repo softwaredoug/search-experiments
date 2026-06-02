@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from exps.run_dirs import make_strategy_run_dir
+from exps.paths import make_strategy_run_dir
 
 
 def make_train_run_dir(

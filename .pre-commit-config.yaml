@@ -6,6 +6,11 @@ repos:
         entry: uv run pytest tests/unit --timeout=10
         language: system
         pass_filenames: false
+      - id: e2e-tests
+        name: e2e tests
+        entry: uv run pytest tests/e2e --timeout=10
+        language: system
+        pass_filenames: false
       - id: uv-check-lock
         name: uv lock is current
         entry: uv lock --check
