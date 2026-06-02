@@ -42,6 +42,12 @@ class FakeOpenAIAgent:
         self.last_inputs = copy.deepcopy(inputs)
         return resp, inputs, 0
 
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+        resp, _, usage = self.chat(inputs=inputs, agent_state=agent_state, logger=logger)
+        if return_usage:
+            return resp.output_parsed, usage
+        return resp.output_parsed
+
     def _build_output(self):
         model = self.response_model
         if model is None:

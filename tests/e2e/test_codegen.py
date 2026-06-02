@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import textwrap
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,11 +12,13 @@ import pytest
 from cheat_at_search.codegen.models import Edit
 from exps.runners.run import RunParams, run_benchmark
 from exps.runners.train import TrainParams, train_strategy
-from tests.utils.agent_fakes import FakeCodegenAgent
+from tests.utils.agent_fakes import FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
 _TEMP_ROOT: Path | None = None
+
+_CODEGEN_FIXTURES = Path("tests/fixtures/codegen")
 
 
 def _temp_root() -> Path:
@@ -31,6 +34,11 @@ def _cleanup_temp_root() -> None:
         return
     shutil.rmtree(_TEMP_ROOT, ignore_errors=True)
     _TEMP_ROOT = None
+
+
+def _fixture_code(path: Path, *, indent: str = "        ") -> str:
+    code = (_CODEGEN_FIXTURES / path).read_text(encoding="utf-8").rstrip()
+    return textwrap.indent(code, indent)
 
 
 def _load_rounds(path: Path) -> list[dict]:
@@ -70,6 +78,21 @@ def _fielded_bm25_patch() -> Edit:
         ),
         intention="Boost title weight",
         why="Title matches are more important than description matches.",
+    )
+
+
+def _description_only_patch() -> Edit:
+    return Edit(
+        anchor="def reranker(",
+        block_until="    return [str(doc['id']) for doc in docs]\n",
+        action="replace",
+        text=(
+            "def reranker(query, top_k, fielded_bm25, **kwargs):\n"
+            "    docs = fielded_bm25(query, fields=['description^99.0'], operator='or', top_k=top_k)\n"
+            "    return [str(doc['id']) for doc in docs]\n"
+        ),
+        intention="Only search descriptions",
+        why="Deprioritize title phrase matches.",
     )
 
 
@@ -142,8 +165,31 @@ def _commit_script(edit: Edit, *, message: str = "Done") -> list[dict]:
     ]
 
 
+def _build_codegen_agent(
+    *,
+    script: list[dict] | None = None,
+    scripts: list[list[dict]] | None = None,
+    instances: list[FakeOpenAIAgent] | None = None,
+):
+    resolved_scripts = scripts
+    if resolved_scripts is None and script is not None:
+        resolved_scripts = [script]
+
+    def _factory(*args, **kwargs):
+        agent = FakeOpenAIAgent(*args, **kwargs)
+        agent.scripts = resolved_scripts
+        if instances is not None:
+            instances.append(agent)
+        return agent
+
+    return _factory
+
+
+def _with_codegen_agent(*, script: list[dict] | None = None, scripts: list[list[dict]] | None = None):
+    return patch("exps.codegen.train.OpenAIAgent", side_effect=_build_codegen_agent(script=script, scripts=scripts))
+
+
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_commit_known_good_patch_e2e(_paths_root, tmp_path):
     try:
         run_dir = tmp_path / "run"
@@ -175,22 +221,18 @@ strategy:
         )
 
         script = _commit_script(_fielded_bm25_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path=str(config_path),
                 base_path=None,
                 dataset="doug_blog",
-                num_queries=1,
+                num_queries=3,
                 seed=123,
                 workers=1,
                 device=None,
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
         code_path = Path(result.artifact_path) / "reranker.py"
@@ -202,9 +244,128 @@ strategy:
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_bad_ranker_rejected_e2e(_paths_root, tmp_path):
+    try:
+        run_dir = tmp_path / "codegen_bad_ranker"
+        run_dir.mkdir()
+        config_path = tmp_path / "codegen_bad_ranker.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_bad_ranker_fixture
+  type: codegen
+  path: {run_dir}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 1
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+      start_code: |
+{_fixture_code(Path("doug_blog_good_reranker.py"))}
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+
+        script = _commit_script(_description_only_patch())
+        with _with_codegen_agent(script=script):
+            params = TrainParams(
+                strategy_path=str(config_path),
+                base_path=None,
+                dataset="doug_blog",
+                num_queries=3,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+
+        assert result.artifact_path
+        code_path = Path(result.artifact_path) / "reranker.py"
+        code = code_path.read_text(encoding="utf-8")
+        assert "description^99.0" not in code
+        assert "title^99.0" in code
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_good_ranker_applied_e2e(_paths_root, tmp_path):
+    try:
+        run_dir = tmp_path / "codegen_good_ranker"
+        run_dir.mkdir()
+        config_path = tmp_path / "codegen_good_ranker.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_good_ranker_fixture
+  type: codegen
+  path: {run_dir}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 1
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+      start_code: |
+{_fixture_code(Path("doug_blog_bad_reranker.py"))}
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+
+        script = _commit_script(_fielded_bm25_patch())
+        with _with_codegen_agent(script=script):
+            params = TrainParams(
+                strategy_path=str(config_path),
+                base_path=None,
+                dataset="doug_blog",
+                num_queries=1,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+
+        assert result.artifact_path
+        code_path = Path(result.artifact_path) / "reranker.py"
+        code = code_path.read_text(encoding="utf-8")
+        assert "fields=['title^99.0']" in code
+        assert "description^4.1" not in code
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_guarded_train_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
@@ -251,9 +412,7 @@ strategy:
             encoding="utf-8",
         )
         script = _commit_script(_fielded_bm25_minilm_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path=str(config_path),
                 base_path=None,
@@ -265,8 +424,6 @@ strategy:
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -274,13 +431,10 @@ strategy:
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
     try:
         script = _commit_script(_get_corpus_with_bm25_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path="configs/codegen_get_corpus.yml",
                 base_path="tests/fixtures",
@@ -292,8 +446,6 @@ def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -301,13 +453,10 @@ def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_raw_only_e2e(_paths_root, tmp_path):
     try:
         script = _commit_script(_get_corpus_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path="configs/codegen_raw_only.yml",
                 base_path="tests/fixtures",
@@ -319,8 +468,6 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -328,13 +475,10 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_start_code_e2e(_paths_root, tmp_path):
     try:
         script = _commit_script(_bm25_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path="configs/codegen_start_code.yml",
                 base_path="tests/fixtures",
@@ -346,8 +490,6 @@ def test_codegen_start_code_e2e(_paths_root, tmp_path):
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -374,7 +516,6 @@ def test_codegen_start_code_mismatch_e2e(_paths_root, tmp_path):
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_start_code_dedent_e2e(_paths_root, tmp_path):
     try:
         config_path = tmp_path / "codegen_start_code_dedent.yml"
@@ -411,9 +552,7 @@ strategy:
             encoding="utf-8",
         )
         script = _commit_script(_bm25_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path=str(config_path),
                 base_path=None,
@@ -425,8 +564,6 @@ strategy:
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -434,7 +571,6 @@ strategy:
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_path_continuation_fixture_e2e(_paths_root, tmp_path):
     try:
         source_path = Path("tests/fixtures/past_runs/20260502_025238")
@@ -469,9 +605,7 @@ strategy:
             encoding="utf-8",
         )
         script = _commit_script(_fielded_bm25_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path=str(config_path),
                 base_path=None,
@@ -483,8 +617,6 @@ strategy:
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
         assert result.metadata["continued_from"] == str(Path(continue_from).expanduser())
@@ -577,7 +709,6 @@ strategy:
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_raw_tool_list_e2e(_paths_root, tmp_path):
     try:
         config_path = tmp_path / "codegen_raw_list.yml"
@@ -609,9 +740,7 @@ strategy:
             encoding="utf-8",
         )
         script = _commit_script(_get_corpus_patch())
-        original_script = FakeCodegenAgent.script
-        FakeCodegenAgent.script = script
-        try:
+        with _with_codegen_agent(script=script):
             params = TrainParams(
                 strategy_path=str(config_path),
                 base_path=None,
@@ -623,8 +752,6 @@ strategy:
                 rounds=1,
             )
             result = train_strategy(params)
-        finally:
-            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
