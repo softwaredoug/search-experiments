@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from cheat_at_search.codegen.models import Edit
+from exps.runners.run import RunParams, run_benchmark
 from exps.runners.train import TrainParams, train_strategy
 from tests.utils.agent_fakes import FakeCodegenAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
@@ -27,6 +31,22 @@ def _cleanup_temp_root() -> None:
         return
     shutil.rmtree(_TEMP_ROOT, ignore_errors=True)
     _TEMP_ROOT = None
+
+
+def _write_fixture_config(tmp_path: Path, fixture_name: str, run_path: Path) -> Path:
+    template_path = Path("tests/fixtures/configs") / fixture_name
+    content = template_path.read_text(encoding="utf-8")
+    content = content.replace("__RUN_PATH__", str(run_path))
+    run_path.mkdir(parents=True, exist_ok=True)
+    config_path = tmp_path / fixture_name
+    config_path.write_text(content, encoding="utf-8")
+    return config_path
+
+
+def _load_rounds(path: Path) -> list[dict]:
+    rounds_path = path / "rounds.jsonl"
+    payload = rounds_path.read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in payload if line.strip()]
 
 
 def _mock_embeddings(mock_load_or_create_embeddings, mock_load_model, *, dataset) -> None:
@@ -60,6 +80,21 @@ def _fielded_bm25_patch() -> Edit:
         ),
         intention="Boost title weight",
         why="Title matches are more important than description matches.",
+    )
+
+
+def _bm25_patch() -> Edit:
+    return Edit(
+        anchor="def reranker(",
+        block_until="    return [str(doc['id']) for doc in docs]\n",
+        action="replace",
+        text=(
+            "def reranker(query, top_k, bm25, **kwargs):\n"
+            "    docs = bm25(query, top_k=top_k)\n"
+            "    return [str(doc['id']) for doc in docs]\n"
+        ),
+        intention="Use bm25",
+        why="Keep baseline behavior with bm25.",
     )
 
 
@@ -291,5 +326,637 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
             FakeCodegenAgent.patch_edit = original_patch
 
         assert result.artifact_path
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
+def test_codegen_start_code_e2e(_paths_root, tmp_path):
+    try:
+        patch_edit = _bm25_patch()
+        original_patch = FakeCodegenAgent.patch_edit
+        FakeCodegenAgent.patch_edit = patch_edit
+        try:
+            params = TrainParams(
+                strategy_path="configs/codegen_start_code.yml",
+                base_path="tests/fixtures",
+                dataset="doug_blog",
+                num_queries=1,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+        finally:
+            FakeCodegenAgent.patch_edit = original_patch
+
+        assert result.artifact_path
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_start_code_mismatch_e2e(_paths_root, tmp_path):
+    try:
+        params = TrainParams(
+            strategy_path="configs/codegen_start_code_mismatch.yml",
+            base_path="tests/fixtures",
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=1,
+        )
+        with pytest.raises(ValueError, match="start_code does not match configured tools"):
+            train_strategy(params)
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
+def test_codegen_start_code_dedent_e2e(_paths_root, tmp_path):
+    try:
+        config_path = tmp_path / "codegen_start_code_dedent.yml"
+        config_path.write_text(
+            """
+strategy:
+  name: codegen_start_code_dedent_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - bm25
+      start_code: |
+        import numpy as np
+
+        def rerank_doug_blog(query, bm25, **kwargs):
+            docs = bm25(query, top_k=5)
+            return [doc["id"] for doc in docs]
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+        patch_edit = _bm25_patch()
+        original_patch = FakeCodegenAgent.patch_edit
+        FakeCodegenAgent.patch_edit = patch_edit
+        try:
+            params = TrainParams(
+                strategy_path=str(config_path),
+                base_path=None,
+                dataset="doug_blog",
+                num_queries=1,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+        finally:
+            FakeCodegenAgent.patch_edit = original_patch
+
+        assert result.artifact_path
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
+def test_codegen_path_continuation_fixture_e2e(_paths_root, tmp_path):
+    try:
+        source_path = Path("tests/fixtures/past_runs/20260502_025238")
+        continue_from = tmp_path / "continued_run"
+        shutil.copytree(source_path, continue_from)
+        config_path = tmp_path / "codegen_continue_path.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_continue_path_fixture
+  type: codegen
+  path: {continue_from}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+        patch_edit = _fielded_bm25_patch()
+        original_patch = FakeCodegenAgent.patch_edit
+        FakeCodegenAgent.patch_edit = patch_edit
+        try:
+            params = TrainParams(
+                strategy_path=str(config_path),
+                base_path=None,
+                dataset="doug_blog",
+                num_queries=1,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+        finally:
+            FakeCodegenAgent.patch_edit = original_patch
+
+        assert result.artifact_path
+        assert result.metadata["continued_from"] == str(Path(continue_from).expanduser())
+        assert result.metadata["previous_rounds"] > 0
+        assert result.metadata["rounds"] == result.metadata["previous_rounds"] + 1
+        round_name = f"reranker_round_{result.metadata['rounds']}.py"
+        round_path = Path(result.artifact_path) / round_name
+        assert round_path.exists()
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_path_missing_creates_run_e2e(_paths_root, tmp_path):
+    try:
+        missing_path = tmp_path / "nope"
+        config_path = tmp_path / "codegen_missing_path.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_missing_path_fixture
+  type: codegen
+  path: {missing_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - fielded_bm25
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+        params = TrainParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=1,
+        )
+        with pytest.raises(FileNotFoundError, match="Training run path not found"):
+            train_strategy(params)
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.codegen.strategy.find_latest_codegen_run", lambda *_: None)
+def test_codegen_without_trained_run_e2e(tmp_path):
+    config_path = tmp_path / "codegen_no_run.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: codegen_no_run_fixture
+  type: codegen
+  params:
+    train:
+      search_tools:
+        - bm25
+    run: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        device=None,
+        no_cache=True,
+    )
+    with pytest.raises(ValueError, match="No trained codegen run found"):
+        run_benchmark(params)
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
+def test_codegen_raw_tool_list_e2e(_paths_root, tmp_path):
+    try:
+        config_path = tmp_path / "codegen_raw_list.yml"
+        config_path.write_text(
+            """
+strategy:
+  name: codegen_raw_list_fixture
+  type: codegen
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - raw:
+            - get_corpus
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+        patch_edit = _get_corpus_patch()
+        original_patch = FakeCodegenAgent.patch_edit
+        FakeCodegenAgent.patch_edit = patch_edit
+        try:
+            params = TrainParams(
+                strategy_path=str(config_path),
+                base_path=None,
+                dataset="doug_blog",
+                num_queries=1,
+                seed=123,
+                workers=1,
+                device=None,
+                rounds=1,
+            )
+            result = train_strategy(params)
+        finally:
+            FakeCodegenAgent.patch_edit = original_patch
+
+        assert result.artifact_path
+    finally:
+        _cleanup_temp_root()
+
+
+@pytest.mark.skip(reason="Flaky/slow in CI; embedding step times out")
+def test_codegen_guarded_wands_ndcg_nonzero_e2e(tmp_path: Path):
+    run_path = tmp_path / "codegen_guarded_wands"
+    config_path = _write_fixture_config(
+        tmp_path,
+        "codegen_guarded_wands_small.yml",
+        run_path,
+    )
+    params = TrainParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="wands",
+        num_queries=2,
+        seed=123,
+        workers=1,
+        device=None,
+        rounds=1,
+    )
+    result = train_strategy(params)
+
+    rounds = _load_rounds(Path(result.artifact_path))
+    assert rounds[0]["mean_ndcg"] > 0.0
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_start_code_rerank_only_wrapper_e2e(_paths_root, tmp_path: Path):
+    try:
+        run_path = tmp_path / "codegen_rerank_only"
+        config_path = _write_fixture_config(
+            tmp_path,
+            "codegen_start_code_rerank_only_path.yml",
+            run_path,
+        )
+        params = TrainParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=0,
+        )
+        result = train_strategy(params)
+
+        reranker_path = Path(result.artifact_path) / "reranker.py"
+        content = reranker_path.read_text(encoding="utf-8")
+        assert Path(result.artifact_path) == run_path
+        assert "def reranker(" in content
+        assert "def rerank_doug_blog(" in content
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_path_uses_start_code_e2e(_paths_root, tmp_path: Path):
+    try:
+        run_path = tmp_path / "codegen_start_code_marker"
+        config_path = _write_fixture_config(
+            tmp_path,
+            "codegen_start_code_path_marker.yml",
+            run_path,
+        )
+        params = TrainParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=0,
+        )
+        result = train_strategy(params)
+
+        reranker_path = Path(result.artifact_path) / "reranker.py"
+        content = reranker_path.read_text(encoding="utf-8")
+        assert Path(result.artifact_path) == run_path
+        assert "START_CODE_SENTINEL = True" in content
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_validation_guard_toggle_e2e(_paths_root, tmp_path: Path):
+    try:
+        run_path_on = tmp_path / "codegen_validation_on"
+        config_path_on = _write_fixture_config(
+            tmp_path,
+            "codegen_validation_on.yml",
+            run_path_on,
+        )
+        params_on = TrainParams(
+            strategy_path=str(config_path_on),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=2,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=0,
+        )
+        result_on = train_strategy(params_on)
+        metadata_on = json.loads(
+            (Path(result_on.artifact_path) / "metadata.json").read_text(encoding="utf-8")
+        )
+        rounds_on = _load_rounds(Path(result_on.artifact_path))
+        assert metadata_on["num_validation_queries"] > 0
+        assert rounds_on[0]["validation_query_count"] > 0
+
+        run_path_off = tmp_path / "codegen_validation_off"
+        config_path_off = _write_fixture_config(
+            tmp_path,
+            "codegen_validation_off.yml",
+            run_path_off,
+        )
+        params_off = TrainParams(
+            strategy_path=str(config_path_off),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=2,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=0,
+        )
+        result_off = train_strategy(params_off)
+        metadata_off = json.loads(
+            (Path(result_off.artifact_path) / "metadata.json").read_text(encoding="utf-8")
+        )
+        rounds_off = _load_rounds(Path(result_off.artifact_path))
+        assert metadata_off["num_validation_queries"] == 0
+        assert rounds_off[0]["validation_query_count"] == 0
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_raw_tool_list_runner_e2e(_paths_root, tmp_path: Path):
+    try:
+        run_path = tmp_path / "codegen_raw_tool_list"
+        config_path = _write_fixture_config(
+            tmp_path,
+            "codegen_raw_tool_list.yml",
+            run_path,
+        )
+        train_params = TrainParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            rounds=0,
+        )
+        train_strategy(train_params)
+
+        run_params = RunParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            no_cache=True,
+        )
+        result = run_benchmark(run_params)
+
+        assert result.metric_series is not None
+        assert not result.metric_series.empty
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_minimal_round_state_e2e(_paths_root, tmp_path: Path):
+    try:
+        run_path = tmp_path / "codegen_run"
+        run_path.mkdir()
+        config_path = tmp_path / "codegen_minimal.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_minimal_fixture
+  type: codegen
+  path: {run_path}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      rounds: 0
+      refresh_every: 1
+      search_tools:
+        - get_corpus
+      start_code: |
+        def rerank_doug_blog(query, get_corpus, **kwargs):
+            corpus = get_corpus()
+            top_k = int(kwargs.get("top_k", 5))
+            return [str(doc_id) for doc_id in corpus.head(top_k)["doc_id"].tolist()]
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+
+        params = TrainParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+        )
+
+        result = train_strategy(params)
+
+        assert result.strategy_name == "codegen_minimal_fixture"
+        assert Path(result.artifact_path).exists()
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+def test_codegen_raw_bm25_get_corpus_e2e(_paths_root, tmp_path: Path):
+    try:
+        codegen_dir = tmp_path / "codegen_raw_bm25"
+        codegen_dir.mkdir()
+        reranker_path = codegen_dir / "reranker.py"
+        reranker_path.write_text(
+            """
+import numpy as np
+
+
+def rerank_doug_blog(query, get_corpus, **kwargs):
+    corpus = get_corpus()
+    snowball = corpus["description_snowball"].array
+    tokenizer = snowball.tokenizer
+    terms = [term for term in tokenizer(query) if term]
+    if not terms:
+        return []
+
+    doc_lengths = snowball.doclengths()
+    if len(doc_lengths) == 0:
+        return []
+    avg_dl = float(doc_lengths.mean())
+    if avg_dl <= 0:
+        return []
+
+    k1 = 0.6
+    b = 0.62
+    n_docs = len(corpus)
+    scores = np.zeros(n_docs)
+
+    for term in terms:
+        term_freqs = snowball.termfreqs(term)
+        doc_freq = snowball.docfreq(term)
+        if doc_freq == 0:
+            continue
+        idf = np.log(1.0 + (n_docs - doc_freq + 0.5) / (doc_freq + 0.5))
+        denom = term_freqs + k1 * (1.0 - b + b * (doc_lengths / avg_dl))
+        scores += idf * (term_freqs * (k1 + 1.0)) / np.where(denom == 0, 1.0, denom)
+
+    top_k = int(kwargs.get("top_k", 10))
+    if top_k <= 0:
+        return []
+    ranked = np.argsort(-scores)[:top_k]
+    return [str(corpus.iloc[idx]["doc_id"]) for idx in ranked if scores[idx] > 0]
+""".lstrip(),
+            encoding="utf-8",
+        )
+        config_path = tmp_path / "codegen_raw_bm25.yml"
+        config_path.write_text(
+            f"""
+strategy:
+  name: codegen_raw_bm25_fixture
+  type: codegen
+  path: {codegen_dir}
+  params:
+    train:
+      model: gpt-5-mini
+      reasoning: low
+      refresh_every: 1
+      search_tools:
+        - get_corpus
+      edit:
+        guards:
+          - validation
+      eval:
+        train_fraction: 0.2
+        seed: 123
+        eval_margin: 0.0
+      system_prompt: |
+        Improve the reranker.
+    run:
+      top_k: 5
+""".lstrip(),
+            encoding="utf-8",
+        )
+        params = RunParams(
+            strategy_path=str(config_path),
+            base_path=None,
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            device=None,
+            no_cache=True,
+        )
+        result = run_benchmark(params)
+
+        assert result.metric_series is not None
+        assert not result.metric_series.empty
     finally:
         _cleanup_temp_root()
