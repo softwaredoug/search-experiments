@@ -21,6 +21,10 @@ def _temp_root() -> Path:
     return _TEMP_ROOT
 
 
+def _build_fake_agent(*args, **kwargs):
+    return FakeOpenAIAgent(*args, **kwargs)
+
+
 def _cleanup_temp_root() -> None:
     global _TEMP_ROOT
     if _TEMP_ROOT is None:
@@ -51,8 +55,9 @@ def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embed
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_hello_world_e2e(
+    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
@@ -150,8 +155,9 @@ strategy:
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
-@patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
 def test_agentic_guarded_e2e(
+    _build_agent,
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
@@ -227,8 +233,14 @@ strategy:
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-@patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, tmp_path, doug_blog_dataset):
+@patch("exps.agentic.agent.build_openai_agent", side_effect=_build_fake_agent)
+def test_agentic_filesystem_e2e(
+    _build_agent,
+    _filesystem_root,
+    _paths_root,
+    tmp_path,
+    doug_blog_dataset,
+):
     try:
         corpus = doug_blog_dataset.corpus
         FakeOpenAIAgent.calls = 0

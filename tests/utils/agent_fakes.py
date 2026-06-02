@@ -18,23 +18,30 @@ def build_agent_script(
 
 class FakeOpenAIAgent:
     calls = 0
+    chat_calls = 0
     doc_ids: list[str] = []
     categories: list[str] = []
     script: list[dict] | None = None
+    scripts: list[list[dict]] | None = None
+    last_instance: "FakeOpenAIAgent" | None = None
 
     def __init__(self, tools, model, response_model, reasoning_level):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.chat_calls = 0
+        self._script_index = 0
+        FakeOpenAIAgent.last_instance = self
 
     def chat(self, *, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         FakeOpenAIAgent.calls += 1
-        if FakeOpenAIAgent.script is None:
-            raise ValueError("FakeOpenAIAgent.script must be set for scripted tool calls.")
-        output = self._run_script(inputs)
+        FakeOpenAIAgent.chat_calls += 1
+        self.chat_calls += 1
+        script = self._next_script()
+        output = self._run_script(inputs, script)
         resp = type("Resp", (), {"output_parsed": output})
         return resp, inputs, 0
 
@@ -52,9 +59,20 @@ class FakeOpenAIAgent:
         except TypeError:
             return SearchResults(ranked_results=list(FakeOpenAIAgent.doc_ids))
 
-    def _run_script(self, inputs):
+    def _next_script(self) -> list[dict]:
+        if FakeOpenAIAgent.scripts is not None:
+            if self._script_index >= len(FakeOpenAIAgent.scripts):
+                raise ValueError("FakeOpenAIAgent.scripts missing script for call.")
+            script = FakeOpenAIAgent.scripts[self._script_index]
+            self._script_index += 1
+            return script
+        if FakeOpenAIAgent.script is None:
+            raise ValueError("FakeOpenAIAgent.script must be set for scripted tool calls.")
+        return FakeOpenAIAgent.script
+
+    def _run_script(self, inputs, script):
         output = None
-        for step in FakeOpenAIAgent.script or []:
+        for step in script or []:
             if "function_call" in step:
                 call = step["function_call"] or {}
                 name = call.get("name")

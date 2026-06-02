@@ -25,7 +25,16 @@ Unlike these tests, we:
 
 OpenAIAgent should be mocked. Its main job is to run the agent tool-calling loop.
 
-With its loops it can simulate tool calls and updates to context, and outputs, needed to run 
+With its loops it can simulate tool calls and updates to context, and outputs, needed to run.
+
+When mocking agents, use an explicit scripted tool-call sequence to make behaviors deterministic and testable. This lets us:
+
+- Pin exact tool call order and parameters (including missing/invalid calls).
+- Emit tailored model outputs per step (ranked results, categories, errors).
+- Validate tool availability by name (fail fast when configs are wrong).
+- Test agent behaviors with or without tool calls (empty script vs. tool call + output).
+- Drive multi-agent flows (select/scatter/gather) with different outputs per agent.
+- Separate tool execution from final model output (simulate tool success + model response).
 
 ## Embeddings mocked
 

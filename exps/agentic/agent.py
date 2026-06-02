@@ -140,6 +140,21 @@ def _tool_calls_from_inputs(inputs: list) -> int:
     return count
 
 
+def build_openai_agent(
+    *,
+    tools: list[callable],
+    model: str,
+    response_model: Type[BaseModel] | None,
+    reasoning_level: str,
+) -> OpenAIAgent:
+    return OpenAIAgent(
+        tools=tools,
+        model=model,
+        response_model=response_model,
+        reasoning_level=reasoning_level,
+    )
+
+
 class Agent:
     def __init__(
         self,
@@ -266,7 +281,7 @@ class Agent:
         inputs.append({"role": "user", "content": user_prompt})
         step_tools_list = list(tools)
 
-        agent = OpenAIAgent(
+        agent = build_openai_agent(
             tools=step_tools_list,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
             response_model=self.response_model,

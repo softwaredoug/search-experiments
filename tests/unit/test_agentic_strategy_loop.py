@@ -89,6 +89,14 @@ def _agent_factory(*args, **kwargs):
     return agent
 
 
+def _build_fake_agent(*args, **kwargs):
+    return _FakeOpenAIAgent(*args, **kwargs)
+
+
+def _build_fake_agent_with_results(*args, **kwargs):
+    return _FakeOpenAIAgentWithResults(*args, **kwargs)
+
+
 def _sample_corpus():
     return pd.DataFrame(
         {
@@ -99,7 +107,7 @@ def _sample_corpus():
     )
 
 
-@patch.object(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_agentic_stop_iterations_prompt_appends(tmp_path):
     strategy = agentic_mod.AgenticSearchStrategy(
@@ -124,7 +132,7 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     assert _FakeOpenAIAgent.last_instance.calls == 2
 
 
-@patch.object(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_agentic_stop_tool_calls(tmp_path):
     strategy = agentic_mod.AgenticSearchStrategy(
@@ -141,7 +149,7 @@ def test_agentic_stop_tool_calls(tmp_path):
     assert agent_state["num_tool_calls"] == 2
 
 
-@patch.object(agent_mod, "OpenAIAgent", _FakeOpenAIAgentWithResults)
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent_with_results)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_agentic_validator_runs_before_stopper(tmp_path):
     strategy = agentic_mod.AgenticSearchStrategy(
@@ -174,7 +182,7 @@ def test_agentic_validator_runs_before_stopper(tmp_path):
     assert stop_prompt_count == 0
 
 
-@patch.object(agent_mod, "OpenAIAgent", _agent_factory)
+@patch.object(agent_mod, "build_openai_agent", _agent_factory)
 @patch.object(conditions_mod, "OpenAIAgent", _agent_factory)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_llm_judge_validator_appends_prompt(tmp_path):
@@ -212,7 +220,7 @@ def test_llm_judge_validator_appends_prompt(tmp_path):
     assert prompt_count == 1
 
 
-@patch.object(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_agentic_max_loops_stops(tmp_path):
     strategy = agentic_mod.AgenticSearchStrategy(
@@ -229,7 +237,7 @@ def test_agentic_max_loops_stops(tmp_path):
     assert _FakeOpenAIAgent.last_instance.calls == 2
 
 
-@patch.object(agent_mod, "OpenAIAgent", _FakeOpenAIAgent)
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_trace_log_records_outputs(tmp_path, caplog):
     strategy = agentic_mod.AgenticSearchStrategy(

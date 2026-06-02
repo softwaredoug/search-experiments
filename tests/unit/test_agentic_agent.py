@@ -43,8 +43,16 @@ class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
         return resp, inputs, 0
 
 
+def _build_fake_agent(*args, **kwargs):
+    return _FakeOpenAIAgent(*args, **kwargs)
+
+
+def _build_fake_agent_no_tools(*args, **kwargs):
+    return _FakeOpenAIAgentNoTools(*args, **kwargs)
+
+
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent)
 def test_agent_runs_single_step(tmp_path):
     _FakeOpenAIAgent.instances = []
 
@@ -71,7 +79,7 @@ def test_agent_runs_single_step(tmp_path):
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent)
 def test_agent_plan_switches_system_prompt(tmp_path):
     _FakeOpenAIAgent.instances = []
 
@@ -109,7 +117,7 @@ def test_agent_plan_switches_system_prompt(tmp_path):
 @patch("exps.agentic.agent.evaluate_validator", new=lambda *args, **kwargs: True)
 @patch("exps.agentic.agent.normalize_conditions", new=lambda *args, **kwargs: [])
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgentNoTools)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent_no_tools)
 def test_agent_empty_tools_no_tool_calls(tmp_path):
     _FakeOpenAIAgent.instances = []
     agent = agent_mod.Agent(
@@ -133,7 +141,7 @@ def test_agent_empty_tools_no_tool_calls(tmp_path):
 @patch("exps.agentic.agent.evaluate_stopper")
 @patch("exps.agentic.agent.evaluate_validator")
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent)
 def test_agent_validators_then_stop(
     mock_validator,
     mock_stopper,
@@ -166,7 +174,7 @@ def test_agent_validators_then_stop(
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent)
 def test_agent_unknown_plan_agent_raises():
     with pytest.raises(ValueError, match="Unknown plan agent"):
         agent_mod.Agent(
@@ -177,7 +185,7 @@ def test_agent_unknown_plan_agent_raises():
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
-@patch("exps.agentic.agent.OpenAIAgent", new=_FakeOpenAIAgent)
+@patch("exps.agentic.agent.build_openai_agent", new=_build_fake_agent)
 def test_agent_plan_formats_user_prompt(tmp_path):
     _FakeOpenAIAgent.instances = []
     agent = agent_mod.Agent(
