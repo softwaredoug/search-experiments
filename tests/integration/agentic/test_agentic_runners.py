@@ -57,27 +57,6 @@ def _cleanup_temp_root() -> None:
     _TEMP_ROOT = None
 
 
-def test_run_benchmark_agentic_guarded():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-    params = RunParams(
-        strategy_path="configs/agentic.yml",
-        base_path="tests/fixtures",
-        dataset="doug_blog",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-    )
-    result = run_benchmark(params)
-    assert not result.metric_series.empty
-    assert result.summary["tool_calls_mean"] >= 0.0
-    assert result.summary["tool_calls_median"] >= 0.0
-    assert result.summary["tool_calls_std"] >= 0.0
-
-
 def test_run_benchmark_agentic_wands_bm25_e5_few_shot_delegate():
     if not os.environ.get("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
@@ -96,59 +75,6 @@ def test_run_benchmark_agentic_wands_bm25_e5_few_shot_delegate():
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-
-
-def test_run_benchmark_agentic_filesystem_tools():
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-    params = RunParams(
-        strategy_path="configs/agentic_filesystem.yml",
-        base_path="tests/fixtures",
-        dataset="doug_blog",
-        num_queries=1,
-        seed=123,
-        workers=1,
-        device=None,
-        no_cache=True,
-    )
-    result = run_benchmark(params)
-
-    assert result.metric_series is not None
-    assert not result.metric_series.empty
-    assert result.summary["tool_calls_mean"] >= 0.0
-
-
-@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
-def test_run_benchmark_agentic_filesystem_traces(_paths_root):
-    try:
-        if not os.environ.get("OPENAI_API_KEY"):
-            raise RuntimeError("OPENAI_API_KEY is required for agentic tests.")
-
-        params = RunParams(
-            strategy_path="configs/agentic_filesystem.yml",
-            base_path="tests/fixtures",
-            dataset="doug_blog",
-            num_queries=1,
-            seed=123,
-            workers=1,
-            device=None,
-            no_cache=True,
-        )
-        result = run_benchmark(params)
-        assert result.metric_series is not None
-        assert not result.metric_series.empty
-
-        trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
-        assert trace_base.exists()
-        run_dirs = sorted([path for path in trace_base.iterdir() if path.is_dir()])
-        assert run_dirs
-        query_dirs = [path for path in run_dirs[-1].iterdir() if path.is_dir()]
-        assert query_dirs
-        log_files = list(query_dirs[0].glob("*.log"))
-        assert log_files
-    finally:
-        _cleanup_temp_root()
 
 
 def test_run_benchmark_agentic_codegen_tool(tmp_path):

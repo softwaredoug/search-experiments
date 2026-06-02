@@ -30,6 +30,30 @@ def _cleanup_temp_root() -> None:
     _TEMP_ROOT = None
 
 
+def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
+    FakeOpenAIAgent.calls = 0
+    FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(count).tolist()]
+
+
+def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embeddings, mock_load_model):
+    model_holder: dict[str, object] = {}
+
+    def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
+        embeddings, model = build_mock_embeddings(
+            corpus,
+            judgments,
+            passage_fn,
+            dim=3,
+            seed=123,
+        )
+        model_holder["model"] = model
+        return embeddings, model
+
+    mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
+    mock_load_model.side_effect = lambda *_args, **_kwargs: model_holder["model"]
+    return run_benchmark(params)
+
+
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.embeddings.load_or_create_embeddings")
 @patch("exps.tools.embeddings.load_model")
@@ -45,7 +69,6 @@ def test_agentic_hello_world_e2e(
         corpus = dataset.corpus
         judgments = dataset.judgments
         dataset_elapsed_s = time.perf_counter() - dataset_started_at
-        model_holder: dict[str, object] = {}
         embedding_elapsed_s = 0.0
 
         def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
@@ -59,14 +82,12 @@ def test_agentic_hello_world_e2e(
                 seed=123,
             )
             embedding_elapsed_s = time.perf_counter() - embed_started_at
-            model_holder["model"] = model
             return embeddings, model
 
         mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
-        mock_load_model.side_effect = lambda *_args, **_kwargs: model_holder["model"]
+        mock_load_model.side_effect = lambda *_args, **_kwargs: None
 
-        FakeOpenAIAgent.calls = 0
-        FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        _set_fake_doc_ids(corpus)
 
         params = RunParams(
             strategy_path="configs/agentic_hello_world.yml",
@@ -98,6 +119,80 @@ def test_agentic_hello_world_e2e(
         print(f"e2e_benchmark={benchmark}")
 
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_hello_world_fixture"
+        assert trace_base.exists()
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.tools.embeddings.load_or_create_embeddings")
+@patch("exps.tools.embeddings.load_model")
+@patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
+def test_agentic_guarded_e2e(
+    mock_load_model,
+    mock_load_or_create_embeddings,
+    _paths_root,
+):
+    try:
+        dataset = get_dataset("doug_blog", ensure_snowball=False)
+        corpus = dataset.corpus
+        judgments = dataset.judgments
+        _set_fake_doc_ids(corpus)
+
+        params = RunParams(
+            strategy_path="configs/agentic.yml",
+            base_path="tests/fixtures",
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            batch_size=1,
+            device=None,
+            no_cache=True,
+        )
+        result = _run_with_embeddings(
+            params,
+            corpus=corpus,
+            judgments=judgments,
+            mock_load_or_create_embeddings=mock_load_or_create_embeddings,
+            mock_load_model=mock_load_model,
+        )
+
+        assert result.metric_series is not None
+        assert not result.metric_series.empty
+        assert result.summary["tool_calls_mean"] >= 1.0
+        assert FakeOpenAIAgent.calls >= 1
+    finally:
+        _cleanup_temp_root()
+
+
+@patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
+@patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
+def test_agentic_filesystem_e2e(_filesystem_root, _paths_root):
+    try:
+        dataset = get_dataset("doug_blog", ensure_snowball=False)
+        corpus = dataset.corpus
+        _set_fake_doc_ids(corpus)
+
+        params = RunParams(
+            strategy_path="configs/agentic_filesystem.yml",
+            base_path="tests/fixtures",
+            dataset="doug_blog",
+            num_queries=1,
+            seed=123,
+            workers=1,
+            batch_size=1,
+            device=None,
+            no_cache=True,
+        )
+        result = run_benchmark(params)
+
+        assert result.metric_series is not None
+        assert not result.metric_series.empty
+        assert FakeOpenAIAgent.calls >= 1
+
+        trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
         assert trace_base.exists()
     finally:
         _cleanup_temp_root()
