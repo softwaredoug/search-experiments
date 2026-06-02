@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-from exps.datasets import get_dataset
 from exps.runners.run import RunParams, run_benchmark
 from tests.utils.agent_fakes import FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
@@ -62,13 +61,12 @@ def test_agentic_hello_world_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
+    doug_blog_dataset,
 ):
     try:
-        dataset_started_at = time.perf_counter()
-        dataset = get_dataset("doug_blog", ensure_snowball=False)
-        corpus = dataset.corpus
-        judgments = dataset.judgments
-        dataset_elapsed_s = time.perf_counter() - dataset_started_at
+        corpus = doug_blog_dataset.corpus
+        judgments = doug_blog_dataset.judgments
+        dataset_elapsed_s = 0.0
         embedding_elapsed_s = 0.0
 
         def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
@@ -132,11 +130,11 @@ def test_agentic_guarded_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     _paths_root,
+    doug_blog_dataset,
 ):
     try:
-        dataset = get_dataset("doug_blog", ensure_snowball=False)
-        corpus = dataset.corpus
-        judgments = dataset.judgments
+        corpus = doug_blog_dataset.corpus
+        judgments = doug_blog_dataset.judgments
         _set_fake_doc_ids(corpus)
 
         params = RunParams(
@@ -169,10 +167,9 @@ def test_agentic_guarded_e2e(
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.tools.filesystem_index.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_filesystem_e2e(_filesystem_root, _paths_root):
+def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, doug_blog_dataset):
     try:
-        dataset = get_dataset("doug_blog", ensure_snowball=False)
-        corpus = dataset.corpus
+        corpus = doug_blog_dataset.corpus
         _set_fake_doc_ids(corpus)
 
         params = RunParams(

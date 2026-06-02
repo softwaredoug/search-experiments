@@ -1,45 +1,11 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
-from searcharray import SearchArray
-
-from cheat_at_search.tokenizers import snowball_tokenizer
-from exps.datasets import get_dataset
 from exps.runners.run import RunParams, run_benchmark
 from tests.utils.agent_fakes import FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
-
-
-def _fake_wands_dataset():
-    corpus = pd.DataFrame(
-        {
-            "doc_id": [1, 2, 3],
-            "title": ["Floating bed", "Platform bed", "Nightstand"],
-            "description": ["A bed that looks like it floats.", "Simple bed.", "A small table."],
-            "category": ["Furniture", "Furniture", "Bedroom"],
-            "cat_subcat": [
-                "Furniture / Bedroom Furniture",
-                "Furniture / Bedroom Furniture",
-                "Furniture / Bedroom Furniture",
-            ],
-            "subcategory": ["Beds", "Beds", "Nightstands"],
-        }
-    )
-    corpus["title_snowball"] = SearchArray.index(corpus["title"], snowball_tokenizer)
-    corpus["description_snowball"] = SearchArray.index(corpus["description"], snowball_tokenizer)
-    judgments = pd.DataFrame(
-        {
-            "query_id": [1],
-            "query": ["floating bed"],
-            "doc_id": [1],
-            "grade": [2],
-        }
-    )
-    return SimpleNamespace(corpus=corpus, judgments=judgments)
 
 
 def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
@@ -98,10 +64,10 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
+    fake_wands_dataset,
 ):
-    dataset = _fake_wands_dataset()
-    mock_get_dataset.return_value = dataset
-    _set_fake_doc_ids(dataset.corpus)
+    mock_get_dataset.return_value = fake_wands_dataset
+    _set_fake_doc_ids(fake_wands_dataset.corpus)
 
     params = RunParams(
         strategy_path="configs/agentic_wands_bm25_e5_few_shot_delegate.yml",
@@ -116,8 +82,8 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
     )
     result = _run_with_wands_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=fake_wands_dataset.corpus,
+        judgments=fake_wands_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -135,11 +101,11 @@ def test_scatter_gather_wands_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
+    fake_wands_dataset,
 ):
-    dataset = _fake_wands_dataset()
-    mock_get_dataset.return_value = dataset
-    _set_fake_doc_ids(dataset.corpus)
-    _set_fake_categories(dataset.corpus)
+    mock_get_dataset.return_value = fake_wands_dataset
+    _set_fake_doc_ids(fake_wands_dataset.corpus)
+    _set_fake_categories(fake_wands_dataset.corpus)
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands.yml",
@@ -154,8 +120,8 @@ def test_scatter_gather_wands_e2e(
     )
     result = _run_with_wands_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=fake_wands_dataset.corpus,
+        judgments=fake_wands_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -173,11 +139,11 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     mock_get_dataset,
+    fake_wands_dataset,
 ):
-    dataset = _fake_wands_dataset()
-    mock_get_dataset.return_value = dataset
-    _set_fake_doc_ids(dataset.corpus)
-    _set_fake_categories(dataset.corpus)
+    mock_get_dataset.return_value = fake_wands_dataset
+    _set_fake_doc_ids(fake_wands_dataset.corpus)
+    _set_fake_categories(fake_wands_dataset.corpus)
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands_cat_subcat.yml",
@@ -193,8 +159,8 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
     )
     result = _run_with_wands_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=fake_wands_dataset.corpus,
+        judgments=fake_wands_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -212,9 +178,9 @@ def test_agentic_query_rewrite_tool_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
+    doug_blog_dataset,
 ):
-    dataset = get_dataset("doug_blog", ensure_snowball=False)
-    _set_fake_doc_ids(dataset.corpus)
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
 
     config_path = tmp_path / "agentic_query_rewrite_e2e.yml"
     config_path.write_text(
@@ -248,8 +214,8 @@ strategy:
     )
     result = _run_with_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=doug_blog_dataset.corpus,
+        judgments=doug_blog_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -265,9 +231,9 @@ def test_agentic_orchestrate_bm25_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
+    doug_blog_dataset,
 ):
-    dataset = get_dataset("doug_blog", ensure_snowball=False)
-    _set_fake_doc_ids(dataset.corpus)
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
 
     config_path = tmp_path / "agentic_orchestrate.yml"
     config_path.write_text(
@@ -301,8 +267,8 @@ strategy:
     )
     result = _run_with_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=doug_blog_dataset.corpus,
+        judgments=doug_blog_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -319,9 +285,9 @@ def test_agentic_plan_agents_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
     tmp_path,
+    doug_blog_dataset,
 ):
-    dataset = get_dataset("doug_blog", ensure_snowball=False)
-    _set_fake_doc_ids(dataset.corpus)
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
 
     config_path = tmp_path / "agentic_plan.yml"
     config_path.write_text(
@@ -363,8 +329,8 @@ strategy:
     )
     result = _run_with_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=doug_blog_dataset.corpus,
+        judgments=doug_blog_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
@@ -379,9 +345,8 @@ strategy:
     clear=False,
 )
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_bash_tool_e2e(tmp_path):
-    dataset = get_dataset("doug_blog", ensure_snowball=False)
-    _set_fake_doc_ids(dataset.corpus)
+def test_agentic_bash_tool_e2e(tmp_path, doug_blog_dataset):
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
 
     config_path = tmp_path / "agentic_bash.yml"
     config_path.write_text(
@@ -479,7 +444,7 @@ strategy:
 
 
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_few_shot_happy_path_e2e(tmp_path):
+def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
     config_path = tmp_path / "agentic_few_shot.yml"
     config_path.write_text(
         """
@@ -711,9 +676,9 @@ strategy:
 def test_agentic_codegen_fixture_nonzero_e2e(
     mock_load_model,
     mock_load_or_create_embeddings,
+    doug_blog_dataset,
 ):
-    dataset = get_dataset("doug_blog", ensure_snowball=False)
-    _set_fake_doc_ids(dataset.corpus)
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
 
     params = RunParams(
         strategy_path="configs/agentic_w_codegen.yml",
@@ -728,8 +693,8 @@ def test_agentic_codegen_fixture_nonzero_e2e(
     )
     result = _run_with_embeddings(
         params,
-        corpus=dataset.corpus,
-        judgments=dataset.judgments,
+        corpus=doug_blog_dataset.corpus,
+        judgments=doug_blog_dataset.judgments,
         mock_load_or_create_embeddings=mock_load_or_create_embeddings,
         mock_load_model=mock_load_model,
     )
