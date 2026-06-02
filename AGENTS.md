@@ -56,7 +56,7 @@ Scan docs / requirements for detailed guidance on specific features.
 
 ## Test-Driven Flow
 
-When a problem is reported, create a runner test first.
+When a problem is reported, create an e2e test first.
 
 - Always use small data (few queries, doug_blog dataset, 1 training round).
 - Always run end-to-end; avoid mocking.
