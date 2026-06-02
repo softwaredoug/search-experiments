@@ -5,7 +5,7 @@ description = "Search experiments benchmarks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git@87d569c368059448f9ee036e10a7afec622c71c5",
+    "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git@c94af2f294cc76c7b65f3faf18cb0e1272b7d149",
     "pyyaml>=6.0.2",
 ]
 
