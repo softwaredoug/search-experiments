@@ -1,13 +1,26 @@
 from __future__ import annotations
 
-from cheat_at_search.codegen.models import Edit
 from exps.agentic.agent import SearchResults
+
+
+def build_agent_script(
+    *,
+    tool_name: str | None = None,
+    params: dict | None = None,
+    output: dict | None = None,
+) -> list[dict]:
+    steps: list[dict] = []
+    if tool_name:
+        steps.append({"function_call": {"name": tool_name, "params": params}})
+    steps.append({"output": output})
+    return steps
 
 
 class FakeOpenAIAgent:
     calls = 0
     doc_ids: list[str] = []
     categories: list[str] = []
+    script: list[dict] | None = None
 
     def __init__(self, tools, model, response_model, reasoning_level):
         self.tools = tools
@@ -19,8 +32,9 @@ class FakeOpenAIAgent:
         if inputs is None:
             inputs = []
         FakeOpenAIAgent.calls += 1
-        inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        output = self._build_output()
+        if FakeOpenAIAgent.script is None:
+            raise ValueError("FakeOpenAIAgent.script must be set for scripted tool calls.")
+        output = self._run_script(inputs)
         resp = type("Resp", (), {"output_parsed": output})
         return resp, inputs, 0
 
@@ -38,9 +52,50 @@ class FakeOpenAIAgent:
         except TypeError:
             return SearchResults(ranked_results=list(FakeOpenAIAgent.doc_ids))
 
+    def _run_script(self, inputs):
+        output = None
+        for step in FakeOpenAIAgent.script or []:
+            if "function_call" in step:
+                call = step["function_call"] or {}
+                name = call.get("name")
+                params = call.get("params")
+                if not name:
+                    raise ValueError("Scripted function_call missing name.")
+                tool_found = False
+                for tool in self.tools:
+                    if getattr(tool, "__name__", None) == name:
+                        tool_found = True
+                        if params is None:
+                            tool()
+                        elif isinstance(params, dict):
+                            tool(**params)
+                        else:
+                            tool(params)
+                        inputs.append({"type": "function_call_output", "output": {"ok": True}})
+                        break
+                if not tool_found:
+                    raise ValueError(f"Tool '{name}' not found in FakeOpenAIAgent.tools")
+            if "output" in step:
+                output = self._normalize_output(step["output"])
+        return output
+
+    def _normalize_output(self, output):
+        if output is None:
+            return self._build_output()
+        if self.response_model is None:
+            return output
+        if isinstance(output, self.response_model):
+            return output
+        if isinstance(output, dict):
+            try:
+                return self.response_model(**output)
+            except Exception:
+                return output
+        return output
+
 
 class FakeCodegenAgent:
-    patch_edit: Edit | None = None
+    script: list[dict] | None = None
 
     def __init__(self, tools, model, response_model, reasoning_level):
         self.tools = tools
@@ -49,22 +104,11 @@ class FakeCodegenAgent:
         self.reasoning_level = reasoning_level
 
     def chat(self, inputs=None, agent_state=None, return_usage=False, logger=None):
-        if self.patch_edit is not None:
-            for tool in self.tools:
-                if getattr(tool, "__name__", None) == "commit_patch":
-                    tool(self.patch_edit)
-                    break
-        if self.response_model is not None:
-            try:
-                output = self.response_model(
-                    message="Done",
-                    short_name="patch",
-                    summary="Applied patch",
-                )
-            except Exception:
-                output = None
-        else:
-            output = None
+        if inputs is None:
+            inputs = []
+        if self.script is None:
+            raise ValueError("FakeCodegenAgent.script must be set for scripted tool calls.")
+        output = self._run_script(inputs)
         resp = type("Resp", (), {"output_parsed": output})
         return resp, inputs, 0
 
@@ -78,3 +122,42 @@ class FakeCodegenAgent:
         if return_usage:
             return resp.output_parsed, usage
         return resp.output_parsed
+
+    def _run_script(self, inputs):
+        output = None
+        for step in self.script or []:
+            if "function_call" in step:
+                call = step["function_call"] or {}
+                name = call.get("name")
+                params = call.get("params")
+                if not name:
+                    raise ValueError("Scripted function_call missing name.")
+                tool_found = False
+                for tool in self.tools:
+                    if getattr(tool, "__name__", None) == name:
+                        tool_found = True
+                        if params is None:
+                            tool()
+                        else:
+                            tool(params)
+                        inputs.append({"type": "function_call_output", "output": {"ok": True}})
+                        break
+                if not tool_found:
+                    raise ValueError(f"Tool '{name}' not found in FakeCodegenAgent.tools")
+            if "output" in step:
+                output = self._normalize_output(step["output"])
+        return output
+
+    def _normalize_output(self, output):
+        if output is None:
+            return None
+        if self.response_model is None:
+            return output
+        if isinstance(output, self.response_model):
+            return output
+        if isinstance(output, dict):
+            try:
+                return self.response_model(**output)
+            except Exception:
+                return output
+        return output

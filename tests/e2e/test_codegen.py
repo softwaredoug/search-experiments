@@ -135,6 +135,13 @@ def _get_corpus_with_bm25_patch() -> Edit:
     )
 
 
+def _commit_script(edit: Edit, *, message: str = "Done") -> list[dict]:
+    return [
+        {"function_call": {"name": "commit_patch", "params": edit}},
+        {"output": {"message": message, "short_name": "patch", "summary": "Applied patch"}},
+    ]
+
+
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
 @patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_commit_known_good_patch_e2e(_paths_root, tmp_path):
@@ -167,9 +174,9 @@ strategy:
             encoding="utf-8",
         )
 
-        patch_edit = _fielded_bm25_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_fielded_bm25_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path=str(config_path),
@@ -183,7 +190,7 @@ strategy:
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
         code_path = Path(result.artifact_path) / "reranker.py"
@@ -243,9 +250,9 @@ strategy:
 """.lstrip(),
             encoding="utf-8",
         )
-        patch_edit = _fielded_bm25_minilm_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_fielded_bm25_minilm_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path=str(config_path),
@@ -259,7 +266,7 @@ strategy:
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -270,9 +277,9 @@ strategy:
 @patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
     try:
-        patch_edit = _get_corpus_with_bm25_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_get_corpus_with_bm25_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path="configs/codegen_get_corpus.yml",
@@ -286,7 +293,7 @@ def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -297,9 +304,9 @@ def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
 @patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_raw_only_e2e(_paths_root, tmp_path):
     try:
-        patch_edit = _get_corpus_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_get_corpus_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path="configs/codegen_raw_only.yml",
@@ -313,7 +320,7 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -324,9 +331,9 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
 @patch("exps.codegen.train.OpenAIAgent", FakeCodegenAgent)
 def test_codegen_start_code_e2e(_paths_root, tmp_path):
     try:
-        patch_edit = _bm25_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_bm25_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path="configs/codegen_start_code.yml",
@@ -340,7 +347,7 @@ def test_codegen_start_code_e2e(_paths_root, tmp_path):
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -403,9 +410,9 @@ strategy:
 """.lstrip(),
             encoding="utf-8",
         )
-        patch_edit = _bm25_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_bm25_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path=str(config_path),
@@ -419,7 +426,7 @@ strategy:
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:
@@ -461,9 +468,9 @@ strategy:
 """.lstrip(),
             encoding="utf-8",
         )
-        patch_edit = _fielded_bm25_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_fielded_bm25_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path=str(config_path),
@@ -477,7 +484,7 @@ strategy:
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
         assert result.metadata["continued_from"] == str(Path(continue_from).expanduser())
@@ -601,9 +608,9 @@ strategy:
 """.lstrip(),
             encoding="utf-8",
         )
-        patch_edit = _get_corpus_patch()
-        original_patch = FakeCodegenAgent.patch_edit
-        FakeCodegenAgent.patch_edit = patch_edit
+        script = _commit_script(_get_corpus_patch())
+        original_script = FakeCodegenAgent.script
+        FakeCodegenAgent.script = script
         try:
             params = TrainParams(
                 strategy_path=str(config_path),
@@ -617,7 +624,7 @@ strategy:
             )
             result = train_strategy(params)
         finally:
-            FakeCodegenAgent.patch_edit = original_patch
+            FakeCodegenAgent.script = original_script
 
         assert result.artifact_path
     finally:

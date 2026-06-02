@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeOpenAIAgent
+from tests.utils.agent_fakes import FakeOpenAIAgent, build_agent_script
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -32,6 +32,16 @@ def _cleanup_temp_root() -> None:
 def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
     FakeOpenAIAgent.calls = 0
     FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(count).tolist()]
+
+
+def _set_fake_script(*, tool_name: str | None, params: dict | None = None) -> list[dict] | None:
+    original = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = build_agent_script(
+        tool_name=tool_name,
+        params=params,
+        output=None,
+    )
+    return original
 
 
 def _run_with_embeddings(params, *, corpus, judgments, mock_load_or_create_embeddings, mock_load_model):
@@ -86,6 +96,10 @@ def test_agentic_hello_world_e2e(
         mock_load_model.side_effect = lambda *_args, **_kwargs: None
 
         _set_fake_doc_ids(corpus)
+        original_script = _set_fake_script(
+            tool_name="search_embeddings",
+            params={"question": "salon chair", "top_k": 5},
+        )
 
         params = RunParams(
             strategy_path="configs/agentic_hello_world.yml",
@@ -119,6 +133,7 @@ def test_agentic_hello_world_e2e(
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_hello_world_fixture"
         assert trace_base.exists()
     finally:
+        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()
 
 
@@ -136,6 +151,10 @@ def test_agentic_guarded_e2e(
         corpus = doug_blog_dataset.corpus
         judgments = doug_blog_dataset.judgments
         _set_fake_doc_ids(corpus)
+        original_script = _set_fake_script(
+            tool_name="search_bm25",
+            params={"keywords": "salon chair", "top_k": 5},
+        )
 
         params = RunParams(
             strategy_path="configs/agentic.yml",
@@ -161,6 +180,7 @@ def test_agentic_guarded_e2e(
         assert result.summary["tool_calls_mean"] >= 1.0
         assert FakeOpenAIAgent.calls >= 1
     finally:
+        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()
 
 
@@ -171,6 +191,10 @@ def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, doug_blog_dataset
     try:
         corpus = doug_blog_dataset.corpus
         _set_fake_doc_ids(corpus)
+        original_script = _set_fake_script(
+            tool_name="ls",
+            params={"path": ".", "glob": "**/*"},
+        )
 
         params = RunParams(
             strategy_path="configs/agentic_filesystem.yml",
@@ -192,4 +216,5 @@ def test_agentic_filesystem_e2e(_filesystem_root, _paths_root, doug_blog_dataset
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_filesystem_fixture"
         assert trace_base.exists()
     finally:
+        FakeOpenAIAgent.script = original_script
         _cleanup_temp_root()

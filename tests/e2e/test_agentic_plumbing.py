@@ -4,13 +4,31 @@ from unittest.mock import patch
 
 import pytest
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeOpenAIAgent
+from tests.utils.agent_fakes import FakeOpenAIAgent, build_agent_script
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
 def _set_fake_doc_ids(corpus, *, count: int = 3) -> None:
     FakeOpenAIAgent.calls = 0
     FakeOpenAIAgent.doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(count).tolist()]
+
+
+def _fake_bash_builder(_corpus, **_kwargs):
+    def bash(*_args, **_kwargs):
+        return "ok"
+
+    bash.__name__ = "bash"
+    return bash
+
+
+def _set_fake_script(*, tool_name: str | None, params: dict | None = None) -> list[dict] | None:
+    original = FakeOpenAIAgent.script
+    FakeOpenAIAgent.script = build_agent_script(
+        tool_name=tool_name,
+        params=params,
+        output=None,
+    )
+    return original
 
 
 def _set_fake_categories(corpus, *, count: int = 2) -> None:
@@ -68,6 +86,10 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
 ):
     mock_get_dataset.return_value = fake_wands_dataset
     _set_fake_doc_ids(fake_wands_dataset.corpus)
+    original_script = _set_fake_script(
+        tool_name="search_bm25_wands",
+        params={"keywords": "floating bed", "top_k": 5},
+    )
 
     params = RunParams(
         strategy_path="configs/agentic_wands_bm25_e5_few_shot_delegate.yml",
@@ -91,6 +113,7 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
     assert result.metric_series is not None
     assert not result.metric_series.empty
     assert FakeOpenAIAgent.calls >= 1
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.runners.run.get_dataset")
@@ -106,6 +129,7 @@ def test_scatter_gather_wands_e2e(
     mock_get_dataset.return_value = fake_wands_dataset
     _set_fake_doc_ids(fake_wands_dataset.corpus)
     _set_fake_categories(fake_wands_dataset.corpus)
+    original_script = _set_fake_script(tool_name=None)
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands.yml",
@@ -129,6 +153,7 @@ def test_scatter_gather_wands_e2e(
     assert result.metric_series is not None
     assert not result.metric_series.empty
     assert FakeOpenAIAgent.calls >= 1
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.runners.run.get_dataset")
@@ -144,6 +169,7 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
     mock_get_dataset.return_value = fake_wands_dataset
     _set_fake_doc_ids(fake_wands_dataset.corpus)
     _set_fake_categories(fake_wands_dataset.corpus)
+    original_script = _set_fake_script(tool_name=None)
 
     params = RunParams(
         strategy_path="configs/scatter_gather_wands_cat_subcat.yml",
@@ -168,6 +194,7 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
     assert result.query_results is not None
     assert not result.query_results.empty
     assert FakeOpenAIAgent.calls >= 1
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
@@ -181,6 +208,7 @@ def test_agentic_query_rewrite_tool_e2e(
     doug_blog_dataset,
 ):
     _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(tool_name=None)
 
     config_path = tmp_path / "agentic_query_rewrite_e2e.yml"
     config_path.write_text(
@@ -222,6 +250,7 @@ strategy:
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
@@ -234,6 +263,7 @@ def test_agentic_orchestrate_bm25_e2e(
     doug_blog_dataset,
 ):
     _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(tool_name=None)
 
     config_path = tmp_path / "agentic_orchestrate.yml"
     config_path.write_text(
@@ -276,6 +306,7 @@ strategy:
     assert result.metric_series is not None
     assert not result.metric_series.empty
     assert FakeOpenAIAgent.calls >= 1
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
@@ -288,6 +319,7 @@ def test_agentic_plan_agents_e2e(
     doug_blog_dataset,
 ):
     _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(tool_name=None)
 
     config_path = tmp_path / "agentic_plan.yml"
     config_path.write_text(
@@ -337,16 +369,18 @@ strategy:
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
 
 
 @patch.dict(
     "exps.tools.registry.TOOL_REGISTRY",
-    {"bash": {"builder": lambda corpus, **_kwargs: (lambda *args, **kwargs: "ok"), "kind": "agentic"}},
+    {"bash": {"builder": _fake_bash_builder, "kind": "agentic"}},
     clear=False,
 )
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
 def test_agentic_bash_tool_e2e(tmp_path, doug_blog_dataset):
     _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(tool_name="bash")
 
     config_path = tmp_path / "agentic_bash.yml"
     config_path.write_text(
@@ -379,6 +413,7 @@ strategy:
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
 
 
 def test_agentic_raw_tool_rejected_e2e(tmp_path):
@@ -445,6 +480,10 @@ strategy:
 
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
 def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
+    original_script = _set_fake_script(
+        tool_name="search_bm25",
+        params={"keywords": "salon chair", "top_k": 5},
+    )
     config_path = tmp_path / "agentic_few_shot.yml"
     config_path.write_text(
         """
@@ -479,6 +518,7 @@ strategy:
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
 
 
 def test_agentic_few_shot_missing_column_raises_e2e(tmp_path):
@@ -617,7 +657,12 @@ strategy:
 
 
 @patch("exps.agentic.agent.OpenAIAgent", FakeOpenAIAgent)
-def test_agentic_codegen_tool_e2e(tmp_path):
+def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
+    _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(
+        tool_name="search",
+        params={"query": "salon chair", "top_k": 10},
+    )
     codegen_dir = tmp_path / "codegen_run"
     codegen_dir.mkdir()
     reranker_path = codegen_dir / "reranker.py"
@@ -668,6 +713,7 @@ strategy:
     result = run_benchmark(params)
 
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
 
 
 @patch("exps.tools.embeddings.load_or_create_embeddings")
@@ -679,6 +725,10 @@ def test_agentic_codegen_fixture_nonzero_e2e(
     doug_blog_dataset,
 ):
     _set_fake_doc_ids(doug_blog_dataset.corpus)
+    original_script = _set_fake_script(
+        tool_name="search",
+        params={"query": "salon chair", "top_k": 5},
+    )
 
     params = RunParams(
         strategy_path="configs/agentic_w_codegen.yml",
@@ -701,3 +751,4 @@ def test_agentic_codegen_fixture_nonzero_e2e(
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
+    FakeOpenAIAgent.script = original_script
