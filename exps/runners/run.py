@@ -216,13 +216,14 @@ def run_benchmark(params: RunParams) -> RunResult:
         )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)
+    batch_size = params.batch_size if params.batch_size is not None else 100
     graded = run_strategy(
         strategy,
         judgments,
         num_queries=num_queries,
         seed=params.seed,
         cache=not params.no_cache,
-        batch_size=params.batch_size,
+        batch_size=batch_size,
     )
     if trace_path is not None:
         query_dirs = [path for path in trace_path.iterdir() if path.is_dir()]
