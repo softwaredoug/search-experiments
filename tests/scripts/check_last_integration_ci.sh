@@ -10,15 +10,15 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-run_id=$(gh run list --workflow "$workflow_file" --limit 1 --json databaseId --jq '.[0].databaseId')
+run_id=$(gh run list --workflow "$workflow_file" --limit 10 --json databaseId,status --jq 'map(select(.status == "completed")) | .[0].databaseId')
 
 if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
   echo "No runs found for workflow $workflow_file" >&2
   exit 1
 fi
 
-gh run list --workflow "$workflow_file" --limit 1 --json displayTitle,headBranch,headSha,createdAt,status,conclusion \
-  --jq '.[0] | "Run: \(.displayTitle)\nBranch: \(.headBranch)\nSHA: \(.headSha)\nCreated: \(.createdAt)\nStatus: \(.status)\nConclusion: \(.conclusion)"'
+gh run list --workflow "$workflow_file" --limit 10 --json displayTitle,headBranch,headSha,createdAt,status,conclusion \
+  --jq 'map(select(.status == "completed")) | .[0] | "Run: \(.displayTitle)\nBranch: \(.headBranch)\nSHA: \(.headSha)\nCreated: \(.createdAt)\nStatus: \(.status)\nConclusion: \(.conclusion)"'
 
 job_status=$(gh run view "$run_id" --json jobs --jq ".jobs[] | select(.name == \"$job_name\") | \"Job: \(.name)\nStatus: \(.status)\nConclusion: \(.conclusion)\nURL: \(.url)\"")
 
