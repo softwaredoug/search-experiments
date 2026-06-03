@@ -25,6 +25,10 @@ from exps.codegen.search_tools import (
 from exps.codegen.utils import split_search_tools
 from exps.logging_utils import log_to_path_and_stdout
 
+__all__ = [
+    "_validate_start_code",
+]
+
 
 class FinalMessage(BaseModel):
     """Final message indicating completion of the reranker improvement process."""
@@ -518,7 +522,7 @@ def train_codegen_strategy(
         "eval_margin": codegen.eval_cfg.eval_margin,
     }
     write_metadata(codegen.output_dir, metadata)
-    return CodeGenArtifact(
+    rval = CodeGenArtifact(
         path=codegen.output_dir,
         reranker_path=codegen.code_path,
         code=final_code,
@@ -527,3 +531,4 @@ def train_codegen_strategy(
         search_fn=codegen.search_tool_state.primary_tool.fn,
         tool_fns=[tool.fn for tool in codegen.search_tool_state.tools],
     )
+    return rval

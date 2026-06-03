@@ -114,9 +114,10 @@ def train_strategy(params: TrainParams) -> TrainResult:
     )
     metadata_path = artifact.path / "metadata.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
-    return TrainResult(
+    rval = TrainResult(
         strategy_name=strategy_config.name,
         strategy_params=strategy_params,
         artifact_path=str(artifact.path),
         metadata=metadata,
     )
+    return rval

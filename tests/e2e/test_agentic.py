@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import shutil
 import tempfile
-import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -97,22 +96,16 @@ def test_agentic_hello_world_e2e(
     try:
         corpus = doug_blog_dataset.corpus
         judgments = doug_blog_dataset.judgments
-        dataset_elapsed_s = 0.0
-        embedding_elapsed_s = 0.0
         instances: list[FakeOpenAIAgent] = []
 
         def _mock_load_or_create_embeddings(corpus, passage_fn, **_kwargs):
-            nonlocal embedding_elapsed_s
-            embed_started_at = time.perf_counter()
-            embeddings, model = build_mock_embeddings(
+            return build_mock_embeddings(
                 corpus,
                 judgments,
                 passage_fn,
                 dim=3,
                 seed=123,
             )
-            embedding_elapsed_s = time.perf_counter() - embed_started_at
-            return embeddings, model
 
         mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
         mock_load_model.side_effect = lambda *_args, **_kwargs: None
@@ -153,30 +146,20 @@ strategy:
             seed=123,
             workers=1,
             batch_size=1,
-            device=None,
+            device="cpu",
             no_cache=True,
         )
         with patch(
             "exps.agentic.agent.build_openai_agent",
             side_effect=_build_fake_agent(script=script, doc_ids=doc_ids, instances=instances),
         ):
-            started_at = time.perf_counter()
             result = run_benchmark(params)
-            elapsed_s = time.perf_counter() - started_at
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
         assert result.summary["tool_calls_mean"] >= 1.0
         assert sum(agent.chat_calls for agent in instances) >= 1
         assert mock_load_or_create_embeddings.call_count >= 1
-        assert elapsed_s > 0.0
-
-        benchmark = {
-            "dataset_seconds": dataset_elapsed_s,
-            "embedding_seconds": embedding_elapsed_s,
-            "run_seconds": elapsed_s,
-        }
-        print(f"e2e_benchmark={benchmark}")
 
         trace_base = _paths_root / "agentic" / "doug_blog" / "agentic_hello_world_fixture"
         assert trace_base.exists()
@@ -240,7 +223,7 @@ strategy:
             seed=123,
             workers=1,
             batch_size=1,
-            device=None,
+            device="cpu",
             no_cache=True,
         )
         with patch(
@@ -313,7 +296,7 @@ strategy:
             seed=123,
             workers=1,
             batch_size=1,
-            device=None,
+            device="cpu",
             no_cache=True,
         )
         with patch(
@@ -372,7 +355,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -431,7 +414,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -498,7 +481,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -560,7 +543,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -598,7 +581,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="raw search tool"):
@@ -629,7 +612,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="only available for wands dataset"):
@@ -675,7 +658,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -718,7 +701,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="few_shot column not found"):
@@ -786,7 +769,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -847,7 +830,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -922,7 +905,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -1028,7 +1011,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -1096,7 +1079,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="codegen tool missing dependencies"):
@@ -1144,7 +1127,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="return_fields not found in corpus"):
@@ -1207,7 +1190,7 @@ strategy:
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -1247,7 +1230,7 @@ def test_agentic_codegen_fixture_nonzero_e2e(
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(

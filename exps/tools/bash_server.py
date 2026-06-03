@@ -4,7 +4,6 @@ import json
 import os
 import subprocess
 import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -14,8 +13,6 @@ SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT)
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        started_at = time.perf_counter()
-        queue_started = started_at
         SEMAPHORE.acquire()
         if self.path != "/execute":
             self.send_response(404)
@@ -54,16 +51,12 @@ class Handler(BaseHTTPRequestHandler):
                     "stdout": "",
                     "stderr": "Command timed out",
                 }
-            elapsed_ms = (time.perf_counter() - started_at) * 1000
-            queued_ms = (time.perf_counter() - queue_started) * 1000
             stderr_size = len(response.get("stderr", ""))
             stdout_size = len(response.get("stdout", ""))
             self.log_message(
-                "bash_command=%r timeout=%s queued_ms=%.2f elapsed_ms=%.2f exit_code=%s stdout_bytes=%s stderr_bytes=%s",
+                "bash_command=%r timeout=%s exit_code=%s stdout_bytes=%s stderr_bytes=%s",
                 command,
                 timeout,
-                queued_ms,
-                elapsed_ms,
                 response.get("exit_code"),
                 stdout_size,
                 stderr_size,

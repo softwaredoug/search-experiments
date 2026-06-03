@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from pathlib import PurePosixPath
-from time import perf_counter
 
 import pandas as pd
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -342,7 +340,6 @@ def _make_filesystem_tools(
     contents_series = corpus["contents"].astype(str)
     paths = path_series.tolist()
     path_contents = list(zip(paths, contents_series.tolist()))
-    timing_enabled = bool(os.getenv("EXPS_FS_TIMINGS"))
     path_index = None
     if not path_series.duplicated().any():
         path_index = dict(zip(paths, contents_series.tolist()))
@@ -425,14 +422,10 @@ def _make_filesystem_tools(
             limit = 50
         if num_results <= 0:
             return []
-        compile_started = perf_counter() if timing_enabled else None
         try:
             regex = re.compile(pattern)
         except re.error:
             return f"Error! Invalid regex pattern: {pattern}"
-        compile_ms = 0.0
-        if timing_enabled:
-            compile_ms = (perf_counter() - compile_started) * 1000
         scoped_glob, error = _resolve_scoped_glob(glob, agent_state)
         if error:
             return error
@@ -442,7 +435,6 @@ def _make_filesystem_tools(
         glob_matched = 0
         regex_matched = 0
         extra = 0
-        scan_started = perf_counter() if timing_enabled else None
         for path, contents in path_contents:
             scanned += 1
             if not _match_glob(match_pattern, path):
@@ -456,25 +448,6 @@ def _make_filesystem_tools(
                 results.append({"path": path, "snippet": _snippet_from_match(contents, match)})
             else:
                 extra += 1
-        if timing_enabled and agent_state is not None:
-            scan_ms = (perf_counter() - scan_started) * 1000
-            total_ms = compile_ms + scan_ms
-            logger = agent_state.get("trace_logger") if agent_state else None
-            if logger is not None:
-                logger.info(
-                    "%sfs_grep_timing %s",
-                    _logging_prefix(agent_state),
-                    {
-                        "pattern": pattern,
-                        "glob": glob,
-                        "scanned": scanned,
-                        "glob_matched": glob_matched,
-                        "regex_matched": regex_matched,
-                        "compile_ms": round(compile_ms, 1),
-                        "scan_ms": round(scan_ms, 1),
-                        "total_ms": round(total_ms, 1),
-                    },
-                )
         if extra:
             results.append({"path": "", "snippet": f"Truncated ({extra} more)"})
         return results

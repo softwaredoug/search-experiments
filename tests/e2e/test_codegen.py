@@ -229,7 +229,7 @@ strategy:
                 num_queries=3,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -289,7 +289,7 @@ strategy:
                 num_queries=3,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -349,7 +349,7 @@ strategy:
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -420,7 +420,7 @@ strategy:
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -442,7 +442,7 @@ def test_codegen_get_corpus_e2e(_paths_root, tmp_path):
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -464,7 +464,7 @@ def test_codegen_raw_only_e2e(_paths_root, tmp_path):
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -486,7 +486,7 @@ def test_codegen_start_code_e2e(_paths_root, tmp_path):
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -506,7 +506,7 @@ def test_codegen_start_code_mismatch_e2e(_paths_root, tmp_path):
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=1,
         )
         with pytest.raises(ValueError, match="start_code does not match configured tools"):
@@ -560,7 +560,7 @@ strategy:
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -613,7 +613,7 @@ strategy:
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -668,7 +668,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=1,
         )
         with pytest.raises(FileNotFoundError, match="Training run path not found"):
@@ -701,7 +701,7 @@ strategy:
         num_queries=1,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with pytest.raises(ValueError, match="No trained codegen run found"):
@@ -748,7 +748,7 @@ strategy:
                 num_queries=1,
                 seed=123,
                 workers=1,
-                device=None,
+                device="cpu",
                 rounds=1,
             )
             result = train_strategy(params)
@@ -801,7 +801,7 @@ strategy:
         num_queries=2,
         seed=123,
         workers=1,
-        device=None,
+        device="cpu",
         rounds=1,
     )
     result = train_strategy(params)
@@ -855,7 +855,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=0,
         )
         result = train_strategy(params)
@@ -916,7 +916,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=0,
         )
         result = train_strategy(params)
@@ -970,7 +970,7 @@ strategy:
             num_queries=2,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=0,
         )
         result_on = train_strategy(params_on)
@@ -1018,7 +1018,7 @@ strategy:
             num_queries=2,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=0,
         )
         result_off = train_strategy(params_off)
@@ -1079,7 +1079,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             rounds=0,
         )
         train_strategy(train_params)
@@ -1091,7 +1091,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             no_cache=True,
         )
         result = run_benchmark(run_params)
@@ -1149,7 +1149,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
         )
 
         result = train_strategy(params)
@@ -1243,7 +1243,7 @@ strategy:
             num_queries=1,
             seed=123,
             workers=1,
-            device=None,
+            device="cpu",
             no_cache=True,
         )
         result = run_benchmark(params)

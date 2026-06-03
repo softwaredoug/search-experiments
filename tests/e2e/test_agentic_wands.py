@@ -82,7 +82,7 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -125,7 +125,7 @@ def test_scatter_gather_wands_e2e(
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
@@ -174,7 +174,7 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
         seed=123,
         workers=1,
         batch_size=1,
-        device=None,
+        device="cpu",
         no_cache=True,
     )
     with patch(
