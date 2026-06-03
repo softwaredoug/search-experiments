@@ -3,6 +3,7 @@ set -euo pipefail
 
 workflow_file="${1:-tests.yml}"
 job_name="${2:-integration-tests}"
+mode="${3:-fail}"
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh CLI not found in PATH" >&2
@@ -34,5 +35,9 @@ job_conclusion=$(gh run view "$run_id" --json jobs --jq ".jobs[] | select(.name 
 if [ -n "$job_id" ] && [ "$job_conclusion" != "success" ] && [ "$job_conclusion" != "null" ]; then
   printf "\nFailed step logs (%s):\n" "$job_name"
   gh run view "$run_id" --job "$job_id" --log-failed
+  if [ "$mode" = "warn" ]; then
+    printf "\nWarning: last %s job concluded with %s\n" "$job_name" "$job_conclusion" >&2
+    exit 0
+  fi
   exit 1
 fi

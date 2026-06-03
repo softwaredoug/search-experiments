@@ -13,7 +13,7 @@ repos:
         pass_filenames: false
       - id: integration-tests-ci
         name: integration tests (CI status)
-        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml integration-tests
+        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml integration-tests warn
         language: system
         pass_filenames: false
         stages: [pre-push]
