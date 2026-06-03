@@ -43,14 +43,13 @@ if [ -n "$job_name" ]; then
     exit 1
   fi
 else
-  jobs_json=$(gh run view "$run_id" --json jobs)
   printf "\nJobs:\n"
-  printf "%s\n" "$jobs_json" | gh api --jq '.jobs[] | "- \(.name): \(.conclusion)"'
+  gh run view "$run_id" --json jobs --jq '.jobs[] | "- \(.name): \(.conclusion)"'
 
-  failed_jobs=$(printf "%s" "$jobs_json" | gh api --jq '.jobs[] | select(.conclusion != null and .conclusion != "success") | .databaseId' || true)
+  failed_jobs=$(gh run view "$run_id" --json jobs --jq '.jobs[] | select(.conclusion != null and .conclusion != "success") | .databaseId' || true)
   if [ -n "$failed_jobs" ]; then
     printf "\nFailed step logs (all failing jobs):\n"
-    printf "%s\n" "$jobs_json" | gh api --jq '.jobs[] | select(.conclusion != null and .conclusion != "success") | "Job: \(.name)\nStatus: \(.status)\nConclusion: \(.conclusion)\nURL: \(.url)\n"'
+    gh run view "$run_id" --json jobs --jq '.jobs[] | select(.conclusion != null and .conclusion != "success") | "Job: \(.name)\nStatus: \(.status)\nConclusion: \(.conclusion)\nURL: \(.url)\n"'
     for job_id in $failed_jobs; do
       gh run view "$run_id" --job "$job_id" --log-failed
     done
