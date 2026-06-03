@@ -1,4 +1,4 @@
-name: runner-tests
+name: tests
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
       - name: Run e2e tests
         run: uv run pytest -s -vv -rA --durations=10 tests/e2e
 
-  runner-tests:
+  integration-tests:
     runs-on: ubuntu-latest
     environment: openai-tests
     timeout-minutes: 30
@@ -69,31 +69,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
-      - name: Run runner tests (non-codegen)
+      - name: Run integration tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run pytest -s -vv -rA --durations=10 tests/integration/runners tests/integration/agentic tests/integration/bash
-
-  codegen-tests:
-    runs-on: ubuntu-latest
-    environment: openai-tests
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-
-      - name: Run codegen runner tests
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run pytest -s -vv -rA --durations=10 tests/integration/codegen
+        run: uv run pytest -s -vv -rA --durations=10 tests/integration
