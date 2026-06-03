@@ -10,6 +10,9 @@ This is a python project. Managed by uv.
 
 ## Testing notes
 
-Tests exist in the tests folder, primarilly 3 types
+Read the testing expectations to orient yourself at [test docs](docs/tests.md)
 
-- unit
+Importantly pay attention to the pre-commit and pre-push hooks
+
+- pre-commit will run cheaper checks, fix these when they fail
+- pre-push will warn, but not fail, when CI failures exist. You should take these seriously and try to resolve CI issues before pushing. You'll receive logs to diagnose the failures.
