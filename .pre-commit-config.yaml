@@ -11,6 +11,11 @@ repos:
         entry: uv run pytest tests/e2e --timeout=10
         language: system
         pass_filenames: false
+      - id: integration-tests-ci
+        name: integration tests (CI status)
+        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml integration-tests
+        language: system
+        pass_filenames: false
       - id: uv-check-lock
         name: uv lock is current
         entry: uv lock --check
