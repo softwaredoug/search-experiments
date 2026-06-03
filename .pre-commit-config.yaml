@@ -6,11 +6,13 @@ repos:
         entry: uv run pytest tests/unit --timeout=10
         language: system
         pass_filenames: false
+        stages: [pre-commit]
       - id: e2e-tests
         name: e2e tests
         entry: uv run pytest tests/e2e --timeout=10
         language: system
         pass_filenames: false
+        stages: [pre-commit]
       - id: integration-tests-ci
         name: integration tests (CI status)
         entry: bash tests/scripts/check_last_integration_ci.sh tests.yml integration-tests warn
@@ -24,8 +26,10 @@ repos:
         language: system
         pass_filenames: false
         files: ^(pyproject\.toml|uv\.lock)$
+        stages: [pre-commit]
       - id: flake8
         name: flake8
         entry: uv run flake8
         language: system
         types: [python]
+        stages: [pre-commit]
