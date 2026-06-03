@@ -17,6 +17,7 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-push]
+        verbose: true
       - id: uv-check-lock
         name: uv lock is current
         entry: uv lock --check
