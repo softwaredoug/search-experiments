@@ -15,7 +15,7 @@ repos:
         stages: [pre-commit]
       - id: integration-tests-ci
         name: integration tests (CI status)
-        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml integration-tests warn
+        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml "" warn
         language: system
         pass_filenames: false
         stages: [pre-push]
