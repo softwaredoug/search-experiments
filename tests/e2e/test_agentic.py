@@ -6,9 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from exps.agentic import conditions as conditions_mod
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeOpenAIAgent
+from tests.utils.agent_fakes import FakeLLMJudgeAgent, FakeOpenAIAgent
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -929,32 +928,7 @@ strategy:
 
 
 def test_agentic_llm_judge_validator_e2e(tmp_path, doug_blog_dataset):
-    class _FakeJudgeAgent:
-        calls = 0
-
-        def __init__(self, tools, model, response_model, reasoning_level):
-            self.tools = tools
-            self.model = model
-            self.response_model = response_model
-            self.reasoning_level = reasoning_level
-
-        def chat(self, inputs=None, agent_state=None, logger=None):
-            if inputs is None:
-                inputs = []
-            _FakeJudgeAgent.calls += 1
-            emoji = "😞" if _FakeJudgeAgent.calls == 1 else "😃"
-            result = conditions_mod.LLMJudgeResponse(
-                graded_results=[
-                    conditions_mod.GradedSearchResult(
-                        emoji=emoji,
-                        title="Sample",
-                        doc_id="101",
-                    )
-                ]
-            )
-            resp = type("Resp", (), {"output_parsed": result})
-            return resp, inputs, 0
-
+    FakeLLMJudgeAgent.reset()
     instances: list[FakeOpenAIAgent] = []
     doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
     scripts = [
@@ -1017,14 +991,14 @@ strategy:
     with patch(
         "exps.agentic.agent.build_openai_agent",
         side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
-    ), patch("exps.agentic.conditions.OpenAIAgent", _FakeJudgeAgent):
+    ), patch("exps.agentic.conditions.OpenAIAgent", FakeLLMJudgeAgent):
         result = run_benchmark(params)
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
     assert len(instances) == 1
     assert instances[0].chat_calls == 2
-    assert _FakeJudgeAgent.calls == 2
+    assert FakeLLMJudgeAgent.calls == 2
     reprompt_count = sum(
         1
         for item in instances[0].last_inputs
@@ -1033,6 +1007,206 @@ strategy:
         and "LLM evaluations" in str(item.get("content"))
     )
     assert reprompt_count == 1
+
+
+def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset):
+    FakeLLMJudgeAgent.reset()
+    instances: list[FakeOpenAIAgent] = []
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    scripts = [
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+    ]
+    config_path = tmp_path / "agentic_llm_judge_stop_tool_calls.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_llm_judge_stop_tool_calls_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - bm25
+    validators:
+      - llm_judge_relevance:
+          prompt: "Please return more relevant results."
+          params:
+            model: gpt-5-mini
+            reasoning: medium
+            judge_prompt: |
+              Query: {query}
+              Results:
+              {results}
+    stop:
+      - tool_calls:
+          prompt: "Again"
+          params:
+            num_calls: 2
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+        no_cache=True,
+    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
+    ), patch("exps.agentic.conditions.OpenAIAgent", FakeLLMJudgeAgent):
+        result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 2
+    assert FakeLLMJudgeAgent.calls == 2
+    validator_prompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "LLM evaluations" in str(item.get("content"))
+    )
+    stop_prompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and item.get("content") == "Again"
+    )
+    assert validator_prompt_count == 1
+    assert stop_prompt_count == 0
+
+
+def test_agentic_llm_judge_max_runs_allows_stop_e2e(tmp_path, doug_blog_dataset):
+    FakeLLMJudgeAgent.reset(emojis=["😞", "😞"])
+    instances: list[FakeOpenAIAgent] = []
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    scripts = [
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+    ]
+    config_path = tmp_path / "agentic_llm_judge_max_runs.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_llm_judge_max_runs_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - bm25
+    validators:
+      - llm_judge_relevance:
+          prompt: "Please return more relevant results."
+          params:
+            model: gpt-5-mini
+            reasoning: medium
+            max_runs: 2
+            judge_prompt: |
+              Query: {query}
+              Results:
+              {results}
+    stop:
+      - tool_calls:
+          prompt: "Again"
+          params:
+            num_calls: 2
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+        no_cache=True,
+    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
+    ), patch("exps.agentic.conditions.OpenAIAgent", FakeLLMJudgeAgent):
+        result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 2
+    assert FakeLLMJudgeAgent.calls == 2
+    validator_prompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "LLM evaluations" in str(item.get("content"))
+    )
+    stop_prompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and item.get("content") == "Again"
+    )
+    assert validator_prompt_count == 1
+    assert stop_prompt_count == 0
 
 
 def test_agentic_codegen_tool_dependency_mismatch_e2e(tmp_path):

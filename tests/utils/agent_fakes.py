@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 
+from exps.agentic import conditions as conditions_mod
 from exps.agentic.agent import SearchResults
 
 
@@ -126,6 +127,41 @@ class FakeOpenAIAgent:
             except Exception:
                 return output
         return output
+
+
+class FakeLLMJudgeAgent:
+    calls = 0
+    emojis = ["😞", "😃"]
+
+    def __init__(self, tools, model, response_model, reasoning_level):
+        self.tools = tools
+        self.model = model
+        self.response_model = response_model
+        self.reasoning_level = reasoning_level
+
+    @classmethod
+    def reset(cls, emojis: list[str] | None = None) -> None:
+        cls.calls = 0
+        if emojis is not None:
+            cls.emojis = list(emojis)
+
+    def chat(self, inputs=None, agent_state=None, logger=None):
+        if inputs is None:
+            inputs = []
+        emoji_index = min(self.calls, max(len(self.emojis) - 1, 0))
+        emoji = self.emojis[emoji_index]
+        type(self).calls += 1
+        result = conditions_mod.LLMJudgeResponse(
+            graded_results=[
+                conditions_mod.GradedSearchResult(
+                    emoji=emoji,
+                    title="Sample",
+                    doc_id="101",
+                )
+            ]
+        )
+        resp = type("Resp", (), {"output_parsed": result})
+        return resp, inputs, 0
 
 
 class FakeCodegenAgent:

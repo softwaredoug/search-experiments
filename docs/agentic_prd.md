@@ -32,6 +32,9 @@ strategy:
       - minilm:
 ```
 
+The judge passes when all results are 😃. If not, it retries until `max_runs` is reached,
+then it accepts the results to avoid an infinite loop (default `max_runs: 2`).
+
 This calls OpenAI with
 
 - the system prompt here
@@ -240,6 +243,7 @@ Validators can use an LLM judge to provide emoji-based feedback. Example:
           params:
             model: gpt-5-mini
             reasoning: medium
+            max_runs: 2
             judge_prompt: |
               You are a helpful assistant that judges the relevance of search results to a query.
 
@@ -249,6 +253,7 @@ Validators can use an LLM judge to provide emoji-based feedback. Example:
               {results}
 
               Please rate the relevance of these results to the query using emojis of how well they satisfy the query.
+              Allowed emojis: 😃 (relevant), 😐 (neutral), 😞 (irrelevant).
 
               Respond as a list of graded results with fields: emoji, title, doc_id.
 ```
@@ -265,6 +270,7 @@ An LLM Judge validator exists to give emoji-based feedback to the agent on its p
           params:
             model: gpt-5-mini
             reasoning: medium
+            max_runs: 2
             judge_prompt: |
               You are a helpful assistant that judges the relevance of search results to a query.
 
@@ -274,6 +280,7 @@ An LLM Judge validator exists to give emoji-based feedback to the agent on its p
               {results}
 
               Please rate the relevance of these results to the query using emojis of how well they satisfy the query.
+              Allowed emojis: 😃 (relevant), 😐 (neutral), 😞 (irrelevant).
 ```
 
 Above results would include title, description, and ID fields for each result.
@@ -285,7 +292,7 @@ Please return more relevant results to better help the user find what they're lo
 
 LLM evaluations:
 
-1. 🥲 Red Shoes (ID: 1234)
+1. 😞 Red Shoes (ID: 1234)
 2. 😃 Purple Shoes
 ```
 

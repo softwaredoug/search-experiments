@@ -1,0 +1,34 @@
+strategy:
+  name: agentic_ecom_bm25_fewshot
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find relevant products
+
+      It's important to return results ranked from most to least relevant based on the user query.
+
+      You'll see some examples below of relevant / irrelevant items from the corpus.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
+    stop:
+      - tool_calls:
+          prompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
+          params:
+            num_calls: 4
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - e5_base_v2:
+          guards:
+            - disallow_repeated_queries
+    few_shot:
+      - sample_judgments:
+          num_rows: 6

@@ -69,6 +69,9 @@ def normalize_conditions(condition_config: list | None, *, kind: str) -> list[di
             for key in ("model", "reasoning", "judge_prompt"):
                 if key not in params_dict:
                     raise ValueError(f"Condition 'llm_judge_relevance' requires params.{key}.")
+            params_dict.setdefault("max_runs", 2)
+            if int(params_dict["max_runs"]) <= 0:
+                raise ValueError("Condition 'llm_judge_relevance' requires params.max_runs > 0.")
         else:
             raise ValueError(f"Unknown {kind} condition: {name}")
         conditions.append({"name": name, "prompt": prompt, "params": params_dict})
@@ -127,11 +130,7 @@ def _render_results_for_judge(*, corpus, ranked_doc_ids: list[str], lookup: dict
 def _judge_is_passing(graded_results: list[GradedSearchResult]) -> bool:
     if not graded_results:
         return False
-    negative = {"😭", "😢", "🥲", "😞", "😐", "😕", "😟", "🙁", "☹️"}
-    for item in graded_results:
-        if item.emoji in negative:
-            return False
-    return True
+    return all(item.emoji == "😃" for item in graded_results)
 
 
 def _run_llm_judge(
@@ -174,12 +173,19 @@ def evaluate_validator(
     query: str,
     corpus,
     lookup: dict | None,
+    agent_state: dict | None,
     logger,
 ) -> bool | str:
     if condition["name"] == "llm_judge_relevance":
         ranked = getattr(resp.output_parsed, "ranked_results", None) if resp else None
         ranked_doc_ids = list(ranked or [])
         params = condition["params"]
+        max_runs = int(params.get("max_runs", 2))
+        if agent_state is not None:
+            agent_state["llm_judge_runs"] = agent_state.get("llm_judge_runs", 0) + 1
+            judge_runs = agent_state["llm_judge_runs"]
+        else:
+            judge_runs = num_loops
         graded_results = _run_llm_judge(
             query=query,
             corpus=corpus,
@@ -190,6 +196,10 @@ def evaluate_validator(
             judge_prompt=str(params["judge_prompt"]),
             logger=logger,
         )
+        if _judge_is_passing(graded_results):
+            return True
+        if judge_runs >= max_runs:
+            return True
         if not _judge_is_passing(graded_results):
             eval_block = "\n".join(
                 f"{idx}. {item.emoji} {item.title} (ID: {item.doc_id})"

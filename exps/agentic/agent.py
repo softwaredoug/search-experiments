@@ -290,12 +290,20 @@ class Agent:
 
         num_loops = 0
         baseline_tool_calls = _tool_calls_from_inputs(inputs)
+        print(
+            f"{query} -- Starting execution for agent {agent_name} at step {step_index} "
+            f"with max loops {self.max_loops} and baseline tool calls {baseline_tool_calls}."
+        )
         while True:
             resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
             num_loops += 1
             tool_calls = _tool_calls_from_inputs(inputs) - baseline_tool_calls
             agent_state["num_tool_calls"] = _tool_calls_from_inputs(inputs)
             if num_loops >= self.max_loops:
+                print(
+                    f"Max loops {num_loops}/{self.max_loops} reached for agent {agent_name} "
+                    f"at step {step_index}. Tool calls: {tool_calls}. Ending execution."
+                )
                 break
             for validator in validators:
                 result = evaluate_validator(
@@ -306,7 +314,12 @@ class Agent:
                     query=query,
                     corpus=self.corpus,
                     lookup=self._lookup,
+                    agent_state=agent_state,
                     logger=logger,
+                )
+                print(
+                    f"{query} {num_loops} -- Evaluating validator {validator['name']} for agent "
+                    f"{agent_name} at step {step_index} with tool calls {tool_calls}. Result: {result}"
                 )
                 if result is True:
                     continue
@@ -326,6 +339,11 @@ class Agent:
                     break
                 stop_prompt = None
                 for stopper in stops:
+                    print(
+                        f"{query} {num_loops} -- Evaluating stopper {stopper['name']} for agent "
+                        f"{agent_name} at step {step_index} after loop {num_loops} "
+                        f"with tool calls {tool_calls}."
+                    )
                     stop_result = evaluate_stopper(
                         stopper,
                         num_loops=num_loops,
