@@ -1209,6 +1209,112 @@ strategy:
     assert stop_prompt_count == 0
 
 
+@patch("exps.agentic.agent.build_search_tools")
+@patch("exps.runners.run.get_dataset")
+def test_agentic_oracle_validator_max_runs_e2e(
+    mock_get_dataset,
+    mock_build_search_tools,
+    tmp_path,
+):
+    import pandas as pd
+    from types import SimpleNamespace
+
+    instances: list[FakeOpenAIAgent] = []
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3],
+            "title": ["Alpha", "Beta", "Gamma"],
+            "description": ["A", "B", "C"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1, 1],
+            "query": ["test query", "test query"],
+            "doc_id": [1, 2],
+            "grade": [0, 1],
+        }
+    )
+    mock_get_dataset.return_value = SimpleNamespace(corpus=corpus, judgments=judgments)
+
+    def search_bm25(*, keywords, top_k=5, agent_state=None):
+        return corpus.head(top_k).to_dict("records")
+
+    mock_build_search_tools.return_value = [search_bm25]
+    query = "test query"
+    doc_ids = ["2", "3"]
+    scripts = [
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": query, "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": query, "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+    ]
+    config_path = tmp_path / "agentic_oracle_validator.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_oracle_validator_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - bm25
+    validators:
+      - oracle:
+          prompt: "Please return more relevant results."
+          params:
+            max_runs: 2
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+        no_cache=True,
+    )
+    with patch(
+        "exps.agentic.agent.build_openai_agent",
+        side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
+    ):
+        result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 2
+    validator_prompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "Oracle evaluations" in str(item.get("content"))
+    )
+    assert validator_prompt_count == 1
+
+
 def test_agentic_codegen_tool_dependency_mismatch_e2e(tmp_path):
     reranker_dir = tmp_path / "codegen_dependency_mismatch"
     reranker_dir.mkdir()

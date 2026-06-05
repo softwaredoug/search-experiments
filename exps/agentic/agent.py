@@ -160,6 +160,7 @@ class Agent:
         self,
         *,
         corpus,
+        judgments=None,
         model: str = "gpt-5-mini",
         reasoning: str = "medium",
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
@@ -190,6 +191,7 @@ class Agent:
         self.embeddings_device = embeddings_device
         self.dataset_name = dataset_name
         self.response_model = response_model
+        self.judgments = judgments
         self._lookup = build_doc_id_lookup(corpus)
         self._tool_cache: dict[str, list[callable]] = {}
         self._plan_steps = self._prepare_plan_steps()
@@ -306,6 +308,7 @@ class Agent:
                     query=query,
                     corpus=self.corpus,
                     lookup=self._lookup,
+                    judgments=self.judgments,
                     agent_state=agent_state,
                     logger=logger,
                 )

@@ -38,6 +38,7 @@ class AgenticSearchStrategy(SearchStrategy):
         validators: list | None = None,
         max_loops: int | None = None,
         embeddings_device: str | None = None,
+        judgments=None,
         trace_path: Path | None = None,
     ):
         self.embeddings_device = embeddings_device
@@ -58,6 +59,7 @@ class AgenticSearchStrategy(SearchStrategy):
         self.corpus = corpus
         self.agent = Agent(
             corpus=corpus,
+            judgments=judgments,
             model=model,
             reasoning=reasoning,
             system_prompt=system_prompt,
@@ -100,7 +102,7 @@ class AgenticSearchStrategy(SearchStrategy):
                 judgments=kwargs.get("judgments"),
                 few_shot_config=few_shot,
             )
-        return cls(corpus, workers=workers, **build_params)
+        return cls(corpus, workers=workers, judgments=kwargs.get("judgments"), **build_params)
 
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:

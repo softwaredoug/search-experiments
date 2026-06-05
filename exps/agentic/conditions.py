@@ -6,7 +6,7 @@ from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
 
 
-AllowedEmoji = Literal["😃", "😐", "😞"]
+AllowedEmoji = Literal["🤩", "😃", "😐", "😞"]
 
 
 class GradedSearchResult(BaseModel):
@@ -35,6 +35,10 @@ def _parse_condition_entry(entry: Any) -> tuple[str, dict]:
     return name, dict(raw_params)
 
 
+def _default_oracle_prompt() -> str:
+    return "Please return more relevant results."
+
+
 def _require_prompt(condition: dict, *, kind: str) -> str:
     prompt = condition.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
@@ -47,13 +51,22 @@ def normalize_conditions(condition_config: list | None, *, kind: str) -> list[di
         return []
     conditions: list[dict[str, Any]] = []
     for entry in condition_config:
-        name, params = _parse_condition_entry(entry)
-        prompt = _require_prompt(params, kind=kind)
+        if isinstance(entry, str):
+            name = entry
+            params = {}
+        else:
+            name, params = _parse_condition_entry(entry)
+        prompt = params.get("prompt")
+        if not prompt and name == "oracle":
+            prompt = _default_oracle_prompt()
+        prompt = _require_prompt({"prompt": prompt}, kind=kind)
         params = dict(params)
         params.pop("prompt", None)
-        if "params" not in params or not isinstance(params["params"], dict):
+        params_dict = params.get("params")
+        if params_dict is None:
+            params_dict = {}
+        if not isinstance(params_dict, dict):
             raise ValueError(f"{kind} condition '{name}' requires params mapping.")
-        params_dict = params["params"]
         if name == "iterations":
             if "iterations" not in params_dict:
                 raise ValueError("Condition 'iterations' requires params.iterations.")
@@ -72,6 +85,12 @@ def normalize_conditions(condition_config: list | None, *, kind: str) -> list[di
             params_dict.setdefault("max_runs", 2)
             if int(params_dict["max_runs"]) <= 0:
                 raise ValueError("Condition 'llm_judge_relevance' requires params.max_runs > 0.")
+        elif name == "oracle":
+            if kind != "validator":
+                raise ValueError("oracle is only supported for validators.")
+            params_dict.setdefault("max_runs", 2)
+            if int(params_dict["max_runs"]) <= 0:
+                raise ValueError("Condition 'oracle' requires params.max_runs > 0.")
         else:
             raise ValueError(f"Unknown {kind} condition: {name}")
         conditions.append({"name": name, "prompt": prompt, "params": params_dict})
@@ -133,6 +152,90 @@ def _judge_is_passing(graded_results: list[GradedSearchResult]) -> bool:
     return all(item.emoji == "😃" for item in graded_results)
 
 
+def _oracle_emojis_for_grades(grades: list) -> tuple[dict, list]:
+    if not grades:
+        raise ValueError("Oracle validator requires at least one grade label.")
+
+    def _grade_key(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return str(value)
+
+    sorted_grades = sorted(grades, key=_grade_key)
+    if len(sorted_grades) == 2:
+        return {sorted_grades[0]: "😞", sorted_grades[1]: "😃"}, sorted_grades
+    if len(sorted_grades) == 3:
+        return {
+            sorted_grades[0]: "😞",
+            sorted_grades[1]: "😐",
+            sorted_grades[2]: "😃",
+        }, sorted_grades
+    if len(sorted_grades) == 4:
+        return {
+            sorted_grades[0]: "😞",
+            sorted_grades[1]: "😐",
+            sorted_grades[2]: "😃",
+            sorted_grades[3]: "🤩",
+        }, sorted_grades
+    raise ValueError("Oracle validator supports only 2, 3, or 4 unique grade labels.")
+
+
+def _oracle_grade_results(
+    *,
+    query: str,
+    ranked_doc_ids: list[str],
+    judgments,
+    corpus,
+    lookup: dict | None,
+) -> list[GradedSearchResult]:
+    if judgments is None:
+        raise ValueError("Oracle validator requires judgments.")
+    if "grade" not in judgments.columns:
+        raise ValueError("Oracle validator requires judgments with a 'grade' column.")
+    if "query" not in judgments.columns:
+        raise ValueError("Oracle validator requires judgments with a 'query' column.")
+
+    query_judgments = judgments[judgments["query"] == query]
+    grades = judgments["grade"].dropna().unique().tolist()
+    emoji_map, grade_ordered = _oracle_emojis_for_grades(grades)
+    negative_emoji = emoji_map[grade_ordered[0]]
+
+    grade_by_doc: dict[str, Any] = {}
+    if not query_judgments.empty:
+        grade_order = {grade: idx for idx, grade in enumerate(grade_ordered)}
+        for doc_id, group in query_judgments.groupby("doc_id"):
+            best = max(group["grade"], key=lambda value: grade_order.get(value, -1))
+            grade_by_doc[str(doc_id)] = best
+
+    graded_results = []
+    for doc_id in ranked_doc_ids:
+        grade = grade_by_doc.get(str(doc_id))
+        emoji = emoji_map.get(grade, negative_emoji)
+        title = "Sample"
+        row = None
+        try:
+            doc_id_int = int(doc_id)
+        except (TypeError, ValueError):
+            doc_id_int = None
+        if doc_id_int is not None and lookup is not None and doc_id_int in lookup:
+            row = corpus.iloc[lookup[doc_id_int]]
+        elif doc_id_int is not None and "doc_id" in corpus.columns:
+            match = corpus[corpus["doc_id"] == doc_id_int]
+            if not match.empty:
+                row = match.iloc[0]
+        if row is not None:
+            title = str(row.get("title", "Sample"))
+        graded_results.append(
+            GradedSearchResult(
+                emoji=emoji,
+                title=title,
+                doc_id=str(doc_id),
+            )
+        )
+    return graded_results
+
+
 def _run_llm_judge(
     *,
     query: str,
@@ -173,6 +276,7 @@ def evaluate_validator(
     query: str,
     corpus,
     lookup: dict | None,
+    judgments,
     agent_state: dict | None,
     logger,
 ) -> bool | str:
@@ -200,17 +304,45 @@ def evaluate_validator(
             return True
         if judge_runs >= max_runs:
             return True
-        if not _judge_is_passing(graded_results):
-            eval_block = "\n".join(
-                f"{idx}. {item.emoji} {item.title} (ID: {item.doc_id})"
-                for idx, item in enumerate(graded_results, start=1)
-            )
-            return (
-                f"{condition['prompt']}\n\n"
-                f"LLM evaluations:\n\n{eval_block}\n\n"
-                "System reminder: return DOC IDs ranked best to worst."
-            )
-        return True
+        eval_block = "\n".join(
+            f"{idx}. {item.emoji} {item.title} (ID: {item.doc_id})"
+            for idx, item in enumerate(graded_results, start=1)
+        )
+        return (
+            f"{condition['prompt']}\n\n"
+            f"LLM evaluations:\n\n{eval_block}\n\n"
+            "System reminder: return DOC IDs ranked best to worst."
+        )
+    if condition["name"] == "oracle":
+        ranked = getattr(resp.output_parsed, "ranked_results", None) if resp else None
+        ranked_doc_ids = list(ranked or [])
+        params = condition["params"]
+        max_runs = int(params.get("max_runs", 2))
+        if agent_state is not None:
+            agent_state["oracle_runs"] = agent_state.get("oracle_runs", 0) + 1
+            oracle_runs = agent_state["oracle_runs"]
+        else:
+            oracle_runs = num_loops
+        graded_results = _oracle_grade_results(
+            query=query,
+            ranked_doc_ids=ranked_doc_ids,
+            judgments=judgments,
+            corpus=corpus,
+            lookup=lookup,
+        )
+        if _judge_is_passing(graded_results):
+            return True
+        if oracle_runs >= max_runs:
+            return True
+        eval_block = "\n".join(
+            f"{idx}. {item.emoji} {item.title} (ID: {item.doc_id})"
+            for idx, item in enumerate(graded_results, start=1)
+        )
+        return (
+            f"{condition['prompt']}\n\n"
+            f"Oracle evaluations:\n\n{eval_block}\n\n"
+            "System reminder: return DOC IDs ranked best to worst."
+        )
     if _condition_met(condition, num_loops=num_loops, tool_calls=tool_calls, resp=resp):
         return True
     return condition["prompt"]

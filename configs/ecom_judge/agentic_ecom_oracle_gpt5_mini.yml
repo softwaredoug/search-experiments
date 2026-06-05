@@ -1,0 +1,39 @@
+strategy:
+  name: agentic_ecom_bm25_oracle
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find relevant products
+
+      It's important to return results ranked from most to least relevant based on the user query.
+
+      You'll get feedback from a judge that evaluates relevance. It's criteria:
+          * Is in the desired category / item type
+          * Preferable, but not required, they match the user's search terms
+      So you'll go through many iterations of search. Pick the most relevant over all your searching and show
+      them at the very end.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return the *DOC IDs*
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
+      - oracle:
+          prompt: Please return more relevant results to better help the user find what they're looking for.
+          params:
+            max_runs: 2
+    stop:
+      - tool_calls:
+          prompt: You're doing really well. Please keep searching until 4 tool calls have been made so no stone is left unturned.
+          params:
+            num_calls: 4
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - e5_base_v2:
+          guards:
+            - disallow_repeated_queries

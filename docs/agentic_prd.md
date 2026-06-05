@@ -32,9 +32,6 @@ strategy:
       - minilm:
 ```
 
-The judge passes when all results are 😃. If not, it retries until `max_runs` is reached,
-then it accepts the results to avoid an infinite loop (default `max_runs: 2`).
-
 This calls OpenAI with
 
 - the system prompt here
@@ -295,6 +292,32 @@ LLM evaluations:
 1. 😞 Red Shoes (ID: 1234)
 2. 😃 Purple Shoes
 ```
+
+The judge passes when all results are 😃. If not, it retries until `max_runs` is reached,
+then it accepts the results to avoid an infinite loop (default `max_runs: 2`).
+
+
+### Oracle Judge Validator
+
+One type of validator - an oracle judge.
+
+```
+    validators:
+      - oracle
+
+```
+
+An oracle acts like an LLM judge, but labels according to the judgments of the active
+dataset. Similar to LLM judge, it has the following properties:
+
+Labels with emojis:
+
+If a dataset has two labels, the emojis should be: [😃, 😞] 
+If a dataset has three labels, the emojis should be: [😃, 😐, 😞]
+If a dataset has four labels, the emojis should be: [🤩, 😃, 😐, 😞]
+
+If a document does not have a label for a query, it should receive the most negative emoji 😞 consistent
+with the rules of most open search datasets
 
 
 ## Plan through list of agents
