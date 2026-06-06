@@ -22,7 +22,7 @@ strategy:
           params:
             min_results: 10
       - oracle:
-          prompt: Please return more relevant results to better help the user find what they're looking for.
+          prompt: Thanks, but here's an evaluation of the search results you gave me. Please keep relevant results, but search to replace the irrelevant results with better ones.
           params:
             max_runs: 2
     stop:
