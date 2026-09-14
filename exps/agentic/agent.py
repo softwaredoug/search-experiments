@@ -146,12 +146,14 @@ def build_openai_agent(
     model: str,
     response_model: Type[BaseModel] | None,
     reasoning_level: str,
+    images: bool = False,
 ) -> OpenAIAgent:
     return OpenAIAgent(
         tools=tools,
         model=model,
         response_model=response_model,
         reasoning_level=reasoning_level,
+        process_images=images,
     )
 
 
@@ -163,6 +165,7 @@ class Agent:
         judgments=None,
         model: str = "gpt-5-mini",
         reasoning: str = "medium",
+        images: bool = False,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
         subagent_system_prompt: str = SUBAGENT_SYSTEM_PROMPT,
@@ -178,6 +181,7 @@ class Agent:
         self.corpus = corpus
         self.model = model
         self.reasoning = reasoning
+        self.images = images
         self.system_prompt = system_prompt
         self.search_tools = search_tools or ["bm25"]
         self.subagent_system_prompt = subagent_system_prompt
@@ -233,6 +237,7 @@ class Agent:
             {
                 "tools": _normalize_search_tools_for_cache(tool_config),
                 "system_prompt": system_prompt,
+                "images": self.images,
             },
             sort_keys=True,
             default=str,
@@ -259,6 +264,7 @@ class Agent:
                 model=self.model,
                 reasoning=self.reasoning,
                 system_prompt=self.subagent_system_prompt,
+                images=self.images,
             )
             tools.insert(0, task_tool)
         self._tool_cache[cache_key] = tools
@@ -288,6 +294,7 @@ class Agent:
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
             response_model=self.response_model,
             reasoning_level=self.reasoning,
+            images=self.images,
         )
 
         num_loops = 0
@@ -311,6 +318,7 @@ class Agent:
                     judgments=self.judgments,
                     agent_state=agent_state,
                     logger=logger,
+                    images=self.images,
                 )
                 if result is True:
                     continue

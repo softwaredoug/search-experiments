@@ -32,6 +32,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         workers: int = 1,
         model: str = "gpt-5-mini",
         reasoning: str = "medium",
+        images: bool = False,
         agents: dict | None = None,
         plan: list | None = None,
         stop: list | None = None,
@@ -52,6 +53,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         self.trace_path = trace_path
         self.model = model
         self.reasoning = reasoning
+        self.images = images
         self.embeddings_device = embeddings_device
         self.stop = stop
         self.validators = validators
@@ -76,6 +78,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             corpus=corpus,
             model=model,
             reasoning=reasoning,
+            images=images,
             system_prompt=self._select_agent_cfg.get("system_prompt", ""),
             search_tools=self._select_agent_cfg.get("search_tools") or [],
             agents={"select": self._select_agent_cfg},
@@ -92,6 +95,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             corpus=corpus,
             model=model,
             reasoning=reasoning,
+            images=images,
             system_prompt=self._scatter_agent_cfg.get("system_prompt", ""),
             search_tools=self._scatter_agent_cfg.get("search_tools") or [],
             agents={"scatter": self._scatter_agent_cfg},
@@ -108,6 +112,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             corpus=corpus,
             model=model,
             reasoning=reasoning,
+            images=images,
             system_prompt=self._gather_agent_cfg.get("system_prompt", ""),
             search_tools=[],
             agents={"gather": self._gather_agent_cfg},
@@ -255,6 +260,9 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                     row = self.corpus.iloc[index]
                     detail["title"] = str(row.get("title", "") or "")
                     detail["description"] = str(row.get("description", "") or "")
+                    image_url = row.get("image_url")
+                    if image_url is not None and not (isinstance(image_url, float) and image_url != image_url):
+                        detail["image_url"] = image_url
                     detail["category"] = str(
                         row.get(self._category_column, category) or category
                     )
@@ -418,6 +426,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             "type": self._type,
             "model": self.model,
             "reasoning": self.reasoning,
+            "images": self.images,
             "plan": self._plan_prompts,
             "agents": agents_payload,
             "stop": self.stop,

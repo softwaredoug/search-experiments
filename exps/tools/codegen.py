@@ -8,6 +8,8 @@ from typing import Any, Union
 
 import numpy as np
 
+from exps.tools.results import format_corpus_result
+
 
 def _find_latest_reranker_path(path: Path) -> Path:
     if path.is_file():
@@ -134,12 +136,16 @@ def make_codegen_tool(
             if doc_id is None or doc_id not in doc_lookup.index:
                 continue
             row = doc_lookup.loc[doc_id]
-            entry = {
-                "id": int(_to_builtin(row.get("doc_id", doc_id))),
-                "title": str(_to_builtin(row.get("title", ""))),
-                "description": str(_to_builtin(row.get("description", ""))),
-                "score": float(score) if score is not None else 1.0 / (rank + 1),
-            }
+            entry = format_corpus_result(
+                row,
+                score=float(score) if score is not None else 1.0 / (rank + 1),
+                fallback_id=doc_id,
+            )
+            entry["id"] = int(_to_builtin(entry["id"]))
+            entry["title"] = str(_to_builtin(entry["title"]))
+            entry["description"] = str(_to_builtin(entry["description"]))
+            if "image_url" in entry:
+                entry["image_url"] = _to_builtin(entry["image_url"])
             for field in return_fields:
                 entry[field] = _to_builtin(row.get(field))
             results.append(entry)

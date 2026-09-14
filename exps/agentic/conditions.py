@@ -246,6 +246,7 @@ def _run_llm_judge(
     reasoning: str,
     judge_prompt: str,
     logger,
+    images: bool = False,
 ) -> list[GradedSearchResult]:
     results_block = _render_results_for_judge(
         corpus=corpus,
@@ -259,6 +260,7 @@ def _run_llm_judge(
         model=f"openai/{model}" if "/" not in model else model,
         response_model=LLMJudgeResponse,
         reasoning_level=reasoning,
+        process_images=images,
     )
     resp, _, _ = judge_agent.chat(inputs=inputs, agent_state=None, logger=logger)
     parsed = getattr(resp, "output_parsed", None)
@@ -279,6 +281,7 @@ def evaluate_validator(
     judgments,
     agent_state: dict | None,
     logger,
+    images: bool = False,
 ) -> bool | str:
     if condition["name"] == "llm_judge_relevance":
         ranked = getattr(resp.output_parsed, "ranked_results", None) if resp else None
@@ -299,6 +302,7 @@ def evaluate_validator(
             reasoning=str(params["reasoning"]),
             judge_prompt=str(params["judge_prompt"]),
             logger=logger,
+            images=images,
         )
         if _judge_is_passing(graded_results):
             return True

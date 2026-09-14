@@ -29,6 +29,7 @@ class AgenticSearchStrategy(SearchStrategy):
         workers: int = 1,
         model: str = "gpt-5-mini",
         reasoning: str = "medium",
+        images: bool = False,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
         subagent_system_prompt: str = SUBAGENT_SYSTEM_PROMPT,
@@ -55,6 +56,7 @@ class AgenticSearchStrategy(SearchStrategy):
         self.max_loops = max_loops if max_loops is not None else self._default_max_loops
         self.model = model
         self.reasoning = reasoning
+        self.images = images
         self.system_prompt = system_prompt
         self.corpus = corpus
         self.agent = Agent(
@@ -65,6 +67,7 @@ class AgenticSearchStrategy(SearchStrategy):
             system_prompt=system_prompt,
             search_tools=self.search_tools,
             subagent_system_prompt=subagent_system_prompt,
+            images=images,
             agents=agents,
             plan=plan,
             stop=stop,
@@ -153,6 +156,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "type": self._type,
             "model": self.model,
             "reasoning": self.reasoning,
+            "images": self.images,
             "system_prompt": self.system_prompt,
             "search_tools": _normalize_search_tools_for_cache(self.search_tools),
             "subagent_system_prompt": self.subagent_system_prompt,

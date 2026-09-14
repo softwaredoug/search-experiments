@@ -59,6 +59,7 @@ def build_task_tool(
     model: str,
     reasoning: str,
     system_prompt: str,
+    images: bool = False,
 ) -> Callable[[str, int, dict | None], list[dict]]:
     """Build a task tool for orchestrated agent topologies."""
 
@@ -81,6 +82,7 @@ def build_task_tool(
                 model=f"openai/{model}" if "/" not in model else model,
                 reasoning_level=reasoning,
                 response_model=None,
+                process_images=images,
             )
             inputs = [
                 {"role": "system", "content": system_prompt},
@@ -96,7 +98,7 @@ def build_task_tool(
             previous_inputs = list(inputs)
             logger = agent_state.get("trace_logger")
             _, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
-            new_items = inputs[len(previous_inputs) :]
+            new_items = inputs[len(previous_inputs):]
             _log_subagent_outputs(agent_state, new_items)
             results = _collect_tool_outputs(new_items)
             _log_task_tool_result(agent_state, len(results))

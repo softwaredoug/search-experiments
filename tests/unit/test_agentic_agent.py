@@ -12,11 +12,12 @@ class _FakeOpenAIAgent:
     last_instance = None
     instances: list["_FakeOpenAIAgent"] = []
 
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, images=False):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.images = images
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
         _FakeOpenAIAgent.instances.append(self)
@@ -61,6 +62,7 @@ def test_agent_runs_single_step(tmp_path):
         corpus=corpus,
         model="gpt-5-mini",
         reasoning="low",
+        images=True,
         system_prompt="system",
         search_tools=["bm25"],
         plan=None,
@@ -76,6 +78,7 @@ def test_agent_runs_single_step(tmp_path):
 
     assert result.output == ["101", "202"]
     assert result.num_tool_calls == 1
+    assert _FakeOpenAIAgent.instances[0].images is True
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])

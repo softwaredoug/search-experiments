@@ -22,11 +22,13 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         corpus,
         workers: int = 1,
         model: str = "gpt-5",
+        images: bool = False,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         skills: dict[str, str] | None = None,
         tools=None,
     ):
         self.model = model
+        self.images = images
         self.skills = skills or {}
         self.system_prompt = system_prompt
         self._lookup = build_doc_id_lookup(corpus)
@@ -50,6 +52,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         payload = {
             "type": "agentic_ralphed",
             "model": self.model,
+            "images": self.images,
             "system_prompt": self.system_prompt,
             "skills": self.skills,
             "tools": ["minilm", "bm25"],
@@ -93,6 +96,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
             response_model=SearchResults,
             reasoning_level="medium",
+            images=self.images,
         )
         resp = None
         while True:

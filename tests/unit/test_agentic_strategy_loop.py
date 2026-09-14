@@ -12,11 +12,12 @@ from exps.agentic import conditions as conditions_mod
 class _FakeOpenAIAgent:
     last_instance = None
 
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, images=False, process_images=False):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.images = images or process_images
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
 

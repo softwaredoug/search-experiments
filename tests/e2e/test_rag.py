@@ -8,7 +8,7 @@ from exps.runners.run import RunParams, run_benchmark
 class _FakeQueryAgent:
     last_inputs = None
 
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, images=False):
         self.response_model = response_model
 
     def chat(self, *, inputs=None, agent_state=None, logger=None):

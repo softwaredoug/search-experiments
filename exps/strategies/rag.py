@@ -49,6 +49,7 @@ class RagSearchStrategy(SearchStrategy):
         *,
         model: str = "gpt-5-mini",
         reasoning: str = "medium",
+        images: bool = False,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         search_tools: list | None = None,
         workers: int = 1,
@@ -62,6 +63,7 @@ class RagSearchStrategy(SearchStrategy):
         self.corpus = corpus
         self.model = model
         self.reasoning = reasoning
+        self.images = images
         self.system_prompt = system_prompt
         self.search_tools = configured_tools
         self.embeddings_device = embeddings_device
@@ -81,6 +83,7 @@ class RagSearchStrategy(SearchStrategy):
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
             response_model=SearchQuery,
             reasoning_level=self.reasoning,
+            images=self.images,
         )
         response, _, _ = agent.chat(
             inputs=[
@@ -132,6 +135,7 @@ class RagSearchStrategy(SearchStrategy):
             "type": self._type,
             "model": self.model,
             "reasoning": self.reasoning,
+            "images": self.images,
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools(self.search_tools),
             "embeddings_device": self.embeddings_device,

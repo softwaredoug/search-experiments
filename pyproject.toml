@@ -33,7 +33,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.uv.sources]
-cheat-at-search = { git = "https://github.com/softwaredoug/cheat-at-search.git", rev = "0547faf5b534ebacb41b167d39a61d97ee44b777" }
+cheat-at-search = { git = "https://github.com/softwaredoug/cheat-at-search.git", rev = "2cfcbf60f54f07b98285b4139f5b138de2f9d774" }
 
 [dependency-groups]
 dev = [

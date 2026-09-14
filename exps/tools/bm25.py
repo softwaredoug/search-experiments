@@ -8,6 +8,7 @@ from searcharray.similarity import bm25_similarity
 from typing_extensions import Literal
 
 from cheat_at_search.tokenizers import snowball_tokenizer
+from exps.tools.results import format_corpus_result
 
 
 def make_bm25_tool(
@@ -63,15 +64,7 @@ def make_bm25_tool(
 
         results = []
         for _, row in top_rows.iterrows():
-            result = {
-                "id": row.get("doc_id", row.name),
-                "title": row.get("title", ""),
-                "description": row.get("description", ""),
-                "score": row.get("score", 0.0),
-            }
-            if "path" in top_rows.columns:
-                result["path"] = row.get("path", "")
-            results.append(result)
+            results.append(format_corpus_result(row, score=row.get("score", 0.0), fallback_id=row.name))
         return results
 
     return search_bm25
@@ -201,15 +194,7 @@ def make_fielded_bm25_tool(corpus):
 
         results = []
         for _, row in top_rows.iterrows():
-            result = {
-                "id": row.get("doc_id"),
-                "title": row.get("title", ""),
-                "description": row.get("description", ""),
-                "score": row.get("score", 0.0),
-            }
-            if "path" in top_rows.columns:
-                result["path"] = row.get("path", "")
-            results.append(result)
+            results.append(format_corpus_result(row, score=row.get("score", 0.0)))
         return results
 
     return fielded_bm25

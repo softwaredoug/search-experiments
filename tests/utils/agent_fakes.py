@@ -20,11 +20,12 @@ def build_agent_script(
 
 
 class FakeOpenAIAgent:
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, images=False, process_images=False):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.process_images = process_images or images
         self.calls = 0
         self.chat_calls = 0
         self._script_index = 0
@@ -133,11 +134,12 @@ class FakeLLMJudgeAgent:
     calls = 0
     emojis = ["😞", "😃"]
 
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, process_images=False):
         self.tools = tools
         self.model = model
         self.response_model = response_model
         self.reasoning_level = reasoning_level
+        self.process_images = process_images
 
     @classmethod
     def reset(cls, emojis: list[str] | None = None) -> None:
@@ -167,7 +169,7 @@ class FakeLLMJudgeAgent:
 class FakeCodegenAgent:
     script: list[dict] | None = None
 
-    def __init__(self, tools, model, response_model, reasoning_level):
+    def __init__(self, tools, model, response_model, reasoning_level, images=False):
         self.tools = tools
         self.model = model
         self.response_model = response_model

@@ -7,6 +7,7 @@ import pytest
 
 from exps.strategies.bm25 import BM25Strategy
 from exps import tools as tools_mod
+from exps.tools.results import format_corpus_result
 
 
 class _FakeMinilm:
@@ -37,6 +38,24 @@ def test_guarded_tool_limits_top_k():
     assert isinstance(err, str)
 
 
+def test_corpus_result_includes_present_image_url_only():
+    row = pd.Series(
+        {
+            "doc_id": 101,
+            "title": "Alpha",
+            "description": "Desc A",
+            "image_url": "https://example.test/alpha.jpg",
+        }
+    )
+    result = format_corpus_result(row)
+    assert result["image_url"] == "https://example.test/alpha.jpg"
+
+    without_image = format_corpus_result(
+        pd.Series({"doc_id": 102, "title": "Beta", "description": "Desc B"})
+    )
+    assert "image_url" not in without_image
+
+
 def test_codegen_tool_returns_schema(tmp_path):
     reranker_path = Path(tmp_path) / "reranker.py"
     reranker_path.write_text(
@@ -52,6 +71,7 @@ def rerank_wands(query, **kwargs):
             "title": ["Alpha", "Beta", "Gamma"],
             "description": ["Desc A", "Desc B", "Desc C"],
             "category": ["cat-a", "cat-b", "cat-c"],
+            "image_url": ["https://example.test/a.jpg", "https://example.test/b.jpg", "https://example.test/c.jpg"],
         }
     )
     tools = tools_mod.build_search_tools(
@@ -79,6 +99,7 @@ def rerank_wands(query, **kwargs):
     assert results[0]["category"] == "cat-b"
     assert "title" in results[0]
     assert "description" in results[0]
+    assert results[0]["image_url"] == "https://example.test/b.jpg"
 
 
 def test_codegen_tool_missing_return_fields_raises(tmp_path):
@@ -150,6 +171,23 @@ def test_fielded_bm25_matches_bm25_strategy():
     tool_scores = [result["score"] for result in tool_results]
     assert tool_ids == list(indices)
     assert np.allclose(tool_scores, scores)
+
+
+def test_fielded_bm25_returns_image_url():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [0],
+            "title": ["blue chair"],
+            "description": ["comfortable chair for desk"],
+            "image_url": ["https://example.test/chair.jpg"],
+        }
+    )
+    results = tools_mod.make_fielded_bm25_tool(corpus)(
+        keywords="blue chair",
+        fields=["title", "description"],
+        top_k=1,
+    )
+    assert results[0]["image_url"] == "https://example.test/chair.jpg"
 
 
 def test_fielded_bm25_phrase_operator():
