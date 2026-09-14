@@ -1,13 +1,12 @@
 from typing_extensions import Literal
 
-from exps.mounting import ensure_data_mounted
-
 DATASET_NAMES = ("esci", "minimarco", "msmarco", "wands", "doug_blog")
 DatasetName = Literal["esci", "minimarco", "msmarco", "wands", "doug_blog"]
 
 
 def get_dataset(name: DatasetName, workers: int = 1, ensure_snowball: bool = True):
-    ensure_data_mounted()
+    from cheat_at_search.data_dir import DATA_PATH
+    print(f"Loading dataset {name} from {DATA_PATH} with {workers} workers and ensure_snowball={ensure_snowball}")
     try:
         if name == "esci":
             from cheat_at_search import esci_data as dataset
