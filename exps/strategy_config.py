@@ -10,6 +10,7 @@ from exps.agentic.scatter_gather import ScatterGatherWandsStrategy
 from exps.agentic.strategy import AgenticSearchStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
+from exps.strategies.rag import RagSearchStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy
 
 
@@ -26,6 +27,7 @@ STRATEGY_TYPES = {
     AgenticSearchStrategy._type: AgenticSearchStrategy,
     ScatterGatherWandsStrategy._type: ScatterGatherWandsStrategy,
     EmbeddingStrategy._type: EmbeddingStrategy,
+    RagSearchStrategy._type: RagSearchStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
 }
 
