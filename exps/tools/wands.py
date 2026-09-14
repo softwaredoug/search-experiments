@@ -238,6 +238,8 @@ def make_wands_embedding_tool(
         chunk_size=DEFAULT_CHUNK_SIZE,
         show_progress=show_progress,
     )
+    if not isinstance(embeddings, np.ndarray):
+        embeddings = np.asarray(list(embeddings))
     if model is None:
         model = load_model(model_name, device=device)
 

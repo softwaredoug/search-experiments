@@ -67,6 +67,8 @@ class EmbeddingStrategy(SearchStrategy):
             chunk_size=DEFAULT_CHUNK_SIZE,
             show_progress=True,
         )
+        if not isinstance(embeddings, np.ndarray):
+            embeddings = np.asarray(list(embeddings))
         self._embeddings = embeddings
         self._model = model
         doc_norms = np.linalg.norm(self._embeddings, axis=1)
