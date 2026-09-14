@@ -5,7 +5,7 @@ description = "Search experiments benchmarks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "cheat-at-search @ git+https://github.com/softwaredoug/cheat-at-search.git@a483597a9d0adbce18b9ee1bf39c48e3b11dd148",
+    "cheat-at-search",
     "pyyaml>=6.0.2",
 ]
 
@@ -31,6 +31,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv.sources]
+cheat-at-search = { git = "https://github.com/softwaredoug/cheat-at-search.git", rev = "0547faf5b534ebacb41b167d39a61d97ee44b777" }
 
 [dependency-groups]
 dev = [

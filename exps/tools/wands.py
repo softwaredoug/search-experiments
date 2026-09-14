@@ -13,7 +13,7 @@ from cheat_at_search.embeddings import (
     load_or_create_embeddings,
 )
 from cheat_at_search.tokenizers import snowball_tokenizer
-from exps.embeddings_utils import make_passage_fn
+from cheat_at_search.passage_fn import make_passage_fn
 
 WANDS_TOP_CATEGORIES = [
     "Furniture",

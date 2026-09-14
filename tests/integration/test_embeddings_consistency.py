@@ -6,22 +6,11 @@ import numpy as np
 import pytest
 
 from cheat_at_search.search import ndcgs, run_strategy
+from cheat_at_search.passage_fn import default_passage_fn
 from cheat_at_search.strategy import SearchStrategy
 
 from exps.datasets import get_dataset
 from exps.strategies.embedding import EmbeddingStrategy
-
-
-def _passage_text(row) -> str:
-    title = row.get("title")
-    description = row.get("description")
-    title_text = title.strip() if isinstance(title, str) else ""
-    description_text = description.strip() if isinstance(description, str) else ""
-    if title_text and description_text:
-        return f"{title_text}\n\n{description_text}"
-    if title_text:
-        return title_text
-    return description_text
 
 
 class DirectEmbeddingStrategy(SearchStrategy):
@@ -42,7 +31,7 @@ class DirectEmbeddingStrategy(SearchStrategy):
             if device
             else SentenceTransformer(model_name)
         )
-        texts = [_passage_text(row) for _, row in corpus.iterrows()]
+        texts = [default_passage_fn(row) for _, row in corpus.iterrows()]
         embeddings = self._model.encode(texts, convert_to_numpy=True)
         embeddings = np.asarray(embeddings)
         norms = np.linalg.norm(embeddings, axis=1)
