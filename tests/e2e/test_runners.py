@@ -13,10 +13,15 @@ from cheat_at_search.search import run_strategy
 
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
+from exps.runners.query_classification import (
+    QueryClassificationParams,
+    evaluate_query_classification,
+)
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.runners.run import RunParams, run_benchmark
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
-from exps.strategies.query_understanding import QueryUnderstandingStrategy
+from exps.query_understanding import QueryUnderstandingStrategy
+from exps.query_understanding.enrichers import make_dummy_enricher
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -112,7 +117,6 @@ strategy:
         corpus,
         categorize={
             "field": "category",
-            "enrichment_engine": {"type": "dummy"},
         },
         retrieval_engine={
             "base": "bm25_boosted",
@@ -121,8 +125,9 @@ strategy:
                 "boost_matches": 10,
             },
         },
+        enricher=make_dummy_enricher(vocabulary),
     )
-    assert strategy.enricher.enrich("any query") == [strategy.vocabulary[0]]
+    assert strategy.enricher.enrich("any query") == [vocabulary[0]]
 
     params = RunParams(
         strategy_path=str(config_path),
@@ -139,6 +144,57 @@ strategy:
     assert result.metric_name == "NDCG"
     assert result.metric_series is not None
     assert len(result.metric_series) == 2
+
+
+def test_query_classification_backend_dummy_doug_blog(tmp_path, doug_blog_dataset):
+    corpus = doug_blog_dataset.corpus.copy()
+    vocabulary = [f"category-{index}" for index in range(6)]
+    rng = np.random.default_rng(123)
+    corpus["category"] = rng.choice(vocabulary, size=len(corpus))
+    dataset = SimpleNamespace(corpus=corpus, judgments=doug_blog_dataset.judgments)
+
+    config_path = tmp_path / "query_understanding.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_dummy_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: dummy
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        query_threshold=0.8,
+    )
+    with patch(
+        "exps.runners.query_classification.get_dataset", return_value=dataset
+    ):
+        result = evaluate_query_classification(params)
+
+    assert not result.per_query.empty
+    assert set(result.per_query) == {
+        "query",
+        "expected_categories",
+        "generated_categories",
+        "recall",
+        "jaccard",
+    }
+    assert result.per_query["generated_categories"].map(bool).all()
+    assert 0.0 <= result.mean_recall <= 1.0
+    assert 0.0 <= result.mean_jaccard <= 1.0
+    assert result.coverage == 1.0
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):

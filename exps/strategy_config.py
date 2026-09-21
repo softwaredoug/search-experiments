@@ -8,9 +8,9 @@ import yaml
 
 from exps.agentic.scatter_gather import ScatterGatherWandsStrategy
 from exps.agentic.strategy import AgenticSearchStrategy
+from exps.query_understanding import QueryUnderstandingStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
-from exps.strategies.query_understanding import QueryUnderstandingStrategy
 from exps.strategies.rag import RagSearchStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy
 

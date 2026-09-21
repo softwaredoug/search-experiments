@@ -22,6 +22,7 @@ dev = [
 [project.scripts]
 run = "exps.runner:main"
 query = "exps.query_runner:main"
+query_classification = "exps.query_classification_runner:main"
 diff = "exps.diff:main"
 train = "exps.train_runner:main"
 

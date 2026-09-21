@@ -9,17 +9,7 @@ from searcharray.similarity import bm25_similarity
 
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
-
-
-class DummyEnricher:
-    """Deterministic enrichment engine used for strategy tests and baselines."""
-
-    def __init__(self, vocabulary: list[str]):
-        self.vocabulary = vocabulary
-
-    def enrich(self, query: str) -> list[str]:
-        del query
-        return self.vocabulary[:1]
+from exps.query_understanding.enrichers import Enricher, make_enricher
 
 
 def _parse_fields(fields: list[str]) -> dict[str, float]:
@@ -52,13 +42,29 @@ class QueryUnderstandingStrategy(SearchStrategy):
 
     @classmethod
     def build(cls, params: dict, *, corpus, workers: int = 1, **kwargs):
-        return cls(corpus, workers=workers, **params)
+        categorize = params.get("categorize") or {}
+        category_field = categorize.get("field")
+        if not isinstance(category_field, str) or not category_field:
+            raise ValueError("categorize.field must be a non-empty string.")
+        if category_field not in corpus.columns:
+            raise ValueError(f"Missing category field: {category_field}")
+        values = corpus[category_field].dropna().astype(str).tolist()
+        vocabulary = list(dict.fromkeys(value for value in values if value))
+        enricher = make_enricher(
+            categorize.get("enrichment_engine"),
+            field=category_field,
+            vocabulary=vocabulary,
+            model=params.get("model", "gpt-5-mini"),
+            reasoning=params.get("reasoning"),
+        )
+        return cls(corpus, workers=workers, enricher=enricher, **params)
 
     def __init__(
         self,
         corpus,
         categorize: dict,
         retrieval_engine: dict,
+        enricher: Enricher,
         workers: int = 1,
         top_k: int = 10,
         **_unused,
@@ -70,17 +76,9 @@ class QueryUnderstandingStrategy(SearchStrategy):
             raise ValueError("categorize.field must be a non-empty string.")
         if self.category_field not in corpus.columns:
             raise ValueError(f"Missing category field: {self.category_field}")
-
-        enrichment_config = categorize.get("enrichment_engine") or {}
-        enrichment_type = enrichment_config.get("type")
-        if enrichment_type != "dummy":
-            raise ValueError(
-                "Only the dummy enrichment engine is implemented; "
-                f"received {enrichment_type!r}."
-            )
-        values = corpus[self.category_field].dropna().astype(str).tolist()
-        self.vocabulary = list(dict.fromkeys(value for value in values if value))
-        self.enricher = DummyEnricher(self.vocabulary)
+        if not hasattr(enricher, "enrich") or not hasattr(enricher, "cache_key"):
+            raise TypeError("enricher must implement the Enricher protocol.")
+        self.enricher = enricher
 
         retrieval_config = retrieval_engine or {}
         self.retrieval_base = retrieval_config.get("base", "bm25_boosted")
@@ -118,6 +116,9 @@ class QueryUnderstandingStrategy(SearchStrategy):
                 matches |= self.index[self.category_index_name].array.score(term) > 0
         return matches
 
+    def enrich(self, query: str) -> list[str]:
+        return self.enricher.enrich(query)
+
     def search(self, query: str, k: int = 10):
         query_terms = snowball_tokenizer(query)
         scores = np.zeros(len(self.index), dtype=float)
@@ -131,7 +132,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
                     * weight
                 )
 
-        categories = self.enricher.enrich(query)
+        categories = self.enrich(query)
         category_matches = self._category_matches(categories)
         if self.retrieval_base == "bm25_filtered" and categories:
             scores = np.where(category_matches, scores, -np.inf)
@@ -152,7 +153,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             "k1": self.k1,
             "b": self.b,
             "top_k": getattr(self, "top_k", None),
-            "vocabulary": self.vocabulary,
+            "enricher": self.enricher.cache_key,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

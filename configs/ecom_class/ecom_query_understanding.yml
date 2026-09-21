@@ -1,0 +1,13 @@
+strategy:
+  name: ecom_query_understanding_dummy
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: dummy
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
