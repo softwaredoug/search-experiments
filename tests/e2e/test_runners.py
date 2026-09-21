@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
+import numpy as np
 
 from cheat_at_search.search import run_strategy
 
@@ -15,6 +16,7 @@ from exps.metrics import metric_for_dataset
 from exps.runners.diff import DiffParams, diff_benchmark
 from exps.runners.run import RunParams, run_benchmark
 from exps.strategy_config import load_strategy_config, resolve_strategy_class
+from exps.strategies.query_understanding import QueryUnderstandingStrategy
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -75,6 +77,68 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert result.summary["tool_calls_mean"] == 1.0
     assert result.summary["tool_calls_median"] == 1.0
     assert result.summary["tool_calls_std"] == 0.0
+
+
+def test_run_benchmark_query_understanding_dummy_doug_blog(
+    tmp_path, doug_blog_dataset
+):
+    corpus = doug_blog_dataset.corpus.copy()
+    vocabulary = [f"category-{index}" for index in range(6)]
+    rng = np.random.default_rng(123)
+    corpus["category"] = rng.choice(vocabulary, size=len(corpus))
+    dataset = SimpleNamespace(corpus=corpus, judgments=doug_blog_dataset.judgments)
+
+    config_path = tmp_path / "query_understanding.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_dummy_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: dummy
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    strategy = QueryUnderstandingStrategy(
+        corpus,
+        categorize={
+            "field": "category",
+            "enrichment_engine": {"type": "dummy"},
+        },
+        retrieval_engine={
+            "base": "bm25_boosted",
+            "params": {
+                "fields": ["title^9.4", "description^4"],
+                "boost_matches": 10,
+            },
+        },
+    )
+    assert strategy.enricher.enrich("any query") == [strategy.vocabulary[0]]
+
+    params = RunParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        num_queries=2,
+        seed=123,
+        workers=1,
+        no_cache=True,
+    )
+    with patch("exps.runners.run.get_dataset", return_value=dataset):
+        result = run_benchmark(params)
+
+    assert result.strategy_name == "query_understanding_dummy_fixture"
+    assert result.metric_name == "NDCG"
+    assert result.metric_series is not None
+    assert len(result.metric_series) == 2
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):

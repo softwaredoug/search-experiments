@@ -44,7 +44,7 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
         return False
     if strategy_type in {"agentic", "scatter_gather_wands"}:
         return True
-    if strategy_type == "codegen":
+    if strategy_type in {"query_understanding", "codegen"}:
         return True
     return True
 
