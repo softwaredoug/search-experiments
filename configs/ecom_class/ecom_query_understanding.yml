@@ -1,11 +1,23 @@
 strategy:
-  name: ecom_query_understanding_dummy
+  name: ecom_query_understanding_llm_single
   type: query_understanding
   params:
+    model: gpt-5-mini
+    reasoning: medium
     categorize:
       field: category
       enrichment_engine:
-        type: dummy
+        type: llm_single
+        params:
+          prompt: |
+            For the given query, please generate the appropriate {field} to filter to zero-in on
+            the most relevant results.
+
+            If you're unsure, or the query is ambiguous, return "Unknown" as the category.
+
+            Here's the query:
+
+            {query}
     retrieval_engine:
       base: bm25_boosted
       params:

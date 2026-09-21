@@ -196,6 +196,35 @@ strategy:
     assert 0.0 <= result.mean_jaccard <= 1.0
     assert result.coverage == 1.0
 
+    unknown_params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        query="query not present in judgments",
+        query_threshold=0.8,
+    )
+    with patch(
+        "exps.runners.query_classification.get_dataset", return_value=dataset
+    ):
+        unknown_result = evaluate_query_classification(unknown_params)
+
+    unknown_row = unknown_result.per_query.iloc[0]
+    assert unknown_row["expected_categories"] == []
+    assert unknown_result.mean_recall is None
+    assert unknown_result.mean_jaccard is None
+    assert unknown_result.coverage == 1.0
+
+    limited_params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        limit=2,
+        query_threshold=0.8,
+    )
+    with patch(
+        "exps.runners.query_classification.get_dataset", return_value=dataset
+    ):
+        limited_result = evaluate_query_classification(limited_params)
+    assert len(limited_result.per_query) == 2
+
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):
     config_path = _write_bm25_config(tmp_path)

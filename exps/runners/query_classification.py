@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pandas as pd
+from tqdm import tqdm
 
 from exps.datasets import DatasetName, get_dataset
 from exps.strategy_factory import create_strategy, load_strategy
@@ -14,6 +15,7 @@ class QueryClassificationParams:
     base_path: str | None = None
     dataset: DatasetName = "wands"
     query: str | None = None
+    limit: int | None = None
     query_threshold: float = 0.8
     workers: int = 1
     device: str | None = None
@@ -22,8 +24,8 @@ class QueryClassificationParams:
 @dataclass
 class QueryClassificationResult:
     per_query: pd.DataFrame
-    mean_recall: float
-    mean_jaccard: float
+    mean_recall: float | None
+    mean_jaccard: float | None
     coverage: float
 
 
@@ -56,7 +58,7 @@ def _ground_truth(
 
     category_by_doc = corpus.set_index("doc_id")[category_field]
     truth: dict[str, list[str]] = {}
-    for query in queries:
+    for query in tqdm(queries, desc="Enriching queries", unit="query"):
         query_rows = judgments[judgments["query"] == query]
         grades = pd.to_numeric(query_rows[grade_column], errors="coerce").fillna(0)
         positive_rows = query_rows.loc[grades > 0]
@@ -81,6 +83,8 @@ def evaluate_query_classification(
 ) -> QueryClassificationResult:
     if not 0 <= params.query_threshold <= 1:
         raise ValueError("query_threshold must be between 0 and 1.")
+    if params.limit is not None and params.limit <= 0:
+        raise ValueError("limit must be greater than 0.")
 
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path,
@@ -115,6 +119,8 @@ def evaluate_query_classification(
     queries = [params.query] if params.query is not None else list(
         judgments["query"].drop_duplicates()
     )
+    if params.query is None and params.limit is not None:
+        queries = queries[: params.limit]
     expected = _ground_truth(
         queries=queries,
         judgments=judgments,
@@ -149,9 +155,9 @@ def evaluate_query_classification(
 
     per_query = pd.DataFrame(rows)
     nonempty_truth = per_query[per_query["expected_categories"].map(bool)]
-    mean_recall = float(nonempty_truth["recall"].mean()) if not nonempty_truth.empty else 0.0
+    mean_recall = float(nonempty_truth["recall"].mean()) if not nonempty_truth.empty else None
     mean_jaccard = (
-        float(nonempty_truth["jaccard"].mean()) if not nonempty_truth.empty else 0.0
+        float(nonempty_truth["jaccard"].mean()) if not nonempty_truth.empty else None
     )
     coverage = (
         float(per_query["generated_categories"].map(bool).mean())

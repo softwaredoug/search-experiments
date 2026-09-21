@@ -1,6 +1,9 @@
 from unittest.mock import patch
 
+import pytest
+
 from exps.query_understanding.enrichers import make_llm_single_enricher
+from exps.query_understanding.enrichers import make_enricher
 
 
 class FakeAutoEnricher:
@@ -28,6 +31,7 @@ def test_llm_single_enricher_builds_prompt_and_normalizes_response():
         enricher = make_llm_single_enricher(
             field="category",
             vocabulary=["Furniture", "Lighting"],
+            prompt="Classify {query} into {field}.",
             model="gpt-5-mini",
             reasoning="medium",
         )
@@ -39,7 +43,7 @@ def test_llm_single_enricher_builds_prompt_and_normalizes_response():
         "You are a helpful furniture shopping agent that helps users construct search queries."
     )
     assert len(auto_enricher.prompts) == 1
-    assert '"category"' in auto_enricher.prompts[0]
+    assert "Classify sofa into category." == auto_enricher.prompts[0]
     assert "sofa" in auto_enricher.prompts[0]
 
 
@@ -54,7 +58,17 @@ def test_llm_single_enricher_maps_unknown_to_empty_list():
             enricher = make_llm_single_enricher(
                 field="category",
                 vocabulary=["Furniture"],
+                prompt="Classify {query} into {field}.",
             )
             assert enricher.enrich("ambiguous") == []
     finally:
         FakeAutoEnricher.value = "Furniture"
+
+
+def test_llm_single_enricher_requires_prompt():
+    with pytest.raises(ValueError, match="params.prompt"):
+        make_enricher(
+            {"type": "llm_single"},
+            field="category",
+            vocabulary=["Furniture"],
+        )

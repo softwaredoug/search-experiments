@@ -17,6 +17,11 @@ def main() -> None:
     )
     parser.add_argument("--query", help="Evaluate one query instead of the full dataset.")
     parser.add_argument(
+        "--limit",
+        type=int,
+        help="Maximum number of queries to evaluate; defaults to the full dataset.",
+    )
+    parser.add_argument(
         "--query-threshold",
         type=float,
         default=0.8,
@@ -33,6 +38,7 @@ def main() -> None:
             base_path=args.base_path,
             dataset=args.dataset,
             query=args.query,
+            limit=args.limit,
             query_threshold=args.query_threshold,
             workers=args.workers,
             device=args.device,
@@ -43,8 +49,12 @@ def main() -> None:
         print(f"Query: {row['query']}")
         print(f"Expected categories: {row['expected_categories']}")
         print(f"Generated categories: {row['generated_categories']}")
-        print(f"Recall: {row['recall']:.4f}")
-        print(f"Jaccard: {row['jaccard']:.4f}")
+        if row["expected_categories"]:
+            print(f"Recall: {row['recall']:.4f}")
+            print(f"Jaccard: {row['jaccard']:.4f}")
+        else:
+            print("Recall: unavailable (no ground truth categories)")
+            print("Jaccard: unavailable (no ground truth categories)")
         return
 
     print(f"Queries: {len(result.per_query)}")
@@ -52,8 +62,12 @@ def main() -> None:
         "Queries with ground truth: "
         f"{result.per_query['expected_categories'].map(bool).sum()}"
     )
-    print(f"Mean recall: {result.mean_recall:.4f}")
-    print(f"Mean Jaccard: {result.mean_jaccard:.4f}")
+    mean_recall = f"{result.mean_recall:.4f}" if result.mean_recall is not None else "unavailable"
+    mean_jaccard = (
+        f"{result.mean_jaccard:.4f}" if result.mean_jaccard is not None else "unavailable"
+    )
+    print(f"Mean recall: {mean_recall}")
+    print(f"Mean Jaccard: {mean_jaccard}")
     print(f"Coverage: {result.coverage:.4f}")
 
 

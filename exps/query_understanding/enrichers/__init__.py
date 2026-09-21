@@ -27,9 +27,15 @@ def make_enricher(
     if enrichment_type == "dummy":
         return make_dummy_enricher(vocabulary)
     if enrichment_type == "llm_single":
+        prompt = params.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError(
+                "llm_single enrichment requires params.prompt as a non-empty template."
+            )
         return make_llm_single_enricher(
             field=field,
             vocabulary=vocabulary,
+            prompt=prompt,
             model=model,
             reasoning=reasoning,
             params=params,
