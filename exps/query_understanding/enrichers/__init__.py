@@ -10,6 +10,10 @@ from exps.query_understanding.enrichers.llm_single import (
     LLMSingleEnricher,
     make_llm_single_enricher,
 )
+from exps.query_understanding.enrichers.llm_multiple import (
+    LLMMultipleEnricher,
+    make_llm_multiple_enricher,
+)
 from exps.query_understanding.enrichers.protocol import Enricher
 
 
@@ -40,8 +44,22 @@ def make_enricher(
             reasoning=reasoning,
             params=params,
         )
+    if enrichment_type == "llm_multiple":
+        prompt = params.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError(
+                "llm_multiple enrichment requires params.prompt as a non-empty template."
+            )
+        return make_llm_multiple_enricher(
+            field=field,
+            vocabulary=vocabulary,
+            prompt=prompt,
+            model=model,
+            reasoning=reasoning,
+            params=params,
+        )
     raise ValueError(
-        "Supported enrichment engines are dummy and llm_single; "
+        "Supported enrichment engines are dummy, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
     )
 
@@ -50,7 +68,9 @@ __all__ = [
     "DummyEnricher",
     "Enricher",
     "LLMSingleEnricher",
+    "LLMMultipleEnricher",
     "make_dummy_enricher",
     "make_enricher",
     "make_llm_single_enricher",
+    "make_llm_multiple_enricher",
 ]

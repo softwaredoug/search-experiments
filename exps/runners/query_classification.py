@@ -51,6 +51,10 @@ def _ground_truth(
         raise ValueError(f"Judgments missing required columns: {missing}")
     if grade_column is None:
         raise ValueError("Judgments require a relevance/grade column.")
+    numeric_grades = pd.to_numeric(judgments[grade_column], errors="coerce")
+    max_grade = numeric_grades.max()
+    if pd.isna(max_grade):
+        raise ValueError("Judgments require at least one numeric relevance grade.")
     if "doc_id" not in corpus.columns:
         raise ValueError("Corpus requires a doc_id column for classification evaluation.")
     if category_field not in corpus.columns:
@@ -58,10 +62,10 @@ def _ground_truth(
 
     category_by_doc = corpus.set_index("doc_id")[category_field]
     truth: dict[str, list[str]] = {}
-    for query in tqdm(queries, desc="Enriching queries", unit="query"):
+    for query in queries:
         query_rows = judgments[judgments["query"] == query]
         grades = pd.to_numeric(query_rows[grade_column], errors="coerce").fillna(0)
-        positive_rows = query_rows.loc[grades > 0]
+        positive_rows = query_rows.loc[grades == max_grade]
         if positive_rows.empty:
             truth[query] = []
             continue
@@ -129,10 +133,12 @@ def evaluate_query_classification(
         threshold=params.query_threshold,
     )
 
+    enriched_queries = []
+    for query in tqdm(queries, desc="Enriching queries", unit="query"):
+        enriched_queries.append((query, expected[query], sorted(set(strategy.enrich(query)))))
+
     rows = []
-    for query in queries:
-        expected_categories = expected[query]
-        generated_categories = sorted(set(strategy.enrich(query)))
+    for query, expected_categories, generated_categories in enriched_queries:
         expected_set = set(expected_categories)
         generated_set = set(generated_categories)
         intersection = expected_set & generated_set

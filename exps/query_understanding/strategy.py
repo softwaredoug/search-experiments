@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import warnings
 
 import numpy as np
 from searcharray import SearchArray
@@ -10,6 +11,8 @@ from searcharray.similarity import bm25_similarity
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
 from exps.query_understanding.enrichers import Enricher, make_enricher
+
+MAX_CATEGORY_CARDINALITY = 300
 
 
 def _parse_fields(fields: list[str]) -> dict[str, float]:
@@ -48,8 +51,17 @@ class QueryUnderstandingStrategy(SearchStrategy):
             raise ValueError("categorize.field must be a non-empty string.")
         if category_field not in corpus.columns:
             raise ValueError(f"Missing category field: {category_field}")
-        values = corpus[category_field].dropna().astype(str).tolist()
-        vocabulary = list(dict.fromkeys(value for value in values if value))
+        values = corpus[category_field].dropna().astype(str)
+        values = values[values != ""]
+        category_counts = values.value_counts()
+        if len(category_counts) > MAX_CATEGORY_CARDINALITY:
+            warnings.warn(
+                f"Category field {category_field!r} has {len(category_counts)} values; "
+                f"using the top {MAX_CATEGORY_CARDINALITY} by corpus frequency.",
+                UserWarning,
+                stacklevel=2,
+            )
+        vocabulary = category_counts.head(MAX_CATEGORY_CARDINALITY).index.tolist()
         enricher = make_enricher(
             categorize.get("enrichment_engine"),
             field=category_field,
@@ -112,8 +124,8 @@ class QueryUnderstandingStrategy(SearchStrategy):
         matches = np.zeros(len(self.index), dtype=bool)
         for category in categories:
             terms = snowball_tokenizer(category)
-            for term in terms:
-                matches |= self.index[self.category_index_name].array.score(term) > 0
+            if terms:
+                matches |= self.index[self.category_index_name].array.score(terms) > 0
         return matches
 
     def enrich(self, query: str) -> list[str]:
