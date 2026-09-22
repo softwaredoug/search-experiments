@@ -63,11 +63,12 @@ class QueryUnderstandingStrategy(SearchStrategy):
                 stacklevel=2,
             )
         vocabulary = category_counts.head(MAX_CATEGORY_CARDINALITY).index.tolist()
+        enrichment_config = categorize.get("enrichment_engine") or {}
         enricher = make_enricher(
-            categorize.get("enrichment_engine"),
+            enrichment_config,
             field=category_field,
             vocabulary=vocabulary,
-            model=params.get("model", "gpt-5-mini"),
+            model=enrichment_config.get("model", "gpt-5-mini"),
             reasoning=params.get("reasoning"),
         )
         return cls(corpus, workers=workers, enricher=enricher, **params)

@@ -12,6 +12,8 @@ from exps.query_understanding import QueryUnderstandingStrategy
 from exps.query_understanding.retrieval_engines import (
     BM25HierarchyBoostedRetrievalEngine,
 )
+from exps.query_understanding.enrichers.llm_multiple import _model_name as multiple_model_name
+from exps.query_understanding.enrichers.llm_single import _model_name as single_model_name
 from exps.query_understanding.strategy import MAX_CATEGORY_CARDINALITY
 from exps.runners.query_classification import _ground_truth
 
@@ -82,6 +84,13 @@ def test_llm_single_enricher_requires_prompt():
             field="category",
             vocabulary=["Furniture"],
         )
+
+
+def test_llm_enricher_model_names_default_to_openai_without_overwriting_provider():
+    assert single_model_name("gpt-5") == "openai/gpt-5"
+    assert single_model_name("openai/gpt-5") == "openai/gpt-5"
+    assert multiple_model_name("gpt-5-mini") == "openai/gpt-5-mini"
+    assert multiple_model_name("anthropic/claude-sonnet") == "anthropic/claude-sonnet"
 
 
 def test_llm_multiple_enricher_returns_deduplicated_categories():
