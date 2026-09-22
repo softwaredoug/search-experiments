@@ -297,13 +297,20 @@ strategy:
     assert report["generated_categories"].map(
         lambda categories: categories == ["foo"]
     ).all()
+    assert report["recall"].eq(0.5).all()
+    assert report["jaccard"].eq(0.5).all()
     assert report["predicted_categories"].map(
         lambda categories: categories == ["foo / bar / baz"]
     ).all()
     assert report["category_level_0"].tolist() == ["foo", "foo", "luz", "lump", "lump"]
+    assert report["ground_truth_category_level_0"].map(
+        lambda categories: categories == ["foo", "lump"]
+    ).all()
     assert report["predicted_categories_level_0"].map(
         lambda categories: categories == ["foo"]
     ).all()
+    assert report.groupby("query")["recall"].mean().mean() == root_row["recall"]
+    assert report.groupby("query")["jaccard"].mean().mean() == root_row["jaccard"]
 
     no_report_root_row = evaluate("taxonomy[0]")
     assert no_report_root_row["expected_categories"] == root_row["expected_categories"]

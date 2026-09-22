@@ -89,7 +89,12 @@ def _write_report(
     )
     report[category_field] = report.pop(report_category_column)
     query_results = per_query.set_index("query")[
-        ["expected_categories", "generated_categories"]
+        [
+            "expected_categories",
+            "generated_categories",
+            "recall",
+            "jaccard",
+        ]
     ]
     report = report.join(query_results, on="query")
     report["predicted_categories"] = report["query"].map(predictions)
@@ -102,6 +107,9 @@ def _write_report(
                 else None
             )
         )
+        report[f"ground_truth_{category_field}_level_{taxonomy_level}"] = report[
+            "expected_categories"
+        ].map(list)
         report[f"predicted_categories_level_{taxonomy_level}"] = report[
             "predicted_categories"
         ].map(
