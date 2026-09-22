@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "cheat-at-search",
     "pyyaml>=6.0.2",
+    "typesafe-sdk>=0.7.1",
 ]
 
 [project.optional-dependencies]

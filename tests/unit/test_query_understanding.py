@@ -8,6 +8,7 @@ from cheat_at_search.tokenizers import snowball_tokenizer
 from exps.query_understanding.enrichers import make_enricher
 from exps.query_understanding.enrichers import make_llm_multiple_enricher
 from exps.query_understanding.enrichers import make_llm_single_enricher
+from exps.query_understanding.enrichers import make_choice_single_enricher
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.query_understanding.retrieval_engines import (
     BM25HierarchyBoostedRetrievalEngine,
@@ -32,6 +33,22 @@ class FakeAutoEnricher:
         self.prompts.append(prompt)
         field = next(iter(self.response_model.model_fields))
         return self.response_model(**{field: self.value})
+
+
+class FakeJevClient:
+    instances = []
+    value = "Furniture"
+
+    def __init__(self, **kwargs):
+        self.model = kwargs["model"]
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        question_id = next(iter(questions))
+        answer = type("Answer", (), {"choice": self.value})()
+        return type("Response", (), {"choices": {question_id: answer}})()
 
 
 def test_llm_single_enricher_builds_prompt_and_normalizes_response():
@@ -141,6 +158,102 @@ def test_llm_multiple_enricher_supports_quoted_category_values():
             assert "__category_0__" in FakeAutoEnricher.instances[0].prompts[0]
     finally:
         FakeAutoEnricher.value = "Furniture"
+
+
+def test_choice_single_enricher_adds_choice_descriptions_to_prompt():
+    FakeAutoEnricher.instances = []
+    FakeAutoEnricher.value = "Furniture"
+    with patch(
+        "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
+        FakeAutoEnricher,
+    ):
+        enricher = make_choice_single_enricher(
+            field="category",
+            vocabulary=["Furniture", "Lighting"],
+            choices="Furniture: Products used to furnish a room.\nLighting: Products that provide illumination.",
+            prompt="Which best describes the query?\n{query}",
+            model="gpt-5-mini",
+        )
+        assert enricher.enrich("sofa") == ["Furniture"]
+
+    prompt = FakeAutoEnricher.instances[0].prompts[0]
+    assert "Which best describes the query?\nsofa" in prompt
+    assert "- Furniture: Products used to furnish a room." in prompt
+    assert "- Lighting: Products that provide illumination." in prompt
+
+
+def test_choice_single_enricher_can_pad_missing_vocabulary_choices():
+    FakeAutoEnricher.instances = []
+    with patch(
+        "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
+        FakeAutoEnricher,
+    ):
+        enricher = make_choice_single_enricher(
+            field="category",
+            vocabulary=["Furniture", "Lighting"],
+            choices={"Furniture": "Products used to furnish a room."},
+            prompt="Classify {query}.",
+            params={"pad_missing_choices": True},
+        )
+    assert "Lighting" in enricher.response_model.model_json_schema()["properties"]["choice"]["enum"]
+
+
+def test_choice_single_unknown_means_no_classification():
+    FakeAutoEnricher.instances = []
+    FakeAutoEnricher.value = "Unknown"
+    try:
+        with patch(
+            "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
+            FakeAutoEnricher,
+        ):
+            enricher = make_choice_single_enricher(
+                field="category",
+                vocabulary=["Furniture"],
+                choices={"Furniture": "Products used to furnish a room."},
+                prompt="Classify {query}.",
+            )
+            assert enricher.enrich("ambiguous") == []
+            assert "- Unknown: No classification applies." in FakeAutoEnricher.instances[0].prompts[0]
+    finally:
+        FakeAutoEnricher.value = "Furniture"
+
+
+def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
+    FakeJevClient.instances = []
+    FakeJevClient.value = "Unknown"
+    try:
+        with patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            FakeJevClient,
+        ):
+            enricher = make_enricher(
+                {
+                    "type": "choice_single",
+                    "params": {
+                        "model": "jev/latest",
+                        "choices": {
+                            "Furniture": "Products used to furnish a room.",
+                        },
+                        "prompt": "Which category fits {query}?",
+                    },
+                },
+                field="category",
+                vocabulary=["Furniture", "Lighting"],
+            )
+            assert enricher.enrich("ambiguous") == []
+
+        client = FakeJevClient.instances[0]
+        assert client.model == "jev-latest"
+        state, questions = client.calls[0]
+        assert state == "ambiguous"
+        question = questions["category"]
+        assert question.instructions == "Which category fits ambiguous?"
+        assert question.criteria == {
+            "Furniture": "Products used to furnish a room.",
+            "Unknown": "No classification applies.",
+        }
+    finally:
+        FakeJevClient.value = "Furniture"
 
 
 def test_ground_truth_uses_maximum_grade_regardless_of_scale():
