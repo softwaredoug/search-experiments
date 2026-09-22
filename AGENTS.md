@@ -29,4 +29,16 @@ https://github.com/softwaredoug/searcharray)
 
 - Centrality of the "Strategy" class - many ways of implementing search are implemented as a SearchStrategy from (see cheat-at-search)
 - Strategies are configured - ie in yml files in config. That's how we paramaterize them to run experiments
-- Some strategies are trained
+- Strategies are run with `uv run run ...` runner script
+- Scripts in scripts/ run multiple strategies for some specific experiment (there's usually a corresponding python script to generate graphs and such)
+- We store graphs in assetts
+- There are writeups of some of these in research/
+- An ability to turn a config yml into a notebook (see [docs/notebooks.md](docs/notebooks_prd.md))
+
+### Runner design approach
+
+The different runners (primarilly `uv run run` but others too) are designed to be e2e agent testable as possible
+
+* A thin frontend script, ie (exps/runner.py) that uses argparse to process CLI into a data object, then call the right
+  backend
+* A thicker runners backend script, ie exps/runners/run.py that does the actual work (e2e tests test here)
