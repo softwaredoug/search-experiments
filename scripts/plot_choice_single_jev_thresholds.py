@@ -53,8 +53,9 @@ def main() -> None:
             point["label"],
             (point["coverage"], point["recall"]),
             textcoords="offset points",
-            xytext=(10, 8),
-            ha="left",
+            xytext=(12, -8),
+            ha="right",
+            va="top",
         )
     ax.set_title(f"Jev choice threshold: recall vs coverage (AUC={auc:.3f})")
     ax.set_xlabel("Coverage")
