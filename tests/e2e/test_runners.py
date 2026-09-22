@@ -305,6 +305,12 @@ strategy:
         lambda categories: categories == ["foo"]
     ).all()
 
+    no_report_root_row = evaluate("taxonomy[0]")
+    assert no_report_root_row["expected_categories"] == root_row["expected_categories"]
+    assert no_report_root_row["generated_categories"] == root_row["generated_categories"]
+    assert no_report_root_row["recall"] == root_row["recall"]
+    assert no_report_root_row["jaccard"] == root_row["jaccard"]
+
     level_one_row = evaluate("taxonomy[1]")
     assert level_one_row["expected_categories"] == ["bar"]
     assert level_one_row["generated_categories"] == ["bar"]

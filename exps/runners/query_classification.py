@@ -271,7 +271,7 @@ def evaluate_query_classification(
             corpus=corpus,
             category_field=category_field,
             queries=queries,
-            per_query=per_query,
+            per_query=per_query.copy(deep=True),
             predictions=predictions,
             taxonomy_level=taxonomy_level,
         )
