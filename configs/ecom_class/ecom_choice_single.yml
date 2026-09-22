@@ -10,7 +10,7 @@ strategy:
         params:
           model: gpt-5-mini
           pad_missing_choices: false
-          choices: |
+          choices:
             Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.
             Home Improvement: A search for products and services that help improve the functionality, aesthetics, or value of a home, such as tools, paint, and renovation services.
             Décor & Pillows: A search for products used to enhance the aesthetic appeal of a space, including decorative items, pillows, and other accessories.
@@ -24,9 +24,11 @@ strategy:
             School Furniture and Supplies: A search for products used in educational settings, including desks, chairs, and school supplies.
             Appliances: A search for products that are electrical or mechanical machines designed to perform specific household tasks, such as refrigerators, washing machines, and microwaves.
             Holiday Décor: A search for seasonal decorations and accessories used to celebrate holidays.
-            Unknown: No classification applies.
+            Unknown: No classification applies or its ambiguous
           prompt: |
             Which category best describes the query?
+
+            It's very important to choose "Unknown" if its unclear
 
             {query}
     retrieval_engine:
