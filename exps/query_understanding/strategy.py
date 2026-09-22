@@ -11,6 +11,7 @@ from searcharray.similarity import bm25_similarity
 from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
 from exps.query_understanding.enrichers import Enricher, make_enricher
+from exps.query_understanding.retrieval_engines import make_retrieval_engine
 
 MAX_CATEGORY_CARDINALITY = 300
 
@@ -94,15 +95,18 @@ class QueryUnderstandingStrategy(SearchStrategy):
 
         retrieval_config = retrieval_engine or {}
         self.retrieval_base = retrieval_config.get("base", "bm25_boosted")
-        if self.retrieval_base not in {"bm25_boosted", "bm25_filtered"}:
-            raise ValueError(
-                "retrieval_engine.base must be bm25_boosted or bm25_filtered."
-            )
         retrieval_params = retrieval_config.get("params") or {}
         self.fields = _parse_fields(retrieval_params.get("fields") or [])
-        self.category_boost = float(retrieval_params.get("boost_matches", 0.0))
-        if not np.isfinite(self.category_boost) or self.category_boost < 0:
+        category_boost = float(retrieval_params.get("boost_matches", 0.0))
+        if not np.isfinite(category_boost) or category_boost < 0:
             raise ValueError("boost_matches must be a non-negative number.")
+        hierarchy_decay = float(retrieval_params.get("decay", 0.5))
+        if not np.isfinite(hierarchy_decay) or not 0 <= hierarchy_decay <= 1:
+            raise ValueError("decay must be a number between 0 and 1.")
+        self.retrieval_params = {
+            "boost_matches": category_boost,
+            "decay": hierarchy_decay,
+        }
 
         for field in self.fields:
             if field not in corpus.columns:
@@ -117,15 +121,19 @@ class QueryUnderstandingStrategy(SearchStrategy):
             self.index[self.category_index_name] = SearchArray.index(
                 corpus[self.category_field].fillna(""), snowball_tokenizer
             )
+        self.retrieval_engine = make_retrieval_engine(
+            self.retrieval_base,
+            index=self.index,
+            category_index_name=self.category_index_name,
+            params=self.retrieval_params,
+        )
         self.k1 = float(retrieval_params.get("k1", 1.2))
         self.b = float(retrieval_params.get("b", 0.75))
 
     def _category_matches(self, categories: list[str]) -> np.ndarray:
         matches = np.zeros(len(self.index), dtype=bool)
         for category in categories:
-            terms = snowball_tokenizer(category)
-            if terms:
-                matches |= self.index[self.category_index_name].array.score(terms) > 0
+            matches |= self.retrieval_engine.category_matches(category)
         return matches
 
     def enrich(self, query: str) -> list[str]:
@@ -145,11 +153,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
                 )
 
         categories = self.enrich(query)
-        category_matches = self._category_matches(categories)
-        if self.retrieval_base == "bm25_filtered" and categories:
-            scores = np.where(category_matches, scores, -np.inf)
-        elif self.retrieval_base == "bm25_boosted":
-            scores[category_matches] += self.category_boost
+        scores = self.retrieval_engine.apply(scores, categories)
 
         top_indices = np.argsort(-scores)[:k]
         return top_indices, scores[top_indices]
@@ -161,7 +165,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             "category_field": self.category_field,
             "retrieval_base": self.retrieval_base,
             "fields": self.fields,
-            "category_boost": self.category_boost,
+            "retrieval_params": self.retrieval_params,
             "k1": self.k1,
             "b": self.b,
             "top_k": getattr(self, "top_k", None),

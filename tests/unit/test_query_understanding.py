@@ -9,6 +9,9 @@ from exps.query_understanding.enrichers import make_enricher
 from exps.query_understanding.enrichers import make_llm_multiple_enricher
 from exps.query_understanding.enrichers import make_llm_single_enricher
 from exps.query_understanding import QueryUnderstandingStrategy
+from exps.query_understanding.retrieval_engines import (
+    BM25HierarchyBoostedRetrievalEngine,
+)
 from exps.query_understanding.strategy import MAX_CATEGORY_CARDINALITY
 from exps.runners.query_classification import _ground_truth
 
@@ -185,6 +188,34 @@ def test_category_matching_uses_phrase_matching():
     matches = strategy._category_matches(["Living Room"])
 
     assert matches.tolist() == [True, False, False, False]
+
+
+def test_hierarchy_boosting_sums_decaying_prefix_boosts_per_classification():
+    corpus = pd.DataFrame(
+        {
+            "category": [
+                "foo / bar / baz",
+                "foo / bar / qux",
+                "foo / other",
+                "other",
+            ]
+        }
+    )
+    corpus["category_snowball"] = SearchArray.index(
+        corpus["category"], snowball_tokenizer
+    )
+    engine = BM25HierarchyBoostedRetrievalEngine(
+        corpus,
+        "category_snowball",
+        {"boost_matches": 10, "decay": 0.5},
+    )
+
+    scores = engine.apply(
+        pd.Series([0.0] * len(corpus)).to_numpy(),
+        ["foo / bar / baz", "other"],
+    )
+
+    assert scores.tolist() == [17.5, 15.0, 20.0, 10.0]
 
 
 def test_query_understanding_limits_category_vocabulary():
