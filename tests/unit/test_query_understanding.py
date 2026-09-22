@@ -90,7 +90,7 @@ def test_llm_multiple_enricher_returns_deduplicated_categories():
             FakeAutoEnricher,
         ):
             enricher = make_llm_multiple_enricher(
-                field="category",
+                field="category hierarchy",
                 vocabulary=["Furniture", "Lighting", "Outdoor"],
                 prompt="Classify {query} into {field} values.",
             )
@@ -98,7 +98,7 @@ def test_llm_multiple_enricher_returns_deduplicated_categories():
             assert enricher.enrich("sofa") == ["Furniture", "Lighting"]
 
         auto_enricher = FakeAutoEnricher.instances[0]
-        assert auto_enricher.prompts == ["Classify sofa into category values."]
+        assert auto_enricher.prompts == ["Classify sofa into category hierarchy values."]
     finally:
         FakeAutoEnricher.value = "Furniture"
 
@@ -110,6 +110,25 @@ def test_llm_multiple_enricher_requires_prompt():
             field="category",
             vocabulary=["Furniture"],
         )
+
+
+def test_llm_multiple_enricher_supports_quoted_category_values():
+    FakeAutoEnricher.instances = []
+    FakeAutoEnricher.value = ['__category_0__', 'Furniture']
+    try:
+        with patch(
+            "exps.query_understanding.enrichers.llm_multiple.AutoEnricher",
+            FakeAutoEnricher,
+        ):
+            enricher = make_llm_multiple_enricher(
+                field="category hierarchy",
+                vocabulary=['Bar (28"-33") Stools', "Furniture"],
+                prompt="Classify {query} into {field} values.",
+            )
+            assert enricher.enrich("bar stool") == ['Bar (28"-33") Stools', "Furniture"]
+            assert "__category_0__" in FakeAutoEnricher.instances[0].prompts[0]
+    finally:
+        FakeAutoEnricher.value = "Furniture"
 
 
 def test_ground_truth_uses_maximum_grade_regardless_of_scale():

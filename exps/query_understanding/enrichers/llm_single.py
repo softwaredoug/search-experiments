@@ -7,6 +7,11 @@ from typing import Any, Literal
 from cheat_at_search.enrich.enrich import AutoEnricher
 from pydantic import Field, create_model
 
+from exps.query_understanding.enrichers.category_values import (
+    append_aliases,
+    schema_values,
+)
+
 SYSTEM_PROMPT = (
     "You are a helpful furniture shopping agent that helps users construct search queries."
 )
@@ -28,10 +33,6 @@ class LLMSingleEnricher:
         temperature: float | None = None,
         verbosity: str | None = None,
     ):
-        if not field.isidentifier():
-            raise ValueError(
-                "llm_single requires categorize.field to be a valid Python identifier."
-            )
         self.field = field
         self.vocabulary = list(vocabulary)
         if not isinstance(prompt, str) or not prompt.strip():
@@ -41,12 +42,13 @@ class LLMSingleEnricher:
         self.reasoning = reasoning
         self.temperature = temperature
         self.verbosity = verbosity
-        allowed_values = tuple(dict.fromkeys([*self.vocabulary, "Unknown"]))
+        allowed_values, self.schema_aliases = schema_values(self.vocabulary)
+        allowed_values = tuple(dict.fromkeys([*allowed_values, "Unknown"]))
         category_type = Literal[allowed_values]
         self.response_model = create_model(
             "CategoryEnrichment",
             **{
-                self.field: (
+                "category": (
                     category_type,
                     Field(
                         ...,
@@ -71,8 +73,10 @@ class LLMSingleEnricher:
         if query in self._cache:
             return list(self._cache[query])
         prompt = self.prompt_template.format(field=self.field, query=query)
+        prompt = append_aliases(prompt, self.field, self.schema_aliases)
         response = self.enricher.enrich(prompt)
-        value = getattr(response, self.field, None) if response is not None else None
+        value = getattr(response, "category", None) if response is not None else None
+        value = self.schema_aliases.get(value, value)
         categories = [] if value in (None, "Unknown") else [str(value)]
         self._cache[query] = categories
         return list(categories)
