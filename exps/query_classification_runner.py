@@ -1,10 +1,51 @@
 import argparse
+import csv
+from pathlib import Path
 
 from exps.datasets import DATASET_NAMES
 from exps.runners.query_classification import (
     QueryClassificationParams,
     evaluate_query_classification,
 )
+
+
+def _write_summary_csv(path: str, *, strategy: str, dataset: str, threshold: float, result) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    evaluations = result.evaluations or {result.eval_as: result}
+    fieldnames = [
+        "strategy",
+        "dataset",
+        "eval_as",
+        "query_threshold",
+        "queries",
+        "queries_with_ground_truth",
+        "mean_recall",
+        "mean_jaccard",
+        "coverage",
+    ]
+    write_header = not output_path.exists() or output_path.stat().st_size == 0
+    with output_path.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        for eval_as, evaluation in evaluations.items():
+            per_query = evaluation.per_query
+            writer.writerow(
+                {
+                    "strategy": strategy,
+                    "dataset": dataset,
+                    "eval_as": eval_as,
+                    "query_threshold": threshold,
+                    "queries": len(per_query),
+                    "queries_with_ground_truth": int(
+                        per_query["expected_categories"].map(bool).sum()
+                    ),
+                    "mean_recall": evaluation.mean_recall,
+                    "mean_jaccard": evaluation.mean_jaccard,
+                    "coverage": evaluation.coverage,
+                }
+            )
 
 
 def main() -> None:
@@ -40,6 +81,10 @@ def main() -> None:
         dest="report_path",
         help="Write a detailed enrichment evaluation report to this pickle file.",
     )
+    parser.add_argument(
+        "--summary-csv",
+        help="Append aggregate evaluation statistics to this CSV file.",
+    )
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--device", help="Embedding device override.")
     parser.add_argument("--base-path", help="Base path for relative strategy config paths.")
@@ -60,6 +105,14 @@ def main() -> None:
         )
     )
     evaluations = result.evaluations or {result.eval_as: result}
+    if args.summary_csv:
+        _write_summary_csv(
+            args.summary_csv,
+            strategy=args.strategy,
+            dataset=args.dataset,
+            threshold=args.query_threshold,
+            result=result,
+        )
     for index, (eval_as, evaluation) in enumerate(evaluations.items()):
         if len(evaluations) > 1:
             if index:
