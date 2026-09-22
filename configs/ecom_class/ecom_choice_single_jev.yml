@@ -1,0 +1,36 @@
+strategy:
+  name: ecom_choice_single_jev
+  type: query_understanding
+  params:
+    reasoning: medium
+    categorize:
+      field: category
+      enrichment_engine:
+        type: choice_single
+        params:
+          model: jev-latest
+          pad_missing_choices: false
+          choices: |
+            Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.
+            Home Improvement: A search for products and services that help improve the functionality, aesthetics, or value of a home, such as tools, paint, and renovation services.
+            Décor & Pillows: A search for products used to enhance the aesthetic appeal of a space, including decorative items, pillows, and other accessories.
+            Outdoor: A search for products designed for use outside, such as patio furniture, gardening tools, and outdoor lighting.
+            Storage & Organization: A search for products that help organize and store items, including shelves, bins, and closet organizers.
+            Lighting: A search for products that provide illumination, including lamps, light fixtures, and bulbs.
+            Rugs: A search for products used to cover and decorate floors, including area rugs, runners, and mats.
+            Bed & Bath: A search for products related to bedrooms and bathrooms, including bedding, towels, and bathroom accessories.
+            Kitchen & Tabletop: A search for products related to kitchens and dining, including cookware, utensils, and tableware.
+            Baby & Kids: A search for products designed for infants and children, including toys, clothing, and nursery furniture.
+            School Furniture and Supplies: A search for products used in educational settings, including desks, chairs, and school supplies.
+            Appliances: A search for products that are electrical or mechanical machines designed to perform specific household tasks, such as refrigerators, washing machines, and microwaves.
+            Holiday Décor: A search for seasonal decorations and accessories used to celebrate holidays.
+            Unknown: No classification applies.
+          prompt: |
+            Which category best describes the query?
+
+            {query}
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
