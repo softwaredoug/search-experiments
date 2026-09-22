@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import numpy as np
+import pytest
 
 from cheat_at_search.search import run_strategy
 
@@ -224,6 +225,89 @@ strategy:
     ):
         limited_result = evaluate_query_classification(limited_params)
     assert len(limited_result.per_query) == 2
+
+
+def test_query_classification_backend_taxonomy_evaluation(tmp_path):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3, 4, 5],
+            "title": ["foo"] * 5,
+            "description": ["bar"] * 5,
+            "category": [
+                "foo / bar / baz",
+                "foo / bar / bin",
+                "luz / bar / bin",
+                "lump / bar / bin",
+                "lump / bar / booz",
+            ],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query": ["taxonomy query"] * 5,
+            "doc_id": [1, 2, 3, 4, 5],
+            "grade": [2] * 5,
+        }
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    config_path = tmp_path / "query_understanding.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_taxonomy_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: dummy
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    def evaluate(eval_as):
+        params = QueryClassificationParams(
+            strategy_path=str(config_path),
+            dataset="doug_blog",
+            query="taxonomy query",
+            query_threshold=0.4,
+            eval_as=eval_as,
+        )
+        with patch(
+            "exps.runners.query_classification.get_dataset", return_value=dataset
+        ):
+            return evaluate_query_classification(params).per_query.iloc[0]
+
+    root_row = evaluate("taxonomy[0]")
+    assert root_row["expected_categories"] == ["foo", "lump"]
+    assert root_row["generated_categories"] == ["foo"]
+    assert root_row["recall"] == 0.5
+    assert root_row["jaccard"] == 0.5
+
+    level_one_row = evaluate("taxonomy[1]")
+    assert level_one_row["expected_categories"] == ["bar"]
+    assert level_one_row["generated_categories"] == ["bar"]
+    assert level_one_row["recall"] == 1.0
+    assert level_one_row["jaccard"] == 1.0
+
+    direct_row = evaluate("direct")
+    assert direct_row["expected_categories"] == []
+    assert direct_row["generated_categories"] == ["foo / bar / baz"]
+
+
+def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):
+    config_path = _write_bm25_config(tmp_path)
+    params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        eval_as="taxonomy[nope]",
+    )
+
+    with pytest.raises(ValueError, match="eval_as"):
+        evaluate_query_classification(params)
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):

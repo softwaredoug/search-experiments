@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 import pandas as pd
 from tqdm import tqdm
@@ -17,6 +18,7 @@ class QueryClassificationParams:
     query: str | None = None
     limit: int | None = None
     query_threshold: float = 0.8
+    eval_as: str = "direct"
     workers: int = 1
     device: str | None = None
 
@@ -36,6 +38,29 @@ def _grade_column(judgments: pd.DataFrame) -> str | None:
     return None
 
 
+def _taxonomy_level(eval_as: str) -> int | None:
+    if eval_as == "direct":
+        return None
+    match = re.fullmatch(r"taxonomy\[(\d+)\]", eval_as)
+    if match is None:
+        raise ValueError(
+            "eval_as must be 'direct' or a taxonomy level such as 'taxonomy[0]'."
+        )
+    return int(match.group(1))
+
+
+def _project_categories(categories: pd.Series, taxonomy_level: int | None) -> pd.Series:
+    if taxonomy_level is None:
+        return categories
+    return categories.map(
+        lambda category: (
+            str(category).split("/")[taxonomy_level].strip()
+            if taxonomy_level < len(str(category).split("/"))
+            else None
+        )
+    ).dropna()
+
+
 def _ground_truth(
     *,
     queries: list[str],
@@ -43,6 +68,7 @@ def _ground_truth(
     corpus: pd.DataFrame,
     category_field: str,
     threshold: float,
+    taxonomy_level: int | None = None,
 ) -> dict[str, list[str]]:
     grade_column = _grade_column(judgments)
     required_judgment_columns = {"query", "doc_id"}
@@ -72,6 +98,8 @@ def _ground_truth(
 
         categories = positive_rows["doc_id"].map(category_by_doc).dropna().astype(str)
         categories = categories[categories != ""]
+        categories = _project_categories(categories, taxonomy_level)
+        categories = categories[categories != ""]
         if categories.empty:
             truth[query] = []
             continue
@@ -89,6 +117,7 @@ def evaluate_query_classification(
         raise ValueError("query_threshold must be between 0 and 1.")
     if params.limit is not None and params.limit <= 0:
         raise ValueError("limit must be greater than 0.")
+    taxonomy_level = _taxonomy_level(params.eval_as)
 
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path,
@@ -131,11 +160,16 @@ def evaluate_query_classification(
         corpus=corpus,
         category_field=category_field,
         threshold=params.query_threshold,
+        taxonomy_level=taxonomy_level,
     )
 
     enriched_queries = []
     for query in tqdm(queries, desc="Enriching queries", unit="query"):
-        enriched_queries.append((query, expected[query], sorted(set(strategy.enrich(query)))))
+        generated_categories = pd.Series(strategy.enrich(query), dtype="object")
+        generated_categories = _project_categories(generated_categories, taxonomy_level)
+        enriched_queries.append(
+            (query, expected[query], sorted(set(generated_categories.tolist())))
+        )
 
     rows = []
     for query, expected_categories, generated_categories in enriched_queries:

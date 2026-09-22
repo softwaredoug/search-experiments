@@ -27,6 +27,11 @@ def main() -> None:
         default=0.8,
         help="Minimum positive-label category proportion for ground truth.",
     )
+    parser.add_argument(
+        "--eval-as",
+        default="direct",
+        help="Evaluate directly or at a taxonomy level, e.g. taxonomy[0].",
+    )
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--device", help="Embedding device override.")
     parser.add_argument("--base-path", help="Base path for relative strategy config paths.")
@@ -40,6 +45,7 @@ def main() -> None:
             query=args.query,
             limit=args.limit,
             query_threshold=args.query_threshold,
+            eval_as=args.eval_as,
             workers=args.workers,
             device=args.device,
         )
