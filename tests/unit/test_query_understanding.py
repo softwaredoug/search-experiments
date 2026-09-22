@@ -40,6 +40,7 @@ class FakeJevClient:
     value = "Furniture"
 
     def __init__(self, **kwargs):
+        self.api_key = kwargs["api_key"]
         self.model = kwargs["model"]
         self.calls = []
         self.__class__.instances.append(self)
@@ -225,6 +226,9 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
         with patch(
             "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
             FakeJevClient,
+        ), patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
         ):
             enricher = make_enricher(
                 {
@@ -243,6 +247,7 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
             assert enricher.enrich("ambiguous") == []
 
         client = FakeJevClient.instances[0]
+        assert client.api_key == "typesafe-test-key"
         assert client.model == "jev-latest"
         state, questions = client.calls[0]
         assert state == "ambiguous"

@@ -4,6 +4,7 @@ import hashlib
 import json
 from typing import Any
 
+from cheat_at_search.data_dir import key_for_provider
 from typesafe_sdk import Choice, TypeSafeClient
 
 from exps.query_understanding.enrichers.choice_single import _choice_vocabulary
@@ -48,7 +49,10 @@ class JevChoiceSingleEnricher:
         )
         if len(self.criteria) > 255:
             raise ValueError("Jev choice_single supports at most 255 choices.")
-        self.client = TypeSafeClient(model=self.model)
+        self.client = TypeSafeClient(
+            api_key=key_for_provider("typesafe"),
+            model=self.model,
+        )
         self._cache: dict[str, list[str]] = {}
 
     def _prompt(self, query: str) -> str:
