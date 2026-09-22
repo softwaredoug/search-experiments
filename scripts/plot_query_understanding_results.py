@@ -11,7 +11,7 @@ EXPECTED_STRATEGIES = {
     "ecom_qu_category_bm25_filtered_llm_multiple",
     "ecom_qu_category_hierarchy_bm25_filtered_llm_multiple",
 }
-EXPECTED_NDCG_STRATEGIES = {
+EXPECTED_NDCG_STRATEGIES = {"bm25"} | {
     strategy
     for field in ("category", "category_hierarchy")
     for retrieval in ("bm25_filtered", "bm25_boosted", "bm25_hierarchy_boosted")
@@ -70,6 +70,8 @@ def _load_ndcg_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _short_label(strategy: str) -> str:
+    if strategy == "bm25":
+        return "BM25\nbaseline"
     field = "hierarchy" if "_category_hierarchy_" in strategy else "category"
     retrieval = next(
         retrieval

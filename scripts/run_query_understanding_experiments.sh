@@ -9,6 +9,7 @@ WORKERS="${WORKERS:-4}"
 NO_CACHE="${NO_CACHE:-false}"
 
 CONFIGS=(
+  "${ROOT_DIR}/configs/ecom_base/bm25.yml"
   "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
   "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_boosted_llm_single.yml"
   "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_single.yml"

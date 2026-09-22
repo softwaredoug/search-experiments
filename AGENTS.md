@@ -4,7 +4,6 @@ This repo runs various search relevance experiments, particularly agentic and co
 
 Details can be examined in the docs/ folder. Particularly [docs](docs/prd.md)
 
-
 # Development Practices
 
 ## Testing practices
@@ -25,3 +24,9 @@ Install cheat-at-search directly from git.
 
 (In turn, this depends on the searcharray library, which you may also to be familiar with
 https://github.com/softwaredoug/searcharray)
+
+## General design principles
+
+- Centrality of the "Strategy" class - many ways of implementing search are implemented as a SearchStrategy from (see cheat-at-search)
+- Strategies are configured - ie in yml files in config. That's how we paramaterize them to run experiments
+- Some strategies are trained
