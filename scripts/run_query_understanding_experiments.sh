@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/results_query_understanding.csv}"
+NUM_QUERIES="${NUM_QUERIES:-1000}"
+SEED="${SEED:-42}"
+WORKERS="${WORKERS:-4}"
+DEVICE="${DEVICE:-}"
+NO_CACHE="${NO_CACHE:-false}"
+
+CONFIGS=(
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_multiple.yml"
+)
+
+mkdir -p "$(dirname "${RESULTS_CSV}")"
+: > "${RESULTS_CSV}"
+
+for config in "${CONFIGS[@]}"; do
+  args=(
+    --strategy "${config}"
+    --dataset wands
+    --seed "${SEED}"
+    --workers "${WORKERS}"
+    --summary-csv "${RESULTS_CSV}"
+  )
+  if [[ -n "${NUM_QUERIES}" ]]; then
+    args+=(--num-queries "${NUM_QUERIES}")
+  fi
+  if [[ -n "${DEVICE}" ]]; then
+    args+=(--device "${DEVICE}")
+  fi
+  if [[ "${NO_CACHE}" == "true" ]]; then
+    args+=(--no-cache)
+  fi
+
+  echo "Running $(basename "${config}") against wands"
+  uv run run "${args[@]}"
+done
+
+echo "Wrote ${RESULTS_CSV}"

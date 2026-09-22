@@ -1,0 +1,28 @@
+strategy:
+  name: ecom_qu_category_bm25_hierarchy_boosted_llm_multiple
+  type: query_understanding
+  params:
+    model: gpt-5-mini
+    reasoning: medium
+    categorize:
+      field: category
+      enrichment_engine:
+        type: llm_multiple
+        params:
+          prompt: |
+            Below is a search query for a furniture / homegoods store. Your job
+            is to help categorize the query into one or more relevant categories.
+
+            For the given query, generate all appropriate {field} values to
+            boost and zero in on the most relevant results. If you're unsure or
+            the query is ambiguous, return an empty list.
+
+            Here's the query:
+
+            {query}
+    retrieval_engine:
+      base: bm25_hierarchy_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
+        decay: 0.5

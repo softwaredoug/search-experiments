@@ -1,0 +1,27 @@
+strategy:
+  name: ecom_qu_category_bm25_filtered_llm_single
+  type: query_understanding
+  params:
+    model: gpt-5-mini
+    reasoning: medium
+    categorize:
+      field: category
+      enrichment_engine:
+        type: llm_single
+        params:
+          prompt: |
+            Below is a search query for a furniture / homegoods store. Your job
+            is to classify the query into the single most relevant category.
+
+            For the given query, generate the appropriate {field} value to
+            filter to and zero in on the most relevant results. If you're
+            unsure or the query is ambiguous, return "Unknown".
+
+            Here's the query:
+
+            {query}
+    retrieval_engine:
+      base: bm25_filtered
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10
