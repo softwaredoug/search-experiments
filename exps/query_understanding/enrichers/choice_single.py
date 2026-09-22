@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import yaml
@@ -57,6 +58,14 @@ def make_choice_single_enricher(
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("choice_single enrichment requires a non-empty prompt.")
     pad_missing_choices = bool(params.get("pad_missing_choices", False))
+    confidence_threshold = params.get("confidence_threshold")
+    if confidence_threshold is not None:
+        try:
+            confidence_threshold = float(confidence_threshold)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("confidence_threshold must be a number between 0 and 1.") from exc
+        if not math.isfinite(confidence_threshold) or not 0 <= confidence_threshold <= 1:
+            raise ValueError("confidence_threshold must be a number between 0 and 1.")
     prepared_choices = _prepare_choices(choices, vocabulary, pad_missing_choices)
     common = {
         "field": field,
@@ -66,26 +75,35 @@ def make_choice_single_enricher(
         "model": params.get("model", model),
         "reasoning": reasoning,
         "pad_missing_choices": pad_missing_choices,
+        "confidence_threshold": confidence_threshold,
     }
-    provider = str(common["model"]).split("/", 1)[0].lower()
-    if provider in {"jev", "typesafe"} or provider.startswith("jev-"):
+    configured_model = str(common["model"])
+    provider = configured_model.split("/", 1)[0].lower()
+    if "/" in configured_model and provider == "jev":
         from exps.query_understanding.enrichers.choice_single_jev import (
             JevChoiceSingleEnricher,
         )
 
         return JevChoiceSingleEnricher(**common)
-    if provider == "openai" or provider.startswith("gpt-"):
+    if "/" not in configured_model or provider == "openai":
+        if confidence_threshold is not None:
+            raise ValueError(
+                "confidence_threshold is only supported for Jev choice_single models."
+            )
         from exps.query_understanding.enrichers.choice_single_openai import (
             OpenAIChoiceSingleEnricher,
         )
 
+        openai_common = {
+            key: value for key, value in common.items() if key != "confidence_threshold"
+        }
         return OpenAIChoiceSingleEnricher(
-            **common,
+            **openai_common,
             temperature=params.get("temperature"),
             verbosity=params.get("verbosity"),
         )
     raise ValueError(
-        "choice_single supports OpenAI (gpt-*/openai/*) and Jev (jev/*) models; "
+        "choice_single supports unprefixed/OpenAI models and Jev (jev/*) models; "
         f"received {common['model']!r}."
     )
 

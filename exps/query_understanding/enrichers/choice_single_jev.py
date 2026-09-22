@@ -14,7 +14,7 @@ def _model_name(model: str) -> str:
     if model == "jev":
         return "jev-latest"
     if model.startswith("jev/"):
-        return model.replace("/", "-", 1)
+        return model.split("/", 1)[1]
     return model
 
 
@@ -29,6 +29,7 @@ class JevChoiceSingleEnricher:
         model: str,
         reasoning: str | None,
         pad_missing_choices: bool,
+        confidence_threshold: float | None = None,
     ):
         self.field = field
         self.vocabulary = list(vocabulary)
@@ -36,6 +37,7 @@ class JevChoiceSingleEnricher:
         self.model = _model_name(model)
         self.reasoning = reasoning
         self.pad_missing_choices = pad_missing_choices
+        self.confidence_threshold = confidence_threshold
         self.choices = dict(choices)
         allowed_vocabulary = _choice_vocabulary(
             self.vocabulary, self.choices, self.pad_missing_choices
@@ -72,6 +74,15 @@ class JevChoiceSingleEnricher:
         )
         answer = response.choices[self.field]
         value = getattr(answer, "choice", None)
+        confidence = getattr(answer, "confidence", None)
+        if (
+            self.confidence_threshold is not None
+            and (
+                not isinstance(confidence, (int, float))
+                or confidence <= self.confidence_threshold
+            )
+        ):
+            value = "Unknown"
         categories = [] if value in (None, "Unknown") else [str(value)]
         self._cache[query] = categories
         return list(categories)
@@ -84,6 +95,7 @@ class JevChoiceSingleEnricher:
             "vocabulary": self.vocabulary,
             "criteria": self.criteria,
             "pad_missing_choices": self.pad_missing_choices,
+            "confidence_threshold": self.confidence_threshold,
             "model": self.model,
             "user_prompt_template": self.prompt_template,
         }

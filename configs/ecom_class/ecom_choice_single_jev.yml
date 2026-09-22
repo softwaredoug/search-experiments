@@ -8,7 +8,8 @@ strategy:
       enrichment_engine:
         type: choice_single
         params:
-          model: jev-latest
+          model: jev/jev-latest
+          confidence_threshold: 0.7
           pad_missing_choices: false
           choices: |
             Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.

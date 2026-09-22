@@ -16,7 +16,7 @@ from exps.query_understanding.retrieval_engines import (
 from exps.query_understanding.enrichers.llm_multiple import _model_name as multiple_model_name
 from exps.query_understanding.enrichers.llm_single import _model_name as single_model_name
 from exps.query_understanding.strategy import MAX_CATEGORY_CARDINALITY
-from exps.runners.query_classification import _ground_truth
+from exps.runners.query_classification import _evaluate_as, _ground_truth
 
 
 class FakeAutoEnricher:
@@ -38,6 +38,7 @@ class FakeAutoEnricher:
 class FakeJevClient:
     instances = []
     value = "Furniture"
+    confidence = 1.0
 
     def __init__(self, **kwargs):
         self.api_key = kwargs["api_key"]
@@ -48,7 +49,9 @@ class FakeJevClient:
     def system_one(self, *, state, questions):
         self.calls.append((state, questions))
         question_id = next(iter(questions))
-        answer = type("Answer", (), {"choice": self.value})()
+        answer = type(
+            "Answer", (), {"choice": self.value, "confidence": self.confidence}
+        )()
         return type("Response", (), {"choices": {question_id: answer}})()
 
 
@@ -234,7 +237,7 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
                 {
                     "type": "choice_single",
                     "params": {
-                        "model": "jev/latest",
+                        "model": "jev/jev-latest",
                         "choices": {
                             "Furniture": "Products used to furnish a room.",
                         },
@@ -261,6 +264,87 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
         FakeJevClient.value = "Furniture"
 
 
+def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold():
+    FakeJevClient.instances = []
+    FakeJevClient.value = "Furniture"
+    FakeJevClient.confidence = 0.5
+    try:
+        with patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            FakeJevClient,
+        ), patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ):
+            enricher = make_enricher(
+                {
+                    "type": "choice_single",
+                    "params": {
+                        "model": "jev/jev-latest",
+                        "confidence_threshold": 0.5,
+                        "choices": {"Furniture": "Products used to furnish a room."},
+                        "prompt": "Classify {query}.",
+                    },
+                },
+                field="category",
+                vocabulary=["Furniture"],
+            )
+            assert enricher.enrich("borderline") == []
+
+        FakeJevClient.confidence = 0.51
+        with patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            FakeJevClient,
+        ), patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ):
+            enricher = make_enricher(
+                {
+                    "type": "choice_single",
+                    "params": {
+                        "model": "jev/jev-latest",
+                        "confidence_threshold": 0.5,
+                        "choices": {"Furniture": "Products used to furnish a room."},
+                        "prompt": "Classify {query}.",
+                    },
+                },
+                field="category",
+                vocabulary=["Furniture"],
+            )
+            assert enricher.enrich("above-threshold") == ["Furniture"]
+    finally:
+        FakeJevClient.value = "Furniture"
+        FakeJevClient.confidence = 1.0
+
+
+def test_choice_single_rejects_confidence_threshold_for_openai():
+    with pytest.raises(ValueError, match="only supported for Jev"):
+        make_choice_single_enricher(
+            field="category",
+            vocabulary=["Furniture"],
+            choices={"Furniture": "Products used to furnish a room."},
+            prompt="Classify {query}.",
+            params={"confidence_threshold": 0.5},
+        )
+
+
+def test_choice_single_unprefixed_model_defaults_to_openai():
+    FakeAutoEnricher.instances = []
+    with patch(
+        "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
+        FakeAutoEnricher,
+    ):
+        enricher = make_choice_single_enricher(
+            field="category",
+            vocabulary=["Furniture"],
+            choices={"Furniture": "Products used to furnish a room."},
+            prompt="Classify {query}.",
+            model="jev-latest",
+        )
+    assert enricher.model == "openai/jev-latest"
+
+
 def test_ground_truth_uses_maximum_grade_regardless_of_scale():
     judgments = pd.DataFrame(
         {
@@ -285,6 +369,36 @@ def test_ground_truth_uses_maximum_grade_regardless_of_scale():
     )
 
     assert truth == {"sofa": ["Furniture"]}
+
+
+def test_classification_metrics_only_average_queries_with_predictions():
+    judgments = pd.DataFrame(
+        {
+            "query": ["sofa", "lamp"],
+            "doc_id": [1, 2],
+            "grade": [1, 1],
+        }
+    )
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2],
+            "category": ["Furniture", "Lighting"],
+        }
+    )
+
+    result = _evaluate_as(
+        eval_as="direct",
+        queries=["sofa", "lamp"],
+        judgments=judgments,
+        corpus=corpus,
+        category_field="category",
+        threshold=0.8,
+        predictions={"sofa": ["Furniture"], "lamp": []},
+    )
+
+    assert result.mean_recall == 1.0
+    assert result.mean_jaccard == 1.0
+    assert result.coverage == 0.5
 
 
 def test_category_matching_uses_phrase_matching():

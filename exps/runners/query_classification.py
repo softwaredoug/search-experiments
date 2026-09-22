@@ -134,11 +134,17 @@ def _evaluate_as(
         )
 
     per_query = pd.DataFrame(rows)
-    nonempty_truth = per_query[per_query["expected_categories"].map(bool)]
-    mean_recall = float(nonempty_truth["recall"].mean()) if not nonempty_truth.empty else None
+    predicted_queries = per_query[per_query["generated_categories"].map(bool)]
+    recall_values = predicted_queries["recall"].dropna()
+    jaccard_values = predicted_queries["jaccard"].dropna()
+    mean_recall = (
+        float(recall_values.mean())
+        if not recall_values.empty
+        else None
+    )
     mean_jaccard = (
-        float(nonempty_truth["jaccard"].mean())
-        if not nonempty_truth.empty
+        float(jaccard_values.mean())
+        if not jaccard_values.empty
         else None
     )
     coverage = (
