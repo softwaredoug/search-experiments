@@ -195,7 +195,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
 
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    results_path = repo_root / "results.csv"
+    results_path = repo_root / "research" / "results" / "ecom_agentic_stats.csv"
     output_dir = repo_root / "assets"
     output_dir.mkdir(parents=True, exist_ok=True)
 

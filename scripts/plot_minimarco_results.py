@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 DATASET = "minimarco"
-RESULTS_FILE = "results_minimarco.csv"
+RESULTS_FILE = "research/results/minimarco_agentic_stats.csv"
 ORDER = [
     "bm25_msmarco",
     "embedding_e5_msmarco",

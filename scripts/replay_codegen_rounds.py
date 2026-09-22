@@ -47,7 +47,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
-        default="results.csv",
+        default=str(
+            Path(__file__).resolve().parents[1]
+            / "research"
+            / "results"
+            / "codegen_replay_results.csv"
+        ),
         help="CSV file to append results.",
     )
     parser.add_argument(

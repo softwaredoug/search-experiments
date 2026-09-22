@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/results_query_understanding.csv}"
-CLASSIFICATION_CSV="${CLASSIFICATION_CSV:-${ROOT_DIR}/query_understanding_classification_wands.csv}"
+RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/research/results/query_understanding_retrieval.csv}"
+CLASSIFICATION_CSV="${CLASSIFICATION_CSV:-${ROOT_DIR}/research/results/query_understanding_classification_wands.csv}"
 SEED="${SEED:-42}"
 WORKERS="${WORKERS:-4}"
 NO_CACHE="${NO_CACHE:-false}"

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RESULTS_CSV="results.csv"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RESULTS_CSV="${ROOT_DIR}/research/results/ecom_baselines.csv"
 EXIT_LOG_WRAPPER="${SCRIPT_DIR}/run_with_exit_log.sh"
+
+mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 run_baseline() {
   local dataset="$1"

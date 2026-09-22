@@ -2,7 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULTS_CSV="${ROOT_DIR}/results.csv"
+RESULTS_CSV="${ROOT_DIR}/research/results/ecom_mincalls_stats.csv"
+
+mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 CONFIGS=(
   "configs/ecom_mincalls/agentic_ecom_2tools_4calls_repeat_gpt5_mini.yml"

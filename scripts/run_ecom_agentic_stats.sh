@@ -2,7 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULTS_CSV="${ROOT_DIR}/results.csv"
+RESULTS_CSV="${ROOT_DIR}/research/results/ecom_agentic_stats.csv"
+
+mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 CONFIGS=(
   # "configs/ecom_base/agentic_ecom_2tools_gpt5.yml"

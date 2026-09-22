@@ -121,7 +121,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--input",
-        default="results.csv",
+        default=str(
+            Path(__file__).resolve().parents[1]
+            / "research"
+            / "results"
+            / "codegen_replay_results.csv"
+        ),
         help="CSV produced by replay_codegen_rounds.py.",
     )
     parser.add_argument(

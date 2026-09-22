@@ -2,7 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULTS_CSV="${ROOT_DIR}/results_minimarco.csv"
+RESULTS_CSV="${ROOT_DIR}/research/results/minimarco_agentic_stats.csv"
+
+mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 CONFIGS=(
   "configs/msmarco/agentic_msmarco_e5_gpt5_mini.yml"

@@ -150,6 +150,7 @@ def _plot_ndcg(rows: list[dict[str, str]], output_path: Path) -> None:
 
 
 def main() -> None:
+    results_dir = Path(__file__).resolve().parents[1] / "research" / "results"
     parser = argparse.ArgumentParser(
         description="Plot WANDS query-understanding classification recall."
     )
@@ -162,12 +163,12 @@ def main() -> None:
     parser.add_argument(
         "--classification-csv",
         type=Path,
-        default=Path("query_understanding_classification_wands.csv"),
+        default=results_dir / "query_understanding_classification_wands.csv",
     )
     parser.add_argument(
         "--results-csv",
         type=Path,
-        default=Path("results_query_understanding.csv"),
+        default=results_dir / "query_understanding_retrieval.csv",
     )
     parser.add_argument(
         "--ndcg-output",
