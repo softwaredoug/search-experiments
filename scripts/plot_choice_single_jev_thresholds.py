@@ -57,9 +57,9 @@ def main() -> None:
             ha="right",
             va="top",
         )
-    ax.set_title(f"Jev choice threshold: recall vs coverage (AUC={auc:.3f})")
+    ax.set_title(f"Jev choice threshold: accuracy vs coverage (AUC={auc:.3f})")
     ax.set_xlabel("Coverage")
-    ax.set_ylabel("Recall")
+    ax.set_ylabel("Accuracy")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.grid(linestyle="--", alpha=0.4)

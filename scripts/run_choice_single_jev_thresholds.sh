@@ -73,6 +73,7 @@ with open(output_path, "w", newline="", encoding="utf-8") as handle:
     writer = csv.DictWriter(
         handle,
         fieldnames=["variant", "confidence_threshold", "recall", "coverage"],
+        lineterminator="\n",
     )
     writer.writeheader()
     writer.writerows(rows)

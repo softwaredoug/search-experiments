@@ -1,0 +1,8 @@
+variant,confidence_threshold,recall,coverage
+ecom_choice_single,baseline,0.8051948051948052,0.9291666666666667
+ecom_choice_single_jev_0_6,0.6,0.8365019011406845,0.76875
+ecom_choice_single_jev_0_7,0.7,0.8594377510040161,0.7208333333333333
+ecom_choice_single_jev_0_8,0.8,0.8883928571428571,0.64375
+ecom_choice_single_jev_0_9,0.9,0.9197860962566845,0.5375
+ecom_choice_single_jev_0_95,0.95,0.9197530864197531,0.46875
+ecom_choice_single_jev_0_99,0.99,0.9727272727272728,0.3104166666666667
