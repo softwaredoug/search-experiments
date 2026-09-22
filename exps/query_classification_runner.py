@@ -7,12 +7,14 @@ from exps.runners.query_classification import (
     QueryClassificationParams,
     evaluate_query_classification,
 )
+from exps.strategy_config import load_strategy_config
 
 
 def _write_summary_csv(path: str, *, strategy: str, dataset: str, threshold: float, result) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     evaluations = result.evaluations or {result.eval_as: result}
+    strategy_name = load_strategy_config(strategy).name
     fieldnames = [
         "strategy",
         "dataset",
@@ -33,7 +35,7 @@ def _write_summary_csv(path: str, *, strategy: str, dataset: str, threshold: flo
             per_query = evaluation.per_query
             writer.writerow(
                 {
-                    "strategy": strategy,
+                    "strategy": strategy_name,
                     "dataset": dataset,
                     "eval_as": eval_as,
                     "query_threshold": threshold,
