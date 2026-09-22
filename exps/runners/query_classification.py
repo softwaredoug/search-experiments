@@ -30,6 +30,8 @@ class QueryClassificationResult:
     mean_recall: float | None
     mean_jaccard: float | None
     coverage: float
+    eval_as: str = "direct"
+    evaluations: dict[str, "QueryClassificationResult"] | None = None
 
 
 def _grade_column(judgments: pd.DataFrame) -> str | None:
@@ -50,6 +52,17 @@ def _taxonomy_level(eval_as: str) -> int | None:
     return int(match.group(1))
 
 
+def _parse_eval_as(eval_as: str) -> list[str]:
+    values = [value.strip() for value in eval_as.split(",")]
+    if not values or any(not value for value in values):
+        raise ValueError("eval_as must contain one or more comma-separated values.")
+    if len(values) != len(set(values)):
+        raise ValueError("eval_as values must be unique.")
+    for value in values:
+        _taxonomy_level(value)
+    return values
+
+
 def _project_categories(categories: pd.Series, taxonomy_level: int | None) -> pd.Series:
     if taxonomy_level is None:
         return categories
@@ -67,6 +80,81 @@ def _project_category(category: object, taxonomy_level: int) -> str | None:
     return parts[taxonomy_level].strip() if taxonomy_level < len(parts) else None
 
 
+def _eval_as_suffix(eval_as: str) -> str:
+    if eval_as == "direct":
+        return "direct"
+    level = eval_as.removeprefix("taxonomy[").removesuffix("]")
+    return f"taxonomy_{level}"
+
+
+def _evaluate_as(
+    *,
+    eval_as: str,
+    queries: list[str],
+    judgments: pd.DataFrame,
+    corpus: pd.DataFrame,
+    category_field: str,
+    threshold: float,
+    predictions: dict[str, list[str]],
+) -> QueryClassificationResult:
+    taxonomy_level = _taxonomy_level(eval_as)
+    expected = _ground_truth(
+        queries=queries,
+        judgments=judgments,
+        corpus=corpus,
+        category_field=category_field,
+        threshold=threshold,
+        taxonomy_level=taxonomy_level,
+    )
+
+    rows = []
+    for query in queries:
+        generated_categories = pd.Series(predictions[query], dtype="object")
+        generated_categories = _project_categories(generated_categories, taxonomy_level)
+        generated_categories = sorted(set(generated_categories.tolist()))
+        expected_categories = expected[query]
+        expected_set = set(expected_categories)
+        generated_set = set(generated_categories)
+        intersection = expected_set & generated_set
+        union = expected_set | generated_set
+        recall = (
+            len(intersection) / len(expected_set)
+            if expected_set
+            else float("nan")
+        )
+        jaccard = len(intersection) / len(union) if expected_set else float("nan")
+        rows.append(
+            {
+                "query": query,
+                "expected_categories": expected_categories,
+                "generated_categories": generated_categories,
+                "recall": recall,
+                "jaccard": jaccard,
+            }
+        )
+
+    per_query = pd.DataFrame(rows)
+    nonempty_truth = per_query[per_query["expected_categories"].map(bool)]
+    mean_recall = float(nonempty_truth["recall"].mean()) if not nonempty_truth.empty else None
+    mean_jaccard = (
+        float(nonempty_truth["jaccard"].mean())
+        if not nonempty_truth.empty
+        else None
+    )
+    coverage = (
+        float(per_query["generated_categories"].map(bool).mean())
+        if not per_query.empty
+        else 0.0
+    )
+    return QueryClassificationResult(
+        per_query=per_query,
+        mean_recall=mean_recall,
+        mean_jaccard=mean_jaccard,
+        coverage=coverage,
+        eval_as=eval_as,
+    )
+
+
 def _write_report(
     *,
     path: str,
@@ -74,9 +162,9 @@ def _write_report(
     corpus: pd.DataFrame,
     category_field: str,
     queries: list[str],
-    per_query: pd.DataFrame,
+    evaluations: dict[str, QueryClassificationResult],
+    eval_as_values: list[str],
     predictions: dict[str, list[str]],
-    taxonomy_level: int | None,
 ) -> None:
     report = judgments[judgments["query"].isin(queries)].copy()
     report_category_column = "__report_category"
@@ -88,40 +176,41 @@ def _write_report(
         how="left",
     )
     report[category_field] = report.pop(report_category_column)
-    query_results = per_query.set_index("query")[
-        [
-            "expected_categories",
-            "generated_categories",
-            "recall",
-            "jaccard",
-        ]
-    ]
-    report = report.join(query_results, on="query")
     report["predicted_categories"] = report["query"].map(predictions)
 
-    if taxonomy_level is not None:
-        report[f"{category_field}_level_{taxonomy_level}"] = report[category_field].map(
-            lambda category: (
-                _project_category(category, taxonomy_level)
-                if pd.notna(category)
-                else None
+    for eval_as in eval_as_values:
+        evaluation = evaluations[eval_as]
+        suffix = "" if len(eval_as_values) == 1 else f"_{_eval_as_suffix(eval_as)}"
+        query_results = evaluation.per_query.set_index("query")
+        for column in ("expected_categories", "generated_categories", "recall", "jaccard"):
+            report[f"{column}{suffix}"] = report["query"].map(query_results[column])
+
+        taxonomy_level = _taxonomy_level(eval_as)
+        if taxonomy_level is not None:
+            report[f"{category_field}_level_{taxonomy_level}"] = report[
+                category_field
+            ].map(
+                lambda category: (
+                    _project_category(category, taxonomy_level)
+                    if pd.notna(category)
+                    else None
+                )
             )
-        )
-        report[f"ground_truth_{category_field}_level_{taxonomy_level}"] = report[
-            "expected_categories"
-        ].map(list)
-        report[f"predicted_categories_level_{taxonomy_level}"] = report[
-            "predicted_categories"
-        ].map(
-            lambda categories: sorted(
-                {
-                    projected
-                    for category in categories or []
-                    if (projected := _project_category(category, taxonomy_level))
-                    is not None
-                }
+            report[f"ground_truth_{category_field}_level_{taxonomy_level}"] = report[
+                f"expected_categories{suffix}"
+            ].map(list)
+            report[f"predicted_categories_level_{taxonomy_level}"] = report[
+                "predicted_categories"
+            ].map(
+                lambda categories: sorted(
+                    {
+                        projected
+                        for category in categories or []
+                        if (projected := _project_category(category, taxonomy_level))
+                        is not None
+                    }
+                )
             )
-        )
 
     report.to_pickle(path)
 
@@ -182,7 +271,7 @@ def evaluate_query_classification(
         raise ValueError("query_threshold must be between 0 and 1.")
     if params.limit is not None and params.limit <= 0:
         raise ValueError("limit must be greater than 0.")
-    taxonomy_level = _taxonomy_level(params.eval_as)
+    eval_as_values = _parse_eval_as(params.eval_as)
 
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path,
@@ -219,59 +308,22 @@ def evaluate_query_classification(
     )
     if params.query is None and params.limit is not None:
         queries = queries[: params.limit]
-    expected = _ground_truth(
-        queries=queries,
-        judgments=judgments,
-        corpus=corpus,
-        category_field=category_field,
-        threshold=params.query_threshold,
-        taxonomy_level=taxonomy_level,
-    )
-
-    enriched_queries = []
     predictions: dict[str, list[str]] = {}
     for query in tqdm(queries, desc="Enriching queries", unit="query"):
-        raw_generated_categories = sorted(set(strategy.enrich(query)))
-        predictions[query] = raw_generated_categories
-        generated_categories = pd.Series(raw_generated_categories, dtype="object")
-        generated_categories = _project_categories(generated_categories, taxonomy_level)
-        enriched_queries.append(
-            (query, expected[query], sorted(set(generated_categories.tolist())))
-        )
+        predictions[query] = sorted(set(strategy.enrich(query)))
 
-    rows = []
-    for query, expected_categories, generated_categories in enriched_queries:
-        expected_set = set(expected_categories)
-        generated_set = set(generated_categories)
-        intersection = expected_set & generated_set
-        union = expected_set | generated_set
-        recall = (
-            len(intersection) / len(expected_set)
-            if expected_set
-            else float("nan")
+    evaluations = {
+        eval_as: _evaluate_as(
+            eval_as=eval_as,
+            queries=queries,
+            judgments=judgments,
+            corpus=corpus,
+            category_field=category_field,
+            threshold=params.query_threshold,
+            predictions=predictions,
         )
-        jaccard = len(intersection) / len(union) if expected_set else float("nan")
-        rows.append(
-            {
-                "query": query,
-                "expected_categories": expected_categories,
-                "generated_categories": generated_categories,
-                "recall": recall,
-                "jaccard": jaccard,
-            }
-        )
-
-    per_query = pd.DataFrame(rows)
-    nonempty_truth = per_query[per_query["expected_categories"].map(bool)]
-    mean_recall = float(nonempty_truth["recall"].mean()) if not nonempty_truth.empty else None
-    mean_jaccard = (
-        float(nonempty_truth["jaccard"].mean()) if not nonempty_truth.empty else None
-    )
-    coverage = (
-        float(per_query["generated_categories"].map(bool).mean())
-        if not per_query.empty
-        else 0.0
-    )
+        for eval_as in eval_as_values
+    }
     if params.report_path is not None:
         _write_report(
             path=params.report_path,
@@ -279,13 +331,18 @@ def evaluate_query_classification(
             corpus=corpus,
             category_field=category_field,
             queries=queries,
-            per_query=per_query.copy(deep=True),
+            evaluations=evaluations,
+            eval_as_values=eval_as_values,
             predictions=predictions,
-            taxonomy_level=taxonomy_level,
         )
+    if len(evaluations) == 1:
+        return next(iter(evaluations.values()))
+    first = next(iter(evaluations.values()))
     return QueryClassificationResult(
-        per_query=per_query,
-        mean_recall=mean_recall,
-        mean_jaccard=mean_jaccard,
-        coverage=coverage,
+        per_query=first.per_query,
+        mean_recall=first.mean_recall,
+        mean_jaccard=first.mean_jaccard,
+        coverage=first.coverage,
+        eval_as=first.eval_as,
+        evaluations=evaluations,
     )

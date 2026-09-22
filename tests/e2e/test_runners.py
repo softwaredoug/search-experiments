@@ -334,6 +334,40 @@ strategy:
         lambda categories: categories == ["foo / bar / baz"]
     ).all()
 
+    multi_report_path = tmp_path / "multi-report.pkl"
+    multi_params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        query="taxonomy query",
+        query_threshold=0.4,
+        eval_as="taxonomy[0], taxonomy[1], direct",
+        report_path=str(multi_report_path),
+    )
+    with patch(
+        "exps.runners.query_classification.get_dataset", return_value=dataset
+    ):
+        multi_result = evaluate_query_classification(multi_params)
+
+    assert multi_result.evaluations is not None
+    assert list(multi_result.evaluations) == ["taxonomy[0]", "taxonomy[1]", "direct"]
+    assert multi_result.evaluations["taxonomy[0]"].mean_recall == 0.5
+    assert multi_result.evaluations["taxonomy[1]"].mean_recall == 1.0
+    assert multi_result.evaluations["direct"].mean_recall is None
+
+    multi_report = pd.read_pickle(multi_report_path)
+    assert multi_report["expected_categories_taxonomy_0"].map(
+        lambda categories: categories == ["foo", "lump"]
+    ).all()
+    assert multi_report["expected_categories_taxonomy_1"].map(
+        lambda categories: categories == ["bar"]
+    ).all()
+    assert multi_report["expected_categories_direct"].map(
+        lambda categories: categories == []
+    ).all()
+    assert multi_report["recall_taxonomy_0"].eq(0.5).all()
+    assert multi_report["recall_taxonomy_1"].eq(1.0).all()
+    assert multi_report["recall_direct"].isna().all()
+
 
 def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):
     config_path = _write_bm25_config(tmp_path)

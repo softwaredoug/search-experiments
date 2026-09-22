@@ -30,7 +30,10 @@ def main() -> None:
     parser.add_argument(
         "--eval-as",
         default="direct",
-        help="Evaluate directly or at a taxonomy level, e.g. taxonomy[0].",
+        help=(
+            "Evaluate directly or at taxonomy levels; comma-separate values, "
+            "e.g. taxonomy[0],taxonomy[1],direct."
+        ),
     )
     parser.add_argument(
         "--report",
@@ -56,31 +59,43 @@ def main() -> None:
             device=args.device,
         )
     )
-    if args.query:
-        row = result.per_query.iloc[0]
-        print(f"Query: {row['query']}")
-        print(f"Expected categories: {row['expected_categories']}")
-        print(f"Generated categories: {row['generated_categories']}")
-        if row["expected_categories"]:
-            print(f"Recall: {row['recall']:.4f}")
-            print(f"Jaccard: {row['jaccard']:.4f}")
-        else:
-            print("Recall: unavailable (no ground truth categories)")
-            print("Jaccard: unavailable (no ground truth categories)")
-        return
+    evaluations = result.evaluations or {result.eval_as: result}
+    for index, (eval_as, evaluation) in enumerate(evaluations.items()):
+        if len(evaluations) > 1:
+            if index:
+                print()
+            print(f"Eval as: {eval_as}")
+        if args.query:
+            row = evaluation.per_query.iloc[0]
+            print(f"Query: {row['query']}")
+            print(f"Expected categories: {row['expected_categories']}")
+            print(f"Generated categories: {row['generated_categories']}")
+            if row["expected_categories"]:
+                print(f"Recall: {row['recall']:.4f}")
+                print(f"Jaccard: {row['jaccard']:.4f}")
+            else:
+                print("Recall: unavailable (no ground truth categories)")
+                print("Jaccard: unavailable (no ground truth categories)")
+            continue
 
-    print(f"Queries: {len(result.per_query)}")
-    print(
-        "Queries with ground truth: "
-        f"{result.per_query['expected_categories'].map(bool).sum()}"
-    )
-    mean_recall = f"{result.mean_recall:.4f}" if result.mean_recall is not None else "unavailable"
-    mean_jaccard = (
-        f"{result.mean_jaccard:.4f}" if result.mean_jaccard is not None else "unavailable"
-    )
-    print(f"Mean recall: {mean_recall}")
-    print(f"Mean Jaccard: {mean_jaccard}")
-    print(f"Coverage: {result.coverage:.4f}")
+        print(f"Queries: {len(evaluation.per_query)}")
+        print(
+            "Queries with ground truth: "
+            f"{evaluation.per_query['expected_categories'].map(bool).sum()}"
+        )
+        mean_recall = (
+            f"{evaluation.mean_recall:.4f}"
+            if evaluation.mean_recall is not None
+            else "unavailable"
+        )
+        mean_jaccard = (
+            f"{evaluation.mean_jaccard:.4f}"
+            if evaluation.mean_jaccard is not None
+            else "unavailable"
+        )
+        print(f"Mean recall: {mean_recall}")
+        print(f"Mean Jaccard: {mean_jaccard}")
+        print(f"Coverage: {evaluation.coverage:.4f}")
 
 
 if __name__ == "__main__":
