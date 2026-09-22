@@ -269,24 +269,41 @@ strategy:
         encoding="utf-8",
     )
 
-    def evaluate(eval_as):
+    def evaluate(eval_as, report_path=None):
         params = QueryClassificationParams(
             strategy_path=str(config_path),
             dataset="doug_blog",
             query="taxonomy query",
             query_threshold=0.4,
             eval_as=eval_as,
+            report_path=str(report_path) if report_path is not None else None,
         )
         with patch(
             "exps.runners.query_classification.get_dataset", return_value=dataset
         ):
             return evaluate_query_classification(params).per_query.iloc[0]
 
-    root_row = evaluate("taxonomy[0]")
+    report_path = tmp_path / "taxonomy-report.pkl"
+    root_row = evaluate("taxonomy[0]", report_path)
     assert root_row["expected_categories"] == ["foo", "lump"]
     assert root_row["generated_categories"] == ["foo"]
     assert root_row["recall"] == 0.5
     assert root_row["jaccard"] == 0.5
+
+    report = pd.read_pickle(report_path)
+    assert len(report) == 5
+    assert report["category"].tolist() == corpus["category"].tolist()
+    assert report["expected_categories"].map(bool).eq(True).all()
+    assert report["generated_categories"].map(
+        lambda categories: categories == ["foo"]
+    ).all()
+    assert report["predicted_categories"].map(
+        lambda categories: categories == ["foo / bar / baz"]
+    ).all()
+    assert report["category_level_0"].tolist() == ["foo", "foo", "luz", "lump", "lump"]
+    assert report["predicted_categories_level_0"].map(
+        lambda categories: categories == ["foo"]
+    ).all()
 
     level_one_row = evaluate("taxonomy[1]")
     assert level_one_row["expected_categories"] == ["bar"]
@@ -294,9 +311,15 @@ strategy:
     assert level_one_row["recall"] == 1.0
     assert level_one_row["jaccard"] == 1.0
 
-    direct_row = evaluate("direct")
+    direct_report_path = tmp_path / "direct-report.pkl"
+    direct_row = evaluate("direct", direct_report_path)
     assert direct_row["expected_categories"] == []
     assert direct_row["generated_categories"] == ["foo / bar / baz"]
+    direct_report = pd.read_pickle(direct_report_path)
+    assert "category_level_0" not in direct_report
+    assert direct_report["predicted_categories"].map(
+        lambda categories: categories == ["foo / bar / baz"]
+    ).all()
 
 
 def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):

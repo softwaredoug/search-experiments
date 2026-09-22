@@ -32,6 +32,11 @@ def main() -> None:
         default="direct",
         help="Evaluate directly or at a taxonomy level, e.g. taxonomy[0].",
     )
+    parser.add_argument(
+        "--report",
+        dest="report_path",
+        help="Write a detailed enrichment evaluation report to this pickle file.",
+    )
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--device", help="Embedding device override.")
     parser.add_argument("--base-path", help="Base path for relative strategy config paths.")
@@ -46,6 +51,7 @@ def main() -> None:
             limit=args.limit,
             query_threshold=args.query_threshold,
             eval_as=args.eval_as,
+            report_path=args.report_path,
             workers=args.workers,
             device=args.device,
         )

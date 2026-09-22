@@ -19,6 +19,7 @@ class QueryClassificationParams:
     limit: int | None = None
     query_threshold: float = 0.8
     eval_as: str = "direct"
+    report_path: str | None = None
     workers: int = 1
     device: str | None = None
 
@@ -59,6 +60,62 @@ def _project_categories(categories: pd.Series, taxonomy_level: int | None) -> pd
             else None
         )
     ).dropna()
+
+
+def _project_category(category: object, taxonomy_level: int) -> str | None:
+    parts = str(category).split("/")
+    return parts[taxonomy_level].strip() if taxonomy_level < len(parts) else None
+
+
+def _write_report(
+    *,
+    path: str,
+    judgments: pd.DataFrame,
+    corpus: pd.DataFrame,
+    category_field: str,
+    queries: list[str],
+    per_query: pd.DataFrame,
+    predictions: dict[str, list[str]],
+    taxonomy_level: int | None,
+) -> None:
+    report = judgments[judgments["query"].isin(queries)].copy()
+    report_category_column = "__report_category"
+    report = report.merge(
+        corpus[["doc_id", category_field]].rename(
+            columns={category_field: report_category_column}
+        ),
+        on="doc_id",
+        how="left",
+    )
+    report[category_field] = report.pop(report_category_column)
+    query_results = per_query.set_index("query")[
+        ["expected_categories", "generated_categories"]
+    ]
+    report = report.join(query_results, on="query")
+    report["predicted_categories"] = report["query"].map(predictions)
+
+    if taxonomy_level is not None:
+        report[f"{category_field}_level_{taxonomy_level}"] = report[category_field].map(
+            lambda category: (
+                _project_category(category, taxonomy_level)
+                if pd.notna(category)
+                else None
+            )
+        )
+        report[f"predicted_categories_level_{taxonomy_level}"] = report[
+            "predicted_categories"
+        ].map(
+            lambda categories: sorted(
+                {
+                    projected
+                    for category in categories or []
+                    if (projected := _project_category(category, taxonomy_level))
+                    is not None
+                }
+            )
+        )
+
+    report.to_pickle(path)
 
 
 def _ground_truth(
@@ -164,8 +221,11 @@ def evaluate_query_classification(
     )
 
     enriched_queries = []
+    predictions: dict[str, list[str]] = {}
     for query in tqdm(queries, desc="Enriching queries", unit="query"):
-        generated_categories = pd.Series(strategy.enrich(query), dtype="object")
+        raw_generated_categories = sorted(set(strategy.enrich(query)))
+        predictions[query] = raw_generated_categories
+        generated_categories = pd.Series(raw_generated_categories, dtype="object")
         generated_categories = _project_categories(generated_categories, taxonomy_level)
         enriched_queries.append(
             (query, expected[query], sorted(set(generated_categories.tolist())))
@@ -204,6 +264,17 @@ def evaluate_query_classification(
         if not per_query.empty
         else 0.0
     )
+    if params.report_path is not None:
+        _write_report(
+            path=params.report_path,
+            judgments=judgments,
+            corpus=corpus,
+            category_field=category_field,
+            queries=queries,
+            per_query=per_query,
+            predictions=predictions,
+            taxonomy_level=taxonomy_level,
+        )
     return QueryClassificationResult(
         per_query=per_query,
         mean_recall=mean_recall,
