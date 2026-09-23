@@ -31,6 +31,8 @@ strategy:
             It's very important to choose "Unknown" if its unclear
 
             {query}
+            
+            Category descriptions:
     retrieval_engine:
       base: bm25_boosted
       params:
