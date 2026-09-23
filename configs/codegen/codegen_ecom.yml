@@ -1,0 +1,96 @@
+strategy:
+  name: codegen_ecom
+  type: codegen
+  # path: research/codegen/runs/minimarco/codegen_minimarco/20260504_033459
+  params:
+    train:
+      model: gpt-5.5
+      reasoning: "medium"
+      search_tools:
+        - get_corpus
+        - fielded_bm25
+      start_code: |
+        import numpy as np
+
+
+        def _bm25_scores(snowball, terms, *, k1=1.2, b=0.75):
+            doc_lengths = snowball.doclengths()
+            if len(doc_lengths) == 0:
+                return None
+            avg_dl = float(doc_lengths.mean())
+            if avg_dl <= 0:
+                return None
+            n_docs = len(doc_lengths)
+            scores = np.zeros(n_docs)
+            for term in terms:
+                term_freqs = snowball.termfreqs(term)
+                doc_freq = snowball.docfreq(term)
+                if doc_freq == 0:
+                    continue
+                idf = np.log(1.0 + (n_docs - doc_freq + 0.5) / (doc_freq + 0.5))
+                denom = term_freqs + k1 * (1.0 - b + b * (doc_lengths / avg_dl))
+                scores += idf * (term_freqs * (k1 + 1.0)) / np.where(denom == 0, 1.0, denom)
+            return scores
+
+
+        def reranker(query, fielded_bm25, get_corpus, **kwargs):
+            corpus = get_corpus()
+            desc_snowball = corpus["description_snowball"].array
+            title_snowball = corpus["title_snowball"].array
+            tokenizer = desc_snowball.tokenizer
+            terms = [term for term in tokenizer(query) if term]
+            if not terms:
+                return []
+
+            desc_scores = _bm25_scores(desc_snowball, terms)
+            title_scores = _bm25_scores(title_snowball, terms)
+            if desc_scores is None and title_scores is None:
+                return []
+            if desc_scores is None:
+                desc_scores = np.zeros(len(corpus))
+            if title_scores is None:
+                title_scores = np.zeros(len(corpus))
+
+            scores = (title_scores * 9.3) + (desc_scores * 4.1)
+            top_k = int(kwargs.get("top_k", 10))
+            if top_k <= 0:
+                return []
+            ranked = np.argsort(-scores)[:top_k]
+            return [str(corpus.iloc[idx]["doc_id"]) for idx in ranked if scores[idx] > 0]
+      edit:
+        guards:
+          - validation
+          - length:
+              max_lines: 20
+              max_cols: 120
+      eval:
+        train_fraction: 0.20
+        seed: 1234
+        eval_margin: 0.002
+      system_prompt: |
+        Your task is to improve the reranker code so it returns more relevant results.
+
+        Use evaluate to experiment with an approach and see training results.
+        Use commit_patch to edit the reranker module (validation is enforced only when enabled).
+        Use search to inspect single queries.
+        Use grep to explore past runs in a path holding previous codegen experiments for ideas / what to avoid.
+        Use grep to explore direct search results in the training/* sub directory (returned from evaluate).
+
+        You start with BM25 on raw corpus stats. But try to improve on it. The goal: find a better
+        lexical retrieval function.
+
+        This is a passage dataset ONLY has description. No _title_. Find a better passage ranker.
+
+        DO NOT rename the function in the code. You MUST keep the signature the same.
+
+        HINTS - what to explore
+        - Find statistically significant bigrams (colocations) using the phrase term frequency
+          stats
+        - Use the fielded BM25 scores as a signal in your reranker
+        - Try reranking on exact phrase matches in the retrieved candidates
+        - Use term length as another measure of specificity (ie longer terms are more specific to user intent)
+        - Try different stopword removal opproaches (but don't apply it to short queries)
+        - Look in logs where there was ALMOST a 0.002 improvement and see what the code changes were. Try to understand why they were close but not quite there - maybe you can mitigate the downsides to get a net improvement?
+
+    run:
+      top_k: 10

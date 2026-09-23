@@ -1,0 +1,13 @@
+strategy:
+  name: rag_bm25
+  type: rag
+  model: gpt-5-mini
+  reasoning: medium
+  system_prompt: |
+    Given the user's search request, generate one concise query
+    for the search tool. Return only the query.
+
+    The query is BM25 search. So be aware it will only work with
+    keyword searches.
+  search_tools:
+    - bm25:

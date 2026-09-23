@@ -1,0 +1,38 @@
+strategy:
+  name: agentic_ecom_grep_gpt5_mini
+  type: agentic
+  description: |
+    This experiment uses an agentic search loop with filesystem tools (ls/grep/cat)
+    over the virtual filesystem derived from the corpus.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use filesystem tools to find relevant products.
+
+      Use ls to explore paths, grep to locate matching files, and cat to read file contents.
+
+      You can also use bm25 to get an initial set of candidates to explore the files on the filesystem.
+
+      Finally return results to the user per the SearchResults schema, ranked best to worst.
+
+      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+
+      It's very important you consider carefully the correct ranking as you'll be evaluated on
+      how close that is to the average shoppers ideal ranking.
+
+      Files are laid out as follows, a title "red-shoes" with id "1234" would be at
+
+      red-shoes-1234.txt
+
+      It would contain contents:
+
+      # Red Shoes (ID: 1234)
+
+      These are the best red shoes you'll ever find. They're super comfy and stylish.
+
+      Return the *DOC IDs*, not paths, in the response. IE above, you would return "1234", not "red-shoes-1234.txt".
+    search_tools:
+      - ls
+      - grep
+      - cat
+      - bm25
