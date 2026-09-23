@@ -1,9 +1,11 @@
 variant,confidence_threshold,recall,coverage
-ecom_choice_single,baseline,0.5530474040632054,0.9229166666666667
-ecom_choice_single_gpt5,gpt-5,0.576271186440678,0.8604166666666667
+ecom_choice_single,baseline,0.562358276643991,0.91875
+ecom_choice_single_gpt5,gpt-5,0.5800970873786407,0.8583333333333333
+ecom_choice_single_gpt6_sol,gpt-6-sol,0.6,0.875
+ecom_choice_single_gpt6_luna,gpt-6-luna,0.5894988066825776,0.8729166666666667
 ecom_choice_single_jev_0_6,0.6,0.5978260869565217,0.7666666666666667
 ecom_choice_single_jev_0_7,0.7,0.622093023255814,0.7166666666666667
-ecom_choice_single_jev_0_8,0.8,0.575,0.65625
+ecom_choice_single_jev_0_8,0.8,0.6334405144694534,0.6479166666666667
 ecom_choice_single_jev_0_9,0.9,0.6615384615384615,0.5416666666666666
 ecom_choice_single_jev_0_95,0.95,0.6711111111111111,0.46875
 ecom_choice_single_jev_0_99,0.99,0.7152777777777778,0.3

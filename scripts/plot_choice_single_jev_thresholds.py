@@ -86,6 +86,18 @@ def main() -> None:
             xytext=offset if offset is not None else (12, -8),
             ha="center" if offset is not None else "right",
             va=("bottom" if offset[1] > 0 else "top") if offset is not None else "top",
+            arrowprops=(
+                {
+                    "arrowstyle": "-",
+                    "linestyle": ":",
+                    "color": "#666666",
+                    "linewidth": 0.8,
+                    "shrinkA": 3,
+                    "shrinkB": 5,
+                }
+                if offset is not None
+                else None
+            ),
         )
     ax.set_title("Choice classifier: accuracy vs coverage")
     ax.set_xlabel("Coverage")
