@@ -74,7 +74,11 @@ strategy:
           model: jev/jev-latest
           confidence_threshold: 0.7
           pad_missing_choices: false
-          # choices: category labels/descriptions, including Unknown
+          # Example choices; the linked YAML has the full category mapping.
+          choices:
+            Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.
+            Home Improvement: A search for products and services that help improve the functionality, aesthetics, or value of a home, such as tools, paint, and renovation services.
+            Unknown: No classification applies or its ambiguous
           prompt: |
             Which category best describes the query?
 
@@ -84,6 +88,44 @@ strategy:
       params:
         fields: [title^9.4, description^4]
         boost_matches: 10
+```
+
+For the example choices above, this roughly corresponds to a direct Jev call:
+
+```python
+from cheat_at_search.data_dir import key_for_provider
+from typesafe_sdk import Choice, TypeSafeClient
+
+query = "coffee table"
+client = TypeSafeClient(
+    api_key=key_for_provider("typesafe"),
+    model="jev-latest",
+)
+response = client.system_one(
+    state=query,
+    questions={
+        "category": Choice(
+            instructions=(
+                "Which category best describes the query?\n\n"
+                f"{query}"
+            ),
+            criteria={
+                "Furniture": (
+                    "A search for products used to make a room suitable for "
+                    "living or working, such as chairs, tables, and beds."
+                ),
+                "Home Improvement": (
+                    "A search for products and services that help improve the "
+                    "functionality, aesthetics, or value of a home, such as "
+                    "tools, paint, and renovation services."
+                ),
+                "Unknown": "No classification applies or its ambiguous",
+            },
+        )
+    },
+)
+answer = response.choices["category"]
+print(answer.choice, answer.confidence)
 ```
 
 Jev returns one of the configured choices along with confidence. At this cutoff,
@@ -126,6 +168,53 @@ strategy:
       params:
         fields: [title^9.4, description^4]
         boost_matches: 10
+```
+
+For the example choices above, this roughly corresponds to a structured OpenAI
+Responses API call. The real config supplies more choice values; this excerpt
+uses the three shown above:
+
+```python
+from typing import Literal
+
+from openai import OpenAI
+from pydantic import BaseModel, Field
+
+
+class CategoryResponse(BaseModel):
+    choice: Literal["Furniture", "Home Improvement", "Unknown"] = Field(
+        ..., description="The category choice for the query."
+    )
+
+
+query = "coffee table"
+system_prompt = (
+    "You are a helpful furniture shopping agent that helps users construct "
+    "search queries."
+)
+user_prompt = """Which category best describes the query?
+
+It's very important to choose "Unknown" if its unclear
+
+coffee table
+
+Category descriptions:
+
+Choices:
+- Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.
+- Home Improvement: A search for products and services that help improve the functionality, aesthetics, or value of a home, such as tools, paint, and renovation services.
+- Unknown: No classification applies or its ambiguous"""
+
+response = OpenAI().responses.parse(
+    model="gpt-5-mini",
+    reasoning={"effort": "medium"},
+    input=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ],
+    text_format=CategoryResponse,
+)
+print(response.output_parsed.choice)
 ```
 
 Unlike the Jev variants, this baseline has no confidence threshold. It relies on
