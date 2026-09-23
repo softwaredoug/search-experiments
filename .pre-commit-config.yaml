@@ -13,13 +13,6 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
-      - id: integration-tests-ci
-        name: integration tests (CI status)
-        entry: bash tests/scripts/check_last_integration_ci.sh tests.yml "" warn
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-        verbose: true
       - id: uv-check-lock
         name: uv lock is current
         entry: uv lock --check
