@@ -25,7 +25,11 @@ def main() -> None:
             "label": (
                 "gpt-5-mini"
                 if row["confidence_threshold"] == "baseline"
-                else f"jev({row['confidence_threshold']})"
+                else (
+                    "gpt-5"
+                    if row["confidence_threshold"] == "gpt-5"
+                    else f"jev({row['confidence_threshold']})"
+                )
             ),
             "coverage": float(row["coverage"]),
             "recall": float(row["recall"]),
@@ -57,9 +61,9 @@ def main() -> None:
             ha="right",
             va="top",
         )
-    ax.set_title(f"Jev choice threshold: accuracy vs coverage (AUC={auc:.3f})")
+    ax.set_title(f"Choice classifier: recall vs coverage (AUC={auc:.3f})")
     ax.set_xlabel("Coverage")
-    ax.set_ylabel("Accuracy")
+    ax.set_ylabel("Mean recall")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.grid(linestyle="--", alpha=0.4)

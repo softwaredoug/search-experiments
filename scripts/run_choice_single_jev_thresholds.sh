@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_CONFIG="${BASE_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single.yml}"
+GPT5_CONFIG="${GPT5_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single_gpt5.yml}"
 DATASET="${DATASET:-wands}"
 WORKERS="${WORKERS:-1}"
 QUERY_THRESHOLD="${QUERY_THRESHOLD:-0.8}"
@@ -32,6 +33,7 @@ run_classification() {
 }
 
 run_classification "${BASE_CONFIG}"
+run_classification "${GPT5_CONFIG}"
 
 for confidence_threshold in 0.6 0.7 0.8 0.9 0.95 0.99; do
   threshold_label="${confidence_threshold/./_}"
@@ -59,7 +61,10 @@ with open(raw_path, newline="", encoding="utf-8") as handle:
             continue
         strategy = row["strategy"]
         match = re.search(r"_jev_(\d+_\d+)$", strategy)
-        threshold = match.group(1).replace("_", ".") if match else "baseline"
+        if strategy == "ecom_choice_single_gpt5":
+            threshold = "gpt-5"
+        else:
+            threshold = match.group(1).replace("_", ".") if match else "baseline"
         rows.append(
             {
                 "variant": strategy,
