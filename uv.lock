@@ -473,7 +473,7 @@ wheels = [
 [[package]]
 name = "cheat-at-search"
 version = "0.1.0"
-source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=2cfcbf60f54f07b98285b4139f5b138de2f9d774#2cfcbf60f54f07b98285b4139f5b138de2f9d774" }
+source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=1ee82acd943135997b625846525e7f44329f55c8#1ee82acd943135997b625846525e7f44329f55c8" }
 dependencies = [
     { name = "datasets" },
     { name = "google-genai" },
@@ -1017,7 +1017,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=2cfcbf60f54f07b98285b4139f5b138de2f9d774" },
+    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=1ee82acd943135997b625846525e7f44329f55c8" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.10.0" },
