@@ -33,7 +33,7 @@ Its possible with a low query-threshold that a query would have many ground trut
 
 Regardless, in the end, our ground truth is a mapping of query -> list of categories
 
-### Eval metrics
+### Eval metrics (quality)
 
 Recall / Jaccard are computed, only applying to queries that have a non-empty prediction. Coverage is the percentage of queries that received a non-empty prediction.
 
