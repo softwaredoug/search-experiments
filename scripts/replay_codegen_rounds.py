@@ -42,7 +42,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--run-path",
-        default="runs/codegen/minimarco/codegen_minimarco/20260504_033459",
+        default="research/codegen/runs/minimarco/codegen_minimarco/20260504_033459",
         help="Codegen run directory containing reranker_round_*.py files.",
     )
     parser.add_argument(

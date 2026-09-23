@@ -2047,7 +2047,7 @@
 2026-05-04 15:19:34,971 - code - INFO - Why: Filter generic which/be/as, keep have, and reward matching more query concepts.
 2026-05-04 15:19:34,971 - code - INFO - Expected improved queries: ['which region does the black bear live in', 'number of moves in chess']
 2026-05-04 15:20:16,608 - code - INFO - ✅ Validation NDCG improved: before=0.17773308850660907, after=0.17982121239176194
-2026-05-04 15:20:16,610 - code - INFO - Creating backup of reranker.py at runs/codegen/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
+2026-05-04 15:20:16,610 - code - INFO - Creating backup of reranker.py at research/codegen/runs/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
 2026-05-04 15:20:16,610 - code - INFO - Committing changes to reranker.py
 2026-05-04 15:22:24,716 - codegen.train - INFO - Round 6/6 mean NDCG: 0.1793 (test 0.1802)
 2026-05-04 16:11:25,984 - codegen.train - INFO - Starting training round 7/7...
@@ -4193,7 +4193,7 @@
 2026-05-04 17:18:01,960 - code - INFO - Why: Keeps useful question wording for selected forms, preserves stand-for acronyms, and filters call/place/medicine when they are generic operators.
 2026-05-04 17:18:01,960 - code - INFO - Expected improved queries: ['what is medicine acyclovir used for', 'what does dv stand for in psychology', 'what is an unlocked cell phone', 'who invented ice cream?']
 2026-05-04 17:18:41,639 - code - INFO - ✅ Validation NDCG improved: before=0.18083514965876393, after=0.18297977682141908
-2026-05-04 17:18:41,639 - code - INFO - Creating backup of reranker.py at runs/codegen/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
+2026-05-04 17:18:41,639 - code - INFO - Creating backup of reranker.py at research/codegen/runs/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
 2026-05-04 17:18:41,639 - code - INFO - Committing changes to reranker.py
 2026-05-04 17:20:37,609 - codegen.train - INFO - Round 7/7 mean NDCG: 0.1815 (test 0.1833)
 2026-05-04 18:18:39,816 - codegen.train - INFO - Starting training round 8/8...
@@ -6478,7 +6478,7 @@
 2026-05-04 20:05:47,401 - code - INFO - Why: Combines validation-positive low-K/low-TF scoring, vacation-as-context filtering, and a tiny collocation boost.
 2026-05-04 20:05:47,401 - code - INFO - Expected improved queries: ['recuse meaning', 'what is the best place for all inclusive vacations for families', 'average download speed']
 2026-05-04 20:06:11,911 - code - INFO - ✅ Validation NDCG improved: before=0.1782747083213407, after=0.18027604816701498
-2026-05-04 20:06:11,912 - code - INFO - Creating backup of reranker.py at runs/codegen/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
+2026-05-04 20:06:11,912 - code - INFO - Creating backup of reranker.py at research/codegen/runs/minimarco/codegen_minimarco/20260504_033459/reranker_backup.py
 2026-05-04 20:06:11,912 - code - INFO - Committing changes to reranker.py
 2026-05-04 20:07:30,295 - codegen.train - INFO - Round 8/8 mean NDCG: 0.1827 (test 0.1803)
 2026-05-04 22:08:14,736 - codegen.train - INFO - Starting training round 9/9...

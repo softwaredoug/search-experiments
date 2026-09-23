@@ -1,7 +1,7 @@
 strategy:
   name: codegen_minimarco
   type: codegen
-  # path: runs/codegen/minimarco/codegen_minimarco/20260504_033459
+  # path: research/codegen/runs/minimarco/codegen_minimarco/20260504_033459
   params:
     train:
       model: gpt-5.5

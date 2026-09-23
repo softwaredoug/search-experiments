@@ -25,4 +25,5 @@ repos:
         entry: uv run flake8
         language: system
         types: [python]
+        exclude: ^research/codegen/runs/
         stages: [pre-commit]

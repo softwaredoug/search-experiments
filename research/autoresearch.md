@@ -8,7 +8,7 @@ Without any validation guardrails, we see issues overfitting to training data, a
 uv run run --strategy configs/codegen/codegen_no_guards.yml --dataset wands -rounds 10
 ```
 
-[Run here](/runs/codegen/wands/codegen_no_guards/20260501_155216)
+[Run here](/research/codegen/runs/wands/codegen_no_guards/20260501_155216)
 
 We plateau quickly when run on full query.
 
@@ -33,7 +33,7 @@ uv run run --strategy configs/codegen/codegen_guarded.yml --dataset wands -round
 uv run train --strategy configs/codegen/codegen_minimarco.yml --dataset minimarco 
 ```
 
-Run output [here](https://github.com/softwaredoug/search-experiments/tree/main/runs/codegen/minimarco/codegen_minimarco/20260504_033459)
+Run output [here](https://github.com/softwaredoug/search-experiments/tree/main/research/codegen/runs/minimarco/codegen_minimarco/20260504_033459)
 
 On Minimarco, we see a steady climb every round
 

@@ -1,6 +1,6 @@
 {
   "base_query_count": 543,
-  "continued_from": "runs/codegen/minimarco/codegen_minimarco/20260504_033459",
+  "continued_from": "research/codegen/runs/minimarco/codegen_minimarco/20260504_033459",
   "dataset": "minimarco",
   "eval_margin": 0.002,
   "messages": [

@@ -112,7 +112,7 @@
           "e5_base_v2"
         ],
         "name": "search",
-        "path": "runs/codegen/codegen_guarded/20260502_025238"
+        "path": "research/codegen/runs/wands/codegen_guarded/20260502_025238"
       },
       "guards": [],
       "name": "codegen"
