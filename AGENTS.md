@@ -6,6 +6,13 @@ Details can be examined in the docs/ folder. Particularly [docs](docs/prd.md)
 
 # Development Practices
 
+This project is a python project using uv
+
+## Vocabulary / stuff to google
+
+- jev from typesafe is a new decision model thats being advertised as a replacement for LLMs at classification, we increasingly use 
+  it in this repo instead of LLMs
+
 ## Testing practices
 
 Read the testing expectations to orient yourself at [test docs](docs/tests.md). Particularly the importance of e2e tests, and what that dictates about the structure of the code.
