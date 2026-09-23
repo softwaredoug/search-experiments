@@ -8,7 +8,7 @@ from pathlib import Path
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Plot recall against coverage for Jev choice thresholds."
+        description="Plot accuracy against coverage for Jev choice thresholds."
     )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -61,7 +61,7 @@ def main() -> None:
             ha="right",
             va="top",
         )
-    ax.set_title(f"Choice classifier: recall vs coverage (AUC={auc:.3f})")
+    ax.set_title("Choice classifier: accuracy vs coverage")
     ax.set_xlabel("Coverage")
     ax.set_ylabel("Mean recall")
     ax.set_xlim(0, 1)

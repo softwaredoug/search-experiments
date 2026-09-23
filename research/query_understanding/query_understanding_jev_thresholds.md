@@ -10,14 +10,14 @@ The table below is from [`research/results/query_understanding_jev_thresholds.cs
 
 | Variant | Confidence threshold | Mean recall | Coverage |
 | --- | ---: | ---: | ---: |
-| `ecom_choice_single` (GPT-5-mini) | baseline | 0.5561 | 0.9292 |
-| `ecom_choice_single_gpt5` (GPT-5) | gpt-5 | 0.5895 | 0.8729 |
-| `ecom_choice_single_jev_0_6` | 0.6 | 0.6033 | 0.7563 |
-| `ecom_choice_single_jev_0_7` | 0.7 | 0.6174 | 0.7188 |
-| `ecom_choice_single_jev_0_8` | 0.8 | 0.6484 | 0.6458 |
-| `ecom_choice_single_jev_0_9` | 0.9 | 0.6692 | 0.5417 |
-| `ecom_choice_single_jev_0_95` | 0.95 | 0.6667 | 0.4750 |
-| `ecom_choice_single_jev_0_99` | 0.99 | 0.7152 | 0.3146 |
+| `ecom_choice_single` (GPT-5-mini) | baseline | 0.5530 | 0.9229 |
+| `ecom_choice_single_gpt5` (GPT-5) | gpt-5 | 0.5763 | 0.8604 |
+| `ecom_choice_single_jev_0_6` | 0.6 | 0.5978 | 0.7667 |
+| `ecom_choice_single_jev_0_7` | 0.7 | 0.6221 | 0.7167 |
+| `ecom_choice_single_jev_0_8` | 0.8 | 0.5750 | 0.6563 |
+| `ecom_choice_single_jev_0_9` | 0.9 | 0.6615 | 0.5417 |
+| `ecom_choice_single_jev_0_95` | 0.95 | 0.6711 | 0.4688 |
+| `ecom_choice_single_jev_0_99` | 0.99 | 0.7153 | 0.3000 |
 
 ## Run
 
