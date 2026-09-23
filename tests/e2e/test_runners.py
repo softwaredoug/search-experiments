@@ -210,8 +210,10 @@ strategy:
 
     unknown_row = unknown_result.per_query.iloc[0]
     assert unknown_row["expected_categories"] == []
-    assert unknown_result.mean_recall is None
-    assert unknown_result.mean_jaccard is None
+    assert unknown_row["recall"] == 0.0
+    assert unknown_row["jaccard"] == 0.0
+    assert unknown_result.mean_recall == 0.0
+    assert unknown_result.mean_jaccard == 0.0
     assert unknown_result.coverage == 1.0
 
     limited_params = QueryClassificationParams(
@@ -328,6 +330,8 @@ strategy:
     direct_row = evaluate("direct", direct_report_path)
     assert direct_row["expected_categories"] == []
     assert direct_row["generated_categories"] == ["foo / bar / baz"]
+    assert direct_row["recall"] == 0.0
+    assert direct_row["jaccard"] == 0.0
     direct_report = pd.read_pickle(direct_report_path)
     assert "category_level_0" not in direct_report
     assert direct_report["predicted_categories"].map(
@@ -352,7 +356,7 @@ strategy:
     assert list(multi_result.evaluations) == ["taxonomy[0]", "taxonomy[1]", "direct"]
     assert multi_result.evaluations["taxonomy[0]"].mean_recall == 0.5
     assert multi_result.evaluations["taxonomy[1]"].mean_recall == 1.0
-    assert multi_result.evaluations["direct"].mean_recall is None
+    assert multi_result.evaluations["direct"].mean_recall == 0.0
 
     multi_report = pd.read_pickle(multi_report_path)
     assert multi_report["expected_categories_taxonomy_0"].map(
@@ -366,7 +370,8 @@ strategy:
     ).all()
     assert multi_report["recall_taxonomy_0"].eq(0.5).all()
     assert multi_report["recall_taxonomy_1"].eq(1.0).all()
-    assert multi_report["recall_direct"].isna().all()
+    assert multi_report["recall_direct"].eq(0.0).all()
+    assert multi_report["jaccard_direct"].eq(0.0).all()
 
 
 def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):

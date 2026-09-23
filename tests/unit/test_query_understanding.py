@@ -371,7 +371,7 @@ def test_ground_truth_uses_maximum_grade_regardless_of_scale():
     assert truth == {"sofa": ["Furniture"]}
 
 
-def test_classification_metrics_only_average_queries_with_predictions():
+def test_classification_metrics_average_queries_with_and_without_predictions():
     judgments = pd.DataFrame(
         {
             "query": ["sofa", "lamp"],
@@ -396,9 +396,46 @@ def test_classification_metrics_only_average_queries_with_predictions():
         predictions={"sofa": ["Furniture"], "lamp": []},
     )
 
-    assert result.mean_recall == 1.0
-    assert result.mean_jaccard == 1.0
+    assert result.mean_recall == 0.5
+    assert result.mean_jaccard == 0.5
     assert result.coverage == 0.5
+
+
+def test_classification_metrics_score_empty_category_sets():
+    judgments = pd.DataFrame(
+        {
+            "query": ["both-empty", "both-empty", "false-positive", "false-positive", "miss"],
+            "doc_id": [1, 2, 1, 2, 3],
+            "grade": [1, 1, 1, 1, 1],
+        }
+    )
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3],
+            "category": ["Furniture", "Lighting", "Garden"],
+        }
+    )
+
+    result = _evaluate_as(
+        eval_as="direct",
+        queries=["both-empty", "false-positive", "miss"],
+        judgments=judgments,
+        corpus=corpus,
+        category_field="category",
+        threshold=0.8,
+        predictions={
+            "both-empty": [],
+            "false-positive": ["Outdoor"],
+            "miss": [],
+        },
+    )
+
+    assert result.per_query["expected_categories"].tolist() == [[], [], ["Garden"]]
+    assert result.per_query["recall"].tolist() == [1.0, 0.0, 0.0]
+    assert result.per_query["jaccard"].tolist() == [1.0, 0.0, 0.0]
+    assert result.mean_recall == 1 / 3
+    assert result.mean_jaccard == 1 / 3
+    assert result.coverage == 1 / 3
 
 
 def test_category_matching_uses_phrase_matching():

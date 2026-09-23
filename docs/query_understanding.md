@@ -206,12 +206,12 @@ Its possible with a low query-threshold that a query would have many ground trut
 
 Regardless, in the end, our ground truth is a mapping of query -> list of categories
 
-Then we will measure the following per query that receives a prediction:
+Then we will measure the following per query:
 
 - Recall: Of the expected ground truth categories, what percent were returned by the enrichment engine?
 - Jaccard: The expected ground truth categories, compared to the generated list, whats the (intersection / union)?
 
-We summarize then average per-query recall, average per-queryi jaccard, and coverage: percentage of queries taht received a non-empty prediction
+When both category lists are empty, recall and Jaccard are both 1. When exactly one list is empty, both scores are 0. These scores are included in the mean recall and mean Jaccard across all queries. Coverage remains the percentage of queries that received a non-empty prediction.
 
 If a single --query is provided, we only evaluate that query, and print the expected ground truth categories, and the generated categories.
 

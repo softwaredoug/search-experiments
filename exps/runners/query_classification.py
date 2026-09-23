@@ -117,12 +117,11 @@ def _evaluate_as(
         generated_set = set(generated_categories)
         intersection = expected_set & generated_set
         union = expected_set | generated_set
-        recall = (
-            len(intersection) / len(expected_set)
-            if expected_set
-            else float("nan")
-        )
-        jaccard = len(intersection) / len(union) if expected_set else float("nan")
+        if expected_set:
+            recall = len(intersection) / len(expected_set)
+        else:
+            recall = 1.0 if not generated_set else 0.0
+        jaccard = len(intersection) / len(union) if union else 1.0
         rows.append(
             {
                 "query": query,
@@ -134,9 +133,8 @@ def _evaluate_as(
         )
 
     per_query = pd.DataFrame(rows)
-    predicted_queries = per_query[per_query["generated_categories"].map(bool)]
-    recall_values = predicted_queries["recall"].dropna()
-    jaccard_values = predicted_queries["jaccard"].dropna()
+    recall_values = per_query["recall"].dropna()
+    jaccard_values = per_query["jaccard"].dropna()
     mean_recall = (
         float(recall_values.mean())
         if not recall_values.empty
