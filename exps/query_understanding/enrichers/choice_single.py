@@ -80,11 +80,11 @@ def make_choice_single_enricher(
     configured_model = str(common["model"])
     provider = configured_model.split("/", 1)[0].lower()
     if "/" in configured_model and provider == "jev":
-        from exps.query_understanding.enrichers.choice_single_jev import (
-            JevChoiceSingleEnricher,
+        from exps.query_understanding.enrichers.cached_choice_single_jev import (
+            CachedJevChoiceSingleEnricher,
         )
 
-        return JevChoiceSingleEnricher(**common)
+        return CachedJevChoiceSingleEnricher(**common)
     if "/" not in configured_model or provider == "openai":
         if confidence_threshold is not None:
             raise ValueError(

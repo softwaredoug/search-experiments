@@ -125,18 +125,22 @@ def main() -> None:
             print(f"Query: {row['query']}")
             print(f"Expected categories: {row['expected_categories']}")
             print(f"Generated categories: {row['generated_categories']}")
-            if row["expected_categories"]:
+            if row["generated_categories"]:
                 print(f"Recall: {row['recall']:.4f}")
                 print(f"Jaccard: {row['jaccard']:.4f}")
             else:
-                print("Recall: unavailable (no ground truth categories)")
-                print("Jaccard: unavailable (no ground truth categories)")
+                print("Recall: unavailable (no prediction)")
+                print("Jaccard: unavailable (no prediction)")
             continue
 
         print(f"Queries: {len(evaluation.per_query)}")
         print(
             "Queries with ground truth: "
             f"{evaluation.per_query['expected_categories'].map(bool).sum()}"
+        )
+        print(
+            "Queries with predictions: "
+            f"{evaluation.per_query['generated_categories'].map(bool).sum()}"
         )
         mean_recall = (
             f"{evaluation.mean_recall:.4f}"

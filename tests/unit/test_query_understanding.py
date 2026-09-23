@@ -9,6 +9,9 @@ from exps.query_understanding.enrichers import make_enricher
 from exps.query_understanding.enrichers import make_llm_multiple_enricher
 from exps.query_understanding.enrichers import make_llm_single_enricher
 from exps.query_understanding.enrichers import make_choice_single_enricher
+from exps.query_understanding.enrichers.cached_choice_single_jev import (
+    CachedJevChoiceSingleEnricher,
+)
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.query_understanding.retrieval_engines import (
     BM25HierarchyBoostedRetrievalEngine,
@@ -222,7 +225,7 @@ def test_choice_single_unknown_means_no_classification():
         FakeAutoEnricher.value = "Furniture"
 
 
-def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
+def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown(tmp_path):
     FakeJevClient.instances = []
     FakeJevClient.value = "Unknown"
     try:
@@ -232,6 +235,9 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
         ), patch(
             "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
             return_value="typesafe-test-key",
+        ), patch(
+            "exps.query_understanding.enrichers.cached_choice_single_jev.DATA_PATH",
+            tmp_path,
         ):
             enricher = make_enricher(
                 {
@@ -247,6 +253,7 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
                 field="category",
                 vocabulary=["Furniture", "Lighting"],
             )
+            assert isinstance(enricher, CachedJevChoiceSingleEnricher)
             assert enricher.enrich("ambiguous") == []
 
         client = FakeJevClient.instances[0]
@@ -264,7 +271,9 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown():
         FakeJevClient.value = "Furniture"
 
 
-def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold():
+def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold(
+    tmp_path,
+):
     FakeJevClient.instances = []
     FakeJevClient.value = "Furniture"
     FakeJevClient.confidence = 0.5
@@ -275,6 +284,9 @@ def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold():
         ), patch(
             "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
             return_value="typesafe-test-key",
+        ), patch(
+            "exps.query_understanding.enrichers.cached_choice_single_jev.DATA_PATH",
+            tmp_path,
         ):
             enricher = make_enricher(
                 {
@@ -298,6 +310,9 @@ def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold():
         ), patch(
             "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
             return_value="typesafe-test-key",
+        ), patch(
+            "exps.query_understanding.enrichers.cached_choice_single_jev.DATA_PATH",
+            tmp_path,
         ):
             enricher = make_enricher(
                 {
@@ -316,6 +331,50 @@ def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold():
     finally:
         FakeJevClient.value = "Furniture"
         FakeJevClient.confidence = 1.0
+
+
+def test_cached_jev_choice_single_persists_predictions_and_empty_results(tmp_path):
+    from exps.query_understanding.enrichers import cached_choice_single_jev
+
+    class FakeJevEnricher:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.cache_key = "fixture-cache-key"
+            self.calls = []
+            self.__class__.instances.append(self)
+
+        def enrich(self, query):
+            self.calls.append(query)
+            return {"chair": ["Furniture"], "ambiguous": []}[query]
+
+    FakeJevEnricher.instances = []
+    with patch.object(cached_choice_single_jev, "DATA_PATH", tmp_path), patch.object(
+        cached_choice_single_jev, "JevChoiceSingleEnricher", FakeJevEnricher
+    ):
+        kwargs = {
+            "field": "category",
+            "vocabulary": ["Furniture"],
+            "choices": {"Furniture": "Products used to furnish a room."},
+            "prompt": "Classify {query}.",
+            "model": "jev/jev-latest",
+            "reasoning": None,
+            "pad_missing_choices": False,
+        }
+        first = cached_choice_single_jev.CachedJevChoiceSingleEnricher(**kwargs)
+        assert first.enrich("chair") == ["Furniture"]
+        assert first.enrich("ambiguous") == []
+
+        second = cached_choice_single_jev.CachedJevChoiceSingleEnricher(**kwargs)
+        assert second.enrich("chair") == ["Furniture"]
+        assert second.enrich("ambiguous") == []
+
+    assert FakeJevEnricher.instances[0].calls == ["chair", "ambiguous"]
+    assert FakeJevEnricher.instances[1].calls == []
+    cache_path = tmp_path / "query_understanding_cache" / "fixture-cache-key.json"
+    assert cache_path.read_text(encoding="utf-8") == (
+        '{"ambiguous": [], "chair": ["Furniture"]}\n'
+    )
 
 
 def test_choice_single_rejects_confidence_threshold_for_openai():
@@ -371,7 +430,7 @@ def test_ground_truth_uses_maximum_grade_regardless_of_scale():
     assert truth == {"sofa": ["Furniture"]}
 
 
-def test_classification_metrics_average_queries_with_and_without_predictions():
+def test_classification_metrics_only_average_queries_with_predictions():
     judgments = pd.DataFrame(
         {
             "query": ["sofa", "lamp"],
@@ -396,8 +455,8 @@ def test_classification_metrics_average_queries_with_and_without_predictions():
         predictions={"sofa": ["Furniture"], "lamp": []},
     )
 
-    assert result.mean_recall == 0.5
-    assert result.mean_jaccard == 0.5
+    assert result.mean_recall == 1.0
+    assert result.mean_jaccard == 1.0
     assert result.coverage == 0.5
 
 
@@ -433,8 +492,8 @@ def test_classification_metrics_score_empty_category_sets():
     assert result.per_query["expected_categories"].tolist() == [[], [], ["Garden"]]
     assert result.per_query["recall"].tolist() == [1.0, 0.0, 0.0]
     assert result.per_query["jaccard"].tolist() == [1.0, 0.0, 0.0]
-    assert result.mean_recall == 1 / 3
-    assert result.mean_jaccard == 1 / 3
+    assert result.mean_recall == 0.0
+    assert result.mean_jaccard == 0.0
     assert result.coverage == 1 / 3
 
 

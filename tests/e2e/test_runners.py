@@ -13,6 +13,7 @@ import pytest
 from cheat_at_search.search import run_strategy
 
 from exps.datasets import get_dataset
+from exps.query_classification_runner import main as query_classification_main
 from exps.metrics import metric_for_dataset
 from exps.runners.query_classification import (
     QueryClassificationParams,
@@ -294,6 +295,7 @@ strategy:
 
     report = pd.read_pickle(report_path)
     assert len(report) == 5
+    assert report["has_prediction"].all()
     assert report["category"].tolist() == corpus["category"].tolist()
     assert report["expected_categories"].map(bool).eq(True).all()
     assert report["generated_categories"].map(
@@ -359,6 +361,7 @@ strategy:
     assert multi_result.evaluations["direct"].mean_recall == 0.0
 
     multi_report = pd.read_pickle(multi_report_path)
+    assert multi_report["has_prediction"].all()
     assert multi_report["expected_categories_taxonomy_0"].map(
         lambda categories: categories == ["foo", "lump"]
     ).all()
@@ -372,6 +375,115 @@ strategy:
     assert multi_report["recall_taxonomy_1"].eq(1.0).all()
     assert multi_report["recall_direct"].eq(0.0).all()
     assert multi_report["jaccard_direct"].eq(0.0).all()
+
+
+def test_query_classification_report_mean_matches_csv_and_cli(
+    tmp_path, capsys
+):
+    judgment_queries = [
+        "correct",
+        "wrong",
+        "wrong",
+        "no_ground_truth",
+        "no_ground_truth",
+        "no_ground_truth",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+    ]
+    categories = [
+        "Furniture",
+        "Lighting",
+        "Lighting",
+        "Outdoor",
+        "Rugs",
+        "Bed & Bath",
+        "Garden",
+        "Garden",
+        "Garden",
+        "Garden",
+    ]
+    doc_ids = list(range(1, len(judgment_queries) + 1))
+    corpus = pd.DataFrame({"doc_id": doc_ids, "category": categories})
+    judgments = pd.DataFrame(
+        {"query": judgment_queries, "doc_id": doc_ids, "grade": [2] * len(doc_ids)}
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+
+    config_path = tmp_path / "query_understanding.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_classification_report_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: dummy
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    class Predictions:
+        category_field = "category"
+
+        def enrich(self, query):
+            return {
+                "correct": ["Furniture"],
+                "wrong": ["Furniture"],
+                "no_ground_truth": ["Outdoor"],
+                "abstain": [],
+            }[query]
+
+    report_path = tmp_path / "class-report.pkl"
+    summary_path = tmp_path / "summary.csv"
+    with (
+        patch("exps.runners.query_classification.get_dataset", return_value=dataset),
+        patch(
+            "exps.runners.query_classification.create_strategy",
+            return_value=(Predictions(), None),
+        ),
+        patch(
+            "sys.argv",
+            [
+                "query_classification",
+                "--strategy",
+                str(config_path),
+                "--dataset",
+                "doug_blog",
+                "--eval-as",
+                "direct",
+                "--query-threshold",
+                "0.8",
+                "--report",
+                str(report_path),
+                "--summary-csv",
+                str(summary_path),
+            ],
+        ),
+    ):
+        query_classification_main()
+
+    report = pd.read_pickle(report_path)
+    assert report.loc[report["query"] == "no_ground_truth", "recall"].eq(0.0).all()
+    assert not report.loc[report["query"] == "abstain", "has_prediction"].any()
+    report_mean_recall = (
+        report.loc[report["has_prediction"]]
+        .groupby("query")["recall"]
+        .mean()
+        .mean()
+    )
+
+    summary = pd.read_csv(summary_path)
+    assert summary.loc[0, "mean_recall"] == pytest.approx(report_mean_recall)
+    assert report_mean_recall == pytest.approx(1 / 3)
+    assert f"Mean recall: {report_mean_recall:.4f}" in capsys.readouterr().out
 
 
 def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):

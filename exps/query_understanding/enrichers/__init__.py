@@ -6,6 +6,9 @@ from exps.query_understanding.enrichers.dummy import (
     DummyEnricher,
     make_dummy_enricher,
 )
+from exps.query_understanding.enrichers.cached_choice_single_jev import (
+    CachedJevChoiceSingleEnricher,
+)
 from exps.query_understanding.enrichers.choice_single import make_choice_single_enricher
 from exps.query_understanding.enrichers.choice_single_jev import JevChoiceSingleEnricher
 from exps.query_understanding.enrichers.choice_single_openai import (
@@ -89,6 +92,7 @@ def make_enricher(
 
 __all__ = [
     "DummyEnricher",
+    "CachedJevChoiceSingleEnricher",
     "JevChoiceSingleEnricher",
     "OpenAIChoiceSingleEnricher",
     "Enricher",

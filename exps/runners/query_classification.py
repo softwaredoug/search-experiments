@@ -133,8 +133,9 @@ def _evaluate_as(
         )
 
     per_query = pd.DataFrame(rows)
-    recall_values = per_query["recall"].dropna()
-    jaccard_values = per_query["jaccard"].dropna()
+    predicted_queries = per_query[per_query["generated_categories"].map(bool)]
+    recall_values = predicted_queries["recall"].dropna()
+    jaccard_values = predicted_queries["jaccard"].dropna()
     mean_recall = (
         float(recall_values.mean())
         if not recall_values.empty
@@ -216,6 +217,12 @@ def _write_report(
                 )
             )
 
+    prediction_column = (
+        "generated_categories"
+        if "generated_categories" in report.columns
+        else "predicted_categories"
+    )
+    report["has_prediction"] = report[prediction_column].map(bool)
     report.to_pickle(path)
 
 
