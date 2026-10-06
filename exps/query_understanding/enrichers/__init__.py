@@ -45,8 +45,6 @@ def make_enricher(
             raise ValueError(
                 "choice_single enrichment requires params.prompt as a non-empty template."
             )
-        if choices is None:
-            raise ValueError("choice_single enrichment requires params.choices.")
         return make_choice_single_enricher(
             field=field,
             vocabulary=vocabulary,

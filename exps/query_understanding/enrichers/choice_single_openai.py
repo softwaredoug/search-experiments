@@ -28,7 +28,7 @@ class OpenAIChoiceSingleEnricher:
         *,
         field: str,
         vocabulary: list[str],
-        choices: dict[str, str],
+        choices: dict[str, str | None],
         prompt: str,
         model: str,
         reasoning: str | None,
@@ -76,7 +76,7 @@ class OpenAIChoiceSingleEnricher:
         prompt_choices = dict(self.choices)
         prompt_choices.setdefault("Unknown", "No classification applies.")
         choice_lines = "\n".join(
-            f"- {choice}: {description}"
+            f"- {choice}: {description}" if description is not None else f"- {choice}"
             for choice, description in prompt_choices.items()
         )
         prompt = f"{prompt}\n\nChoices:\n{choice_lines}"

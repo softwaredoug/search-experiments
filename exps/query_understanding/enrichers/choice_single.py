@@ -6,26 +6,31 @@ from typing import Any
 import yaml
 
 
-def _parse_choices(choices: Any) -> dict[str, str]:
+MAX_JEV_CHOICE_COUNT = 255
+
+
+def _parse_choices(choices: Any) -> dict[str, str | None]:
     if isinstance(choices, str):
         choices = yaml.safe_load(choices)
+    if choices is None:
+        return {}
     if not isinstance(choices, dict):
         raise ValueError("choice_single enrichment requires params.choices as a mapping.")
     parsed = {}
     for choice, description in choices.items():
         if not isinstance(choice, str) or not choice.strip():
             raise ValueError("choice_single choices must have non-empty string keys.")
-        if not isinstance(description, str) or not description.strip():
+        if description is not None and (
+            not isinstance(description, str) or not description.strip()
+        ):
             raise ValueError(f"choice_single choice {choice!r} must have a description.")
-        parsed[choice] = description.strip()
-    if not parsed:
-        raise ValueError("choice_single enrichment requires at least one choice.")
+        parsed[choice] = description.strip() if isinstance(description, str) else None
     return parsed
 
 
 def _prepare_choices(
     choices: Any, vocabulary: list[str], pad_missing_choices: bool
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     parsed_choices = _parse_choices(choices)
     if pad_missing_choices:
         return parsed_choices
@@ -37,7 +42,7 @@ def _prepare_choices(
 
 
 def _choice_vocabulary(
-    vocabulary: list[str], choices: dict[str, str], pad_missing_choices: bool
+    vocabulary: list[str], choices: dict[str, str | None], pad_missing_choices: bool
 ) -> list[str]:
     if pad_missing_choices:
         return list(vocabulary)
@@ -66,10 +71,22 @@ def make_choice_single_enricher(
             raise ValueError("confidence_threshold must be a number between 0 and 1.") from exc
         if not math.isfinite(confidence_threshold) or not 0 <= confidence_threshold <= 1:
             raise ValueError("confidence_threshold must be a number between 0 and 1.")
-    prepared_choices = _prepare_choices(choices, vocabulary, pad_missing_choices)
+    configured_model = str(params.get("model", model))
+    provider = configured_model.split("/", 1)[0].lower()
+    is_jev = "/" in configured_model and provider == "jev"
+    parsed_choices = _parse_choices(choices)
+    choice_vocabulary = list(vocabulary)
+    if not parsed_choices:
+        choice_vocabulary = [value for value in choice_vocabulary if value != "Unknown"]
+        if is_jev:
+            choice_vocabulary = choice_vocabulary[: MAX_JEV_CHOICE_COUNT - 1]
+        parsed_choices = {value: None for value in choice_vocabulary}
+    prepared_choices = _prepare_choices(
+        parsed_choices, choice_vocabulary, pad_missing_choices
+    )
     common = {
         "field": field,
-        "vocabulary": vocabulary,
+        "vocabulary": choice_vocabulary,
         "choices": prepared_choices,
         "prompt": prompt,
         "model": params.get("model", model),
@@ -77,8 +94,6 @@ def make_choice_single_enricher(
         "pad_missing_choices": pad_missing_choices,
         "confidence_threshold": confidence_threshold,
     }
-    configured_model = str(common["model"])
-    provider = configured_model.split("/", 1)[0].lower()
     if "/" in configured_model and provider == "jev":
         from exps.query_understanding.enrichers.cached_choice_single_jev import (
             CachedJevChoiceSingleEnricher,

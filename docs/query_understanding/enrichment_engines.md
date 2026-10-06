@@ -104,7 +104,7 @@ enrichment_engine:
 
 A choice, but with a description.
 
-Each choice has a labeled criteria for why it would be chosen. This is useful for a small vocabulary of categories, where we can describe each category to the LLM.
+Each choice has a labeled criteria for why it would be chosen. This is useful for a small vocabulary of categories, where we can describe each category to the LLM. Choices are optional.
 
 ```yaml
 enrichment_engine:
@@ -132,6 +132,19 @@ enrichment_engine:
       {query}
 ```
 
+#### When choice is omitted
+
+If `choices` is omitted or empty, the category values themselves become unlabeled
+choice options. The strategy supplies categories in descending corpus frequency,
+so the most popular values are considered first. For Jev, at most 254 category
+values are used, leaving one of Jev's 255 allowed options for `Unknown`.
+
+Jev's `Choice.criteria` must still map labels to values; use `None` for options
+without descriptions (rather than an empty criteria mapping). OpenAI receives
+the same unlabeled option names in its prompt and structured-output choices.
+
+### Max multi-label enrichment
+
 #### Behavior in OpenAI
 
 `choices` is a YAML dictionary mapping each choice name to its description. It should not be a block-scalar string.
@@ -152,4 +165,3 @@ Review [Jev's documentation](https://jev.pro/primitives/choice/) it's a new appr
 - The prompt becomes the "instruction"
 - Each choice becomes a jev "criteria" dictionary
 - Missing choices are passed as keys, with empty descriptions depending on `pad_missing_choices`
-

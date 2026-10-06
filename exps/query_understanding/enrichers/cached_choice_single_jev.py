@@ -20,7 +20,7 @@ class CachedJevChoiceSingleEnricher:
         *,
         field: str,
         vocabulary: list[str],
-        choices: dict[str, str],
+        choices: dict[str, str | None],
         prompt: str,
         model: str,
         reasoning: str | None,

@@ -7,7 +7,10 @@ from typing import Any
 from cheat_at_search.data_dir import key_for_provider
 from typesafe_sdk import Choice, TypeSafeClient
 
-from exps.query_understanding.enrichers.choice_single import _choice_vocabulary
+from exps.query_understanding.enrichers.choice_single import (
+    MAX_JEV_CHOICE_COUNT,
+    _choice_vocabulary,
+)
 
 
 def _model_name(model: str) -> str:
@@ -24,7 +27,7 @@ class JevChoiceSingleEnricher:
         *,
         field: str,
         vocabulary: list[str],
-        choices: dict[str, str],
+        choices: dict[str, str | None],
         prompt: str,
         model: str,
         reasoning: str | None,
@@ -49,8 +52,10 @@ class JevChoiceSingleEnricher:
         self.criteria["Unknown"] = self.choices.get(
             "Unknown", "No classification applies."
         )
-        if len(self.criteria) > 255:
-            raise ValueError("Jev choice_single supports at most 255 choices.")
+        if len(self.criteria) > MAX_JEV_CHOICE_COUNT:
+            raise ValueError(
+                f"Jev choice_single supports at most {MAX_JEV_CHOICE_COUNT} choices."
+            )
         self.client = TypeSafeClient(
             api_key=key_for_provider("typesafe"),
             model=self.model,

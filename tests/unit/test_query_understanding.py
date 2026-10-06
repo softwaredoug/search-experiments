@@ -205,6 +205,28 @@ def test_choice_single_enricher_can_pad_missing_vocabulary_choices():
     assert "Lighting" in enricher.response_model.model_json_schema()["properties"]["choice"]["enum"]
 
 
+def test_choice_single_enricher_uses_unlabeled_vocabulary_when_choices_are_omitted():
+    FakeAutoEnricher.instances = []
+    FakeAutoEnricher.value = "Furniture"
+    with patch(
+        "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
+        FakeAutoEnricher,
+    ):
+        enricher = make_enricher(
+            {
+                "type": "choice_single",
+                "params": {"prompt": "Classify {query}."},
+            },
+            field="category",
+            vocabulary=["Furniture", "Lighting"],
+        )
+        assert enricher.enrich("sofa") == ["Furniture"]
+
+    assert "Furniture" in enricher.response_model.model_json_schema()["properties"]["choice"]["enum"]
+    assert "Lighting" in enricher.response_model.model_json_schema()["properties"]["choice"]["enum"]
+    assert "- Furniture\n- Lighting" in FakeAutoEnricher.instances[0].prompts[0]
+
+
 def test_choice_single_unknown_means_no_classification():
     FakeAutoEnricher.instances = []
     FakeAutoEnricher.value = "Unknown"
@@ -267,6 +289,46 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown(tmp_p
             "Furniture": "Products used to furnish a room.",
             "Unknown": "No classification applies.",
         }
+    finally:
+        FakeJevClient.value = "Furniture"
+
+
+def test_choice_single_jev_uses_popularity_ordered_unlabeled_choices_when_empty(
+    tmp_path,
+):
+    FakeJevClient.instances = []
+    FakeJevClient.value = "category-0"
+    vocabulary = [f"category-{index}" for index in range(260)]
+    try:
+        with patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            FakeJevClient,
+        ), patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ), patch(
+            "exps.query_understanding.enrichers.cached_choice_single_jev.DATA_PATH",
+            tmp_path,
+        ):
+            enricher = make_enricher(
+                {
+                    "type": "choice_single",
+                    "params": {
+                        "model": "jev/jev-latest",
+                        "choices": {},
+                        "prompt": "Classify {query}.",
+                    },
+                },
+                field="category",
+                vocabulary=vocabulary,
+            )
+            assert enricher.enrich("query") == ["category-0"]
+
+        criteria = FakeJevClient.instances[0].calls[0][1]["category"].criteria
+        assert len(criteria) == 255
+        assert list(criteria) == [*vocabulary[:254], "Unknown"]
+        assert all(criteria[value] is None for value in vocabulary[:254])
+        assert criteria["Unknown"] == "No classification applies."
     finally:
         FakeJevClient.value = "Furniture"
 
@@ -583,5 +645,6 @@ def test_query_understanding_limits_category_vocabulary():
 
     vocabulary = strategy.enricher.vocabulary
     assert len(vocabulary) == MAX_CATEGORY_CARDINALITY
+    assert vocabulary[0] == categories[-1]
     assert categories[-1] in vocabulary
     assert len(set(categories[:-1]) - set(vocabulary)) == 1
