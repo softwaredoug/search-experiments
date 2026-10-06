@@ -565,6 +565,96 @@ strategy:
     )
 
 
+def test_jev_bm25_then_select_multiple_uses_candidate_probabilities_e2e(tmp_path):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3, 4, 5],
+            "title": ["sofa", "sofa bed", "sofa", "office sofa", "lamp"],
+            "description": ["chair", "chair", "chair", "chair", "sofa"],
+            "category": ["Furniture", "Furniture", "Bedroom", "Office", "Lighting"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {"query_id": [1], "query": ["sofa"], "doc_id": [5], "grade": [2]}
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    config_path = tmp_path / "jev_bm25_then_select_multiple.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: jev_bm25_then_select_multiple_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: jev_bm25_then_select_multiple
+        params:
+          model: jev/jev-latest
+          threshold: 0.4
+          aggregate_over: 1000
+          prompt: Which categories best describe {query}?
+          retrieval:
+            fields: [title^9.4]
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [description^4]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    ScriptedJevMultipleClient.instances = []
+    ScriptedJevMultipleClient.distributions = {
+        "sofa": {
+            "Furniture": 0.7,
+            "Bedroom": 0.45,
+            "Office": 0.4,
+            "Lighting": 0.99,
+            "Unknown": 0.99,
+        }
+    }
+    with (
+        patch(
+            "exps.runners.query_classification.get_dataset",
+            return_value=dataset,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.TypeSafeClient",
+            ScriptedJevMultipleClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.DATA_PATH",
+            tmp_path,
+        ),
+    ):
+        result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query="sofa",
+            )
+        )
+        no_match_result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query="no matching documents",
+            )
+        )
+
+    _, questions = ScriptedJevMultipleClient.instances[0].calls[0]
+    assert set(questions["category"].criteria) == {"Furniture", "Bedroom", "Office"}
+    assert result.per_query.iloc[0]["generated_categories"] == ["Bedroom", "Furniture"]
+    assert no_match_result.per_query.iloc[0]["generated_categories"] == []
+    assert sum(len(client.calls) for client in ScriptedJevMultipleClient.instances) == 1
+
+
 def test_query_classification_backend_taxonomy_evaluation(tmp_path):
     corpus = pd.DataFrame(
         {

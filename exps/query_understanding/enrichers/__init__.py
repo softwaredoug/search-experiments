@@ -35,7 +35,9 @@ from exps.query_understanding.enrichers.llm_multiple import (
 from exps.query_understanding.enrichers.protocol import Enricher
 from exps.query_understanding.enrichers.jev_bm25_then_select import (
     JevBM25ThenSelectEnricher,
+    JevBM25ThenSelectMultipleEnricher,
     make_jev_bm25_then_select_enricher,
+    make_jev_bm25_then_select_multiple_enricher,
 )
 
 
@@ -91,6 +93,17 @@ def make_enricher(
             params=params,
             model=model,
         )
+    if enrichment_type == "jev_bm25_then_select_multiple":
+        if corpus is None:
+            raise ValueError(
+                "jev_bm25_then_select_multiple requires the corpus for its candidate BM25 search."
+            )
+        return make_jev_bm25_then_select_multiple_enricher(
+            corpus=corpus,
+            field=field,
+            params=params,
+            model=model,
+        )
     if enrichment_type == "llm_single":
         prompt = params.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
@@ -121,7 +134,8 @@ def make_enricher(
         )
     raise ValueError(
         "Supported enrichment engines are dummy, llm_choice, jev_choice_single, "
-        "jev_choice_multiple, jev_bm25_then_select, llm_single, and llm_multiple; "
+        "jev_choice_multiple, jev_bm25_then_select, "
+        "jev_bm25_then_select_multiple, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
     )
 
@@ -133,6 +147,7 @@ __all__ = [
     "JevChoiceMultipleEnricher",
     "JevChoiceSingleEnricher",
     "JevBM25ThenSelectEnricher",
+    "JevBM25ThenSelectMultipleEnricher",
     "OpenAIChoiceSingleEnricher",
     "Enricher",
     "LLMSingleEnricher",
@@ -142,6 +157,7 @@ __all__ = [
     "make_jev_choice_single_enricher",
     "make_jev_choice_multiple_enricher",
     "make_jev_bm25_then_select_enricher",
+    "make_jev_bm25_then_select_multiple_enricher",
     "make_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",

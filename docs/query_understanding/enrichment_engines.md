@@ -186,9 +186,31 @@ Optional `retrieval.k1` and `retrieval.b` settings configure BM25 scoring;
 they default to `1.2` and `0.75`. Any document with a score of zero is not a
 match.
 
-### Jev BM25 then select (multiple) (planned)
+### Jev BM25 then select (multiple) (`jev_bm25_then_select_multiple`)
 
-The multiple-category search-then-select variant is not implemented yet.
+This engine uses the same independent BM25 candidate search as
+`jev_bm25_then_select`, then returns every candidate category whose Jev Choice
+probability is strictly greater than `threshold`. It offers at most the 255
+most popular categories in the positive-score top `aggregate_over` matches.
+No `Unknown` option is added; no matches or no categories above the threshold
+returns an empty list.
+
+```yaml
+enrichment_engine:
+  type: jev_bm25_then_select_multiple
+  params:
+    model: jev/jev-latest
+    threshold: 0.4
+    aggregate_over: 1000
+    prompt: |
+      Which categories best describe the query?
+      {query}
+    retrieval:
+      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
+```
+
+Optional `retrieval.k1` and `retrieval.b` settings configure BM25 scoring;
+they default to `1.2` and `0.75`.
 
 
 

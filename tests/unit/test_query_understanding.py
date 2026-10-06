@@ -760,6 +760,24 @@ def test_jev_bm25_then_select_validates_its_configuration(params, error):
         )
 
 
+@pytest.mark.parametrize("threshold", [None, -0.1, 1.1, "invalid"])
+def test_jev_bm25_then_select_multiple_validates_threshold(threshold):
+    params = {
+        "model": "jev/jev-latest",
+        "threshold": threshold,
+        "aggregate_over": 10,
+        "prompt": "Classify {query}.",
+        "retrieval": {"fields": ["title"]},
+    }
+    with pytest.raises(ValueError, match="threshold"):
+        make_enricher(
+            {"type": "jev_bm25_then_select_multiple", "params": params},
+            field="category",
+            vocabulary=[],
+            corpus=pd.DataFrame({"category": [], "title": []}),
+        )
+
+
 def test_llm_choice_unprefixed_model_defaults_to_openai():
     FakeAutoEnricher.instances = []
     with patch(

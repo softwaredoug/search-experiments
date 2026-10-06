@@ -24,10 +24,10 @@ from exps.query_understanding.enrichers.choice_single import (
 from exps.query_understanding.enrichers.choice_single_jev import _model_name
 
 
-def _parse_bm25_fields(fields: Any) -> dict[str, float]:
+def _parse_bm25_fields(fields: Any, engine_name: str) -> dict[str, float]:
     if not isinstance(fields, list) or not fields:
         raise ValueError(
-            "jev_bm25_then_select requires params.retrieval.fields as a non-empty list."
+            f"{engine_name} requires params.retrieval.fields as a non-empty list."
         )
 
     parsed: dict[str, float] = {}
@@ -75,6 +75,8 @@ def _parse_b(value: Any) -> float:
 class JevBM25ThenSelectEnricher:
     """Retrieve BM25 candidate categories, then select one with Jev Choice."""
 
+    engine_type = "jev_bm25_then_select"
+
     def __init__(
         self,
         *,
@@ -114,15 +116,15 @@ class JevBM25ThenSelectEnricher:
             model=self.model,
         )
         cache_config = {
-            "type": "jev_bm25_then_select",
+            "type": self.engine_type,
             "field": self.field,
             "model": self.model,
             "prompt": self.prompt_template,
             "aggregate_over": self.aggregate_over,
-            "confidence_threshold": self.confidence_threshold,
             "fields": self.fields,
             "k1": self.k1,
             "b": self.b,
+            **self._selection_cache_config(),
         }
         serialized = json.dumps(cache_config, sort_keys=True).encode("utf-8")
         self.cache_key = hashlib.md5(serialized).hexdigest()
@@ -214,6 +216,15 @@ class JevBM25ThenSelectEnricher:
             },
         )
         answer = response.choices[self.field]
+        result = self._selected_categories(answer, categories)
+        self._cache[cache_entry_key] = result
+        self._save_cache()
+        return list(result)
+
+    def _selection_cache_config(self) -> dict[str, Any]:
+        return {"confidence_threshold": self.confidence_threshold}
+
+    def _selected_categories(self, answer, categories: list[str]) -> list[str]:
         selected = getattr(answer, "choice", None)
         confidence = getattr(answer, "confidence", None)
         if (
@@ -225,25 +236,45 @@ class JevBM25ThenSelectEnricher:
             )
         ):
             selected = None
-        result = [str(selected)] if selected in categories else []
-        self._cache[cache_entry_key] = result
-        self._save_cache()
-        return list(result)
+        return [str(selected)] if selected in categories else []
 
 
-def make_jev_bm25_then_select_enricher(
-    *,
-    corpus,
-    field: str,
-    params: dict[str, Any],
-    model: str = "gpt-5-mini",
-):
+class JevBM25ThenSelectMultipleEnricher(JevBM25ThenSelectEnricher):
+    """Select every retrieved category whose Jev probability clears threshold."""
+
+    engine_type = "jev_bm25_then_select_multiple"
+
+    def __init__(self, *, threshold: float, **kwargs):
+        self.threshold = threshold
+        super().__init__(confidence_threshold=None, **kwargs)
+
+    def _selection_cache_config(self) -> dict[str, Any]:
+        return {"threshold": self.threshold}
+
+    def _selected_categories(self, answer, categories: list[str]) -> list[str]:
+        probabilities = getattr(answer, "probabilities", None)
+        return sorted(
+            {
+                str(category)
+                for category, probability in (probabilities or {}).items()
+                if category in categories
+                and category != "Unknown"
+                and isinstance(probability, (int, float))
+                and math.isfinite(probability)
+                and probability > self.threshold
+            }
+        )
+
+
+def _candidate_search_config(
+    *, params: dict[str, Any], model: str, engine_name: str
+) -> dict[str, Any]:
     prompt = params.get("prompt")
-    _validate_choice_prompt(prompt, "jev_bm25_then_select")
+    _validate_choice_prompt(prompt, engine_name)
     configured_model = str(params.get("model", model))
     if configured_model.split("/", 1)[0].lower() != "jev":
         raise ValueError(
-            "jev_bm25_then_select requires a Jev model (jev/*); "
+            f"{engine_name} requires a Jev model (jev/*); "
             f"received {configured_model!r}."
         )
 
@@ -258,21 +289,75 @@ def make_jev_bm25_then_select_enricher(
     retrieval = params.get("retrieval") or {}
     if not isinstance(retrieval, dict):
         raise ValueError("params.retrieval must be a mapping.")
-    fields = _parse_bm25_fields(retrieval.get("fields"))
+    fields = _parse_bm25_fields(retrieval.get("fields"), engine_name)
     k1 = _positive_float(retrieval.get("k1", 1.2), "k1")
     b = _parse_b(retrieval.get("b", 0.75))
 
+    return {
+        "model": configured_model,
+        "prompt": prompt,
+        "aggregate_over": aggregate_over,
+        "fields": fields,
+        "k1": k1,
+        "b": b,
+    }
+
+
+def make_jev_bm25_then_select_enricher(
+    *,
+    corpus,
+    field: str,
+    params: dict[str, Any],
+    model: str = "gpt-5-mini",
+):
+    search_config = _candidate_search_config(
+        params=params,
+        model=model,
+        engine_name="jev_bm25_then_select",
+    )
     return JevBM25ThenSelectEnricher(
         corpus=corpus,
         field=field,
-        model=configured_model,
-        prompt=prompt,
-        aggregate_over=aggregate_over,
+        **search_config,
         confidence_threshold=_choice_confidence_threshold(params),
-        fields=fields,
-        k1=k1,
-        b=b,
     )
 
 
-__all__ = ["JevBM25ThenSelectEnricher", "make_jev_bm25_then_select_enricher"]
+def make_jev_bm25_then_select_multiple_enricher(
+    *,
+    corpus,
+    field: str,
+    params: dict[str, Any],
+    model: str = "gpt-5-mini",
+):
+    threshold = params.get("threshold")
+    if threshold is None:
+        raise ValueError(
+            "jev_bm25_then_select_multiple requires params.threshold."
+        )
+    try:
+        threshold = float(threshold)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("threshold must be a number between 0 and 1.") from exc
+    if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("threshold must be a number between 0 and 1.")
+
+    search_config = _candidate_search_config(
+        params=params,
+        model=model,
+        engine_name="jev_bm25_then_select_multiple",
+    )
+    return JevBM25ThenSelectMultipleEnricher(
+        corpus=corpus,
+        field=field,
+        threshold=threshold,
+        **search_config,
+    )
+
+
+__all__ = [
+    "JevBM25ThenSelectEnricher",
+    "JevBM25ThenSelectMultipleEnricher",
+    "make_jev_bm25_then_select_enricher",
+    "make_jev_bm25_then_select_multiple_enricher",
+]
