@@ -155,90 +155,11 @@ enrichment_engine:
       {query}
 ```
 
-### Jev BM25 then select (single) (`jev_bm25_then_select`)
-
-This engine runs its own BM25 search to find candidate categories, then uses
-Jev's Choice primitive to select one. Its retrieval settings are independent
-of the query-understanding strategy's retrieval engine, which runs afterward
-to search again using the selected category.
-
-The engine takes the top `aggregate_over` positive-score BM25 matches, counts
-their category values, and offers the most popular 255 categories to Jev. If
-there are no positive-score matches, enrichment returns an empty list. Jev's
-selection is returned only when its confidence is strictly greater than
-`confidence_threshold`.
-
-```yaml
-enrichment_engine:
-  type: jev_bm25_then_select
-  params:
-    model: jev/jev-latest
-    confidence_threshold: 0.7
-    aggregate_over: 1000
-    prompt: |
-      Which category best describes the query?
-      {query}
-    retrieval:
-      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
-```
-
-Optional `retrieval.k1` and `retrieval.b` settings configure BM25 scoring;
-they default to `1.2` and `0.75`. Any document with a score of zero is not a
-match.
-
-### Jev BM25 then select (multiple) (`jev_bm25_then_select_multiple`)
-
-This engine uses the same independent BM25 candidate search as
-`jev_bm25_then_select`, then returns every candidate category whose Jev Choice
-probability is strictly greater than `threshold`. It offers at most the 255
-most popular categories in the positive-score top `aggregate_over` matches.
-No `Unknown` option is added; no matches or no categories above the threshold
-returns an empty list.
-
-```yaml
-enrichment_engine:
-  type: jev_bm25_then_select_multiple
-  params:
-    model: jev/jev-latest
-    threshold: 0.4
-    aggregate_over: 1000
-    prompt: |
-      Which categories best describe the query?
-      {query}
-    retrieval:
-      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
-```
-
-Optional `retrieval.k1` and `retrieval.b` settings configure BM25 scoring;
-they default to `1.2` and `0.75`.
-
-
-
-#### Vocabulary-based choice engines when `choices` is omitted
-
-For `llm_choice` and `jev_choice_single`, omitting or providing an empty
-`choices` mapping uses the most frequent category values in the corpus
-vocabulary as options. The strategy caps that vocabulary at 300 values.
-`llm_choice` can use that full vocabulary; `jev_choice_single` uses at most 254
-category values plus `Unknown`, within Jev's 255-option limit.
-
-Jev's `Choice.criteria` still needs a mapping of option labels to descriptions;
-unlabeled options are sent with `None` descriptions. For `llm_choice`, the
-option names are included in the prompt and structured-output schema.
-
-
 ### Jev choice multiple (`jev_choice_multiple`)
 
 Uses Jev's Choice probabilities to return every category whose probability is
 strictly greater than the configured threshold. It returns an empty list when
 no category exceeds the threshold. This engine accepts Jev models only.
-
-`choices` is optional. When omitted or empty, the most frequent category values
-are used as unlabeled options. The strategy vocabulary is capped at 300 values;
-Jev receives at most 255 options. Unlike `jev_choice_single`, no synthetic
-`Unknown` option is added, since this engine can return an empty list.
-If an explicit `Unknown` option is supplied, it is treated as no category and
-is not included in the returned list.
 
 ```yaml
 enrichment_engine:
@@ -268,7 +189,75 @@ enrichment_engine:
 ```
 
 
+### Jev BM25 then select
+
+Both engines perform an independent BM25 search to build per-query category
+candidates. The configured query-understanding retrieval engine then runs a
+second search using the selected category or categories.
+
+Each engine takes the top `aggregate_over` positive-score matches, counts
+their category values, and offers the most popular 255 categories to Jev.
+Documents with a score of zero are not matches. If there are no positive-score
+matches or no category values in those matches, enrichment returns an empty list.
+
+Optional `retrieval.k1` and `retrieval.b` settings configure candidate-search
+BM25 scoring; they default to `1.2` and `0.75`.
+
+#### Single (`jev_bm25_then_select`)
+
+Jev's selection is returned only when confidence is strictly greater than
+`confidence_threshold`.
+
+```yaml
+enrichment_engine:
+  type: jev_bm25_then_select
+  params:
+    model: jev/jev-latest
+    confidence_threshold: 0.7
+    aggregate_over: 1000
+    prompt: |
+      Which category best describes the query?
+      {query}
+    retrieval:
+      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
+```
+
+#### Multiple (`jev_bm25_then_select_multiple`)
+
+Returns every candidate category whose Jev Choice probability is strictly
+greater than `threshold`. No `Unknown` option is added; if no category exceeds
+the threshold, enrichment returns an empty list.
+
+```yaml
+enrichment_engine:
+  type: jev_bm25_then_select_multiple
+  params:
+    model: jev/jev-latest
+    threshold: 0.4
+    aggregate_over: 1000
+    prompt: |
+      Which categories best describe the query?
+      {query}
+    retrieval:
+      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
+```
+
+
 ### Choice option behavior
+
+#### Vocabulary-based choice engines when `choices` is omitted
+
+For `llm_choice`, `jev_choice_single`, and `jev_choice_multiple`, omitting or
+providing an empty `choices` mapping uses the most frequent category values in
+the corpus vocabulary as options. The strategy caps that vocabulary at 300
+values. `llm_choice` can use that full vocabulary; Jev receives at most 255
+options. `jev_choice_single` reserves one option for `Unknown`, so it uses at
+most 254 category values and maps `Unknown` to no category. `jev_choice_multiple`
+has no synthetic `Unknown` option and excludes an explicit `Unknown` from its
+results.
+
+This vocabulary behavior does not apply to the BM25-then-select engines, whose
+options come from each query's BM25 matches.
 
 #### LLM choice
 
