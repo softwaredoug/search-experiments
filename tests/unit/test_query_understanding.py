@@ -669,6 +669,99 @@ def test_cached_jev_choice_multiple_persists_multiple_predictions(tmp_path):
     )
 
 
+def test_jev_choice_single_no_cache_deletes_cache_and_does_not_recreate_it(tmp_path):
+    from exps.query_understanding.enrichers import cached_choice_single_jev
+
+    class FakeJevEnricher:
+        calls = []
+        cache_key = "no-cache-single-key"
+
+        def __init__(self, **kwargs):
+            self.__class__.calls = []
+
+        def enrich(self, query):
+            self.calls.append(query)
+            return ["Furniture"]
+
+    cache_path = tmp_path / "query_understanding_cache" / "no-cache-single-key.json"
+    cache_path.parent.mkdir(parents=True)
+    cache_path.write_text('{"chair": ["Lighting"]}\n', encoding="utf-8")
+
+    with (
+        patch.object(cached_choice_single_jev, "DATA_PATH", tmp_path),
+        patch.object(
+            cached_choice_single_jev,
+            "JevChoiceSingleEnricher",
+            FakeJevEnricher,
+        ),
+    ):
+        enricher = make_enricher(
+            {
+                "type": "jev_choice_single",
+                "params": {
+                    "model": "jev/jev-latest",
+                    "confidence_threshold": 0.7,
+                    "choices": {"Furniture": None},
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture"],
+            no_cache=True,
+        )
+        assert enricher.enrich("chair") == ["Furniture"]
+
+    assert FakeJevEnricher.calls == ["chair"]
+    assert not cache_path.exists()
+
+
+def test_jev_choice_multiple_no_cache_deletes_cache_and_does_not_recreate_it(
+    tmp_path,
+):
+    from exps.query_understanding.enrichers import cached_jev_choice_multiple
+
+    class FakeJevEnricher:
+        calls = []
+        cache_key = "no-cache-multiple-key"
+
+        def __init__(self, **kwargs):
+            self.__class__.calls = []
+
+        def enrich(self, query):
+            self.calls.append(query)
+            return ["Furniture"]
+
+    cache_path = tmp_path / "query_understanding_cache" / "no-cache-multiple-key.json"
+    cache_path.parent.mkdir(parents=True)
+    cache_path.write_text('{"chair": ["Lighting"]}\n', encoding="utf-8")
+
+    with (
+        patch.object(cached_jev_choice_multiple, "DATA_PATH", tmp_path),
+        patch.object(
+            cached_jev_choice_multiple,
+            "JevChoiceMultipleEnricher",
+            FakeJevEnricher,
+        ),
+    ):
+        enricher = make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {
+                    "model": "jev/jev-latest",
+                    "threshold": 0.4,
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture"],
+            no_cache=True,
+        )
+        assert enricher.enrich("chair") == ["Furniture"]
+
+    assert FakeJevEnricher.calls == ["chair"]
+    assert not cache_path.exists()
+
+
 def test_llm_choice_rejects_confidence_threshold():
     with pytest.raises(ValueError, match="only supported for Jev"):
         make_llm_choice_enricher(

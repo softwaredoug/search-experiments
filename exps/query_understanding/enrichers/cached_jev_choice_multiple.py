@@ -26,7 +26,9 @@ class CachedJevChoiceMultipleEnricher:
         threshold: float,
         reasoning: str | None,
         pad_missing_choices: bool,
+        no_cache: bool = False,
     ):
+        self.no_cache = no_cache
         self.enricher = JevChoiceMultipleEnricher(
             field=field,
             vocabulary=vocabulary,
@@ -43,7 +45,11 @@ class CachedJevChoiceMultipleEnricher:
             / "query_understanding_cache"
             / f"{self.cache_key}.json"
         )
-        self._cache = self._load_cache()
+        if self.no_cache:
+            self.cache_path.unlink(missing_ok=True)
+            self._cache = {}
+        else:
+            self._cache = self._load_cache()
 
     def _load_cache(self) -> dict[str, list[str]]:
         try:
@@ -89,5 +95,6 @@ class CachedJevChoiceMultipleEnricher:
 
         categories = self.enricher.enrich(query)
         self._cache[query] = list(categories)
-        self._save_cache()
+        if not self.no_cache:
+            self._save_cache()
         return list(categories)

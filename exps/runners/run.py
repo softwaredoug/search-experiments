@@ -185,6 +185,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         report_num_queries=params.num_queries,
         report_seed=params.seed,
         codegen_run_round=params.codegen_run_round,
+        no_cache=params.no_cache,
     )
     codegen_artifact_path = getattr(strategy, "artifact_path", None)
     codegen_artifact_path = (

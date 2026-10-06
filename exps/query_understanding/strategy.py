@@ -45,7 +45,15 @@ class QueryUnderstandingStrategy(SearchStrategy):
     _type = "query_understanding"
 
     @classmethod
-    def build(cls, params: dict, *, corpus, workers: int = 1, **kwargs):
+    def build(
+        cls,
+        params: dict,
+        *,
+        corpus,
+        workers: int = 1,
+        no_cache: bool = False,
+        **kwargs,
+    ):
         categorize = params.get("categorize") or {}
         category_field = categorize.get("field")
         if not isinstance(category_field, str) or not category_field:
@@ -71,6 +79,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             model=enrichment_config.get("model", "gpt-5-mini"),
             reasoning=params.get("reasoning"),
             corpus=corpus,
+            no_cache=no_cache,
         )
         return cls(corpus, workers=workers, enricher=enricher, **params)
 

@@ -134,6 +134,7 @@ def make_jev_choice_multiple_enricher(
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
     params: dict[str, Any] | None = None,
+    no_cache: bool = False,
 ):
     params = params or {}
     _validate_choice_prompt(prompt, "jev_choice_multiple")
@@ -170,6 +171,7 @@ def make_jev_choice_multiple_enricher(
         threshold=threshold,
         reasoning=reasoning,
         pad_missing_choices=pad_missing_choices,
+        no_cache=no_cache,
     )
 
 

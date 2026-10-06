@@ -89,6 +89,7 @@ class JevBM25ThenSelectEnricher:
         fields: dict[str, float],
         k1: float,
         b: float,
+        no_cache: bool = False,
     ):
         self.corpus = corpus
         self.field = field
@@ -99,6 +100,7 @@ class JevBM25ThenSelectEnricher:
         self.fields = dict(fields)
         self.k1 = k1
         self.b = b
+        self.no_cache = no_cache
 
         if self.field not in corpus.columns:
             raise ValueError(f"Missing category field: {self.field}")
@@ -133,7 +135,11 @@ class JevBM25ThenSelectEnricher:
             / "query_understanding_cache"
             / f"{self.cache_key}.json"
         )
-        self._cache = self._load_cache()
+        if self.no_cache:
+            self.cache_path.unlink(missing_ok=True)
+            self._cache = {}
+        else:
+            self._cache = self._load_cache()
 
     def _candidate_categories(self, query: str) -> list[str]:
         scores = np.zeros(len(self.corpus), dtype=float)
@@ -218,7 +224,8 @@ class JevBM25ThenSelectEnricher:
         answer = response.choices[self.field]
         result = self._selected_categories(answer, categories)
         self._cache[cache_entry_key] = result
-        self._save_cache()
+        if not self.no_cache:
+            self._save_cache()
         return list(result)
 
     def _selection_cache_config(self) -> dict[str, Any]:
@@ -309,6 +316,7 @@ def make_jev_bm25_then_select_enricher(
     field: str,
     params: dict[str, Any],
     model: str = "gpt-5-mini",
+    no_cache: bool = False,
 ):
     search_config = _candidate_search_config(
         params=params,
@@ -320,6 +328,7 @@ def make_jev_bm25_then_select_enricher(
         field=field,
         **search_config,
         confidence_threshold=_choice_confidence_threshold(params),
+        no_cache=no_cache,
     )
 
 
@@ -329,6 +338,7 @@ def make_jev_bm25_then_select_multiple_enricher(
     field: str,
     params: dict[str, Any],
     model: str = "gpt-5-mini",
+    no_cache: bool = False,
 ):
     threshold = params.get("threshold")
     if threshold is None:
@@ -352,6 +362,7 @@ def make_jev_bm25_then_select_multiple_enricher(
         field=field,
         threshold=threshold,
         **search_config,
+        no_cache=no_cache,
     )
 
 

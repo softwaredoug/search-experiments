@@ -145,6 +145,7 @@ def make_jev_choice_single_enricher(
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
     params: dict[str, Any] | None = None,
+    no_cache: bool = False,
 ):
     params = params or {}
     _validate_choice_prompt(prompt, "jev_choice_single")
@@ -176,6 +177,7 @@ def make_jev_choice_single_enricher(
         reasoning=reasoning,
         pad_missing_choices=pad_missing_choices,
         confidence_threshold=confidence_threshold,
+        no_cache=no_cache,
     )
 
 

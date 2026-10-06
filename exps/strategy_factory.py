@@ -73,6 +73,7 @@ def create_strategy(
     report_num_queries: int | None = None,
     report_seed: int | None = None,
     codegen_run_round: int | None = None,
+    no_cache: bool = False,
 ):
     if params is None:
         params = strategy_params_for_config(strategy_config, device=device)
@@ -92,6 +93,8 @@ def create_strategy(
         }
         if strategy_config.type != "agentic":
             build_kwargs["dataset"] = dataset
+        if strategy_config.type == "query_understanding":
+            build_kwargs["no_cache"] = no_cache
         if strategy_config.type == "codegen":
             build_kwargs["strategy_name"] = strategy_config.name
             build_kwargs["judgments"] = judgments

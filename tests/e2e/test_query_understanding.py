@@ -1,5 +1,6 @@
 """End-to-end tests for query understanding and category classification."""
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -653,6 +654,105 @@ strategy:
     assert result.per_query.iloc[0]["generated_categories"] == ["Bedroom", "Furniture"]
     assert no_match_result.per_query.iloc[0]["generated_categories"] == []
     assert sum(len(client.calls) for client in ScriptedJevMultipleClient.instances) == 1
+
+
+def test_run_benchmark_no_cache_removes_jev_classification_cache(tmp_path):
+    from exps.query_understanding.enrichers import make_enricher
+
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3],
+            "title": ["sofa", "sofa bed", "sofa chair"],
+            "description": ["lounge", "bedroom", "office"],
+            "category hierarchy": ["Furniture", "Bedroom", "Office"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {"query_id": [1], "query": ["sofa"], "doc_id": [1], "grade": [2]}
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    enrichment_config = {
+        "type": "jev_bm25_then_select_multiple",
+        "params": {
+            "model": "jev/jev-latest",
+            "threshold": 0.4,
+            "aggregate_over": 1000,
+            "prompt": "Select categories for {query}.",
+            "retrieval": {"fields": ["title"]},
+        },
+    }
+    config_path = tmp_path / "query_understanding_no_cache.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_no_cache_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category hierarchy
+      enrichment_engine:
+        type: jev_bm25_then_select_multiple
+        params:
+          model: jev/jev-latest
+          threshold: 0.4
+          aggregate_over: 1000
+          prompt: Select categories for {query}.
+          retrieval:
+            fields: [title]
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    ScriptedJevMultipleClient.instances = []
+    ScriptedJevMultipleClient.distributions = {"sofa": {"Furniture": 0.8}}
+    with (
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.TypeSafeClient",
+            ScriptedJevMultipleClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.DATA_PATH",
+            tmp_path,
+        ),
+    ):
+        cached_enricher = make_enricher(
+            enrichment_config,
+            field="category hierarchy",
+            vocabulary=[],
+            corpus=corpus.copy(),
+        )
+        candidates = cached_enricher._candidate_categories("sofa")
+        cache_entry_key = cached_enricher._cache_entry_key("sofa", candidates)
+        cached_enricher.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cached_enricher.cache_path.write_text(
+            json.dumps({cache_entry_key: ["Office"]}),
+            encoding="utf-8",
+        )
+        cache_path = cached_enricher.cache_path
+
+        with patch("exps.runners.run.get_dataset", return_value=dataset):
+            result = run_benchmark(
+                RunParams(
+                    strategy_path=str(config_path),
+                    dataset="wands",
+                    num_queries=1,
+                    no_cache=True,
+                )
+            )
+
+    assert result.metric_series is not None
+    assert len(result.metric_series) == 1
+    assert sum(len(client.calls) for client in ScriptedJevMultipleClient.instances) == 1
+    assert not cache_path.exists()
 
 
 def test_query_classification_backend_taxonomy_evaluation(tmp_path):

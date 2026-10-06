@@ -49,6 +49,7 @@ def make_enricher(
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
     corpus=None,
+    no_cache: bool = False,
 ) -> Enricher:
     config = config or {}
     enrichment_type = config.get("type")
@@ -63,15 +64,18 @@ def make_enricher(
             if enrichment_type == "llm_choice"
             else make_jev_choice_single_enricher
         )
-        return factory(
-            field=field,
-            vocabulary=vocabulary,
-            choices=choices,
-            prompt=prompt,
-            model=model,
-            reasoning=reasoning,
-            params=params,
-        )
+        kwargs = {
+            "field": field,
+            "vocabulary": vocabulary,
+            "choices": choices,
+            "prompt": prompt,
+            "model": model,
+            "reasoning": reasoning,
+            "params": params,
+        }
+        if enrichment_type == "jev_choice_single":
+            kwargs["no_cache"] = no_cache
+        return factory(**kwargs)
     if enrichment_type == "jev_choice_multiple":
         return make_jev_choice_multiple_enricher(
             field=field,
@@ -81,6 +85,7 @@ def make_enricher(
             model=model,
             reasoning=reasoning,
             params=params,
+            no_cache=no_cache,
         )
     if enrichment_type == "jev_bm25_then_select":
         if corpus is None:
@@ -92,6 +97,7 @@ def make_enricher(
             field=field,
             params=params,
             model=model,
+            no_cache=no_cache,
         )
     if enrichment_type == "jev_bm25_then_select_multiple":
         if corpus is None:
@@ -103,6 +109,7 @@ def make_enricher(
             field=field,
             params=params,
             model=model,
+            no_cache=no_cache,
         )
     if enrichment_type == "llm_single":
         prompt = params.get("prompt")
