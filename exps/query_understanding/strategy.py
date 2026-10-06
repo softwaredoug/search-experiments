@@ -70,6 +70,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             vocabulary=vocabulary,
             model=enrichment_config.get("model", "gpt-5-mini"),
             reasoning=params.get("reasoning"),
+            corpus=corpus,
         )
         return cls(corpus, workers=workers, enricher=enricher, **params)
 
@@ -141,6 +142,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
         return self.enricher.enrich(query)
 
     def search(self, query: str, k: int = 10):
+        categories = self.enrich(query)
         query_terms = snowball_tokenizer(query)
         scores = np.zeros(len(self.index), dtype=float)
         similarity = bm25_similarity(k1=self.k1, b=self.b)
@@ -153,7 +155,6 @@ class QueryUnderstandingStrategy(SearchStrategy):
                     * weight
                 )
 
-        categories = self.enrich(query)
         scores = self.retrieval_engine.apply(scores, categories)
 
         top_indices = np.argsort(-scores)[:k]

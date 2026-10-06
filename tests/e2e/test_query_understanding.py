@@ -68,6 +68,34 @@ class ScriptedJevMultipleClient:
         return type("Response", (), {"choices": {question_id: answer}})()
 
 
+class CandidateSelectionJevClient:
+    """A deterministic Jev double for per-query candidate option sets."""
+
+    predictions = {}
+    confidence = 1.0
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.api_key = kwargs["api_key"]
+        self.model = kwargs["model"]
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        question_id = next(iter(questions))
+        criteria = questions[question_id].criteria
+        choice = self.predictions.get(state)
+        if choice is None and criteria:
+            choice = next(iter(criteria))
+        answer = type(
+            "Answer",
+            (),
+            {"choice": choice, "confidence": self.confidence},
+        )()
+        return type("Response", (), {"choices": {question_id: answer}})()
+
+
 def test_run_benchmark_query_understanding_dummy_doug_blog(
     tmp_path, doug_blog_dataset
 ):
@@ -334,6 +362,207 @@ strategy:
         category_paths[0]: None,
         category_paths[2]: None,
     }
+
+
+def test_jev_bm25_then_select_searches_then_applies_category_boost(
+    tmp_path,
+):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3, 4],
+            "title": ["sofa", "sofa sleeper", "sofa", "lamp"],
+            "description": ["side table", "small table", "bedside table", "sofa"],
+            "category": ["Furniture", "Furniture", "Bedroom", "Lighting"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {"query_id": [1], "query": ["sofa"], "doc_id": [4], "grade": [2]}
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    config_path = tmp_path / "jev_bm25_then_select.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: jev_bm25_then_select_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: jev_bm25_then_select
+        params:
+          model: jev/jev-latest
+          confidence_threshold: 0.7
+          aggregate_over: 1000
+          prompt: Which category best describes {query}?
+          retrieval:
+            fields: [title^9.4]
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [description^4]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    CandidateSelectionJevClient.instances = []
+    CandidateSelectionJevClient.predictions = {"sofa": "Furniture"}
+    CandidateSelectionJevClient.confidence = 0.9
+    with (
+        patch("exps.runners.run.get_dataset", return_value=dataset),
+        patch("typesafe_sdk.TypeSafeClient", CandidateSelectionJevClient),
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            CandidateSelectionJevClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.TypeSafeClient",
+            CandidateSelectionJevClient,
+        ),
+        patch(
+            "cheat_at_search.data_dir.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.DATA_PATH",
+            tmp_path,
+        ),
+    ):
+        result = run_benchmark(
+            RunParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query="sofa",
+                k=4,
+                no_cache=True,
+            )
+        )
+
+    assert len(CandidateSelectionJevClient.instances) == 1
+    _, questions = CandidateSelectionJevClient.instances[0].calls[0]
+    assert questions["category"].criteria == {
+        "Furniture": None,
+        "Bedroom": None,
+    }
+    assert result.query_results is not None
+    assert result.query_results.iloc[0]["category"] == "Furniture"
+
+
+def test_jev_bm25_then_select_limits_options_by_popularity_and_threshold(
+    tmp_path,
+):
+    categories = ["popular-a"] * 4 + ["popular-b"] * 3
+    categories.extend(f"category-{index}" for index in range(256))
+    corpus = pd.DataFrame(
+        {
+            "doc_id": range(len(categories)),
+            "title": ["sofa" for _ in categories],
+            "description": ["product" for _ in categories],
+            "category": categories,
+        }
+    )
+    judgments = pd.DataFrame(
+        {"query_id": [1], "query": ["sofa"], "doc_id": [0], "grade": [2]}
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    config_path = tmp_path / "jev_bm25_then_select.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: jev_bm25_then_select_popularity_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: jev_bm25_then_select
+        params:
+          model: jev/jev-latest
+          confidence_threshold: 0.7
+          aggregate_over: 1000
+          prompt: Which category best describes {query}?
+          retrieval:
+            fields: [title]
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [description]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    CandidateSelectionJevClient.instances = []
+    CandidateSelectionJevClient.predictions = {"sofa": "popular-a"}
+    CandidateSelectionJevClient.confidence = 0.7
+    with (
+        patch(
+            "exps.runners.query_classification.get_dataset",
+            return_value=dataset,
+        ),
+        patch("typesafe_sdk.TypeSafeClient", CandidateSelectionJevClient),
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            CandidateSelectionJevClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.TypeSafeClient",
+            CandidateSelectionJevClient,
+        ),
+        patch(
+            "cheat_at_search.data_dir.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_bm25_then_select.DATA_PATH",
+            tmp_path,
+        ),
+    ):
+        result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query="sofa",
+            )
+        )
+        no_match_result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query="no matching documents",
+            )
+        )
+
+    _, questions = CandidateSelectionJevClient.instances[0].calls[0]
+    actual_options = list(questions["category"].criteria)
+    category_counts = pd.Series(categories).value_counts()
+    assert actual_options[:2] == ["popular-a", "popular-b"]
+    assert [category_counts[category] for category in actual_options] == sorted(
+        (category_counts[category] for category in actual_options), reverse=True
+    )
+    assert len(set(actual_options[2:])) == 253
+    assert len(actual_options) == 255
+    assert result.per_query.iloc[0]["generated_categories"] == []
+    assert no_match_result.per_query.iloc[0]["generated_categories"] == []
+    assert (
+        sum(len(client.calls) for client in CandidateSelectionJevClient.instances) == 1
+    )
 
 
 def test_query_classification_backend_taxonomy_evaluation(tmp_path):

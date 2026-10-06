@@ -33,6 +33,10 @@ from exps.query_understanding.enrichers.llm_multiple import (
     make_llm_multiple_enricher,
 )
 from exps.query_understanding.enrichers.protocol import Enricher
+from exps.query_understanding.enrichers.jev_bm25_then_select import (
+    JevBM25ThenSelectEnricher,
+    make_jev_bm25_then_select_enricher,
+)
 
 
 def make_enricher(
@@ -42,6 +46,7 @@ def make_enricher(
     vocabulary: list[str],
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
+    corpus=None,
 ) -> Enricher:
     config = config or {}
     enrichment_type = config.get("type")
@@ -75,6 +80,17 @@ def make_enricher(
             reasoning=reasoning,
             params=params,
         )
+    if enrichment_type == "jev_bm25_then_select":
+        if corpus is None:
+            raise ValueError(
+                "jev_bm25_then_select requires the corpus for its candidate BM25 search."
+            )
+        return make_jev_bm25_then_select_enricher(
+            corpus=corpus,
+            field=field,
+            params=params,
+            model=model,
+        )
     if enrichment_type == "llm_single":
         prompt = params.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
@@ -105,7 +121,7 @@ def make_enricher(
         )
     raise ValueError(
         "Supported enrichment engines are dummy, llm_choice, jev_choice_single, "
-        "jev_choice_multiple, llm_single, and llm_multiple; "
+        "jev_choice_multiple, jev_bm25_then_select, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
     )
 
@@ -116,6 +132,7 @@ __all__ = [
     "CachedJevChoiceMultipleEnricher",
     "JevChoiceMultipleEnricher",
     "JevChoiceSingleEnricher",
+    "JevBM25ThenSelectEnricher",
     "OpenAIChoiceSingleEnricher",
     "Enricher",
     "LLMSingleEnricher",
@@ -124,6 +141,7 @@ __all__ = [
     "make_llm_choice_enricher",
     "make_jev_choice_single_enricher",
     "make_jev_choice_multiple_enricher",
+    "make_jev_bm25_then_select_enricher",
     "make_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",

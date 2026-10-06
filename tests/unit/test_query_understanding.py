@@ -718,6 +718,48 @@ def test_choice_single_engine_type_is_no_longer_supported():
         )
 
 
+@pytest.mark.parametrize(
+    ("params", "error"),
+    [
+        (
+            {
+                "model": "gpt-5-mini",
+                "aggregate_over": 10,
+                "prompt": "Classify {query}.",
+                "retrieval": {"fields": ["title"]},
+            },
+            "requires a Jev model",
+        ),
+        (
+            {
+                "model": "jev/jev-latest",
+                "aggregate_over": 0,
+                "prompt": "Classify {query}.",
+                "retrieval": {"fields": ["title"]},
+            },
+            "aggregate_over",
+        ),
+        (
+            {
+                "model": "jev/jev-latest",
+                "aggregate_over": 10,
+                "prompt": "Classify {query}.",
+                "retrieval": {"fields": []},
+            },
+            "params.retrieval.fields",
+        ),
+    ],
+)
+def test_jev_bm25_then_select_validates_its_configuration(params, error):
+    with pytest.raises(ValueError, match=error):
+        make_enricher(
+            {"type": "jev_bm25_then_select", "params": params},
+            field="category",
+            vocabulary=[],
+            corpus=pd.DataFrame({"category": [], "title": []}),
+        )
+
+
 def test_llm_choice_unprefixed_model_defaults_to_openai():
     FakeAutoEnricher.instances = []
     with patch(

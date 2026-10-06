@@ -155,13 +155,50 @@ enrichment_engine:
       {query}
 ```
 
-#### When `choices` is omitted
+### Jev BM25 then select (single) (`jev_bm25_then_select`)
 
-For both single-choice engines, omitting or providing an empty `choices` mapping
-uses the most frequent category values in the corpus vocabulary as options.
-The strategy caps that vocabulary at 300 values. `llm_choice` can use that full
-vocabulary; `jev_choice_single` uses at most 254 category values plus `Unknown`,
-within Jev's 255-option limit.
+This engine runs its own BM25 search to find candidate categories, then uses
+Jev's Choice primitive to select one. Its retrieval settings are independent
+of the query-understanding strategy's retrieval engine, which runs afterward
+to search again using the selected category.
+
+The engine takes the top `aggregate_over` positive-score BM25 matches, counts
+their category values, and offers the most popular 255 categories to Jev. If
+there are no positive-score matches, enrichment returns an empty list. Jev's
+selection is returned only when its confidence is strictly greater than
+`confidence_threshold`.
+
+```yaml
+enrichment_engine:
+  type: jev_bm25_then_select
+  params:
+    model: jev/jev-latest
+    confidence_threshold: 0.7
+    aggregate_over: 1000
+    prompt: |
+      Which category best describes the query?
+      {query}
+    retrieval:
+      fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
+```
+
+Optional `retrieval.k1` and `retrieval.b` settings configure BM25 scoring;
+they default to `1.2` and `0.75`. Any document with a score of zero is not a
+match.
+
+### Jev BM25 then select (multiple) (planned)
+
+The multiple-category search-then-select variant is not implemented yet.
+
+
+
+#### Vocabulary-based choice engines when `choices` is omitted
+
+For `llm_choice` and `jev_choice_single`, omitting or providing an empty
+`choices` mapping uses the most frequent category values in the corpus
+vocabulary as options. The strategy caps that vocabulary at 300 values.
+`llm_choice` can use that full vocabulary; `jev_choice_single` uses at most 254
+category values plus `Unknown`, within Jev's 255-option limit.
 
 Jev's `Choice.criteria` still needs a mapping of option labels to descriptions;
 unlabeled options are sent with `None` descriptions. For `llm_choice`, the
