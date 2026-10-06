@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_CONFIG="${BASE_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single.yml}"
-GPT5_CONFIG="${GPT5_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single_gpt5.yml}"
-GPT6_SOL_CONFIG="${GPT6_SOL_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single_gpt6_sol.yml}"
-GPT6_LUNA_CONFIG="${GPT6_LUNA_CONFIG:-${ROOT_DIR}/configs/ecom_class/ecom_choice_single_gpt6_luna.yml}"
+BASE_CONFIG="${BASE_CONFIG:-${ROOT_DIR}/configs/ecom_class/category/openai/ecom_choice_single.yml}"
+GPT5_CONFIG="${GPT5_CONFIG:-${ROOT_DIR}/configs/ecom_class/category/openai/ecom_choice_single_gpt5.yml}"
+GPT6_SOL_CONFIG="${GPT6_SOL_CONFIG:-${ROOT_DIR}/configs/ecom_class/category/openai/ecom_choice_single_gpt6_sol.yml}"
+GPT6_LUNA_CONFIG="${GPT6_LUNA_CONFIG:-${ROOT_DIR}/configs/ecom_class/category/openai/ecom_choice_single_gpt6_luna.yml}"
 DATASET="${DATASET:-wands}"
 WORKERS="${WORKERS:-4}"
 QUERY_THRESHOLD="${QUERY_THRESHOLD:-0.8}"

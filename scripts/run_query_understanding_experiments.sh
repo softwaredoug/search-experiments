@@ -10,27 +10,27 @@ NO_CACHE="${NO_CACHE:-false}"
 
 CONFIGS=(
   "${ROOT_DIR}/configs/ecom_base/bm25.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_boosted_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_boosted_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_hierarchy_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_boosted_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_hierarchy_boosted_llm_multiple.yml"
 )
 
 # Retrieval does not affect query-classification metrics, so evaluate each
 # category/enrichment combination once rather than once per retrieval engine.
 CLASSIFICATION_CONFIGS=(
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_single.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_bm25_filtered_llm_multiple.yml"
-  "${ROOT_DIR}/configs/ecom_class/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_single.yml"
+  "${ROOT_DIR}/configs/ecom_class/category/openai/ecom_query_understanding_category_bm25_filtered_llm_multiple.yml"
+  "${ROOT_DIR}/configs/ecom_class/full/openai/ecom_query_understanding_category_hierarchy_bm25_filtered_llm_multiple.yml"
 )
 
 mkdir -p "$(dirname "${RESULTS_CSV}")"

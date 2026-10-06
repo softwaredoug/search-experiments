@@ -53,7 +53,7 @@ A list of enrichment engines can found documented at [enrichment_engines](./enri
 A script exists to evaluate the enrichment engine against a corpus with judgments.
 
 ```
-uv run query_classification --strategy configs/ecom_class/ecom_query_understanding.yml --dataset wands
+uv run query_classification --strategy configs/ecom_class/category/openai/ecom_query_understanding.yml --dataset wands
 ```
 
 With specific information on how eval works in [enrichment_engines_eval](./enrichment_engines_eval.md)

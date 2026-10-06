@@ -1,0 +1,27 @@
+strategy:
+  name: ecom_qu_category_hierarchy_bm25_boosted_jev_bm25_then_select_multiple
+  type: query_understanding
+  params:
+    reasoning: medium
+    categorize:
+      field: category hierarchy
+      enrichment_engine:
+        type: jev_bm25_then_select_multiple
+        params:
+          model: jev/jev-latest
+          threshold: 0.4
+          aggregate_over: 1000
+          prompt: |
+            Below is a search query for a furniture / homegoods store. Select all
+            relevant values from the category hierarchy. Category values use /
+            separators; return the full path for each relevant category.
+
+            Query:
+            {query}
+          retrieval:
+            fields: [title^9.4, description^4]
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10

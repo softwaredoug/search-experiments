@@ -14,7 +14,7 @@ evaluation works.
 Evals are run with with:
 
 ```
-uv run query_classification --strategy configs/ecom_class/ecom_query_understanding.yml --dataset wands
+uv run query_classification --strategy configs/ecom_class/category/openai/ecom_query_understanding.yml --dataset wands
 ```
 
 This runs the enrichment engine, classifies each query into the category, then produces stats as detailed below.
@@ -122,4 +122,3 @@ Recall the ground truth is built based on aggregating query <-> document relatio
 If eval_as is taxonomy[N] we further create a column for the Nth level of the taxonomy for both the ground truth and the predicted category.
 
 This gets written to the report file, which can be used for further analysis.
-

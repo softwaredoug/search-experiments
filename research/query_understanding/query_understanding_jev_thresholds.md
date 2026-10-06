@@ -34,7 +34,7 @@ thresholds `0.6`, `0.7`, `0.8`, `0.9`, `0.95`, and `0.99`. It runs
 evaluation and a ground-truth `--query-threshold` of `0.8`.
 
 The script uses
-[`configs/ecom_class/ecom_choice_single.yml`](../../configs/ecom_class/ecom_choice_single.yml)
+[`configs/ecom_class/category/openai/ecom_choice_single.yml`](../../configs/ecom_class/category/openai/ecom_choice_single.yml)
 as its baseline. It generates the Jev variants in a temporary directory by
 switching the model to `jev/jev-latest` and setting the confidence threshold.
 The temporary configs and intermediate summary CSV are deleted when the script
@@ -43,12 +43,12 @@ and `gpt-5-mini` model because the script derives the variant configs with text
 substitutions.
 
 The GPT-5 comparison uses
-[`configs/ecom_class/ecom_choice_single_gpt5.yml`](../../configs/ecom_class/ecom_choice_single_gpt5.yml),
+[`configs/ecom_class/category/openai/ecom_choice_single_gpt5.yml`](../../configs/ecom_class/category/openai/ecom_choice_single_gpt5.yml),
 which keeps the same classification choices and prompt while changing the model
 to `gpt-5`.
 
 The checked-in Jev example is
-[`configs/ecom_class/ecom_choice_single_jev.yml`](../../configs/ecom_class/ecom_choice_single_jev.yml).
+[`configs/ecom_class/category/jev/ecom_choice_single_jev.yml`](../../configs/ecom_class/category/jev/ecom_choice_single_jev.yml).
 It configures a `0.7` cutoff; the sweep generates temporary variants for the six
 cutoffs listed above rather than using this file directly.
 
@@ -57,7 +57,7 @@ cutoffs listed above rather than using this file directly.
 ### Jev choice classifier
 
 The following excerpt shows the relevant settings from
-[`ecom_choice_single_jev.yml`](../../configs/ecom_class/ecom_choice_single_jev.yml).
+[`ecom_choice_single_jev.yml`](../../configs/ecom_class/category/jev/ecom_choice_single_jev.yml).
 The full file supplies descriptions for the product-category choices and
 includes `Unknown` as the abstention choice.
 
@@ -139,7 +139,7 @@ classification metrics.
 ### OpenAI GPT-5-mini baseline
 
 The threshold script's OpenAI comparator is
-[`configs/ecom_class/ecom_choice_single.yml`](../../configs/ecom_class/ecom_choice_single.yml).
+[`configs/ecom_class/category/openai/ecom_choice_single.yml`](../../configs/ecom_class/category/openai/ecom_choice_single.yml).
 The excerpt below shows that model and its Unknown instruction; its full
 category choice mapping is in the linked file.
 
@@ -221,7 +221,7 @@ Unlike the Jev variants, this baseline has no confidence threshold. It relies on
 the model's choice, with the prompt explicitly asking it to choose `Unknown`
 when unclear.
 
-The additional [`ecom_choice_single_gpt5.yml`](../../configs/ecom_class/ecom_choice_single_gpt5.yml)
+The additional [`ecom_choice_single_gpt5.yml`](../../configs/ecom_class/category/openai/ecom_choice_single_gpt5.yml)
 configuration has the same choices, prompt, and retrieval settings, with
 `model: gpt-5`. The script includes it as a model-size comparison point, without
 a confidence cutoff.
@@ -271,8 +271,8 @@ The script can be configured through environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `BASE_CONFIG` | `configs/ecom_class/ecom_choice_single.yml` | Baseline strategy YAML used to create the variants |
-| `GPT5_CONFIG` | `configs/ecom_class/ecom_choice_single_gpt5.yml` | GPT-5 comparison strategy YAML |
+| `BASE_CONFIG` | `configs/ecom_class/category/openai/ecom_choice_single.yml` | Baseline strategy YAML used to create the variants |
+| `GPT5_CONFIG` | `configs/ecom_class/category/openai/ecom_choice_single_gpt5.yml` | GPT-5 comparison strategy YAML |
 | `DATASET` | `wands` | Dataset evaluated by each run |
 | `WORKERS` | `1` | Dataset loading worker count |
 | `QUERY_THRESHOLD` | `0.8` | Minimum category proportion for ground truth |
