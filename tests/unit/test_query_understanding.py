@@ -8,7 +8,9 @@ from cheat_at_search.tokenizers import snowball_tokenizer
 from exps.query_understanding.enrichers import make_enricher
 from exps.query_understanding.enrichers import make_llm_multiple_enricher
 from exps.query_understanding.enrichers import make_llm_single_enricher
-from exps.query_understanding.enrichers import make_choice_single_enricher
+from exps.query_understanding.enrichers import (
+    make_llm_choice_enricher,
+)
 from exps.query_understanding.enrichers.cached_choice_single_jev import (
     CachedJevChoiceSingleEnricher,
 )
@@ -167,14 +169,14 @@ def test_llm_multiple_enricher_supports_quoted_category_values():
         FakeAutoEnricher.value = "Furniture"
 
 
-def test_choice_single_enricher_adds_choice_descriptions_to_prompt():
+def test_llm_choice_enricher_adds_choice_descriptions_to_prompt():
     FakeAutoEnricher.instances = []
     FakeAutoEnricher.value = "Furniture"
     with patch(
         "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
         FakeAutoEnricher,
     ):
-        enricher = make_choice_single_enricher(
+        enricher = make_llm_choice_enricher(
             field="category",
             vocabulary=["Furniture", "Lighting"],
             choices="Furniture: Products used to furnish a room.\nLighting: Products that provide illumination.",
@@ -189,13 +191,13 @@ def test_choice_single_enricher_adds_choice_descriptions_to_prompt():
     assert "- Lighting: Products that provide illumination." in prompt
 
 
-def test_choice_single_enricher_can_pad_missing_vocabulary_choices():
+def test_llm_choice_enricher_can_pad_missing_vocabulary_choices():
     FakeAutoEnricher.instances = []
     with patch(
         "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
         FakeAutoEnricher,
     ):
-        enricher = make_choice_single_enricher(
+        enricher = make_llm_choice_enricher(
             field="category",
             vocabulary=["Furniture", "Lighting"],
             choices={"Furniture": "Products used to furnish a room."},
@@ -205,7 +207,7 @@ def test_choice_single_enricher_can_pad_missing_vocabulary_choices():
     assert "Lighting" in enricher.response_model.model_json_schema()["properties"]["choice"]["enum"]
 
 
-def test_choice_single_enricher_uses_unlabeled_vocabulary_when_choices_are_omitted():
+def test_llm_choice_enricher_uses_unlabeled_vocabulary_when_choices_are_omitted():
     FakeAutoEnricher.instances = []
     FakeAutoEnricher.value = "Furniture"
     with patch(
@@ -214,7 +216,7 @@ def test_choice_single_enricher_uses_unlabeled_vocabulary_when_choices_are_omitt
     ):
         enricher = make_enricher(
             {
-                "type": "choice_single",
+                "type": "llm_choice",
                 "params": {"prompt": "Classify {query}."},
             },
             field="category",
@@ -227,7 +229,7 @@ def test_choice_single_enricher_uses_unlabeled_vocabulary_when_choices_are_omitt
     assert "- Furniture\n- Lighting" in FakeAutoEnricher.instances[0].prompts[0]
 
 
-def test_choice_single_unknown_means_no_classification():
+def test_llm_choice_unknown_means_no_classification():
     FakeAutoEnricher.instances = []
     FakeAutoEnricher.value = "Unknown"
     try:
@@ -235,7 +237,7 @@ def test_choice_single_unknown_means_no_classification():
             "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
             FakeAutoEnricher,
         ):
-            enricher = make_choice_single_enricher(
+            enricher = make_llm_choice_enricher(
                 field="category",
                 vocabulary=["Furniture"],
                 choices={"Furniture": "Products used to furnish a room."},
@@ -247,7 +249,7 @@ def test_choice_single_unknown_means_no_classification():
         FakeAutoEnricher.value = "Furniture"
 
 
-def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown(tmp_path):
+def test_jev_choice_single_uses_structured_criteria_and_normalizes_unknown(tmp_path):
     FakeJevClient.instances = []
     FakeJevClient.value = "Unknown"
     try:
@@ -263,7 +265,7 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown(tmp_p
         ):
             enricher = make_enricher(
                 {
-                    "type": "choice_single",
+                    "type": "jev_choice_single",
                     "params": {
                         "model": "jev/jev-latest",
                         "choices": {
@@ -293,7 +295,7 @@ def test_choice_single_jev_uses_structured_criteria_and_normalizes_unknown(tmp_p
         FakeJevClient.value = "Furniture"
 
 
-def test_choice_single_jev_uses_popularity_ordered_unlabeled_choices_when_empty(
+def test_jev_choice_single_uses_popularity_ordered_unlabeled_choices_when_empty(
     tmp_path,
 ):
     FakeJevClient.instances = []
@@ -312,7 +314,7 @@ def test_choice_single_jev_uses_popularity_ordered_unlabeled_choices_when_empty(
         ):
             enricher = make_enricher(
                 {
-                    "type": "choice_single",
+                    "type": "jev_choice_single",
                     "params": {
                         "model": "jev/jev-latest",
                         "choices": {},
@@ -333,7 +335,7 @@ def test_choice_single_jev_uses_popularity_ordered_unlabeled_choices_when_empty(
         FakeJevClient.value = "Furniture"
 
 
-def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold(
+def test_jev_choice_single_requires_confidence_to_be_strictly_above_threshold(
     tmp_path,
 ):
     FakeJevClient.instances = []
@@ -352,7 +354,7 @@ def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold(
         ):
             enricher = make_enricher(
                 {
-                    "type": "choice_single",
+                    "type": "jev_choice_single",
                     "params": {
                         "model": "jev/jev-latest",
                         "confidence_threshold": 0.5,
@@ -378,7 +380,7 @@ def test_choice_single_jev_requires_confidence_to_be_strictly_above_threshold(
         ):
             enricher = make_enricher(
                 {
-                    "type": "choice_single",
+                    "type": "jev_choice_single",
                     "params": {
                         "model": "jev/jev-latest",
                         "confidence_threshold": 0.5,
@@ -439,9 +441,9 @@ def test_cached_jev_choice_single_persists_predictions_and_empty_results(tmp_pat
     )
 
 
-def test_choice_single_rejects_confidence_threshold_for_openai():
+def test_llm_choice_rejects_confidence_threshold():
     with pytest.raises(ValueError, match="only supported for Jev"):
-        make_choice_single_enricher(
+        make_llm_choice_enricher(
             field="category",
             vocabulary=["Furniture"],
             choices={"Furniture": "Products used to furnish a room."},
@@ -450,13 +452,51 @@ def test_choice_single_rejects_confidence_threshold_for_openai():
         )
 
 
-def test_choice_single_unprefixed_model_defaults_to_openai():
+def test_choice_engines_reject_the_other_provider():
+    for model in ("jev/jev-latest", "google/gemini-2.5-flash"):
+        with pytest.raises(ValueError, match="OpenAI models only"):
+            make_enricher(
+                {
+                    "type": "llm_choice",
+                    "params": {
+                        "model": model,
+                        "prompt": "Classify {query}.",
+                    },
+                },
+                field="category",
+                vocabulary=["Furniture"],
+            )
+
+    with pytest.raises(ValueError, match="requires a Jev model"):
+        make_enricher(
+            {
+                "type": "jev_choice_single",
+                "params": {
+                    "model": "gpt-5-mini",
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture"],
+        )
+
+
+def test_choice_single_engine_type_is_no_longer_supported():
+    with pytest.raises(ValueError, match="Supported enrichment engines"):
+        make_enricher(
+            {"type": "choice_single"},
+            field="category",
+            vocabulary=["Furniture"],
+        )
+
+
+def test_llm_choice_unprefixed_model_defaults_to_openai():
     FakeAutoEnricher.instances = []
     with patch(
         "exps.query_understanding.enrichers.choice_single_openai.AutoEnricher",
         FakeAutoEnricher,
     ):
-        enricher = make_choice_single_enricher(
+        enricher = make_llm_choice_enricher(
             field="category",
             vocabulary=["Furniture"],
             choices={"Furniture": "Products used to furnish a room."},

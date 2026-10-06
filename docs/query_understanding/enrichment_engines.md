@@ -100,15 +100,17 @@ enrichment_engine:
 ```
 
 
-### Described choice enrichment single (choice_single)
+### LLM choice (`llm_choice`)
 
-A choice, but with a description.
+A single-choice LLM enricher. It uses structured output to select from a finite
+vocabulary, with optional descriptions that are included in the prompt. This
+engine accepts unprefixed/OpenAI models only; Jev models use `jev_choice_single`.
 
 Each choice has a labeled criteria for why it would be chosen. This is useful for a small vocabulary of categories, where we can describe each category to the LLM. Choices are optional.
 
 ```yaml
 enrichment_engine:
-  type: choice_single
+  type: llm_choice
   params:
     model: gpt-5-mini
     pad_missing_choices: False
@@ -132,16 +134,39 @@ enrichment_engine:
       {query}
 ```
 
-#### When choice is omitted
 
-If `choices` is omitted or empty, the category values themselves become unlabeled
-choice options. The strategy supplies categories in descending corpus frequency,
-so the most popular values are considered first. For Jev, at most 254 category
-values are used, leaving one of Jev's 255 allowed options for `Unknown`.
+### Jev choice single (`jev_choice_single`)
 
-Jev's `Choice.criteria` must still map labels to values; use `None` for options
-without descriptions (rather than an empty criteria mapping). OpenAI receives
-the same unlabeled option names in its prompt and structured-output choices.
+Uses Jev's Choice primitive to select one category. Each choice name is passed
+as a criterion label and its optional description is passed as the criterion.
+This engine accepts Jev models only.
+
+```yaml
+enrichment_engine:
+  type: jev_choice_single
+  params:
+    model: jev/jev-latest
+    confidence_threshold: 0.7
+    choices:
+      Furniture: Products used to furnish a room.
+      Lighting: Products that provide illumination.
+    prompt: |
+      Which category best describes the query?
+      {query}
+```
+
+#### When `choices` is omitted
+
+For both single-choice engines, omitting or providing an empty `choices` mapping
+uses the most frequent category values in the corpus vocabulary as options.
+The strategy caps that vocabulary at 300 values. `llm_choice` can use that full
+vocabulary; `jev_choice_single` uses at most 254 category values plus `Unknown`,
+within Jev's 255-option limit.
+
+Jev's `Choice.criteria` still needs a mapping of option labels to descriptions;
+unlabeled options are sent with `None` descriptions. For `llm_choice`, the
+option names are included in the prompt and structured-output schema.
+
 
 ### Max multi-label enrichment
 

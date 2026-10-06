@@ -54,7 +54,7 @@ class JevChoiceSingleEnricher:
         )
         if len(self.criteria) > MAX_JEV_CHOICE_COUNT:
             raise ValueError(
-                f"Jev choice_single supports at most {MAX_JEV_CHOICE_COUNT} choices."
+                f"jev_choice_single supports at most {MAX_JEV_CHOICE_COUNT} choices."
             )
         self.client = TypeSafeClient(
             api_key=key_for_provider("typesafe"),
@@ -95,7 +95,7 @@ class JevChoiceSingleEnricher:
     @property
     def cache_key(self) -> str:
         payload: dict[str, Any] = {
-            "type": "choice_single_jev",
+            "type": "jev_choice_single",
             "field": self.field,
             "vocabulary": self.vocabulary,
             "criteria": self.criteria,

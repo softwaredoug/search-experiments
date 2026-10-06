@@ -9,7 +9,10 @@ from exps.query_understanding.enrichers.dummy import (
 from exps.query_understanding.enrichers.cached_choice_single_jev import (
     CachedJevChoiceSingleEnricher,
 )
-from exps.query_understanding.enrichers.choice_single import make_choice_single_enricher
+from exps.query_understanding.enrichers.choice_single import (
+    make_jev_choice_single_enricher,
+    make_llm_choice_enricher,
+)
 from exps.query_understanding.enrichers.choice_single_jev import JevChoiceSingleEnricher
 from exps.query_understanding.enrichers.choice_single_openai import (
     OpenAIChoiceSingleEnricher,
@@ -38,14 +41,15 @@ def make_enricher(
     params = config.get("params") or {}
     if enrichment_type == "dummy":
         return make_dummy_enricher(vocabulary)
-    if enrichment_type == "choice_single":
+    if enrichment_type in {"llm_choice", "jev_choice_single"}:
         prompt = params.get("prompt")
         choices = params.get("choices")
-        if not isinstance(prompt, str) or not prompt.strip():
-            raise ValueError(
-                "choice_single enrichment requires params.prompt as a non-empty template."
-            )
-        return make_choice_single_enricher(
+        factory = (
+            make_llm_choice_enricher
+            if enrichment_type == "llm_choice"
+            else make_jev_choice_single_enricher
+        )
+        return factory(
             field=field,
             vocabulary=vocabulary,
             choices=choices,
@@ -83,7 +87,8 @@ def make_enricher(
             params=params,
         )
     raise ValueError(
-        "Supported enrichment engines are dummy, choice_single, llm_single, and llm_multiple; "
+        "Supported enrichment engines are dummy, llm_choice, jev_choice_single, "
+        "llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
     )
 
@@ -97,7 +102,8 @@ __all__ = [
     "LLMSingleEnricher",
     "LLMMultipleEnricher",
     "make_dummy_enricher",
-    "make_choice_single_enricher",
+    "make_llm_choice_enricher",
+    "make_jev_choice_single_enricher",
     "make_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",

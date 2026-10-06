@@ -45,6 +45,7 @@ for confidence_threshold in 0.6 0.7 0.8 0.9 0.95 0.99; do
   sed \
     -e '/^[[:space:]]*threshold:/d' \
     -e "s/name: ecom_choice_single$/name: ecom_choice_single_jev_${threshold_label}/" \
+    -e 's/type: llm_choice/type: jev_choice_single/' \
     -e 's/model: gpt-5-mini/model: jev\/jev-latest/' \
     -e "/model: jev\/jev-latest/a\\
           confidence_threshold: ${confidence_threshold}" \

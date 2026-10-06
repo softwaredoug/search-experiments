@@ -173,7 +173,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: jev_choice_single
         params:
           model: jev/jev-latest
           prompt: Classify {query} into a product category.
@@ -430,7 +430,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: jev_choice_single
         params:
           model: jev/jev-latest
           choices: {}

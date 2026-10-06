@@ -51,7 +51,7 @@ class OpenAIChoiceSingleEnricher:
         )
         allowed_values, self.schema_aliases = schema_values(allowed_vocabulary)
         if not allowed_values:
-            raise ValueError("choice_single choices must contain a vocabulary value.")
+            raise ValueError("llm_choice choices must contain a vocabulary value.")
         allowed_values.append("Unknown")
         choice_type = Literal[tuple(dict.fromkeys(allowed_values))]
         self.response_model = create_model(
@@ -95,7 +95,7 @@ class OpenAIChoiceSingleEnricher:
     @property
     def cache_key(self) -> str:
         payload: dict[str, Any] = {
-            "type": "choice_single_openai",
+            "type": "llm_choice",
             "field": self.field,
             "vocabulary": self.vocabulary,
             "choices": self.choices,

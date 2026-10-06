@@ -6,7 +6,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: llm_choice
         params:
           model: gpt-5-mini
           pad_missing_choices: false

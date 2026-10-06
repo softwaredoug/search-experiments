@@ -69,7 +69,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: jev_choice_single
         params:
           model: jev/jev-latest
           confidence_threshold: 0.7
@@ -152,7 +152,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: llm_choice
         params:
           model: gpt-5-mini
           pad_missing_choices: false

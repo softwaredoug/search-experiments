@@ -6,7 +6,7 @@ strategy:
     categorize:
       field: category
       enrichment_engine:
-        type: choice_single
+        type: jev_choice_single
         params:
           model: jev/jev-latest
           confidence_threshold: 0.99
