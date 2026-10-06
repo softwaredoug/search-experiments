@@ -38,6 +38,36 @@ class ScriptedJevClient:
         return type("Response", (), {"choices": {question_id: answer}})()
 
 
+class ScriptedJevMultipleClient:
+    """A deterministic Jev SDK double that supplies option probabilities."""
+
+    distributions = {}
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.api_key = kwargs["api_key"]
+        self.model = kwargs["model"]
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        question_id = next(iter(questions))
+        probabilities = self.distributions[state]
+        answer = type(
+            "Answer",
+            (),
+            {
+                "choice": max(probabilities, key=probabilities.get)
+                if probabilities
+                else None,
+                "confidence": max(probabilities.values()) if probabilities else 0.0,
+                "probabilities": probabilities,
+            },
+        )()
+        return type("Response", (), {"choices": {question_id: answer}})()
+
+
 def test_run_benchmark_query_understanding_dummy_doug_blog(
     tmp_path, doug_blog_dataset
 ):
@@ -224,6 +254,85 @@ strategy:
         "Furniture": None,
         "Bedroom": None,
         "Unknown": "No classification applies.",
+    }
+
+
+def test_query_classification_jev_choice_multiple_e2e(fake_wands_dataset, tmp_path):
+    ScriptedJevMultipleClient.instances = []
+    category_paths = [
+        "Furniture / Bedroom Furniture / Beds / Twin Beds",
+        "Furniture / Bedroom Furniture / Beds / Twin Beds",
+        "Furniture / Bedroom Furniture / Nightstands",
+    ]
+    corpus = fake_wands_dataset.corpus.copy()
+    corpus["category hierarchy"] = category_paths
+    dataset = SimpleNamespace(corpus=corpus, judgments=fake_wands_dataset.judgments)
+    ScriptedJevMultipleClient.distributions = {
+        "floating bed": {
+            category_paths[0]: 0.7,
+            category_paths[2]: 0.45,
+        }
+    }
+    config_path = tmp_path / "query_understanding_jev_multiple.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_jev_choice_multiple_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category hierarchy
+      enrichment_engine:
+        type: jev_choice_multiple
+        params:
+          model: jev/jev-latest
+          threshold: 0.4
+          prompt: Select all relevant category paths for {query}.
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title, description]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    with (
+        patch(
+            "exps.runners.query_classification.get_dataset",
+            return_value=dataset,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_choice_multiple.TypeSafeClient",
+            ScriptedJevMultipleClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.jev_choice_multiple.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch(
+            "exps.query_understanding.enrichers.cached_jev_choice_multiple.DATA_PATH",
+            tmp_path,
+        ),
+    ):
+        result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="wands",
+                query="floating bed",
+            )
+        )
+
+    row = result.per_query.iloc[0]
+    assert row["expected_categories"] == [category_paths[0]]
+    assert row["generated_categories"] == sorted([category_paths[0], category_paths[2]])
+    assert row["recall"] == 1.0
+    assert row["jaccard"] == 0.5
+
+    _, questions = ScriptedJevMultipleClient.instances[0].calls[0]
+    assert questions["category hierarchy"].criteria == {
+        category_paths[0]: None,
+        category_paths[2]: None,
     }
 
 

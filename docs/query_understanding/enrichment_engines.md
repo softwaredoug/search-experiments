@@ -168,25 +168,62 @@ unlabeled options are sent with `None` descriptions. For `llm_choice`, the
 option names are included in the prompt and structured-output schema.
 
 
-### Max multi-label enrichment
+### Jev choice multiple (`jev_choice_multiple`)
 
-#### Behavior in OpenAI
+Uses Jev's Choice probabilities to return every category whose probability is
+strictly greater than the configured threshold. It returns an empty list when
+no category exceeds the threshold. This engine accepts Jev models only.
+
+`choices` is optional. When omitted or empty, the most frequent category values
+are used as unlabeled options. The strategy vocabulary is capped at 300 values;
+Jev receives at most 255 options. Unlike `jev_choice_single`, no synthetic
+`Unknown` option is added, since this engine can return an empty list.
+If an explicit `Unknown` option is supplied, it is treated as no category and
+is not included in the returned list.
+
+```yaml
+enrichment_engine:
+  type: jev_choice_multiple
+  params:
+    model: jev/jev-latest
+    pad_missing_choices: False
+    threshold: 0.4
+    choices:
+      Furniture: A search for products used to make a room suitable for living or working, such as chairs, tables, and beds.
+      Home Improvement: A search for products and services that help improve the functionality, aesthetics, or value of a home, such as tools, paint, and renovation services.
+      Décor & Pillows: A search for products used to enhance the aesthetic appeal of a space, including decorative items, pillows, and other accessories.
+      Outdoor: A search for products designed for use outside, such as patio furniture, gardening tools, and outdoor lighting.
+      Storage & Organization: A search for products that help organize and store items, including shelves, bins, and closet organizers.
+      Lighting: A search for products that provide illumination, including lamps, light fixtures, and bulbs.
+      Rugs: A search for products used to cover and decorate floors, including area rugs, runners, and mats.
+      Bed & Bath: A search for products related to bedrooms and bathrooms, including bedding, towels, and bathroom accessories.
+      Kitchen & Tabletop: A search for products related to kitchens and dining, including cookware, utensils, and tableware.
+      Baby & Kids: A search for products designed for infants and children, including toys, clothing, and nursery furniture.
+      School Furniture and Supplies: A search for products used in educational settings, including desks, chairs, and school supplies.
+      Appliances: A search for products that are electrical or mechanical machines designed to perform specific household tasks, such as refrigerators, washing machines, and microwaves.
+      Holiday Décor: A search for seasonal decorations and accessories used to celebrate holidays.
+      Unknown: No other category applies
+    prompt: |
+      Which best describes the query?
+      {query}
+```
+
+
+### Choice option behavior
+
+#### LLM choice
 
 `choices` is a YAML dictionary mapping each choice name to its description. It should not be a block-scalar string.
 
-If openai/* or just gpt-* model is specified:
+- The choice names are passed to the model at the end of the prompt.
+- The legal values are also used as `Literal` values in the structured output schema.
+- If `pad_missing_choices` is true, corpus vocabulary values without descriptions
+  remain legal options and appear without descriptions in the prompt.
 
-- In OpenAI, the choices are passed to the model at the end of the prompt
-- The keys of legal categories are used are Literal values in the Pydantic structured outputs
-- If `pad_missing_choices` is True, any key does not have a choice description / is not in choices dictionary in the yaml, we still pass it as a Literal value, but its criteria is not listed in the prompt itself. Otherwise they're not classified into.
 
+#### Jev choice engines
 
-#### Beharior in Jev
-
-If model: jev/* model is specified:
-
-Review [Jev's documentation](https://jev.pro/primitives/choice/) it's a new approach to classification
-
-- The prompt becomes the "instruction"
-- Each choice becomes a jev "criteria" dictionary
-- Missing choices are passed as keys, with empty descriptions depending on `pad_missing_choices`
+- The prompt becomes Jev's Choice `instructions`.
+- The option names and descriptions are passed in the `criteria` mapping.
+- Unlabeled options use `None` descriptions, as in Jev's
+  [Choice documentation](https://docs.typesafe.ai/primitives/choice).

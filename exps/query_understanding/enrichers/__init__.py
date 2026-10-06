@@ -9,6 +9,9 @@ from exps.query_understanding.enrichers.dummy import (
 from exps.query_understanding.enrichers.cached_choice_single_jev import (
     CachedJevChoiceSingleEnricher,
 )
+from exps.query_understanding.enrichers.cached_jev_choice_multiple import (
+    CachedJevChoiceMultipleEnricher,
+)
 from exps.query_understanding.enrichers.choice_single import (
     make_jev_choice_single_enricher,
     make_llm_choice_enricher,
@@ -16,6 +19,10 @@ from exps.query_understanding.enrichers.choice_single import (
 from exps.query_understanding.enrichers.choice_single_jev import JevChoiceSingleEnricher
 from exps.query_understanding.enrichers.choice_single_openai import (
     OpenAIChoiceSingleEnricher,
+)
+from exps.query_understanding.enrichers.jev_choice_multiple import (
+    JevChoiceMultipleEnricher,
+    make_jev_choice_multiple_enricher,
 )
 from exps.query_understanding.enrichers.llm_single import (
     LLMSingleEnricher,
@@ -58,6 +65,16 @@ def make_enricher(
             reasoning=reasoning,
             params=params,
         )
+    if enrichment_type == "jev_choice_multiple":
+        return make_jev_choice_multiple_enricher(
+            field=field,
+            vocabulary=vocabulary,
+            choices=params.get("choices"),
+            prompt=params.get("prompt"),
+            model=model,
+            reasoning=reasoning,
+            params=params,
+        )
     if enrichment_type == "llm_single":
         prompt = params.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
@@ -88,7 +105,7 @@ def make_enricher(
         )
     raise ValueError(
         "Supported enrichment engines are dummy, llm_choice, jev_choice_single, "
-        "llm_single, and llm_multiple; "
+        "jev_choice_multiple, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
     )
 
@@ -96,6 +113,8 @@ def make_enricher(
 __all__ = [
     "DummyEnricher",
     "CachedJevChoiceSingleEnricher",
+    "CachedJevChoiceMultipleEnricher",
+    "JevChoiceMultipleEnricher",
     "JevChoiceSingleEnricher",
     "OpenAIChoiceSingleEnricher",
     "Enricher",
@@ -104,6 +123,7 @@ __all__ = [
     "make_dummy_enricher",
     "make_llm_choice_enricher",
     "make_jev_choice_single_enricher",
+    "make_jev_choice_multiple_enricher",
     "make_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",

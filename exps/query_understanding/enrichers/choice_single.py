@@ -55,14 +55,19 @@ def _prepare_choice_options(
     vocabulary: list[str],
     pad_missing_choices: bool,
     max_values: int | None = None,
+    reserve_unknown: bool = True,
 ) -> tuple[list[str], dict[str, str | None]]:
     parsed_choices = _parse_choices(choices)
+    choices_were_omitted = not parsed_choices
     choice_vocabulary = list(vocabulary)
-    if not parsed_choices:
-        choice_vocabulary = [value for value in choice_vocabulary if value != "Unknown"]
-        if max_values is not None:
-            choice_vocabulary = choice_vocabulary[:max_values]
+    if choices_were_omitted:
+        if reserve_unknown:
+            choice_vocabulary = [
+                value for value in choice_vocabulary if value != "Unknown"
+            ]
         parsed_choices = {value: None for value in choice_vocabulary}
+    if max_values is not None and (choices_were_omitted or pad_missing_choices):
+        choice_vocabulary = choice_vocabulary[:max_values]
     prepared_choices = _prepare_choices(
         parsed_choices, choice_vocabulary, pad_missing_choices
     )

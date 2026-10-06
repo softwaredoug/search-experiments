@@ -14,6 +14,9 @@ from exps.query_understanding.enrichers import (
 from exps.query_understanding.enrichers.cached_choice_single_jev import (
     CachedJevChoiceSingleEnricher,
 )
+from exps.query_understanding.enrichers.cached_jev_choice_multiple import (
+    CachedJevChoiceMultipleEnricher,
+)
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.query_understanding.retrieval_engines import (
     BM25HierarchyBoostedRetrievalEngine,
@@ -56,6 +59,34 @@ class FakeJevClient:
         question_id = next(iter(questions))
         answer = type(
             "Answer", (), {"choice": self.value, "confidence": self.confidence}
+        )()
+        return type("Response", (), {"choices": {question_id: answer}})()
+
+
+class FakeJevMultipleClient:
+    instances = []
+    distributions = {}
+
+    def __init__(self, **kwargs):
+        self.api_key = kwargs["api_key"]
+        self.model = kwargs["model"]
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        question_id = next(iter(questions))
+        probabilities = self.distributions[state]
+        answer = type(
+            "Answer",
+            (),
+            {
+                "choice": max(probabilities, key=probabilities.get)
+                if probabilities
+                else None,
+                "confidence": max(probabilities.values()) if probabilities else 0.0,
+                "probabilities": probabilities,
+            },
         )()
         return type("Response", (), {"choices": {question_id: answer}})()
 
@@ -397,6 +428,158 @@ def test_jev_choice_single_requires_confidence_to_be_strictly_above_threshold(
         FakeJevClient.confidence = 1.0
 
 
+def test_jev_choice_multiple_thresholds_probabilities_and_caches_predictions(
+    tmp_path,
+):
+    FakeJevMultipleClient.instances = []
+    FakeJevMultipleClient.distributions = {
+        "bed": {"Furniture": 0.8, "Bedroom": 0.4, "Outdoor": 0.5},
+        "unmatched": {},
+    }
+    with patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.TypeSafeClient",
+        FakeJevMultipleClient,
+    ), patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.key_for_provider",
+        return_value="typesafe-test-key",
+    ), patch(
+        "exps.query_understanding.enrichers.cached_jev_choice_multiple.DATA_PATH",
+        tmp_path,
+    ):
+        enricher = make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {
+                    "model": "jev/jev-latest",
+                    "threshold": 0.4,
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture", "Bedroom", "Outdoor"],
+        )
+        assert isinstance(enricher, CachedJevChoiceMultipleEnricher)
+        assert enricher.enrich("bed") == ["Furniture", "Outdoor"]
+        assert enricher.enrich("bed") == ["Furniture", "Outdoor"]
+        assert enricher.enrich("unmatched") == []
+
+    client = FakeJevMultipleClient.instances[0]
+    assert [state for state, _ in client.calls] == ["bed", "unmatched"]
+    assert client.calls[0][1]["category"].criteria == {
+        "Furniture": None,
+        "Bedroom": None,
+        "Outdoor": None,
+    }
+
+
+def test_jev_choice_multiple_uses_up_to_255_most_frequent_options(tmp_path):
+    FakeJevMultipleClient.instances = []
+    vocabulary = [f"category-{index}" for index in range(260)]
+    FakeJevMultipleClient.distributions = {
+        "query": {
+            "category-0": 0.41,
+            "category-254": 0.5,
+            "category-255": 0.99,
+            "Unknown": 1.0,
+        }
+    }
+    with patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.TypeSafeClient",
+        FakeJevMultipleClient,
+    ), patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.key_for_provider",
+        return_value="typesafe-test-key",
+    ), patch(
+        "exps.query_understanding.enrichers.cached_jev_choice_multiple.DATA_PATH",
+        tmp_path,
+    ):
+        enricher = make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {
+                    "model": "jev/jev-latest",
+                    "threshold": 0.4,
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=vocabulary,
+        )
+        assert enricher.enrich("query") == ["category-0", "category-254"]
+
+    criteria = FakeJevMultipleClient.instances[0].calls[0][1]["category"].criteria
+    assert len(criteria) == 255
+    assert list(criteria) == vocabulary[:255]
+    assert "Unknown" not in criteria
+
+
+def test_jev_choice_multiple_accepts_descriptions_and_validates_threshold_and_model(
+    tmp_path,
+):
+    FakeJevMultipleClient.instances = []
+    FakeJevMultipleClient.distributions = {
+        "query": {"Furniture": 0.41, "Bedroom": 0.7, "Unknown": 0.9}
+    }
+    with patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.TypeSafeClient",
+        FakeJevMultipleClient,
+    ), patch(
+        "exps.query_understanding.enrichers.jev_choice_multiple.key_for_provider",
+        return_value="typesafe-test-key",
+    ), patch(
+        "exps.query_understanding.enrichers.cached_jev_choice_multiple.DATA_PATH",
+        tmp_path,
+    ):
+        enricher = make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {
+                    "model": "jev/jev-latest",
+                    "threshold": 0.4,
+                    "choices": {
+                        "Furniture": "Products used to furnish a room.",
+                        "Bedroom": None,
+                        "Unknown": "No category applies.",
+                    },
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture", "Bedroom", "Outdoor"],
+        )
+        assert enricher.enrich("query") == ["Bedroom", "Furniture"]
+
+    criteria = FakeJevMultipleClient.instances[0].calls[0][1]["category"].criteria
+    assert criteria == {
+        "Furniture": "Products used to furnish a room.",
+        "Bedroom": None,
+        "Unknown": "No category applies.",
+    }
+
+    with pytest.raises(ValueError, match="threshold"):
+        make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {"model": "jev/jev-latest", "prompt": "Classify {query}."},
+            },
+            field="category",
+            vocabulary=["Furniture"],
+        )
+    with pytest.raises(ValueError, match="requires a Jev model"):
+        make_enricher(
+            {
+                "type": "jev_choice_multiple",
+                "params": {
+                    "model": "gpt-5-mini",
+                    "threshold": 0.4,
+                    "prompt": "Classify {query}.",
+                },
+            },
+            field="category",
+            vocabulary=["Furniture"],
+        )
+
+
 def test_cached_jev_choice_single_persists_predictions_and_empty_results(tmp_path):
     from exps.query_understanding.enrichers import cached_choice_single_jev
 
@@ -438,6 +621,51 @@ def test_cached_jev_choice_single_persists_predictions_and_empty_results(tmp_pat
     cache_path = tmp_path / "query_understanding_cache" / "fixture-cache-key.json"
     assert cache_path.read_text(encoding="utf-8") == (
         '{"ambiguous": [], "chair": ["Furniture"]}\n'
+    )
+
+
+def test_cached_jev_choice_multiple_persists_multiple_predictions(tmp_path):
+    from exps.query_understanding.enrichers import cached_jev_choice_multiple
+
+    class FakeJevMultipleEnricher:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.cache_key = "fixture-multiple-cache-key"
+            self.calls = []
+            self.__class__.instances.append(self)
+
+        def enrich(self, query):
+            self.calls.append(query)
+            return {"bed": ["Bedroom", "Furniture"]}[query]
+
+    FakeJevMultipleEnricher.instances = []
+    with patch.object(cached_jev_choice_multiple, "DATA_PATH", tmp_path), patch.object(
+        cached_jev_choice_multiple,
+        "JevChoiceMultipleEnricher",
+        FakeJevMultipleEnricher,
+    ):
+        kwargs = {
+            "field": "category",
+            "vocabulary": ["Furniture", "Bedroom"],
+            "choices": {"Furniture": None, "Bedroom": None},
+            "prompt": "Classify {query}.",
+            "model": "jev/jev-latest",
+            "threshold": 0.4,
+            "reasoning": None,
+            "pad_missing_choices": False,
+        }
+        first = cached_jev_choice_multiple.CachedJevChoiceMultipleEnricher(**kwargs)
+        assert first.enrich("bed") == ["Bedroom", "Furniture"]
+
+        second = cached_jev_choice_multiple.CachedJevChoiceMultipleEnricher(**kwargs)
+        assert second.enrich("bed") == ["Bedroom", "Furniture"]
+
+    assert FakeJevMultipleEnricher.instances[0].calls == ["bed"]
+    assert FakeJevMultipleEnricher.instances[1].calls == []
+    cache_path = tmp_path / "query_understanding_cache" / "fixture-multiple-cache-key.json"
+    assert cache_path.read_text(encoding="utf-8") == (
+        '{"bed": ["Bedroom", "Furniture"]}\n'
     )
 
 
