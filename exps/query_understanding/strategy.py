@@ -52,6 +52,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
         corpus,
         workers: int = 1,
         no_cache: bool = False,
+        judgments=None,
         **kwargs,
     ):
         categorize = params.get("categorize") or {}
@@ -79,6 +80,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             model=enrichment_config.get("model", "gpt-5-mini"),
             reasoning=params.get("reasoning"),
             corpus=corpus,
+            judgments=judgments,
             no_cache=no_cache,
         )
         return cls(corpus, workers=workers, enricher=enricher, **params)

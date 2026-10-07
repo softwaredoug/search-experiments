@@ -219,6 +219,58 @@ strategy:
     assert len(limited_result.per_query) == 2
 
 
+def test_query_classification_oracle_enricher(tmp_path):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3, 4, 5],
+            "title": ["desk", "chair", "lamp", "blank", "table"],
+            "description": ["desk", "chair", "lamp", "blank", "table"],
+            "category": ["Furniture", "Lighting", "Other", "", "Furniture"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1, 1, 1, 1, 1],
+            "query": ["furniture and lighting"] * 5,
+            "doc_id": [1, 2, 3, 4, 5],
+            "grade": [3, 3, 2, 3, 3],
+        }
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    config_path = tmp_path / "query_understanding_oracle.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_oracle_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: oracle
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    params = QueryClassificationParams(
+        strategy_path=str(config_path),
+        dataset="wands",
+        query_threshold=0.0,
+    )
+    with patch("exps.runners.query_classification.get_dataset", return_value=dataset):
+        result = evaluate_query_classification(params)
+
+    row = result.per_query.iloc[0]
+    assert row["generated_categories"] == ["Furniture", "Lighting"]
+    assert row["expected_categories"] == ["Furniture", "Lighting"]
+    assert row["recall"] == 1.0
+    assert row["jaccard"] == 1.0
+
+
 def test_query_classification_jev_empty_choices_e2e(fake_wands_dataset, tmp_path):
     ScriptedJevClient.instances = []
     ScriptedJevClient.predictions = {"floating bed": "Furniture"}

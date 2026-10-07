@@ -95,6 +95,7 @@ def create_strategy(
             build_kwargs["dataset"] = dataset
         if strategy_config.type == "query_understanding":
             build_kwargs["no_cache"] = no_cache
+            build_kwargs["judgments"] = judgments
         if strategy_config.type == "codegen":
             build_kwargs["strategy_name"] = strategy_config.name
             build_kwargs["judgments"] = judgments

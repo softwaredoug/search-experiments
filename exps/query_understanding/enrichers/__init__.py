@@ -33,6 +33,10 @@ from exps.query_understanding.enrichers.llm_multiple import (
     make_llm_multiple_enricher,
 )
 from exps.query_understanding.enrichers.protocol import Enricher
+from exps.query_understanding.enrichers.oracle import (
+    OracleEnricher,
+    make_oracle_enricher,
+)
 from exps.query_understanding.enrichers.jev_bm25_then_select import (
     JevBM25ThenSelectEnricher,
     JevBM25ThenSelectMultipleEnricher,
@@ -49,6 +53,7 @@ def make_enricher(
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
     corpus=None,
+    judgments=None,
     no_cache: bool = False,
 ) -> Enricher:
     config = config or {}
@@ -56,6 +61,14 @@ def make_enricher(
     params = config.get("params") or {}
     if enrichment_type == "dummy":
         return make_dummy_enricher(vocabulary)
+    if enrichment_type == "oracle":
+        if corpus is None or judgments is None:
+            raise ValueError("oracle enrichment requires the corpus and judgments.")
+        return make_oracle_enricher(
+            corpus=corpus,
+            judgments=judgments,
+            field=field,
+        )
     if enrichment_type in {"llm_choice", "jev_choice_single"}:
         prompt = params.get("prompt")
         choices = params.get("choices")
@@ -140,7 +153,7 @@ def make_enricher(
             params=params,
         )
     raise ValueError(
-        "Supported enrichment engines are dummy, llm_choice, jev_choice_single, "
+        "Supported enrichment engines are dummy, oracle, llm_choice, jev_choice_single, "
         "jev_choice_multiple, jev_bm25_then_select, "
         "jev_bm25_then_select_multiple, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
@@ -157,6 +170,7 @@ __all__ = [
     "JevBM25ThenSelectMultipleEnricher",
     "OpenAIChoiceSingleEnricher",
     "Enricher",
+    "OracleEnricher",
     "LLMSingleEnricher",
     "LLMMultipleEnricher",
     "make_dummy_enricher",
@@ -166,6 +180,7 @@ __all__ = [
     "make_jev_bm25_then_select_enricher",
     "make_jev_bm25_then_select_multiple_enricher",
     "make_enricher",
+    "make_oracle_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",
 ]

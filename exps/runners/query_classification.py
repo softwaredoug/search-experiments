@@ -309,6 +309,7 @@ def evaluate_query_classification(
         params=strategy_params,
         device=params.device,
         dataset=params.dataset,
+        judgments=judgments,
     )
 
     if not hasattr(strategy, "enrich"):
