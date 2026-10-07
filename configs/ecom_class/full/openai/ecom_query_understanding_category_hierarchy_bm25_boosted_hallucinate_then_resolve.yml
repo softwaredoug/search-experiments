@@ -1,0 +1,38 @@
+strategy:
+  name: ecom_qu_category_hierarchy_bm25_boosted_hallucinate_then_resolve
+  type: query_understanding
+  params:
+    reasoning: none
+    categorize:
+      field: category hierarchy
+      enrichment_engine:
+        type: hallucinate_then_resolve
+        params:
+          model: openai/gpt-5.4-nano
+          similarity_threshold: 0.9
+          num_samples: 5
+          max_sample_sim: 0.1
+          resolve_model: all-MiniLM-L6-v2
+          system_prompt: |
+            Your task is to create novel, never seen before, furniture,
+            home goods, or hardware classifications that best fit a search query.
+          prompt: |
+            Some inspiration on what these look like is at the bottom.
+
+            Here is the user's request:
+
+            {query}
+
+            {category_name} classifications might look like:
+            {samples}
+
+            If inspired, return many unique values in a list. Be creative and
+            cast a wide net with related but diverse categories.
+
+            Return an empty list if no clear classification can be inferred or
+            the query is not clearly about furniture, home goods, or hardware.
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
+        boost_matches: 10

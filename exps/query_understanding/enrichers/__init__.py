@@ -37,6 +37,10 @@ from exps.query_understanding.enrichers.oracle import (
     OracleEnricher,
     make_oracle_enricher,
 )
+from exps.query_understanding.enrichers.hallucinate_then_resolve import (
+    HallucinateThenResolveEnricher,
+    make_hallucinate_then_resolve_enricher,
+)
 from exps.query_understanding.enrichers.jev_bm25_then_select import (
     JevBM25ThenSelectEnricher,
     JevBM25ThenSelectMultipleEnricher,
@@ -54,6 +58,7 @@ def make_enricher(
     reasoning: str | None = None,
     corpus=None,
     judgments=None,
+    device: str | None = None,
     no_cache: bool = False,
 ) -> Enricher:
     config = config or {}
@@ -69,6 +74,15 @@ def make_enricher(
             judgments=judgments,
             field=field,
             max_grade_dist=params.get("max_grade_dist", 0),
+        )
+    if enrichment_type == "hallucinate_then_resolve":
+        return make_hallucinate_then_resolve_enricher(
+            field=field,
+            vocabulary=vocabulary,
+            params=params,
+            model=model,
+            reasoning=reasoning,
+            device=device,
         )
     if enrichment_type in {"llm_choice", "jev_choice_single"}:
         prompt = params.get("prompt")
@@ -154,7 +168,8 @@ def make_enricher(
             params=params,
         )
     raise ValueError(
-        "Supported enrichment engines are dummy, oracle, llm_choice, jev_choice_single, "
+        "Supported enrichment engines are dummy, oracle, hallucinate_then_resolve, "
+        "llm_choice, jev_choice_single, "
         "jev_choice_multiple, jev_bm25_then_select, "
         "jev_bm25_then_select_multiple, llm_single, and llm_multiple; "
         f"received {enrichment_type!r}."
@@ -172,6 +187,7 @@ __all__ = [
     "OpenAIChoiceSingleEnricher",
     "Enricher",
     "OracleEnricher",
+    "HallucinateThenResolveEnricher",
     "LLMSingleEnricher",
     "LLMMultipleEnricher",
     "make_dummy_enricher",
@@ -182,6 +198,7 @@ __all__ = [
     "make_jev_bm25_then_select_multiple_enricher",
     "make_enricher",
     "make_oracle_enricher",
+    "make_hallucinate_then_resolve_enricher",
     "make_llm_single_enricher",
     "make_llm_multiple_enricher",
 ]

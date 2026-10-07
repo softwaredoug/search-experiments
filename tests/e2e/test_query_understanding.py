@@ -14,6 +14,9 @@ from exps.runners.query_classification import (
     evaluate_query_classification,
 )
 from exps.runners.run import RunParams, run_benchmark
+from tests.utils.hallucinate_then_resolve_mocks import (
+    patch_hallucinate_dependencies,
+)
 
 
 class ScriptedJevClient:
@@ -269,6 +272,89 @@ strategy:
     assert row["expected_categories"] == ["Furniture", "Lighting"]
     assert row["recall"] == 1.0
     assert row["jaccard"] == 1.0
+
+
+def test_query_classification_hallucinate_then_resolve_e2e(monkeypatch, tmp_path):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3],
+            "title": ["desk", "lamp", "patio chair"],
+            "description": ["office desk", "reading lamp", "outdoor chair"],
+            "category": ["CatFurniture", "CatLighting", "CatOutdoor"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1, 1],
+            "query": ["desk lamp", "desk lamp"],
+            "doc_id": [1, 2],
+            "grade": [2, 2],
+        }
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+    _, auto_enricher = patch_hallucinate_dependencies(
+        monkeypatch,
+        vectors={
+            "CatFurniture": [1, 0, 0],
+            "CatLighting": [0, 1, 0],
+            "CatOutdoor": [0, 0, 1],
+            "Hypothetical desk furniture": [0.99, 0.01, 0],
+            "Hypothetical light fixture": [0.01, 0.99, 0],
+        },
+        responses=[["Hypothetical desk furniture", "Hypothetical light fixture"]],
+    )
+    config_path = tmp_path / "query_understanding_hallucinate_then_resolve.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_hallucinate_then_resolve_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: hallucinate_then_resolve
+        params:
+          model: openai/test-model
+          resolve_model: test/resolve-model
+          similarity_threshold: 0.75
+          num_samples: 2
+          max_sample_sim: 0.95
+          system_prompt: Generate category ideas.
+          prompt: |
+            Query: {query}
+            {category_name} may look like:
+            Samples:
+            {samples}
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    with patch(
+        "exps.runners.query_classification.get_dataset", return_value=dataset
+    ):
+        result = evaluate_query_classification(
+            QueryClassificationParams(
+                strategy_path=str(config_path),
+                dataset="wands",
+                query="desk lamp",
+                query_threshold=0.5,
+            )
+        )
+
+    row = result.per_query.iloc[0]
+    assert row["generated_categories"] == ["CatFurniture", "CatLighting"]
+    assert row["expected_categories"] == ["CatFurniture", "CatLighting"]
+    assert row["recall"] == 1.0
+    assert row["jaccard"] == 1.0
+    assert len(auto_enricher.instances) == 1
+    assert len(auto_enricher.instances[0].calls) == 1
+    assert "Query: desk lamp" in auto_enricher.instances[0].calls[0]
 
 
 def test_query_classification_jev_empty_choices_e2e(fake_wands_dataset, tmp_path):

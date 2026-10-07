@@ -15,6 +15,20 @@ It *is* the classifier. Below is a list of enrichment engines.
 The dummy enricher always takes the query and returns the first category from the vocabulary. Used primarilly
 for e2e testing.
 
+
+### Oracle enricher
+
+The oracle enricher loads the judgments and creates a list of relevant doc_ids (all results where the grade is max_grade) for the query.
+
+Then it returns the list of categories for all doc_ids from the corpus.
+
+Empty categories are removed.
+
+```yaml
+enrichment_engine:
+  type: oracle
+```
+
 ### LLM enrichment single (llm_single)
 
 The LLM enrichment engine implemented using [cheat at search's AutoEnricher](https://github.com/softwaredoug/cheat-at-search/blob/main/cheat_at_search/enrich/enrich.py)
@@ -242,6 +256,69 @@ enrichment_engine:
       fields: [title^9.4, description^4]  # Candidate-search BM25 fields/weights
 ```
 
+
+### LLM hallucinate-then-resolve
+
+Reference: https://softwaredoug.com/blog/2026/08/10/hypothetical-classifications
+
+Hallucinate a set of hypothetical classifications using an LLM (ie OpenAI).
+Then resolve those hallucinations to the most likely categories in the corpus, returning a list
+of categories
+
+- Embed every legal, non-empty category with `resolve_model` (for example,
+  `all-MiniLM-L6-v2`). The full category vocabulary is indexed; it is not capped.
+- Select one shared set of up to `num_samples` real category names from the
+  corpus. Reject a sample when its cosine similarity to any selected sample is
+  greater than or equal to `max_sample_sim`. Reuse this set in every query prompt.
+- For each query, call the LLM once to generate a `list[str]` of hypothetical
+  classifications. These may not match category values in the corpus.
+- Resolve each hypothetical classification against the full category embedding
+  index. Return unique categories whose cosine similarity is strictly greater
+  than `similarity_threshold`.
+
+```yaml
+enrichment_engine:
+  type: hallucinate_then_resolve
+  params:
+    model: openai/gpt-5.4-nano
+    similarity_threshold: 0.9
+    num_samples: 5
+    max_sample_sim: 0.1
+    resolve_model: all-MiniLM-L6-v2
+    system_prompt: |
+        Your task is to create novel, never seen before, furniture,
+        home goods, or hardware classifications that best fit a search query.
+    prompt: |
+       Some inspiration on what these look like is at the bottom.
+
+       Here is the user's request:
+
+       {query}
+
+       {category_name} classifications might look like:
+       {samples}
+```
+
+Resolution works as follows:
+
+```python
+classification_embeddings = # embedded earlier with SentenceTransformer
+
+def resolve(hallucinated: list[str],  # Hypothetical classifications from the model
+            similarity_threshold):  # Threshold per above
+    actuals = []
+    for halluc_class in hallucinated:
+        query_embedding = model.encode(halluc_class)
+        dot_prods = np.dot(classifications_embeddings, query_embedding)
+        actual = classifications_list[np.argmax(dot_prods)]   # Get the most similar classification
+        while actual in actuals:       # If already in actuals, move down the list
+            dot_prods[np.argmax(dot_prods)] = -1
+            actual = classifications_list[np.argmax(dot_prods)]
+        dot_prod = np.max(dot_prods)
+        if dot_prod > similarity_threshold:   # Accept only if above threshold
+            actuals.append(actual)
+    return actuals
+```
 
 ### Choice option behavior
 

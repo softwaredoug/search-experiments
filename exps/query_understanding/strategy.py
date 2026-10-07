@@ -14,6 +14,13 @@ from exps.query_understanding.enrichers import Enricher, make_enricher
 from exps.query_understanding.retrieval_engines import make_retrieval_engine
 
 MAX_CATEGORY_CARDINALITY = 300
+VOCABULARY_LIMITED_ENGINES = {
+    "llm_choice",
+    "jev_choice_single",
+    "jev_choice_multiple",
+    "llm_single",
+    "llm_multiple",
+}
 
 
 def _parse_fields(fields: list[str]) -> dict[str, float]:
@@ -62,17 +69,21 @@ class QueryUnderstandingStrategy(SearchStrategy):
         if category_field not in corpus.columns:
             raise ValueError(f"Missing category field: {category_field}")
         values = corpus[category_field].dropna().astype(str)
-        values = values[values != ""]
+        values = values[values.str.strip() != ""]
         category_counts = values.value_counts()
-        if len(category_counts) > MAX_CATEGORY_CARDINALITY:
-            warnings.warn(
-                f"Category field {category_field!r} has {len(category_counts)} values; "
-                f"using the top {MAX_CATEGORY_CARDINALITY} by corpus frequency.",
-                UserWarning,
-                stacklevel=2,
-            )
-        vocabulary = category_counts.head(MAX_CATEGORY_CARDINALITY).index.tolist()
         enrichment_config = categorize.get("enrichment_engine") or {}
+        enrichment_type = enrichment_config.get("type")
+        if enrichment_type in VOCABULARY_LIMITED_ENGINES:
+            if len(category_counts) > MAX_CATEGORY_CARDINALITY:
+                warnings.warn(
+                    f"Category field {category_field!r} has {len(category_counts)} values; "
+                    f"using the top {MAX_CATEGORY_CARDINALITY} by corpus frequency.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            vocabulary = category_counts.head(MAX_CATEGORY_CARDINALITY).index.tolist()
+        else:
+            vocabulary = category_counts.index.tolist()
         enricher = make_enricher(
             enrichment_config,
             field=category_field,
@@ -81,6 +92,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             reasoning=params.get("reasoning"),
             corpus=corpus,
             judgments=judgments,
+            device=kwargs.get("device"),
             no_cache=no_cache,
         )
         return cls(corpus, workers=workers, enricher=enricher, **params)

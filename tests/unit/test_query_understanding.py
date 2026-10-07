@@ -1089,7 +1089,7 @@ def test_hierarchy_boosting_sums_decaying_prefix_boosts_per_classification():
     assert scores.tolist() == [17.5, 15.0, 20.0, 10.0]
 
 
-def test_query_understanding_limits_category_vocabulary():
+def test_query_understanding_limits_vocabulary_passed_to_model_enrichers(monkeypatch):
     categories = [f"category-{index}" for index in range(MAX_CATEGORY_CARDINALITY + 1)]
     categories.append(categories[-1])
     corpus = pd.DataFrame(
@@ -1099,13 +1099,29 @@ def test_query_understanding_limits_category_vocabulary():
             "category": categories,
         }
     )
+    captured = {}
+
+    class RecordingEnricher:
+        cache_key = "recording-enricher"
+
+        def enrich(self, query):
+            return []
+
+    def capture_factory(config, **kwargs):
+        captured["config"] = config
+        captured.update(kwargs)
+        return RecordingEnricher()
+
+    monkeypatch.setattr(
+        "exps.query_understanding.strategy.make_enricher", capture_factory
+    )
 
     with pytest.warns(UserWarning, match="top 300"):
-        strategy = QueryUnderstandingStrategy.build(
+        QueryUnderstandingStrategy.build(
             {
                 "categorize": {
                     "field": "category",
-                    "enrichment_engine": {"type": "dummy"},
+                    "enrichment_engine": {"type": "llm_multiple"},
                 },
                 "retrieval_engine": {
                     "base": "bm25_boosted",
@@ -1115,8 +1131,56 @@ def test_query_understanding_limits_category_vocabulary():
             corpus=corpus,
         )
 
-    vocabulary = strategy.enricher.vocabulary
+    vocabulary = captured["vocabulary"]
     assert len(vocabulary) == MAX_CATEGORY_CARDINALITY
     assert vocabulary[0] == categories[-1]
     assert categories[-1] in vocabulary
     assert len(set(categories[:-1]) - set(vocabulary)) == 1
+
+
+@pytest.mark.parametrize(
+    "enrichment_type",
+    ["dummy", "oracle", "hallucinate_then_resolve", "jev_bm25_then_select"],
+)
+def test_query_understanding_does_not_cap_non_model_vocabulary(
+    monkeypatch, enrichment_type
+):
+    categories = [f"category-{index}" for index in range(MAX_CATEGORY_CARDINALITY + 1)]
+    corpus = pd.DataFrame(
+        {
+            "doc_id": list(range(len(categories))),
+            "title": ["title"] * len(categories),
+            "category": categories,
+        }
+    )
+    captured = {}
+
+    class RecordingEnricher:
+        cache_key = "recording-enricher"
+
+        def enrich(self, query):
+            return []
+
+    def capture_factory(config, **kwargs):
+        captured["config"] = config
+        captured.update(kwargs)
+        return RecordingEnricher()
+
+    monkeypatch.setattr(
+        "exps.query_understanding.strategy.make_enricher", capture_factory
+    )
+    QueryUnderstandingStrategy.build(
+        {
+            "categorize": {
+                "field": "category",
+                "enrichment_engine": {"type": enrichment_type},
+            },
+            "retrieval_engine": {
+                "base": "bm25_boosted",
+                "params": {"fields": ["title"]},
+            },
+        },
+        corpus=corpus,
+    )
+
+    assert len(captured["vocabulary"]) == len(categories)
