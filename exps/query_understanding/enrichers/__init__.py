@@ -68,6 +68,7 @@ def make_enricher(
             corpus=corpus,
             judgments=judgments,
             field=field,
+            max_grade_dist=params.get("max_grade_dist", 0),
         )
     if enrichment_type in {"llm_choice", "jev_choice_single"}:
         prompt = params.get("prompt")

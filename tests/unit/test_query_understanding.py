@@ -887,6 +887,57 @@ def test_llm_choice_unprefixed_model_defaults_to_openai():
     assert enricher.model == "openai/jev-latest"
 
 
+def test_oracle_enricher_falls_back_within_configured_grade_distance():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2, 3, 4],
+            "category": ["Top", "Fallback A", "Fallback B", "Too low"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query": [
+                "top",
+                "fallback",
+                "fallback",
+                "fallback",
+                "too far",
+                "missing",
+            ],
+            "doc_id": [1, 2, 3, 4, 4, 99],
+            "grade": [3, 2, 2, 1, 1, 2],
+        }
+    )
+
+    enricher = make_enricher(
+        {"type": "oracle", "params": {"max_grade_dist": 1}},
+        field="category",
+        vocabulary=[],
+        corpus=corpus,
+        judgments=judgments,
+    )
+
+    assert enricher.enrich("top") == ["Top"]
+    assert enricher.enrich("fallback") == ["Fallback A", "Fallback B"]
+    assert enricher.enrich("too far") == []
+    assert enricher.enrich("missing") == []
+    assert enricher.enrich("unknown") == []
+
+
+@pytest.mark.parametrize("max_grade_dist", [-1, "invalid", float("inf")])
+def test_oracle_enricher_rejects_invalid_grade_distance(max_grade_dist):
+    with pytest.raises(ValueError, match="max_grade_dist"):
+        make_enricher(
+            {"type": "oracle", "params": {"max_grade_dist": max_grade_dist}},
+            field="category",
+            vocabulary=[],
+            corpus=pd.DataFrame({"doc_id": [1], "category": ["Top"]}),
+            judgments=pd.DataFrame(
+                {"query": ["query"], "doc_id": [1], "grade": [2]}
+            ),
+        )
+
+
 def test_ground_truth_uses_maximum_grade_regardless_of_scale():
     judgments = pd.DataFrame(
         {

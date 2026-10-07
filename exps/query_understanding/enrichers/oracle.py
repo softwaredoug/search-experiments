@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 
 import pandas as pd
 
@@ -14,9 +15,16 @@ def _grade_column(judgments: pd.DataFrame) -> str | None:
 
 
 class OracleEnricher:
-    """Return categories attached to maximally graded documents for each query."""
+    """Return top-grade categories, with a bounded lower-grade fallback."""
 
-    def __init__(self, *, corpus, judgments: pd.DataFrame, field: str):
+    def __init__(
+        self,
+        *,
+        corpus,
+        judgments: pd.DataFrame,
+        field: str,
+        max_grade_dist: float = 0,
+    ):
         if "doc_id" not in corpus.columns:
             raise ValueError("Oracle enrichment requires a corpus doc_id column.")
         if field not in corpus.columns:
@@ -29,6 +37,19 @@ class OracleEnricher:
         grade_column = _grade_column(judgments)
         if grade_column is None:
             raise ValueError("Oracle enrichment judgments require a grade column.")
+        if isinstance(max_grade_dist, bool):
+            raise ValueError("oracle.params.max_grade_dist must be non-negative.")
+        try:
+            max_grade_dist = float(max_grade_dist)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "oracle.params.max_grade_dist must be a non-negative number."
+            ) from exc
+        if not math.isfinite(max_grade_dist) or max_grade_dist < 0:
+            raise ValueError(
+                "oracle.params.max_grade_dist must be a non-negative number."
+            )
+        self.max_grade_dist = max_grade_dist
 
         grades = pd.to_numeric(judgments[grade_column], errors="coerce")
         max_grade = grades.max()
@@ -36,11 +57,22 @@ class OracleEnricher:
             raise ValueError("Oracle enrichment requires at least one numeric grade.")
 
         category_by_doc = dict(zip(corpus["doc_id"], corpus[field]))
-        relevant = judgments.loc[grades == max_grade, ["query", "doc_id"]]
+        query_judgments = judgments[["query", "doc_id"]].copy()
+        query_judgments["_grade"] = grades
         self._categories_by_query: dict[str, list[str]] = {}
-        for query, rows in relevant.groupby("query", sort=False):
+        min_accepted_grade = max_grade - max_grade_dist
+        for query, rows in query_judgments.groupby("query", sort=False):
+            candidates = rows.loc[
+                rows["_grade"].between(min_accepted_grade, max_grade), "_grade"
+            ]
+            if candidates.empty:
+                continue
+            selected_grade = candidates.max()
+            relevant_doc_ids = rows.loc[
+                rows["_grade"] == selected_grade, "doc_id"
+            ]
             categories = []
-            for doc_id in rows["doc_id"]:
+            for doc_id in relevant_doc_ids:
                 category = category_by_doc.get(doc_id)
                 if pd.isna(category):
                     continue
@@ -57,11 +89,23 @@ class OracleEnricher:
     def cache_key(self) -> str:
         payload = {
             "type": "oracle",
+            "max_grade_dist": self.max_grade_dist,
             "categories_by_query": self._categories_by_query,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()
 
 
-def make_oracle_enricher(*, corpus, judgments: pd.DataFrame, field: str):
-    return OracleEnricher(corpus=corpus, judgments=judgments, field=field)
+def make_oracle_enricher(
+    *,
+    corpus,
+    judgments: pd.DataFrame,
+    field: str,
+    max_grade_dist: float = 0,
+):
+    return OracleEnricher(
+        corpus=corpus,
+        judgments=judgments,
+        field=field,
+        max_grade_dist=max_grade_dist,
+    )

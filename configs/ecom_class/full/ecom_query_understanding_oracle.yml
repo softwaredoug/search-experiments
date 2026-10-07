@@ -6,6 +6,8 @@ strategy:
       field: category hierarchy
       enrichment_engine:
         type: oracle
+        params:
+          max_grade_dist: 1
     retrieval_engine:
       base: bm25_boosted
       params:
