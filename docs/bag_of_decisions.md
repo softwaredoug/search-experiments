@@ -90,19 +90,26 @@ decision_engine:
   generator:
     type: direct
     question: |
-      Is this document relevant to the search query: {query}?
+      Does this candidate product satisfy the search query "{query}"?
     criteria:
-      "true": The product matches the product type and shopping intent expressed in the query.
-      "false": The product is from a different category, contradicts an explicit constraint, or only shares incidental keywords.
+      "true": >-
+        The candidate is the requested product type and satisfies the query's
+        key shopping intent and explicit constraints.
+      "false": >-
+        The candidate is a different product type, conflicts with an explicit
+        constraint, or only overlaps with incidental query terms.
   reranker:
     decision_model: jev/jev-latest
     decision_weight: 10
     confidence_threshold: 0.7
     k: 100
     state_format: |
-      Query: {query}
-      {title}
-      {description}
+      Search query:
+      {query}
+
+      Candidate product:
+      Title: {title}
+      Description: {description}
 ```
 
 1 - https://docs.typesafe.ai/primitives/noul
