@@ -19,7 +19,7 @@ result CSV and NDCG plot will be added after the experiment runs.
 
 ### BM25 baseline
 
-Uses the existing [`configs/ecom_base/bm25.yml`](../configs/ecom_base/bm25.yml)
+Uses the existing [`configs/ecom_base/bm25.yml`](../../configs/ecom_base/bm25.yml)
 configuration. It ranks products lexically with BM25, using title boost 9.3 and
 description boost 4.1 (`k1: 1.2`, `b: 0.75`). It does not call a decision model.
 
@@ -30,7 +30,7 @@ uv run run --strategy configs/ecom_base/bm25.yml --dataset esci --num-queries 10
 
 ### Direct Jev decision
 
-Uses [`configs/ecom_decisions/bag_of_decisions_direct.yml`](../configs/ecom_decisions/bag_of_decisions_direct.yml).
+Uses [`configs/ecom_decisions/bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml).
 BM25 first retrieves candidates. For each query, Jev evaluates the same configured
 Noul question against the query and each candidate product. The configured true
 and false criteria explain what counts as a match. Only probabilities strictly
@@ -44,7 +44,7 @@ uv run run --strategy configs/ecom_decisions/bag_of_decisions_direct.yml --datas
 
 ### LLM-generated bag of decisions
 
-Uses [`configs/ecom_decisions/bag_of_decisions.yml`](../configs/ecom_decisions/bag_of_decisions.yml).
+Uses [`configs/ecom_decisions/bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml).
 GPT-5 generates query-specific yes/no questions. Jev evaluates those questions
 against each of the top 100 BM25 candidate products; all questions for one
 candidate are sent in a single request. Probabilities strictly above `0.7` are
