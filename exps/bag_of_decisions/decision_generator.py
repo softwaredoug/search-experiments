@@ -86,7 +86,6 @@ class DecisionGenerator:
                 and decision.strip() not in normalized
             ):
                 normalized.append(decision.strip())
-        print(normalized)
         return list(normalized)
 
     @property
