@@ -32,13 +32,27 @@ class ScriptedAutoEnricher:
         self.system_prompt = kwargs["system_prompt"]
         self.response_model = kwargs["response_model"]
         self.calls: list[str] = []
+        self.raw_calls: list[str] = []
+        self.enricher = _ScriptedProviderEnricher(self)
         self.__class__.instances.append(self)
 
     def enrich(self, prompt: str):
         self.calls.append(prompt)
+        return self._response()
+
+    def _response(self):
         values = self.responses.pop(0)
         response_field = next(iter(self.response_model.model_fields))
         return self.response_model(**{response_field: values})
+
+
+class _ScriptedProviderEnricher:
+    def __init__(self, parent: ScriptedAutoEnricher):
+        self.parent = parent
+
+    def enrich(self, prompt: str):
+        self.parent.raw_calls.append(prompt)
+        return self.parent._response()
 
 
 def patch_hallucinate_dependencies(monkeypatch, *, vectors, responses):

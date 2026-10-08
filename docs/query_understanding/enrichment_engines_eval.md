@@ -19,6 +19,10 @@ uv run query_classification --strategy configs/ecom_class/category/openai/ecom_q
 
 This runs the enrichment engine, classifies each query into the category, then produces stats as detailed below.
 
+Full-dataset evaluations print recall, Jaccard, expected categories, and generated
+categories for every query before the aggregate statistics, with the weakest-scoring
+queries first. A single-query evaluation prints that query's details directly.
+
 ## Evaluation
 
 If the yml file has a query_understanding strategy, it will evaluate the enrichment engine by itself. as follows.

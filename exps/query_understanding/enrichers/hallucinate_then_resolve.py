@@ -82,6 +82,7 @@ class HallucinateThenResolveEnricher:
         max_sample_sim: float,
         resolve_model: str,
         similarity_threshold: float,
+        use_cache: bool = True,
         device: str | None = None,
         reasoning: str | None = None,
         temperature: float | None = None,
@@ -99,6 +100,9 @@ class HallucinateThenResolveEnricher:
         self.similarity_threshold = _cosine_threshold(
             similarity_threshold, "similarity_threshold"
         )
+        if not isinstance(use_cache, bool):
+            raise ValueError("hallucinate_then_resolve cache must be a boolean.")
+        self.use_cache = use_cache
         self.device = device
         self.reasoning = reasoning
         self.temperature = temperature
@@ -149,11 +153,13 @@ class HallucinateThenResolveEnricher:
 
     def _prompt(self, query: str) -> str:
         try:
-            return self.prompt_template.format(
+            prompt = self.prompt_template.format(
                 query=query,
                 category_name=self.field,
                 samples=self._samples_prompt,
             )
+            print("hallucinate_then_resolve prompt:", prompt)
+            return prompt
         except (IndexError, KeyError, ValueError) as exc:
             raise ValueError(
                 "hallucinate_then_resolve prompt may use {query}, "
@@ -170,7 +176,7 @@ class HallucinateThenResolveEnricher:
 
         resolved: list[str] = []
         resolved_indices: set[int] = set()
-        for vector in hypothesis_embeddings:
+        for vector, hallucination in zip(hypothesis_embeddings, hallucinations):
             similarities = self.category_embeddings @ vector
             if resolved_indices:
                 similarities[list(resolved_indices)] = -np.inf
@@ -178,18 +184,29 @@ class HallucinateThenResolveEnricher:
             best_similarity = float(similarities[best_idx])
             # Keep the threshold strict while avoiding floating-point equality drift.
             if best_similarity > self.similarity_threshold + 1e-12:
+                print(hallucination, "->", self.vocabulary[best_idx], f"(similarity={best_similarity:.4f})")
                 resolved.append(self.vocabulary[best_idx])
                 resolved_indices.add(best_idx)
+            else:
+                best_match = self.vocabulary[best_idx] if best_similarity > -np.inf else "<no match>"
+                print(hallucination, "-/->", best_match, f"(similarity={best_similarity:.4f})")
         return resolved
 
     def enrich(self, query: str) -> list[str]:
-        if query in self._cache:
+        if self.use_cache and query in self._cache:
             return list(self._cache[query])
         if not self.vocabulary:
-            self._cache[query] = []
+            if self.use_cache:
+                self._cache[query] = []
             return []
 
-        response = self.enricher.enrich(self._prompt(query))
+        prompt = self._prompt(query)
+        if self.use_cache:
+            response = self.enricher.enrich(prompt)
+        else:
+            # AutoEnricher.enrich uses its persistent CachedEnrichClient. Call
+            # the wrapped provider client directly when caching is disabled.
+            response = self.enricher.enricher.enrich(prompt)
         hallucinations = (
             getattr(response, "hallucinated_classifications", None)
             if response is not None
@@ -203,7 +220,8 @@ class HallucinateThenResolveEnricher:
             if isinstance(value, str) and value.strip()
         ]
         categories = self._resolve(hallucinations)
-        self._cache[query] = categories
+        if self.use_cache:
+            self._cache[query] = categories
         return list(categories)
 
     @property
@@ -224,6 +242,7 @@ class HallucinateThenResolveEnricher:
             "temperature": self.temperature,
             "verbosity": self.verbosity,
             "device": self.device,
+            "use_cache": self.use_cache,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()
@@ -237,7 +256,11 @@ def make_hallucinate_then_resolve_enricher(
     model: str = "gpt-5-mini",
     reasoning: str | None = None,
     device: str | None = None,
+    no_cache: bool = False,
 ) -> HallucinateThenResolveEnricher:
+    use_cache = params.get("cache", True)
+    if not isinstance(use_cache, bool):
+        raise ValueError("hallucinate_then_resolve params.cache must be a boolean.")
     return HallucinateThenResolveEnricher(
         field=field,
         vocabulary=vocabulary,
@@ -248,6 +271,7 @@ def make_hallucinate_then_resolve_enricher(
         max_sample_sim=params.get("max_sample_sim"),
         resolve_model=params.get("resolve_model"),
         similarity_threshold=params.get("similarity_threshold"),
+        use_cache=use_cache and not no_cache,
         device=device,
         reasoning=params.get("reasoning", reasoning),
         temperature=params.get("temperature"),

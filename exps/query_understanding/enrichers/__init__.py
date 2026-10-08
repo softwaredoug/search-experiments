@@ -83,6 +83,7 @@ def make_enricher(
             model=model,
             reasoning=reasoning,
             device=device,
+            no_cache=no_cache,
         )
     if enrichment_type in {"llm_choice", "jev_choice_single"}:
         prompt = params.get("prompt")

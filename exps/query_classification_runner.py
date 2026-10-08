@@ -50,6 +50,19 @@ def _write_summary_csv(path: str, *, strategy: str, dataset: str, threshold: flo
             )
 
 
+def _print_per_query(evaluation) -> None:
+    ordered = evaluation.per_query.sort_values(
+        ["recall", "jaccard", "query"],
+        ascending=True,
+        kind="stable",
+    )
+    print("Per-query results (worst first by recall, then Jaccard):")
+    for row in ordered.itertuples(index=False):
+        print(f"{row.recall:.4f} recall, {row.jaccard:.4f} Jaccard: {row.query}")
+        print(f"  Expected: {row.expected_categories}")
+        print(f"  Generated: {row.generated_categories}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Evaluate query-understanding enrichment against judgments."
@@ -133,6 +146,7 @@ def main() -> None:
                 print("Jaccard: unavailable (no prediction)")
             continue
 
+        _print_per_query(evaluation)
         print(f"Queries: {len(evaluation.per_query)}")
         print(
             "Queries with ground truth: "

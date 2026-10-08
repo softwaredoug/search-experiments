@@ -299,6 +299,10 @@ enrichment_engine:
        {samples}
 ```
 
+Prompt caching is enabled by default. Set `params.cache: false` to bypass the
+AutoEnricher prompt cache and the enricher's in-memory query cache. The
+`uv run run --no-cache` option also disables caching for this engine.
+
 Resolution works as follows:
 
 ```python

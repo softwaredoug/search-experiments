@@ -13,7 +13,9 @@ from tests.utils.hallucinate_then_resolve_mocks import (
 )
 
 
-def _make_enricher(monkeypatch, corpus, *, vectors, responses, params=None):
+def _make_enricher(
+    monkeypatch, corpus, *, vectors, responses, params=None, no_cache=False
+):
     patch_hallucinate_dependencies(
         monkeypatch,
         vectors=vectors,
@@ -35,6 +37,7 @@ def _make_enricher(monkeypatch, corpus, *, vectors, responses, params=None):
         field="category",
         vocabulary=vocabulary,
         corpus=corpus,
+        no_cache=no_cache,
     )
 
 
@@ -222,6 +225,39 @@ def test_blank_hallucinated_values_return_empty(monkeypatch):
 
 
 @pytest.mark.parametrize(
+    ("params", "no_cache"),
+    [({"cache": False}, False), ({}, True)],
+)
+def test_cache_can_be_disabled_for_repeated_queries(monkeypatch, params, no_cache):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2],
+            "category": ["CatFurniture", "CatLighting"],
+        }
+    )
+    enricher = _make_enricher(
+        monkeypatch,
+        corpus,
+        vectors={
+            "CatFurniture": [1, 0],
+            "CatLighting": [0, 1],
+            "HypoFurniture": [1, 0],
+            "HypoLighting": [0, 1],
+        },
+        responses=[["HypoFurniture"], ["HypoLighting"]],
+        params=params,
+        no_cache=no_cache,
+    )
+
+    assert enricher.enrich("same query") == ["CatFurniture"]
+    assert enricher.enrich("same query") == ["CatLighting"]
+
+    client = ScriptedAutoEnricher.instances[0]
+    assert client.calls == []
+    assert len(client.raw_calls) == 2
+
+
+@pytest.mark.parametrize(
     ("override", "error_fragment"),
     [
         ({"num_samples": 0}, "num_samples"),
@@ -234,6 +270,7 @@ def test_blank_hallucinated_values_return_empty(monkeypatch):
         ({"prompt": "  "}, "prompt"),
         ({"system_prompt": "  "}, "system_prompt"),
         ({"resolve_model": "  "}, "resolve_model"),
+        ({"cache": "false"}, "cache"),
     ],
 )
 def test_invalid_hallucinate_then_resolve_params_are_rejected(

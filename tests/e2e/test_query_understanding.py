@@ -1166,7 +1166,13 @@ strategy:
     summary = pd.read_csv(summary_path)
     assert summary.loc[0, "mean_recall"] == pytest.approx(report_mean_recall)
     assert report_mean_recall == pytest.approx(1 / 3)
-    assert f"Mean recall: {report_mean_recall:.4f}" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert f"Mean recall: {report_mean_recall:.4f}" in output
+    assert "Per-query results (worst first by recall, then Jaccard):" in output
+    assert output.index("abstain") < output.index("wrong") < output.index("correct")
+    assert "Expected: ['Lighting']" in output
+    assert "Generated: ['Furniture']" in output
+    assert output.index("Per-query results") < output.index("Queries:")
 
 
 def test_query_classification_backend_rejects_invalid_eval_as(tmp_path):
