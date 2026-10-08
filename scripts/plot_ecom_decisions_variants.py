@@ -9,8 +9,8 @@ from pathlib import Path
 DATASETS = ("wands", "esci")
 STRATEGIES = (
     ("bm25", "BM25"),
-    ("bag_of_decisions_direct", "Direct Jev"),
-    ("bag_of_decisions_example", "LLM decisions"),
+    ("bag_of_decisions_direct", "Jev Reranker"),
+    ("bag_of_decisions_example", "Bag of Decisions"),
 )
 
 
@@ -69,31 +69,39 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     means = _read_mean_ndcg(input_path)
     labels = [label for _, label in STRATEGIES]
     positions = list(range(len(STRATEGIES)))
-    colors = ["#4C78A8", "#F58518", "#54A24B"]
+    colors = {"wands": "#4C78A8", "esci": "#F58518"}
 
-    fig, axes = plt.subplots(1, len(DATASETS), figsize=(12, 5), sharey=True)
-    for axis, dataset in zip(axes, DATASETS):
+    fig, axis = plt.subplots(figsize=(9, 5))
+    for dataset in DATASETS:
         scores = [means[(dataset, strategy)] for strategy, _ in STRATEGIES]
-        bars = axis.bar(positions, scores, color=colors)
-        for bar, score in zip(bars, scores):
+        axis.plot(
+            positions,
+            scores,
+            marker="o",
+            linewidth=2,
+            color=colors[dataset],
+            label=dataset.upper(),
+        )
+        for position, score in zip(positions, scores):
             axis.annotate(
                 f"{score:.3f}",
-                (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                xytext=(0, 4),
+                (position, score),
+                xytext=(0, 8 if dataset == "wands" else -12),
                 textcoords="offset points",
                 ha="center",
-                va="bottom",
+                va="bottom" if dataset == "wands" else "top",
                 fontsize=9,
+                color=colors[dataset],
             )
-        axis.set_title(dataset.upper())
-        axis.set_xticks(positions)
-        axis.set_xticklabels(labels, rotation=18, ha="right")
-        axis.set_ylim(0, 1)
-        axis.grid(axis="y", linestyle="--", alpha=0.4)
-        axis.set_axisbelow(True)
 
-    axes[0].set_ylabel("Mean NDCG")
-    fig.suptitle("BM25 and bag-of-decisions variants")
+    axis.set_xticks(positions)
+    axis.set_xticklabels(labels)
+    axis.set_ylim(0, 1)
+    axis.set_ylabel("Mean NDCG")
+    axis.set_title("Bag of Decisions reranker beats just Jev reranker")
+    axis.grid(axis="y", linestyle="--", alpha=0.4)
+    axis.set_axisbelow(True)
+    axis.legend(title="Dataset")
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)

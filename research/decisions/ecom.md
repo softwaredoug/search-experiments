@@ -11,9 +11,27 @@ This experiment compares three retrieval variants on WANDS and Amazon ESCI:
 | WANDS | 480 | 42 |
 | ESCI | 1,000 | 42 |
 
-The commands below run each variant directly from the repository root. They use
-8 workers, matching the batch script. No metric results are included yet; the
-result CSV and NDCG plot will be added after the experiment runs.
+The commands below run each variant directly from the repository root and use
+8 workers. The comparison script defaults to 16 workers (`WORKERS` can override
+it); the runner summary CSV does not record the worker count.
+
+## Results
+
+![Mean NDCG by dataset and variant](../../assets/ecom_decisions_variants.png)
+
+The full machine-readable results, including serialized strategy parameters,
+are in [`research/results/ecom_decisions_variants.csv`](../results/ecom_decisions_variants.csv).
+All six rows report `NDCG` and were run at commit
+`8734fde3b23ce17eafdf60b2f55dfa6bced47e43`.
+
+| Dataset | Strategy name | Mean NDCG | Median NDCG | Config |
+| --- | --- | ---: | ---: | --- |
+| WANDS | `bm25` | 0.5407553553417934 | 0.47461951858375095 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
+| WANDS | `bag_of_decisions_direct` | 0.5742621821794697 | 0.5609447680982702 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
+| WANDS | `bag_of_decisions_example` | 0.6098137673305334 | 0.5609447680982702 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
+| ESCI | `bm25` | 0.28947299049683545 | 0.17070857607370277 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
+| ESCI | `bag_of_decisions_direct` | 0.3136213056689957 | 0.2048502912884433 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
+| ESCI | `bag_of_decisions_example` | 0.36007937368146015 | 0.34141707368146015 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
 
 ## Variants
 
