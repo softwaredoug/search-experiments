@@ -24,14 +24,14 @@ are in [`research/results/ecom_decisions_variants.csv`](../results/ecom_decision
 All six rows report `NDCG` and were run at commit
 `8734fde3b23ce17eafdf60b2f55dfa6bced47e43`.
 
-| Dataset | Strategy name | Mean NDCG | Median NDCG | Config |
+| Dataset | Variant | Mean NDCG | Median NDCG | Config |
 | --- | --- | ---: | ---: | --- |
-| WANDS | `bm25` | 0.5407553553417934 | 0.47461951858375095 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
-| WANDS | `bag_of_decisions_direct` | 0.5742621821794697 | 0.5609447680982702 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
-| WANDS | `bag_of_decisions_example` | 0.6098137673305334 | 0.5609447680982702 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
-| ESCI | `bm25` | 0.28947299049683545 | 0.17070857607370277 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
-| ESCI | `bag_of_decisions_direct` | 0.3136213056689957 | 0.2048502912884433 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
-| ESCI | `bag_of_decisions_example` | 0.36007937368146015 | 0.34141707368146015 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
+| WANDS | BM25 | 0.5407553553417934 | 0.47461951858375095 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
+| WANDS | Jev Reranker | 0.5742621821794697 | 0.5609447680982702 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
+| WANDS | Bag of Decisions | 0.6098137673305334 | 0.5609447680982702 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
+| ESCI | BM25 | 0.28947299049683545 | 0.17070857607370277 | [`bm25.yml`](../../configs/ecom_base/bm25.yml) |
+| ESCI | Jev Reranker | 0.3136213056689957 | 0.2048502912884433 | [`bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml) |
+| ESCI | Bag of Decisions | 0.36007937368146015 | 0.34141707368146015 | [`bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml) |
 
 ## Variants
 
