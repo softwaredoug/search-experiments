@@ -33,23 +33,26 @@ strategy:
   type: bag_of_decisions
   params:
     decision_engine:
-      system_prompt: |
-        You are a search relevance decision engine. You will be given a query, and your job is to generate a list of yes/no questions that can be used to determine if a document is relevant to the query.
-      prompt: |
-        For the given query, please generate a list of yes/no questions where the affirmative 
-        indicates the document is relevant to the query
+      generator:
+        type: llm
+        model: gpt-5
+        system_prompt: |
+          You are a search relevance decision engine. You will be given a query, and your job is to generate a list of yes/no questions that can be used to determine if a document is relevant to the query.
+        prompt: |
+          For the given query, please generate a list of yes/no questions where the affirmative
+          indicates the document is relevant to the query
         
-        Here's the query:
+          Here's the query:
         
-        {query}
-      model: gpt-5
-      decision_model: jev/jev-latest
-      decision_weight: 10
-      confidence_threshold: 0.7
-      k: 100
-      state_format: | 
-        {title}
-        {description}
+          {query}
+      reranker:
+        decision_model: jev/jev-latest
+        decision_weight: 10
+        confidence_threshold: 0.7
+        k: 100
+        state_format: |
+          {title}
+          {description}
     retrieval_engine:
       base: bm25_boosted
       params:
@@ -72,6 +75,6 @@ by `decision_weight`, then added to the document's retrieval score.
 The `state` of jev should be the document (see `state_format`). It uses a python format string, where {title} means to pull from the title column 
 of the corpus dataframe, etc.
 
-We will rerank the top `decision_engine.k` documents from the retrieval engine.
+We will rerank the top `decision_engine.reranker.k` documents from the retrieval engine.
 
 1 - https://docs.typesafe.ai/primitives/noul

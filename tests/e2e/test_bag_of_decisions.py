@@ -55,17 +55,20 @@ strategy:
   type: bag_of_decisions
   params:
     decision_engine:
-      system_prompt: Generate relevance questions.
-      prompt: Generate yes/no questions for {query}.
-      model: gpt-5
-      decision_model: jev/jev-latest
-      decision_weight: 1000
-      confidence_threshold: 0.7
-      k: 2
-      state_format: |
-        {doc_id}
-        {title}
-        {description}
+      generator:
+        type: llm
+        system_prompt: Generate relevance questions.
+        prompt: Generate yes/no questions for {query}.
+        model: gpt-5
+      reranker:
+        decision_model: jev/jev-latest
+        decision_weight: 1000
+        confidence_threshold: 0.7
+        k: 2
+        state_format: |
+          {doc_id}
+          {title}
+          {description}
     retrieval_engine:
       base: bm25_boosted
       params:

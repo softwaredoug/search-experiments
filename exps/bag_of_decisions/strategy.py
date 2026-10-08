@@ -90,13 +90,25 @@ class BagOfDecisionsStrategy(SearchStrategy):
 
         if not isinstance(decision_engine, dict):
             raise ValueError("decision_engine must be a mapping.")
-        candidate_k = decision_engine.get("k", 100)
+        generator_config = decision_engine.get("generator")
+        if not isinstance(generator_config, dict):
+            raise ValueError("decision_engine.generator must be a mapping.")
+        generator_type = generator_config.get("type")
+        if generator_type != "llm":
+            raise ValueError(
+                "decision_engine.generator.type must be 'llm'; "
+                f"supported generator types: llm (received {generator_type!r})."
+            )
+        reranker_config = decision_engine.get("reranker")
+        if not isinstance(reranker_config, dict):
+            raise ValueError("decision_engine.reranker must be a mapping.")
+        candidate_k = reranker_config.get("k", 100)
         if (
             isinstance(candidate_k, bool)
             or not isinstance(candidate_k, int)
             or candidate_k < 1
         ):
-            raise ValueError("decision_engine.k must be a positive integer.")
+            raise ValueError("decision_engine.reranker.k must be a positive integer.")
         self.candidate_k = candidate_k
 
         if not isinstance(retrieval_engine, dict):
@@ -133,19 +145,19 @@ class BagOfDecisionsStrategy(SearchStrategy):
             raise ValueError("retrieval_engine.params.b must be between 0 and 1.")
 
         self.decision_generator = DecisionGenerator(
-            system_prompt=decision_engine.get("system_prompt"),
-            prompt=decision_engine.get("prompt"),
-            model=decision_engine.get("model"),
-            reasoning=decision_engine.get("reasoning"),
-            temperature=decision_engine.get("temperature"),
-            verbosity=decision_engine.get("verbosity"),
+            system_prompt=generator_config.get("system_prompt"),
+            prompt=generator_config.get("prompt"),
+            model=generator_config.get("model"),
+            reasoning=generator_config.get("reasoning"),
+            temperature=generator_config.get("temperature"),
+            verbosity=generator_config.get("verbosity"),
             no_cache=no_cache,
         )
         self.decision_reranker = DecisionReranker(
-            decision_model=decision_engine.get("decision_model"),
-            decision_weight=decision_engine.get("decision_weight", 10),
-            confidence_threshold=decision_engine.get("confidence_threshold", 0.7),
-            state_format=decision_engine.get("state_format"),
+            decision_model=reranker_config.get("decision_model"),
+            decision_weight=reranker_config.get("decision_weight", 10),
+            confidence_threshold=reranker_config.get("confidence_threshold", 0.7),
+            state_format=reranker_config.get("state_format"),
             corpus_fields=self.corpus.columns,
             no_cache=no_cache,
         )

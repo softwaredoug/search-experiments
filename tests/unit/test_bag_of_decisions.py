@@ -41,20 +41,24 @@ class ScriptedNoulClient:
         return type("Response", (), {"answers": answers})()
 
 
-def _params(**decision_overrides):
-    decision_engine = {
+def _params(*, generator_overrides=None, reranker_overrides=None):
+    generator = {
+        "type": "llm",
         "system_prompt": "Generate search relevance decisions.",
         "prompt": "Generate yes/no questions for {query}.",
         "model": "gpt-5",
+    }
+    generator.update(generator_overrides or {})
+    reranker = {
         "decision_model": "jev/jev-latest",
         "decision_weight": 10,
         "confidence_threshold": 0.7,
         "k": 2,
         "state_format": "{title}\n{description}",
     }
-    decision_engine.update(decision_overrides)
+    reranker.update(reranker_overrides or {})
     return {
-        "decision_engine": decision_engine,
+        "decision_engine": {"generator": generator, "reranker": reranker},
         "retrieval_engine": {
             "base": "bm25_boosted",
             "params": {"fields": ["title"]},
@@ -183,16 +187,19 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
 
 
 @pytest.mark.parametrize(
-    ("updates", "error"),
+    ("section", "updates", "error"),
     [
-        ({"prompt": "  "}, "prompt"),
-        ({"decision_model": "gpt-5"}, "Jev"),
-        ({"decision_weight": -1}, "decision_weight"),
-        ({"confidence_threshold": 1.1}, "confidence_threshold"),
-        ({"k": 0}, "k"),
-        ({"state_format": "{missing}"}, "state_format"),
+        ("generator", {"prompt": "  "}, "prompt"),
+        ("generator", {"type": None}, "supported generator types: llm"),
+        ("generator", {"type": "direct"}, "supported generator types: llm"),
+        ("reranker", {"decision_model": "gpt-5"}, "Jev"),
+        ("reranker", {"decision_weight": -1}, "decision_weight"),
+        ("reranker", {"confidence_threshold": 1.1}, "confidence_threshold"),
+        ("reranker", {"k": 0}, "reranker.k"),
+        ("reranker", {"state_format": "{missing}"}, "state_format"),
     ],
 )
-def test_invalid_configuration_is_rejected(updates, error):
+def test_invalid_configuration_is_rejected(section, updates, error):
+    overrides = {f"{section}_overrides": updates}
     with pytest.raises(ValueError, match=error):
-        BagOfDecisionsStrategy.build(_params(**updates), corpus=_corpus())
+        BagOfDecisionsStrategy.build(_params(**overrides), corpus=_corpus())
