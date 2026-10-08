@@ -44,7 +44,7 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
         return False
     if strategy_type in {"agentic", "scatter_gather_wands"}:
         return True
-    if strategy_type in {"query_understanding", "codegen"}:
+    if strategy_type in {"query_understanding", "codegen", "bag_of_decisions"}:
         return True
     return True
 
@@ -96,6 +96,8 @@ def create_strategy(
         if strategy_config.type == "query_understanding":
             build_kwargs["no_cache"] = no_cache
             build_kwargs["judgments"] = judgments
+        if strategy_config.type == "bag_of_decisions":
+            build_kwargs["no_cache"] = no_cache
         if strategy_config.type == "codegen":
             build_kwargs["strategy_name"] = strategy_config.name
             build_kwargs["judgments"] = judgments

@@ -11,6 +11,7 @@ from exps.agentic.strategy import AgenticSearchStrategy
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
+from exps.strategies.bag_of_decisions import BagOfDecisionsStrategy
 from exps.strategies.rag import RagSearchStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy
 
@@ -28,6 +29,7 @@ STRATEGY_TYPES = {
     AgenticSearchStrategy._type: AgenticSearchStrategy,
     ScatterGatherWandsStrategy._type: ScatterGatherWandsStrategy,
     EmbeddingStrategy._type: EmbeddingStrategy,
+    BagOfDecisionsStrategy._type: BagOfDecisionsStrategy,
     QueryUnderstandingStrategy._type: QueryUnderstandingStrategy,
     RagSearchStrategy._type: RagSearchStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
