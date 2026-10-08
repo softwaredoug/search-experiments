@@ -33,9 +33,9 @@ uv run run --strategy configs/ecom_base/bm25.yml --dataset esci --num-queries 10
 Uses [`configs/ecom_decisions/bag_of_decisions_direct.yml`](../../configs/ecom_decisions/bag_of_decisions_direct.yml).
 BM25 first retrieves candidates. For each query, Jev evaluates the same configured
 Noul question against the query and each candidate product. The configured true
-and false criteria explain what counts as a match. Only probabilities strictly
-above `0.7` contribute to the decision boost. That sum is multiplied by 10 and
-added to the original retrieval score. The top 100 BM25 candidates are evaluated.
+and false criteria explain what counts as a match. All Noul `P(yes)` values are
+summed, multiplied by 10, and added to the original retrieval score. The top 100
+BM25 candidates are evaluated.
 
 ```bash
 uv run run --strategy configs/ecom_decisions/bag_of_decisions_direct.yml --dataset wands --num-queries 480 --seed 42 --workers 8
@@ -47,8 +47,8 @@ uv run run --strategy configs/ecom_decisions/bag_of_decisions_direct.yml --datas
 Uses [`configs/ecom_decisions/bag_of_decisions.yml`](../../configs/ecom_decisions/bag_of_decisions.yml).
 GPT-5 generates query-specific yes/no questions. Jev evaluates those questions
 against each of the top 100 BM25 candidate products; all questions for one
-candidate are sent in a single request. Probabilities strictly above `0.7` are
-summed, multiplied by 10, and added to the original retrieval score.
+candidate are sent in a single request. All Noul `P(yes)` values are summed,
+multiplied by 10, and added to the original retrieval score.
 
 ```bash
 uv run run --strategy configs/ecom_decisions/bag_of_decisions.yml --dataset wands --num-queries 480 --seed 42 --workers 8

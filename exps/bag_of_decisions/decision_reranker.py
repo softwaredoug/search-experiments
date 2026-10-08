@@ -52,7 +52,6 @@ class DecisionReranker:
         *,
         decision_model: str,
         decision_weight: float,
-        confidence_threshold: float,
         state_format: str,
         corpus_fields: Sequence[str],
         no_cache: bool = False,
@@ -67,13 +66,6 @@ class DecisionReranker:
         )
         if self.decision_weight < 0:
             raise ValueError("decision_engine.decision_weight must be non-negative.")
-        self.confidence_threshold = _finite_number(
-            confidence_threshold, "decision_engine.confidence_threshold"
-        )
-        if not 0 <= self.confidence_threshold <= 1:
-            raise ValueError(
-                "decision_engine.confidence_threshold must be between 0 and 1."
-            )
         if not isinstance(state_format, str) or not state_format.strip():
             raise ValueError("decision_engine.state_format must be a non-empty string.")
         self.state_format = state_format
@@ -141,7 +133,7 @@ class DecisionReranker:
                 isinstance(probability, (int, float))
                 and not isinstance(probability, bool)
                 and math.isfinite(probability)
-                and probability > self.confidence_threshold
+                and 0 <= probability <= 1
             ):
                 probability_sum += float(probability)
         if not self.no_cache:
@@ -172,7 +164,6 @@ class DecisionReranker:
             "type": "decision_reranker",
             "decision_model": self.decision_model,
             "decision_weight": self.decision_weight,
-            "confidence_threshold": self.confidence_threshold,
             "state_format": self.state_format,
             "no_cache": self.no_cache,
         }

@@ -48,7 +48,6 @@ strategy:
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 10
-        confidence_threshold: 0.7
         k: 100
         state_format: |
           {title}
@@ -67,10 +66,10 @@ will bypass the cache for the LLM call
 ### Decision model call
 
 A [`noul`][1] is created for each generated yes/no question. All questions are sent
-in one request for each candidate document. The Noul probability is `P(yes)`; each
-decision contributes its probability only when it is strictly greater than
-`confidence_threshold`. The qualifying probabilities are summed and multiplied
-by `decision_weight`, then added to the document's retrieval score.
+in one request for each candidate document. Noul returns `P(yes)` and has no
+separate confidence value or confidence threshold. The strategy sums the `P(yes)`
+values for the candidate's decisions, multiplies the sum by `decision_weight`,
+and adds it to the document's retrieval score.
 
 The `state` of Jev is rendered from `state_format`, which can reference corpus
 columns such as `{title}` and the current `{query}`.
@@ -101,7 +100,6 @@ decision_engine:
   reranker:
     decision_model: jev/jev-latest
     decision_weight: 10
-    confidence_threshold: 0.7
     k: 100
     state_format: |
       Search query:

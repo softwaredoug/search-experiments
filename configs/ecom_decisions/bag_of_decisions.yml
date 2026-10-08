@@ -18,7 +18,6 @@ strategy:
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 10
-        confidence_threshold: 0.7
         k: 100
         state_format: |
           {title}

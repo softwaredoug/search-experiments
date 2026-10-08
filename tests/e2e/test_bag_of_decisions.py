@@ -63,7 +63,6 @@ strategy:
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 1000
-        confidence_threshold: 0.7
         k: 2
         state_format: |
           Query: {query}
@@ -139,7 +138,6 @@ strategy:
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 1000
-        confidence_threshold: 0.7
         k: 2
         state_format: |
           Query: {query}

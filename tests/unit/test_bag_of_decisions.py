@@ -53,7 +53,6 @@ def _params(*, generator_overrides=None, reranker_overrides=None):
     reranker = {
         "decision_model": "jev/jev-latest",
         "decision_weight": 10,
-        "confidence_threshold": 0.7,
         "k": 2,
         "state_format": "{query}\n{title}\n{description}",
     }
@@ -108,7 +107,7 @@ def test_direct_decision_generator_validates_criteria():
         )
 
 
-def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
+def test_build_generates_questions_and_scores_all_yes_probabilities():
     ScriptedAutoEnricher.instances = []
     ScriptedAutoEnricher.decisions = ["Is this a desk?", "Is this suitable for work?"]
     ScriptedNoulClient.instances = []
@@ -150,17 +149,17 @@ def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
         "Generate yes/no questions for desk."
     ]
     assert indices.tolist() == [1, 0, 2]
-    assert scores[0] - scores[1] == pytest.approx(10.5)
+    assert scores[0] - scores[1] == pytest.approx(3.5)
 
 
-def test_confidence_threshold_is_strict_and_scoring_uses_each_decision_probability():
+def test_noul_score_sums_all_yes_probabilities_without_thresholding():
     ScriptedAutoEnricher.instances = []
     ScriptedAutoEnricher.decisions = ["first?", "second?", "third?"]
     ScriptedNoulClient.instances = []
     ScriptedNoulClient.probabilities = {
         "desk\ndesk alpha\nfirst": {
             "decision_0": 0.7,
-            "decision_1": 0.70001,
+            "decision_1": 0.30001,
             "decision_2": 0.99,
         },
         "desk\ndesk beta\nsecond": {
@@ -188,8 +187,10 @@ def test_confidence_threshold_is_strict_and_scoring_uses_each_decision_probabili
         indices, scores = strategy.search("desk", k=3)
 
     assert indices.tolist()[0] == 0
-    # 0.70001 qualifies, 0.7 does not; 0.99 is also included.
-    assert scores[0] - scores[1] == pytest.approx((0.70001 + 0.99) * 10)
+    # All probabilities contribute, including low P(yes) and uncertain values.
+    score_sum_a = 0.7 + 0.30001 + 0.99
+    score_sum_b = 0.1 + 0.2 + 0.3
+    assert scores[0] - scores[1] == pytest.approx((score_sum_a - score_sum_b) * 10)
 
 
 def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
@@ -232,7 +233,6 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
         ),
         ("reranker", {"decision_model": "gpt-5"}, "Jev"),
         ("reranker", {"decision_weight": -1}, "decision_weight"),
-        ("reranker", {"confidence_threshold": 1.1}, "confidence_threshold"),
         ("reranker", {"k": 0}, "reranker.k"),
         ("reranker", {"state_format": "{missing}"}, "state_format"),
     ],

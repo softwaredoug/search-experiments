@@ -170,7 +170,6 @@ class BagOfDecisionsStrategy(SearchStrategy):
         self.decision_reranker = DecisionReranker(
             decision_model=reranker_config.get("decision_model"),
             decision_weight=reranker_config.get("decision_weight", 10),
-            confidence_threshold=reranker_config.get("confidence_threshold", 0.7),
             state_format=reranker_config.get("state_format"),
             corpus_fields=self.corpus.columns,
             no_cache=no_cache,
