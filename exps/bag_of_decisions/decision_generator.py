@@ -7,6 +7,8 @@ from typing import Any
 from cheat_at_search.enrich.enrich import AutoEnricher
 from pydantic import Field, create_model
 
+from exps.bag_of_decisions.decision_question import DecisionQuestion
+
 
 def _model_name(model: str) -> str:
     return model if "/" in model else f"openai/{model}"
@@ -64,7 +66,7 @@ class DecisionGenerator:
             verbosity=self.verbosity,
         )
 
-    def generate(self, query: str) -> list[str]:
+    def generate(self, query: str) -> list[DecisionQuestion]:
         try:
             prompt = self.prompt_template.format(query=query)
         except (IndexError, KeyError, ValueError) as exc:
@@ -78,14 +80,16 @@ class DecisionGenerator:
         decisions = getattr(response, "decisions", None) if response is not None else None
         if not isinstance(decisions, (list, tuple)):
             decisions = []
-        normalized: list[str] = []
+        normalized: list[DecisionQuestion] = []
+        seen: set[str] = set()
         for decision in decisions:
             if (
                 isinstance(decision, str)
                 and decision.strip()
-                and decision.strip() not in normalized
+                and decision.strip() not in seen
             ):
-                normalized.append(decision.strip())
+                normalized.append(DecisionQuestion(instructions=decision.strip()))
+                seen.add(decision.strip())
         return list(normalized)
 
     @property

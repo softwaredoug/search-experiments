@@ -72,8 +72,8 @@ decision contributes its probability only when it is strictly greater than
 `confidence_threshold`. The qualifying probabilities are summed and multiplied
 by `decision_weight`, then added to the document's retrieval score.
 
-The `state` of jev should be the document (see `state_format`). It uses a python format string, where {title} means to pull from the title column 
-of the corpus dataframe, etc.
+The `state` of Jev is rendered from `state_format`, which can reference corpus
+columns such as `{title}` and the current `{query}`.
 
 We will rerank the top `decision_engine.reranker.k` documents from the retrieval engine.
 
@@ -82,6 +82,8 @@ We will rerank the top `decision_engine.reranker.k` documents from the retrieval
 Set `decision_engine.generator.type` to `direct` to use a single configured
 question instead of calling an LLM to generate questions. The question is
 formatted with `{query}` and then sent to Jev for each candidate document.
+The optional `criteria` mapping describes what `true` and `false` mean for that
+Noul; configured criteria are currently supported by the direct generator only.
 
 ```yaml
 decision_engine:
@@ -89,12 +91,16 @@ decision_engine:
     type: direct
     question: |
       Is this document relevant to the search query: {query}?
+    criteria:
+      "true": The product matches the product type and shopping intent expressed in the query.
+      "false": The product is from a different category, contradicts an explicit constraint, or only shares incidental keywords.
   reranker:
     decision_model: jev/jev-latest
     decision_weight: 10
     confidence_threshold: 0.7
     k: 100
     state_format: |
+      Query: {query}
       {title}
       {description}
 ```

@@ -7,6 +7,9 @@ strategy:
         type: direct
         question: |
           Is this document relevant to the search query: {query}?
+        criteria:
+          "true": The product matches the product type and shopping intent expressed in the query.
+          "false": The product is from a different category, contradicts an explicit constraint, or only shares incidental keywords.
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 10

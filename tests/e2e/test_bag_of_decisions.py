@@ -66,6 +66,7 @@ strategy:
         confidence_threshold: 0.7
         k: 2
         state_format: |
+          Query: {query}
           {doc_id}
           {title}
           {description}
@@ -109,7 +110,7 @@ strategy:
     # The second of the two L0 candidates gets the stronger Noul score and
     # should move above the first candidate after reranking.
     assert result.query_results.iloc[0]["doc_id"] == int(
-        candidate_states[1].splitlines()[0]
+        candidate_states[1].splitlines()[1]
     )
     assert ScriptedQuestionGenerator.instances[0].cached_calls == []
     assert ScriptedQuestionGenerator.instances[0].uncached_calls == [
@@ -132,12 +133,16 @@ strategy:
         type: direct
         question: |
           Is this document relevant to the search query: {query}?
+        criteria:
+          "true": The product matches the query's product and shopping intent.
+          "false": The product is unrelated or does not satisfy the query.
       reranker:
         decision_model: jev/jev-latest
         decision_weight: 1000
         confidence_threshold: 0.7
         k: 2
         state_format: |
+          Query: {query}
           {doc_id}
           {title}
           {description}
@@ -177,6 +182,14 @@ strategy:
     client = ScriptedDecisionClient.instances[0]
     assert len(client.calls) == 2
     expected_question = f"Is this document relevant to the search query: {query}?"
+    expected_criteria = {
+        "true": "The product matches the query's product and shopping intent.",
+        "false": "The product is unrelated or does not satisfy the query.",
+    }
     for _, questions in client.calls:
         assert len(questions) == 1
-        assert next(iter(questions.values())).instructions == expected_question
+        noul = next(iter(questions.values()))
+        assert noul.instructions == expected_question
+        assert noul.criteria == expected_criteria
+    for state, _ in client.calls:
+        assert state.startswith(f"Query: {query}\n")

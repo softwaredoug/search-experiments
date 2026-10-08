@@ -98,6 +98,11 @@ class BagOfDecisionsStrategy(SearchStrategy):
             raise ValueError("decision_engine.generator must be a mapping.")
         generator_type = generator_config.get("type")
         if generator_type == "llm":
+            if "criteria" in generator_config:
+                raise ValueError(
+                    "decision_engine.generator.criteria is only supported for "
+                    "direct generators."
+                )
             self.decision_generator = DecisionGenerator(
                 system_prompt=generator_config.get("system_prompt"),
                 prompt=generator_config.get("prompt"),
@@ -109,7 +114,8 @@ class BagOfDecisionsStrategy(SearchStrategy):
             )
         elif generator_type == "direct":
             self.decision_generator = DirectDecisionGenerator(
-                question=generator_config.get("question")
+                question=generator_config.get("question"),
+                criteria=generator_config.get("criteria"),
             )
         else:
             raise ValueError(
@@ -197,7 +203,11 @@ class BagOfDecisionsStrategy(SearchStrategy):
             for index in candidate_indices
         ]
         decisions = self.decision_generator.generate(query)
-        reranked = self.decision_reranker.rerank(candidates, decisions)
+        reranked = self.decision_reranker.rerank(
+            candidates,
+            decisions,
+            query=query,
+        )
         for candidate in reranked:
             scores[candidate.index] = candidate.score
         result_indices = np.argsort(-scores, kind="stable")[:k]

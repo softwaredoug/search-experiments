@@ -8,7 +8,9 @@ import string
 from typing import Any, Mapping, Sequence
 
 from cheat_at_search.data_dir import key_for_provider
-from typesafe_sdk import Noul, TypeSafeClient
+from typesafe_sdk import Noul, NoulCriteria, TypeSafeClient
+
+from exps.bag_of_decisions.decision_question import DecisionQuestion
 
 
 def _jev_model_name(model: str) -> str:
@@ -81,7 +83,7 @@ class DecisionReranker:
             api_key=key_for_provider("typesafe"),
             model=self.decision_model,
         )
-        self._cache: dict[tuple[str, tuple[str, ...]], float] = {}
+        self._cache: dict[tuple[str, tuple[tuple[str, str], ...]], float] = {}
 
     def _validate_state_format(self, corpus_fields: Sequence[str]) -> None:
         try:
@@ -92,29 +94,43 @@ class DecisionReranker:
             }
         except ValueError as exc:
             raise ValueError("decision_engine.state_format is invalid.") from exc
-        missing = sorted(fields - set(corpus_fields))
+        missing = sorted(fields - set(corpus_fields) - {"query"})
         if missing:
             raise ValueError(
                 "decision_engine.state_format references missing corpus fields: "
                 + ", ".join(missing)
             )
 
-    def _state(self, document: Mapping[str, Any]) -> str:
+    def _state(self, document: Mapping[str, Any], query: str) -> str:
         try:
-            return self.state_format.format_map(document)
+            return self.state_format.format_map({**document, "query": query})
         except (IndexError, KeyError, ValueError) as exc:
             raise ValueError(
                 "Could not render decision_engine.state_format for a corpus row."
             ) from exc
 
-    def _probability_sum(self, state: str, decisions: Sequence[str]) -> float:
-        cache_key = (state, tuple(decisions))
+    def _probability_sum(
+        self, state: str, decisions: Sequence[DecisionQuestion]
+    ) -> float:
+        decision_signature = tuple(
+            (
+                decision.instructions,
+                json.dumps(decision.criteria, sort_keys=True),
+            )
+            for decision in decisions
+        )
+        cache_key = (state, decision_signature)
         if not self.no_cache and cache_key in self._cache:
             return self._cache[cache_key]
-        questions = {
-            f"decision_{index}": Noul(instructions=decision)
-            for index, decision in enumerate(decisions)
-        }
+        questions = {}
+        for index, decision in enumerate(decisions):
+            criteria = (
+                NoulCriteria(**decision.criteria) if decision.criteria is not None else None
+            )
+            questions[f"decision_{index}"] = Noul(
+                instructions=decision.instructions,
+                criteria=criteria,
+            )
         response = self.client.system_one(state=state, questions=questions)
         answers = getattr(response, "answers", {}) or {}
         probability_sum = 0.0
@@ -135,14 +151,16 @@ class DecisionReranker:
     def rerank(
         self,
         candidates: Sequence[ScoredCandidate],
-        decisions: Sequence[str],
+        decisions: Sequence[DecisionQuestion],
+        *,
+        query: str,
     ) -> list[ScoredCandidate]:
         reranked: list[ScoredCandidate] = []
         for candidate in candidates:
             score = candidate.score
             if decisions:
                 probability_sum = self._probability_sum(
-                    self._state(candidate.document), decisions
+                    self._state(candidate.document, query), decisions
                 )
                 score += self.decision_weight * probability_sum
             reranked.append(replace(candidate, score=score))

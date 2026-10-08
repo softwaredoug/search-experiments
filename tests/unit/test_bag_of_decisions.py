@@ -55,7 +55,7 @@ def _params(*, generator_overrides=None, reranker_overrides=None):
         "decision_weight": 10,
         "confidence_threshold": 0.7,
         "k": 2,
-        "state_format": "{title}\n{description}",
+        "state_format": "{query}\n{title}\n{description}",
     }
     reranker.update(reranker_overrides or {})
     return {
@@ -79,12 +79,19 @@ def _corpus():
 
 def test_direct_decision_generator_formats_a_single_query_question():
     generator = DirectDecisionGenerator(
-        question='Is this document relevant to "{query}"?'
+        question='Is this document relevant to "{query}"?',
+        criteria={
+            "true": "The product matches the query's product and shopping intent.",
+            "false": "The product is unrelated or does not satisfy the query.",
+        },
     )
 
-    assert generator.generate("desk lamp") == [
-        'Is this document relevant to "desk lamp"?'
-    ]
+    decision = generator.generate("desk lamp")[0]
+    assert decision.instructions == 'Is this document relevant to "desk lamp"?'
+    assert decision.criteria == {
+        "true": "The product matches the query's product and shopping intent.",
+        "false": "The product is unrelated or does not satisfy the query.",
+    }
 
 
 @pytest.mark.parametrize("question", ["", "   ", "Does this fit?", "Does this fit {other}?"])
@@ -93,13 +100,21 @@ def test_direct_decision_generator_requires_a_query_template(question):
         DirectDecisionGenerator(question=question)
 
 
+def test_direct_decision_generator_validates_criteria():
+    with pytest.raises(ValueError, match="criteria.*true.*false"):
+        DirectDecisionGenerator(
+            question="Is this relevant to {query}?",
+            criteria={"true": "Relevant"},
+        )
+
+
 def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
     ScriptedAutoEnricher.instances = []
     ScriptedAutoEnricher.decisions = ["Is this a desk?", "Is this suitable for work?"]
     ScriptedNoulClient.instances = []
     ScriptedNoulClient.probabilities = {
-        "desk alpha\nfirst": {"decision_0": 0.8, "decision_1": 0.7},
-        "desk beta\nsecond": {"decision_0": 0.9, "decision_1": 0.95},
+        "desk\ndesk alpha\nfirst": {"decision_0": 0.8, "decision_1": 0.7},
+        "desk\ndesk beta\nsecond": {"decision_0": 0.9, "decision_1": 0.95},
     }
 
     with (
@@ -121,8 +136,8 @@ def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
 
     client = ScriptedNoulClient.instances[0]
     assert [state for state, _ in client.calls] == [
-        "desk alpha\nfirst",
-        "desk beta\nsecond",
+        "desk\ndesk alpha\nfirst",
+        "desk\ndesk beta\nsecond",
     ]
     questions = client.calls[0][1]
     assert list(questions) == ["decision_0", "decision_1"]
@@ -130,6 +145,7 @@ def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
         "Is this a desk?",
         "Is this suitable for work?",
     ]
+    assert all(question.criteria is None for question in questions.values())
     assert ScriptedAutoEnricher.instances[0].prompts == [
         "Generate yes/no questions for desk."
     ]
@@ -142,12 +158,12 @@ def test_confidence_threshold_is_strict_and_scoring_uses_each_decision_probabili
     ScriptedAutoEnricher.decisions = ["first?", "second?", "third?"]
     ScriptedNoulClient.instances = []
     ScriptedNoulClient.probabilities = {
-        "desk alpha\nfirst": {
+        "desk\ndesk alpha\nfirst": {
             "decision_0": 0.7,
             "decision_1": 0.70001,
             "decision_2": 0.99,
         },
-        "desk beta\nsecond": {
+        "desk\ndesk beta\nsecond": {
             "decision_0": 0.1,
             "decision_1": 0.2,
             "decision_2": 0.3,
@@ -209,6 +225,11 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
         ("generator", {"prompt": "  "}, "prompt"),
         ("generator", {"type": None}, "must be 'llm' or 'direct'"),
         ("generator", {"type": "unknown"}, "must be 'llm' or 'direct'"),
+        (
+            "generator",
+            {"criteria": {"true": "Relevant", "false": "Not relevant"}},
+            "only supported for direct",
+        ),
         ("reranker", {"decision_model": "gpt-5"}, "Jev"),
         ("reranker", {"decision_weight": -1}, "decision_weight"),
         ("reranker", {"confidence_threshold": 1.1}, "confidence_threshold"),
