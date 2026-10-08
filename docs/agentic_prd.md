@@ -297,6 +297,45 @@ The judge passes when all results are 😃. If not, it retries until `max_runs` 
 then it accepts the results to avoid an infinite loop (default `max_runs: 2`).
 
 
+### Jev Judge Validator
+
+`jev_judge_relevance` is a Jev decision-model version of the LLM judge validator. It evaluates
+each result for the query and assigns a label from the configured choices. Each choice maps a
+label to criteria describing when that label applies:
+
+```
+    validators:
+      - jev_judge_relevance:
+          prompt: "Please return more relevant results to better help the user find what they're looking for."
+          params:
+            model: jev/jev-latest
+            probability_threshold: 0.7
+            confidence_threshold: 0.7
+            max_runs: 2
+            choices:
+              Relevant: The result satisfies the user's query.
+              Neutral: The result is related but does not clearly satisfy the query.
+              Irrelevant: The result does not satisfy the query.
+            judge_prompt: |
+              Judge how well each result satisfies the query.
+
+              Query: {query}
+
+              Results:
+              {results}
+```
+
+For each result, Jev selects a choice and returns its probability and the evaluation's
+confidence. The evaluation is accepted only when both values are strictly greater than their
+configured thresholds. An evaluation that does not clear either threshold is reported as
+uncertain and does not count as a confidently relevant result.
+
+The validator passes when every result has an accepted `Relevant` label. Other labels and
+uncertain evaluations are included in feedback for the agent, which is asked to improve its
+results and evaluated again. After `max_runs` attempts (default `2`), the validator accepts the
+results to avoid an infinite loop, matching the LLM judge validator behavior.
+
+
 ### Oracle Judge Validator
 
 One type of validator - an oracle judge.

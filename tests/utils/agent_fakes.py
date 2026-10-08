@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from types import SimpleNamespace
 
 from exps.agentic import conditions as conditions_mod
 from exps.agentic.agent import SearchResults
@@ -164,6 +165,47 @@ class FakeLLMJudgeAgent:
         )
         resp = type("Resp", (), {"output_parsed": result})
         return resp, inputs, 0
+
+
+class FakeJevChoice:
+    def __init__(self, *, instructions, criteria):
+        self.instructions = instructions
+        self.criteria = criteria
+
+
+class FakeJevClient:
+    responses: list[tuple[str, float | None, float | None]] = []
+    calls: list[tuple[str, FakeJevChoice]] = []
+    clients: list["FakeJevClient"] = []
+    response_index = 0
+
+    def __init__(self, *, api_key, model):
+        self.api_key = api_key
+        self.model = model
+        type(self).clients.append(self)
+
+    @classmethod
+    def reset(cls, responses=None):
+        cls.responses = list(responses or [])
+        cls.calls = []
+        cls.clients = []
+        cls.response_index = 0
+
+    def system_one(self, *, state, questions):
+        field, choice = next(iter(questions.items()))
+        type(self).calls.append((state, choice))
+        if not type(self).responses:
+            raise AssertionError("FakeJevClient.reset() requires at least one response.")
+        label, probability, confidence = type(self).responses[
+            min(type(self).response_index, len(type(self).responses) - 1)
+        ]
+        type(self).response_index += 1
+        answer = SimpleNamespace(
+            choice=label,
+            probabilities={label: probability} if probability is not None else None,
+            confidence=confidence,
+        )
+        return SimpleNamespace(choices={field: answer})
 
 
 class FakeCodegenAgent:

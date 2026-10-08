@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 import pytest
 from exps.runners.run import RunParams, run_benchmark
-from tests.utils.agent_fakes import FakeLLMJudgeAgent, FakeOpenAIAgent
+from tests.utils.agent_fakes import (
+    FakeJevChoice,
+    FakeJevClient,
+    FakeLLMJudgeAgent,
+    FakeOpenAIAgent,
+)
 from tests.utils.embedding_mocks import build_mock_embeddings
 
 
@@ -1005,6 +1010,114 @@ strategy:
         if isinstance(item, dict)
         and item.get("role") == "user"
         and "LLM evaluations" in str(item.get("content"))
+    )
+    assert reprompt_count == 1
+
+
+@patch("exps.agentic.agent.build_openai_agent")
+@patch("exps.agentic.conditions.TypeSafeClient", FakeJevClient, create=True)
+@patch("exps.agentic.conditions.Choice", FakeJevChoice, create=True)
+@patch(
+    "exps.agentic.conditions.key_for_provider",
+    lambda _provider: "test-key",
+    create=True,
+)
+def test_agentic_jev_judge_validator_e2e(
+    mock_build_openai_agent, tmp_path, doug_blog_dataset
+):
+    instances: list[FakeOpenAIAgent] = []
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    FakeJevClient.reset(
+        [
+            ("Irrelevant", 0.95, 0.95),
+            ("Relevant", 0.95, 0.95),
+            ("Relevant", 0.95, 0.95),
+            ("Relevant", 0.95, 0.95),
+            ("Relevant", 0.95, 0.95),
+            ("Relevant", 0.95, 0.95),
+        ]
+    )
+
+    scripts = [
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": "salon chair", "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+    ]
+    config_path = tmp_path / "agentic_jev_judge_validator.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_jev_judge_validator_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: |
+      Use search tools to find products.
+    search_tools:
+      - bm25
+    validators:
+      - jev_judge_relevance:
+          prompt: "Please return more relevant results."
+          params:
+            model: jev/jev-latest
+            probability_threshold: 0.7
+            confidence_threshold: 0.6
+            max_runs: 2
+            choices:
+              Relevant: The result satisfies the query.
+              Neutral: The result is related but does not satisfy the query.
+              Irrelevant: The result is unrelated to the query.
+            judge_prompt: |
+              Query: {query}
+              Results: {results}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+        no_cache=True,
+    )
+    mock_build_openai_agent.side_effect = _build_fake_agent(
+        scripts=scripts, doc_ids=doc_ids, instances=instances
+    )
+    result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 2
+    assert len(FakeJevClient.calls) == len(doc_ids) * 2
+    assert FakeJevClient.clients[0].model == "jev-latest"
+    assert all(choice.criteria["Relevant"] for _, choice in FakeJevClient.calls)
+    reprompt_count = sum(
+        1
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "Jev evaluations" in str(item.get("content"))
     )
     assert reprompt_count == 1
 

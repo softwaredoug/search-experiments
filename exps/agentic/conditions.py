@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
 from typing import Any, Literal
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
+from cheat_at_search.data_dir import key_for_provider
+from typesafe_sdk import Choice, TypeSafeClient
 
 
 AllowedEmoji = Literal["🤩", "😃", "😐", "😞"]
@@ -46,6 +49,22 @@ def _require_prompt(condition: dict, *, kind: str) -> str:
     return prompt
 
 
+def _parse_jev_threshold(value: Any, *, name: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1.")
+    try:
+        threshold = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1."
+        ) from exc
+    if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError(
+            f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1."
+        )
+    return threshold
+
+
 def normalize_conditions(condition_config: list | None, *, kind: str) -> list[dict[str, Any]]:
     if not condition_config:
         return []
@@ -85,6 +104,70 @@ def normalize_conditions(condition_config: list | None, *, kind: str) -> list[di
             params_dict.setdefault("max_runs", 2)
             if int(params_dict["max_runs"]) <= 0:
                 raise ValueError("Condition 'llm_judge_relevance' requires params.max_runs > 0.")
+        elif name == "jev_judge_relevance":
+            if kind != "validator":
+                raise ValueError("jev_judge_relevance is only supported for validators.")
+            for key in (
+                "model",
+                "probability_threshold",
+                "confidence_threshold",
+                "choices",
+                "judge_prompt",
+            ):
+                if key not in params_dict:
+                    raise ValueError(
+                        f"Condition 'jev_judge_relevance' requires params.{key}."
+                    )
+            model = params_dict["model"]
+            if (
+                not isinstance(model, str)
+                or model.strip() != model
+                or model.split("/", 1)[0].lower() != "jev"
+                or ("/" in model and not model.split("/", 1)[1].strip())
+            ):
+                raise ValueError(
+                    "Condition 'jev_judge_relevance' requires a Jev model (jev/*)."
+                )
+            if not isinstance(params_dict["judge_prompt"], str) or not params_dict[
+                "judge_prompt"
+            ].strip():
+                raise ValueError(
+                    "Condition 'jev_judge_relevance' requires a non-empty params.judge_prompt."
+                )
+            choices = params_dict["choices"]
+            if not isinstance(choices, dict) or not choices:
+                raise ValueError(
+                    "Condition 'jev_judge_relevance' requires params.choices as a non-empty mapping."
+                )
+            for label, criteria in choices.items():
+                if not isinstance(label, str) or not label.strip():
+                    raise ValueError("Jev judge choice labels must be non-empty strings.")
+                if not isinstance(criteria, str) or not criteria.strip():
+                    raise ValueError(
+                        f"Jev judge choice {label!r} requires non-empty criteria."
+                    )
+            params_dict["probability_threshold"] = _parse_jev_threshold(
+                params_dict["probability_threshold"], name="probability_threshold"
+            )
+            params_dict["confidence_threshold"] = _parse_jev_threshold(
+                params_dict["confidence_threshold"], name="confidence_threshold"
+            )
+            try:
+                raw_max_runs = params_dict.get("max_runs", 2)
+                if isinstance(raw_max_runs, bool):
+                    raise ValueError
+                max_runs = int(raw_max_runs)
+                if str(raw_max_runs).strip() not in {str(max_runs), f"{max_runs}.0"}:
+                    raise ValueError
+            except (OverflowError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Condition 'jev_judge_relevance' requires params.max_runs > 0."
+                ) from exc
+            if max_runs <= 0:
+                raise ValueError(
+                    "Condition 'jev_judge_relevance' requires params.max_runs > 0."
+                )
+            params_dict["max_runs"] = max_runs
         elif name == "oracle":
             if kind != "validator":
                 raise ValueError("oracle is only supported for validators.")
@@ -124,17 +207,9 @@ def _condition_met(condition: dict, *, num_loops: int, tool_calls: int, resp) ->
 def _render_results_for_judge(*, corpus, ranked_doc_ids: list[str], lookup: dict | None) -> str:
     lines = []
     for idx, doc_id in enumerate(ranked_doc_ids, start=1):
-        try:
-            doc_id_int = int(doc_id)
-        except (TypeError, ValueError):
+        row, doc_id_int = _judge_row_for_doc_id(corpus=corpus, doc_id=doc_id, lookup=lookup)
+        if doc_id_int is None:
             continue
-        row = None
-        if lookup is not None and doc_id_int in lookup:
-            row = corpus.iloc[lookup[doc_id_int]]
-        elif "doc_id" in corpus.columns:
-            match = corpus[corpus["doc_id"] == doc_id_int]
-            if not match.empty:
-                row = match.iloc[0]
         title = ""
         description = ""
         if row is not None:
@@ -144,6 +219,20 @@ def _render_results_for_judge(*, corpus, ranked_doc_ids: list[str], lookup: dict
             description = description[:197] + "..."
         lines.append(f"{idx}. {title} (ID: {doc_id_int})\n{description}")
     return "\n\n".join(lines)
+
+
+def _judge_row_for_doc_id(*, corpus, doc_id: str, lookup: dict | None):
+    try:
+        doc_id_int = int(doc_id)
+    except (TypeError, ValueError):
+        return None, None
+    if lookup is not None and doc_id_int in lookup:
+        return corpus.iloc[lookup[doc_id_int]], doc_id_int
+    if "doc_id" in corpus.columns:
+        match = corpus[corpus["doc_id"] == doc_id_int]
+        if not match.empty:
+            return match.iloc[0], doc_id_int
+    return None, doc_id_int
 
 
 def _judge_is_passing(graded_results: list[GradedSearchResult]) -> bool:
@@ -269,6 +358,129 @@ def _run_llm_judge(
     return list(parsed.graded_results or [])
 
 
+def _jev_model_name(model: str) -> str:
+    provider, separator, model_name = model.partition("/")
+    if provider.lower() == "jev":
+        return model_name if separator else "jev-latest"
+    return model
+
+
+def _is_valid_jev_score(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and 0 <= value <= 1
+    )
+
+
+def _run_jev_judge(
+    *,
+    query: str,
+    corpus,
+    lookup: dict | None,
+    ranked_doc_ids: list[str],
+    model: str,
+    choices: dict[str, str],
+    probability_threshold: float,
+    confidence_threshold: float,
+    judge_prompt: str,
+) -> list[dict[str, Any]]:
+    if not ranked_doc_ids:
+        return []
+    client = TypeSafeClient(
+        api_key=key_for_provider("typesafe"),
+        model=_jev_model_name(model),
+    )
+    evaluations = []
+    for doc_id in ranked_doc_ids:
+        result_block = _render_results_for_judge(
+            corpus=corpus,
+            ranked_doc_ids=[str(doc_id)],
+            lookup=lookup,
+        )
+        row, _ = _judge_row_for_doc_id(corpus=corpus, doc_id=doc_id, lookup=lookup)
+        title = str(row.get("title", "")) if row is not None else ""
+        if not result_block:
+            evaluations.append(
+                {
+                    "doc_id": str(doc_id),
+                    "title": title,
+                    "label": None,
+                    "probability": None,
+                    "confidence": None,
+                    "accepted": False,
+                }
+            )
+            continue
+        instructions = judge_prompt.format(query=query, results=result_block)
+        response = client.system_one(
+            state=query,
+            questions={
+                "relevance": Choice(
+                    instructions=instructions,
+                    criteria=choices,
+                )
+            },
+        )
+        answers = getattr(response, "choices", None)
+        answer = answers.get("relevance") if isinstance(answers, dict) else None
+        label = getattr(answer, "choice", None)
+        confidence = getattr(answer, "confidence", None)
+        probabilities = getattr(answer, "probabilities", None)
+        probability = (
+            probabilities.get(label)
+            if isinstance(probabilities, dict) and isinstance(label, str)
+            else None
+        )
+        label_is_valid = isinstance(label, str) and label in choices
+        accepted = (
+            label_is_valid
+            and _is_valid_jev_score(probability)
+            and probability > probability_threshold
+            and _is_valid_jev_score(confidence)
+            and confidence > confidence_threshold
+        )
+        evaluations.append(
+            {
+                "doc_id": str(doc_id),
+                "title": title,
+                "label": label,
+                "probability": probability,
+                "confidence": confidence,
+                "accepted": accepted,
+            }
+        )
+    return evaluations
+
+
+def _jev_judge_is_passing(evaluations: list[dict[str, Any]]) -> bool:
+    if not evaluations:
+        return False
+    return all(
+        evaluation["accepted"] and evaluation["label"] == "Relevant"
+        for evaluation in evaluations
+    )
+
+
+def _jev_judge_feedback(evaluations: list[dict[str, Any]]) -> str:
+    lines = []
+    for idx, evaluation in enumerate(evaluations, start=1):
+        label = evaluation["label"]
+        if not evaluation["accepted"]:
+            label = f"uncertain {label or 'unknown'}"
+        probability = evaluation["probability"]
+        confidence = evaluation["confidence"]
+        probability_text = f"{probability:.3f}" if _is_valid_jev_score(probability) else "n/a"
+        confidence_text = f"{confidence:.3f}" if _is_valid_jev_score(confidence) else "n/a"
+        title = f" {evaluation['title']}" if evaluation.get("title") else ""
+        lines.append(
+            f"{idx}. {label} (probability: {probability_text}, "
+            f"confidence: {confidence_text}){title} (ID: {evaluation['doc_id']})"
+        )
+    return "\n".join(lines)
+
+
 def evaluate_validator(
     condition: dict,
     *,
@@ -315,6 +527,37 @@ def evaluate_validator(
         return (
             f"{condition['prompt']}\n\n"
             f"LLM evaluations:\n\n{eval_block}\n\n"
+            "System reminder: return DOC IDs ranked best to worst."
+        )
+    if condition["name"] == "jev_judge_relevance":
+        ranked = getattr(resp.output_parsed, "ranked_results", None) if resp else None
+        ranked_doc_ids = list(ranked or [])
+        params = condition["params"]
+        max_runs = int(params.get("max_runs", 2))
+        if agent_state is not None:
+            agent_state["jev_judge_runs"] = agent_state.get("jev_judge_runs", 0) + 1
+            judge_runs = agent_state["jev_judge_runs"]
+        else:
+            judge_runs = num_loops
+        evaluations = _run_jev_judge(
+            query=query,
+            corpus=corpus,
+            lookup=lookup,
+            ranked_doc_ids=ranked_doc_ids,
+            model=str(params["model"]),
+            choices=params["choices"],
+            probability_threshold=params["probability_threshold"],
+            confidence_threshold=params["confidence_threshold"],
+            judge_prompt=str(params["judge_prompt"]),
+        )
+        if _jev_judge_is_passing(evaluations):
+            return True
+        if judge_runs >= max_runs:
+            return True
+        eval_block = _jev_judge_feedback(evaluations)
+        return (
+            f"{condition['prompt']}\n\n"
+            f"Jev evaluations:\n\n{eval_block}\n\n"
             "System reminder: return DOC IDs ranked best to worst."
         )
     if condition["name"] == "oracle":
