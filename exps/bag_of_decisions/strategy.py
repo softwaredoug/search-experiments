@@ -12,6 +12,9 @@ from searcharray import SearchArray
 from searcharray.similarity import bm25_similarity
 
 from exps.bag_of_decisions.decision_generator import DecisionGenerator
+from exps.bag_of_decisions.direct_decision_generator import (
+    DirectDecisionGenerator,
+)
 from exps.bag_of_decisions.decision_reranker import (
     DecisionReranker,
     ScoredCandidate,
@@ -94,10 +97,24 @@ class BagOfDecisionsStrategy(SearchStrategy):
         if not isinstance(generator_config, dict):
             raise ValueError("decision_engine.generator must be a mapping.")
         generator_type = generator_config.get("type")
-        if generator_type != "llm":
+        if generator_type == "llm":
+            self.decision_generator = DecisionGenerator(
+                system_prompt=generator_config.get("system_prompt"),
+                prompt=generator_config.get("prompt"),
+                model=generator_config.get("model"),
+                reasoning=generator_config.get("reasoning"),
+                temperature=generator_config.get("temperature"),
+                verbosity=generator_config.get("verbosity"),
+                no_cache=no_cache,
+            )
+        elif generator_type == "direct":
+            self.decision_generator = DirectDecisionGenerator(
+                question=generator_config.get("question")
+            )
+        else:
             raise ValueError(
-                "decision_engine.generator.type must be 'llm'; "
-                f"supported generator types: llm (received {generator_type!r})."
+                "decision_engine.generator.type must be 'llm' or 'direct'; "
+                f"received {generator_type!r}."
             )
         reranker_config = decision_engine.get("reranker")
         if not isinstance(reranker_config, dict):
@@ -144,15 +161,6 @@ class BagOfDecisionsStrategy(SearchStrategy):
         if not 0 <= self.b <= 1:
             raise ValueError("retrieval_engine.params.b must be between 0 and 1.")
 
-        self.decision_generator = DecisionGenerator(
-            system_prompt=generator_config.get("system_prompt"),
-            prompt=generator_config.get("prompt"),
-            model=generator_config.get("model"),
-            reasoning=generator_config.get("reasoning"),
-            temperature=generator_config.get("temperature"),
-            verbosity=generator_config.get("verbosity"),
-            no_cache=no_cache,
-        )
         self.decision_reranker = DecisionReranker(
             decision_model=reranker_config.get("decision_model"),
             decision_weight=reranker_config.get("decision_weight", 10),

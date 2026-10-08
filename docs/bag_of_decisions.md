@@ -77,4 +77,26 @@ of the corpus dataframe, etc.
 
 We will rerank the top `decision_engine.reranker.k` documents from the retrieval engine.
 
+### Direct generator
+
+Set `decision_engine.generator.type` to `direct` to use a single configured
+question instead of calling an LLM to generate questions. The question is
+formatted with `{query}` and then sent to Jev for each candidate document.
+
+```yaml
+decision_engine:
+  generator:
+    type: direct
+    question: |
+      Is this document relevant to the search query: {query}?
+  reranker:
+    decision_model: jev/jev-latest
+    decision_weight: 10
+    confidence_threshold: 0.7
+    k: 100
+    state_format: |
+      {title}
+      {description}
+```
+
 1 - https://docs.typesafe.ai/primitives/noul

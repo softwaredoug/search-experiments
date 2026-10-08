@@ -115,3 +115,68 @@ strategy:
     assert ScriptedQuestionGenerator.instances[0].uncached_calls == [
         f"Generate yes/no questions for {query}."
     ]
+
+
+def test_run_benchmark_direct_generator_skips_llm(tmp_path, doug_blog_dataset):
+    ScriptedDecisionClient.instances = []
+    query = doug_blog_dataset.judgments.iloc[0]["query"]
+    config_path = tmp_path / "bag_of_decisions_direct.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: bag_of_decisions_direct_fixture
+  type: bag_of_decisions
+  params:
+    decision_engine:
+      generator:
+        type: direct
+        question: |
+          Is this document relevant to the search query: {query}?
+      reranker:
+        decision_model: jev/jev-latest
+        decision_weight: 1000
+        confidence_threshold: 0.7
+        k: 2
+        state_format: |
+          {doc_id}
+          {title}
+          {description}
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title]
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    with (
+        patch(
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
+            side_effect=AssertionError("direct generator must not call AutoEnricher"),
+        ),
+        patch(
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
+            ScriptedDecisionClient,
+        ),
+        patch(
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+    ):
+        result = run_benchmark(
+            RunParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                query=query,
+                k=2,
+                no_cache=True,
+            )
+        )
+
+    assert result.strategy_name == "bag_of_decisions_direct_fixture"
+    client = ScriptedDecisionClient.instances[0]
+    assert len(client.calls) == 2
+    expected_question = f"Is this document relevant to the search query: {query}?"
+    for _, questions in client.calls:
+        assert len(questions) == 1
+        assert next(iter(questions.values())).instructions == expected_question

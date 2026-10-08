@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from exps.bag_of_decisions import BagOfDecisionsStrategy
+from exps.bag_of_decisions.direct_decision_generator import DirectDecisionGenerator
 
 
 class ScriptedAutoEnricher:
@@ -74,6 +75,22 @@ def _corpus():
             "description": ["first", "second", "third"],
         }
     )
+
+
+def test_direct_decision_generator_formats_a_single_query_question():
+    generator = DirectDecisionGenerator(
+        question='Is this document relevant to "{query}"?'
+    )
+
+    assert generator.generate("desk lamp") == [
+        'Is this document relevant to "desk lamp"?'
+    ]
+
+
+@pytest.mark.parametrize("question", ["", "   ", "Does this fit?", "Does this fit {other}?"])
+def test_direct_decision_generator_requires_a_query_template(question):
+    with pytest.raises(ValueError, match="question.*query"):
+        DirectDecisionGenerator(question=question)
 
 
 def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
@@ -190,8 +207,8 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
     ("section", "updates", "error"),
     [
         ("generator", {"prompt": "  "}, "prompt"),
-        ("generator", {"type": None}, "supported generator types: llm"),
-        ("generator", {"type": "direct"}, "supported generator types: llm"),
+        ("generator", {"type": None}, "must be 'llm' or 'direct'"),
+        ("generator", {"type": "unknown"}, "must be 'llm' or 'direct'"),
         ("reranker", {"decision_model": "gpt-5"}, "Jev"),
         ("reranker", {"decision_weight": -1}, "decision_weight"),
         ("reranker", {"confidence_threshold": 1.1}, "confidence_threshold"),

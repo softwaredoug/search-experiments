@@ -1,0 +1,21 @@
+strategy:
+  name: bag_of_decisions_direct
+  type: bag_of_decisions
+  params:
+    decision_engine:
+      generator:
+        type: direct
+        question: |
+          Is this document relevant to the search query: {query}?
+      reranker:
+        decision_model: jev/jev-latest
+        decision_weight: 10
+        confidence_threshold: 0.7
+        k: 100
+        state_format: |
+          {title}
+          {description}
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]
