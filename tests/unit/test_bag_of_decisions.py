@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from exps.strategies.bag_of_decisions import BagOfDecisionsStrategy
+from exps.bag_of_decisions import BagOfDecisionsStrategy
 
 
 class ScriptedAutoEnricher:
@@ -83,13 +83,15 @@ def test_build_generates_questions_and_scores_qualifying_yes_probabilities():
 
     with (
         patch(
-            "exps.strategies.bag_of_decisions.AutoEnricher", ScriptedAutoEnricher
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
+            ScriptedAutoEnricher,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.TypeSafeClient", ScriptedNoulClient
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
+            ScriptedNoulClient,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.key_for_provider",
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
             return_value="typesafe-test-key",
         ),
     ):
@@ -133,13 +135,15 @@ def test_confidence_threshold_is_strict_and_scoring_uses_each_decision_probabili
 
     with (
         patch(
-            "exps.strategies.bag_of_decisions.AutoEnricher", ScriptedAutoEnricher
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
+            ScriptedAutoEnricher,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.TypeSafeClient", ScriptedNoulClient
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
+            ScriptedNoulClient,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.key_for_provider",
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
             return_value="typesafe-test-key",
         ),
     ):
@@ -158,13 +162,15 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
 
     with (
         patch(
-            "exps.strategies.bag_of_decisions.AutoEnricher", ScriptedAutoEnricher
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
+            ScriptedAutoEnricher,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.TypeSafeClient", ScriptedNoulClient
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
+            ScriptedNoulClient,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.key_for_provider",
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
             return_value="typesafe-test-key",
         ),
     ):

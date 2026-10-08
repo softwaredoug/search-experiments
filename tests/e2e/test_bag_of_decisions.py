@@ -76,15 +76,15 @@ strategy:
 
     with (
         patch(
-            "exps.strategies.bag_of_decisions.AutoEnricher",
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
             ScriptedQuestionGenerator,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.TypeSafeClient",
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
             ScriptedDecisionClient,
         ),
         patch(
-            "exps.strategies.bag_of_decisions.key_for_provider",
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
             return_value="typesafe-test-key",
         ),
     ):
