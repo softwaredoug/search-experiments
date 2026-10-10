@@ -315,6 +315,31 @@ def build_search_tools(
         elif tool_name == "bm25":
             tool_params = tool.get("config", {}).get("params", {})
             tool_fn = builder(corpus, **tool_params)
+        elif tool_name == "composite":
+            tool_config = tool.get("config") or {}
+            if tool_config.get("reranker_engine") is not None:
+                raise ValueError("reranker_engine is not supported by composite tools yet.")
+            retrieval_engine = tool_config.get("retrieval_engine")
+            if not isinstance(retrieval_engine, dict):
+                raise ValueError("composite requires a retrieval_engine mapping.")
+            if retrieval_engine.get("type") != "rrf":
+                raise ValueError("composite currently supports only the rrf retrieval engine.")
+            child_tool_config = retrieval_engine.get("tools")
+            if not isinstance(child_tool_config, list) or not child_tool_config:
+                raise ValueError("composite retrieval_engine.tools must be a non-empty list.")
+            child_tools = build_search_tools(
+                corpus,
+                child_tool_config,
+                embeddings_device=embeddings_device,
+                dataset_name=dataset_name,
+                context=context,
+                system_prompt=system_prompt,
+            )
+            tool_fn = builder(
+                search_tools=child_tools,
+                weights=retrieval_engine.get("weights"),
+                rank_constant=retrieval_engine.get("rank_constant", 60),
+            )
         elif tool_name == "bm25_wands":
             tool_params = {key: value for key, value in (tool.get("config") or {}).items() if key != "columns"}
             tool_fn = builder(corpus, **tool_params)

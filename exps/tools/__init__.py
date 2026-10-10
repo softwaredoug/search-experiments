@@ -10,6 +10,7 @@ from exps.tools.builder import (
     split_search_tools,
 )
 from exps.tools.codegen import make_codegen_tool
+from exps.tools.composite import make_rrf_tool
 from exps.tools.embeddings import make_embedding_tool
 from exps.tools.filesystem import (
     make_filesystem_cat_tool,
@@ -61,6 +62,7 @@ __all__ = [
     "make_check_features_wands_tool",
     "make_top_categories_tool",
     "make_codegen_tool",
+    "make_rrf_tool",
     "make_embedding_tool",
     "make_filesystem_cat_tool",
     "make_filesystem_cat_wands_tool",
