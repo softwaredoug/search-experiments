@@ -14,7 +14,7 @@ from tests.utils.agent_fakes import FakeJevChoice, FakeJevClient
 
 
 _patch_jev_api = patch.multiple(
-    "exps.agentic.conditions.judging",
+    "exps.agentic.conditions.jev_judge",
     TypeSafeClient=FakeJevClient,
     Choice=FakeJevChoice,
     key_for_provider=lambda _provider: "test-key",
@@ -372,15 +372,21 @@ def _evaluate_bag_of_decisions(
         _ScriptedNoulClient.instances = []
     _ScriptedNoulClient.responses = list(probabilities)
     monkeypatch.setattr(
-        conditions.judging,
+        conditions.jev_bag_of_decisions,
         "DecisionGenerator",
         _ScriptedDecisionGenerator,
         raising=False,
     )
-    monkeypatch.setattr(conditions.judging, "Noul", _ScriptedNoul, raising=False)
-    monkeypatch.setattr(conditions.judging, "TypeSafeClient", _ScriptedNoulClient)
     monkeypatch.setattr(
-        conditions.judging, "key_for_provider", lambda _provider: "test-key"
+        conditions.jev_bag_of_decisions, "Noul", _ScriptedNoul, raising=False
+    )
+    monkeypatch.setattr(
+        conditions.jev_bag_of_decisions, "TypeSafeClient", _ScriptedNoulClient
+    )
+    monkeypatch.setattr(
+        conditions.jev_bag_of_decisions,
+        "key_for_provider",
+        lambda _provider: "test-key",
     )
     condition = conditions.normalize_conditions(
         _bag_of_decisions_condition_config(params), kind="validator"

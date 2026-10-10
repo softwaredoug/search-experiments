@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cheat_at_search.agent.openai_agent import OpenAIAgent
+
 from exps.agentic.conditions import judging
 from exps.agentic.conditions.base import (
     BaseCondition,
@@ -10,6 +12,51 @@ from exps.agentic.conditions.base import (
     ConditionResult,
     ranked_doc_ids,
 )
+from exps.agentic.conditions.judging import (
+    PASSING_EMOJI,
+    GradedSearchResult,
+    LLMJudgeResponse,
+)
+
+
+def _run_llm_judge(
+    *,
+    query: str,
+    corpus,
+    lookup: dict | None,
+    ranked_doc_ids: list[str],
+    model: str,
+    reasoning: str,
+    judge_prompt: str,
+    logger,
+    images: bool = False,
+) -> list[GradedSearchResult]:
+    results_block = judging._render_results_for_judge(
+        corpus=corpus,
+        ranked_doc_ids=ranked_doc_ids,
+        lookup=lookup,
+    )
+    prompt = judge_prompt.format(query=query, results=results_block)
+    judge_agent = OpenAIAgent(
+        tools=[],
+        model=f"openai/{model}" if "/" not in model else model,
+        response_model=LLMJudgeResponse,
+        reasoning_level=reasoning,
+        process_images=images,
+    )
+    response, _, _ = judge_agent.chat(
+        inputs=[{"role": "user", "content": prompt}],
+        agent_state=None,
+        logger=logger,
+    )
+    parsed = getattr(response, "output_parsed", None)
+    if parsed is None:
+        return []
+    return list(parsed.graded_results or [])
+
+
+def _is_passing(grades: list[GradedSearchResult]) -> bool:
+    return bool(grades) and all(item.emoji == PASSING_EMOJI for item in grades)
 
 
 @dataclass
@@ -39,7 +86,7 @@ class LLMJudgeRelevance(BaseCondition):
         else:
             judge_runs = context.num_loops
 
-        grades = judging._run_llm_judge(
+        grades = _run_llm_judge(
             query=context.query,
             corpus=context.corpus,
             lookup=context.lookup,
@@ -50,7 +97,7 @@ class LLMJudgeRelevance(BaseCondition):
             logger=context.logger,
             images=context.images,
         )
-        if judging._judge_is_passing(grades):
+        if _is_passing(grades):
             return ConditionResult.success()
         if judge_runs >= int(params.get("max_runs", 2)):
             return ConditionResult.success()

@@ -3,6 +3,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from cheat_at_search.data_dir import key_for_provider
+from typesafe_sdk import Choice, TypeSafeClient
+
 from exps.agentic.conditions import judging
 from exps.agentic.conditions.base import (
     BaseCondition,
@@ -36,6 +39,126 @@ def _positive_integer(value, *, name: str) -> int:
     except (OverflowError, TypeError, ValueError) as exc:
         raise ValueError(f"Condition '{name}' requires params.max_runs > 0.") from exc
     return result
+
+
+def _jev_model_name(model: str) -> str:
+    provider, separator, model_name = model.partition("/")
+    if provider.lower() == "jev":
+        return model_name if separator else "jev-latest"
+    return model
+
+
+def _is_valid_score(value) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and 0 <= value <= 1
+    )
+
+
+def _run_jev_judge(
+    *,
+    query: str,
+    corpus,
+    lookup: dict | None,
+    ranked_doc_ids: list[str],
+    model: str,
+    choices: dict[str, str],
+    probability_threshold: float,
+    confidence_threshold: float,
+    judge_prompt: str,
+) -> list[dict]:
+    if not ranked_doc_ids:
+        return []
+    client = TypeSafeClient(
+        api_key=key_for_provider("typesafe"),
+        model=_jev_model_name(model),
+    )
+    evaluations = []
+    for doc_id in ranked_doc_ids:
+        result_block = judging._render_results_for_judge(
+            corpus=corpus,
+            ranked_doc_ids=[str(doc_id)],
+            lookup=lookup,
+        )
+        row, _ = judging._judge_row_for_doc_id(
+            corpus=corpus, doc_id=doc_id, lookup=lookup
+        )
+        title = str(row.get("title", "")) if row is not None else ""
+        if not result_block:
+            evaluations.append(
+                {
+                    "doc_id": str(doc_id),
+                    "title": title,
+                    "label": None,
+                    "probability": None,
+                    "confidence": None,
+                    "accepted": False,
+                }
+            )
+            continue
+        instructions = judge_prompt.format(query=query, results=result_block)
+        response = client.system_one(
+            state=query,
+            questions={
+                "relevance": Choice(instructions=instructions, criteria=choices)
+            },
+        )
+        answers = getattr(response, "choices", None)
+        answer = answers.get("relevance") if isinstance(answers, dict) else None
+        label = getattr(answer, "choice", None)
+        confidence = getattr(answer, "confidence", None)
+        probabilities = getattr(answer, "probabilities", None)
+        probability = (
+            probabilities.get(label)
+            if isinstance(probabilities, dict) and isinstance(label, str)
+            else None
+        )
+        accepted = (
+            isinstance(label, str)
+            and label in choices
+            and _is_valid_score(probability)
+            and probability > probability_threshold
+            and _is_valid_score(confidence)
+            and confidence > confidence_threshold
+        )
+        evaluations.append(
+            {
+                "doc_id": str(doc_id),
+                "title": title,
+                "label": label,
+                "probability": probability,
+                "confidence": confidence,
+                "accepted": accepted,
+            }
+        )
+    return evaluations
+
+
+def _jev_judge_is_passing(evaluations: list[dict]) -> bool:
+    return bool(evaluations) and all(
+        evaluation["accepted"] and evaluation["label"] == "Relevant"
+        for evaluation in evaluations
+    )
+
+
+def _jev_judge_feedback(evaluations: list[dict]) -> str:
+    lines = []
+    for idx, evaluation in enumerate(evaluations, start=1):
+        label = evaluation["label"]
+        if not evaluation["accepted"]:
+            label = f"uncertain {label or 'unknown'}"
+        probability = evaluation["probability"]
+        confidence = evaluation["confidence"]
+        probability_text = f"{probability:.3f}" if _is_valid_score(probability) else "n/a"
+        confidence_text = f"{confidence:.3f}" if _is_valid_score(confidence) else "n/a"
+        title = f" {evaluation['title']}" if evaluation.get("title") else ""
+        lines.append(
+            f"{idx}. {label} (probability: {probability_text}, "
+            f"confidence: {confidence_text}){title} (ID: {evaluation['doc_id']})"
+        )
+    return "\n".join(lines)
 
 
 @dataclass
@@ -106,7 +229,7 @@ class JevJudgeRelevance(BaseCondition):
         else:
             judge_runs = context.num_loops
 
-        evaluations = judging._run_jev_judge(
+        evaluations = _run_jev_judge(
             query=context.query,
             corpus=context.corpus,
             lookup=context.lookup,
@@ -117,12 +240,12 @@ class JevJudgeRelevance(BaseCondition):
             confidence_threshold=params["confidence_threshold"],
             judge_prompt=str(params["judge_prompt"]),
         )
-        if judging._jev_judge_is_passing(evaluations):
+        if _jev_judge_is_passing(evaluations):
             return ConditionResult.success()
         if judge_runs >= int(params.get("max_runs", 2)):
             return ConditionResult.success()
 
-        feedback = judging._jev_judge_feedback(evaluations)
+        feedback = _jev_judge_feedback(evaluations)
         return self.feedback(
             f"{self.prompt}\n\nJev evaluations:\n\n{feedback}\n\n"
             "System reminder: return DOC IDs ranked best to worst."

@@ -996,7 +996,7 @@ strategy:
     with patch(
         "exps.agentic.agent.build_openai_agent",
         side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
-    ), patch("exps.agentic.conditions.judging.OpenAIAgent", FakeLLMJudgeAgent):
+    ), patch("exps.agentic.conditions.llm_judge.OpenAIAgent", FakeLLMJudgeAgent):
         result = run_benchmark(params)
 
     assert result.metric_series is not None
@@ -1015,10 +1015,10 @@ strategy:
 
 
 @patch("exps.agentic.agent.build_openai_agent")
-@patch("exps.agentic.conditions.judging.TypeSafeClient", FakeJevClient, create=True)
-@patch("exps.agentic.conditions.judging.Choice", FakeJevChoice, create=True)
+@patch("exps.agentic.conditions.jev_judge.TypeSafeClient", FakeJevClient, create=True)
+@patch("exps.agentic.conditions.jev_judge.Choice", FakeJevChoice, create=True)
 @patch(
-    "exps.agentic.conditions.judging.key_for_provider",
+    "exps.agentic.conditions.jev_judge.key_for_provider",
     lambda _provider: "test-key",
     create=True,
 )
@@ -1251,14 +1251,21 @@ strategy:
             ),
         ),
         patch(
-            "exps.agentic.conditions.judging.DecisionGenerator",
+            "exps.agentic.conditions.jev_bag_of_decisions.DecisionGenerator",
             ScriptedDecisionGenerator,
             create=True,
         ),
-        patch("exps.agentic.conditions.judging.Noul", ScriptedNoul, create=True),
-        patch("exps.agentic.conditions.judging.TypeSafeClient", ScriptedNoulClient),
         patch(
-            "exps.agentic.conditions.judging.key_for_provider",
+            "exps.agentic.conditions.jev_bag_of_decisions.Noul",
+            ScriptedNoul,
+            create=True,
+        ),
+        patch(
+            "exps.agentic.conditions.jev_bag_of_decisions.TypeSafeClient",
+            ScriptedNoulClient,
+        ),
+        patch(
+            "exps.agentic.conditions.jev_bag_of_decisions.key_for_provider",
             lambda _provider: "test-key",
         ),
     ):
@@ -1372,7 +1379,7 @@ strategy:
     with patch(
         "exps.agentic.agent.build_openai_agent",
         side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
-    ), patch("exps.agentic.conditions.judging.OpenAIAgent", FakeLLMJudgeAgent):
+    ), patch("exps.agentic.conditions.llm_judge.OpenAIAgent", FakeLLMJudgeAgent):
         result = run_benchmark(params)
 
     assert result.metric_series is not None
@@ -1468,7 +1475,7 @@ strategy:
     with patch(
         "exps.agentic.agent.build_openai_agent",
         side_effect=_build_fake_agent(scripts=scripts, doc_ids=doc_ids, instances=instances),
-    ), patch("exps.agentic.conditions.judging.OpenAIAgent", FakeLLMJudgeAgent):
+    ), patch("exps.agentic.conditions.llm_judge.OpenAIAgent", FakeLLMJudgeAgent):
         result = run_benchmark(params)
 
     assert result.metric_series is not None

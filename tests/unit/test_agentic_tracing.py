@@ -8,7 +8,7 @@ from exps.agentic.agent import (
     _instrument_search_tool,
     build_openai_agent,
 )
-from exps.agentic.conditions import _TracingRetryPolicy
+from exps.agentic.conditions.jev_bag_of_decisions import _TracingRetryPolicy
 from exps.agentic.tracing import query_heartbeat, set_trace_stage
 from typesafe_sdk import TypeSafeAPITimeoutError
 

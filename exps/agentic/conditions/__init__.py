@@ -11,10 +11,10 @@ from exps.agentic.conditions.base import (
     ConditionKind,
     ConditionResult,
 )
+from exps.agentic.conditions.jev_bag_of_decisions import _TracingRetryPolicy
 from exps.agentic.conditions import judging
 from exps.agentic.conditions.config import condition_from_mapping, normalize_conditions
 
-_TracingRetryPolicy = judging._TracingRetryPolicy
 GradedSearchResult = judging.GradedSearchResult
 LLMJudgeResponse = judging.LLMJudgeResponse
 
@@ -81,6 +81,7 @@ __all__ = [
     "ConditionResult",
     "GradedSearchResult",
     "LLMJudgeResponse",
+    "_TracingRetryPolicy",
     "evaluate_stopper",
     "evaluate_validator",
     "normalize_conditions",

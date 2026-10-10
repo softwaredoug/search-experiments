@@ -7,7 +7,14 @@ from exps.agentic.conditions.base import (
     ConditionKind,
     ConditionResult,
 )
-from exps.agentic.conditions import judging
+
+
+def _num_results_from_response(response) -> int:
+    if response is None:
+        return 0
+    parsed = getattr(response, "output_parsed", None)
+    ranked = getattr(parsed, "ranked_results", None) if parsed is not None else None
+    return len(ranked or [])
 
 
 @dataclass
@@ -53,8 +60,6 @@ class NumResultsCondition(BaseCondition):
         return cls(name="num_results", prompt=prompt, params=params, kind=kind)
 
     def evaluate(self, context: ConditionContext) -> ConditionResult:
-        if judging._num_results_from_response(context.response) >= int(
-            self.params["min_results"]
-        ):
+        if _num_results_from_response(context.response) >= int(self.params["min_results"]):
             return ConditionResult.success()
         return self.feedback()
