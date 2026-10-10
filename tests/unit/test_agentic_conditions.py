@@ -7,12 +7,14 @@ import pandas as pd
 import pytest
 
 from exps.agentic import conditions
+from exps.agentic.conditions.base import ConditionContext, ConditionResult
+from exps.agentic.conditions.simple import IterationsCondition, NumResultsCondition
 from exps.bag_of_decisions.decision_question import DecisionQuestion
 from tests.utils.agent_fakes import FakeJevChoice, FakeJevClient
 
 
 _patch_jev_api = patch.multiple(
-    "exps.agentic.conditions",
+    "exps.agentic.conditions.judging",
     TypeSafeClient=FakeJevClient,
     Choice=FakeJevChoice,
     key_for_provider=lambda _provider: "test-key",
@@ -97,6 +99,27 @@ def _outcome(label="Relevant", probability=0.9, confidence=0.9):
         "probabilities": {label: probability},
         "confidence": confidence,
     }
+
+
+def test_normalize_conditions_builds_typed_conditions_with_shared_result_contract():
+    stop = conditions.normalize_conditions(
+        [{"iterations": {"prompt": "Keep going", "params": {"iterations": 2}}}],
+        kind="stop",
+    )[0]
+    validator = conditions.normalize_conditions(
+        [{"num_results": {"prompt": "Need results", "params": {"min_results": 3}}}],
+        kind="validator",
+    )[0]
+
+    assert isinstance(stop, IterationsCondition)
+    assert isinstance(validator, NumResultsCondition)
+    assert stop.evaluate(
+        ConditionContext(
+            num_loops=1,
+            tool_calls=0,
+            response=None,
+        )
+    ) == ConditionResult.unsatisfied("Keep going")
 
 
 def test_normalize_jev_judge_relevance_defaults_and_normalizes_thresholds():
@@ -349,11 +372,16 @@ def _evaluate_bag_of_decisions(
         _ScriptedNoulClient.instances = []
     _ScriptedNoulClient.responses = list(probabilities)
     monkeypatch.setattr(
-        conditions, "DecisionGenerator", _ScriptedDecisionGenerator, raising=False
+        conditions.judging,
+        "DecisionGenerator",
+        _ScriptedDecisionGenerator,
+        raising=False,
     )
-    monkeypatch.setattr(conditions, "Noul", _ScriptedNoul, raising=False)
-    monkeypatch.setattr(conditions, "TypeSafeClient", _ScriptedNoulClient)
-    monkeypatch.setattr(conditions, "key_for_provider", lambda _provider: "test-key")
+    monkeypatch.setattr(conditions.judging, "Noul", _ScriptedNoul, raising=False)
+    monkeypatch.setattr(conditions.judging, "TypeSafeClient", _ScriptedNoulClient)
+    monkeypatch.setattr(
+        conditions.judging, "key_for_provider", lambda _provider: "test-key"
+    )
     condition = conditions.normalize_conditions(
         _bag_of_decisions_condition_config(params), kind="validator"
     )[0]

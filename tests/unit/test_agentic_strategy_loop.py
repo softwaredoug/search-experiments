@@ -203,7 +203,7 @@ def test_agentic_validator_runs_before_stopper(tmp_path):
 
 
 @patch.object(agent_mod, "build_openai_agent", _agent_factory)
-@patch.object(conditions_mod, "OpenAIAgent", _agent_factory)
+@patch.object(conditions_mod.judging, "OpenAIAgent", _agent_factory)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_llm_judge_validator_appends_prompt(tmp_path):
     _MAIN_AGENT["instance"] = None

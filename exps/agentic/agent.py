@@ -12,7 +12,12 @@ from typing import Any, Type
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
 
-from exps.agentic.conditions import evaluate_stopper, evaluate_validator, normalize_conditions
+from exps.agentic.conditions import (
+    Condition,
+    evaluate_stopper,
+    evaluate_validator,
+    normalize_conditions,
+)
 from exps.agentic.task import build_task_tool
 from exps.agentic.tracing import query_heartbeat, set_trace_stage, trace_event
 from exps.mapping import build_doc_id_lookup
@@ -460,8 +465,8 @@ class Agent:
         tools: list[callable],
         inputs: list[dict],
         agent_state: dict,
-        stops: list[dict[str, Any]],
-        validators: list[dict[str, Any]],
+        stops: list[Condition],
+        validators: list[Condition],
         logger,
     ):
         _replace_system_prompt(inputs, system_prompt)
@@ -656,8 +661,8 @@ class Agent:
         query: str,
         inputs: list[dict],
         agent_state: dict,
-        stops: list[dict[str, Any]],
-        validators: list[dict[str, Any]],
+        stops: list[Condition],
+        validators: list[Condition],
         logger,
         format_params: dict[str, Any],
     ):
