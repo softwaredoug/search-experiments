@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
 from typing import Any, Type
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -13,8 +14,12 @@ from pydantic import BaseModel, Field
 
 from exps.agentic.conditions import evaluate_stopper, evaluate_validator, normalize_conditions
 from exps.agentic.task import build_task_tool
+from exps.agentic.tracing import query_heartbeat, set_trace_stage, trace_event
 from exps.mapping import build_doc_id_lookup
 from exps.tools import build_search_tools, normalize_search_tools_for_cache
+
+
+AGENTIC_RANKED_RESULTS_LENGTH = 10
 
 
 DEFAULT_SYSTEM_PROMPT = """
@@ -22,9 +27,9 @@ You take user search queries and use a search tool to find furniture / home good
 
 Look at the search tools you have, their limitations, how they work, etc when forming your plan.
 
-Finally return results to the user per the SearchResults schema, ranked best to worst.
+Finally return exactly 10 results to the user per the SearchResults schema, ranked best to worst.
 
-Gather results until you have 10 best matches you can find. It's important to return at least 10.
+Gather and return exactly 10 best matches when available.
 
 Consider possibly
 
@@ -45,6 +50,16 @@ class SearchResults(BaseModel):
 
     ranked_results: list[str] = Field(
         description="Top ranked search results (their doc_ids) when complete"
+    )
+
+
+class AgenticSearchResults(SearchResults):
+    """Standard agentic response schema with the fixed ten-result contract."""
+
+    ranked_results: list[str] = Field(
+        min_length=AGENTIC_RANKED_RESULTS_LENGTH,
+        max_length=AGENTIC_RANKED_RESULTS_LENGTH,
+        description="Exactly ten document IDs, ranked best to worst.",
     )
 
 
@@ -148,13 +163,177 @@ def build_openai_agent(
     reasoning_level: str,
     images: bool = False,
 ) -> OpenAIAgent:
-    return OpenAIAgent(
+    return TracingOpenAIAgent(
         tools=tools,
         model=model,
         response_model=response_model,
         reasoning_level=reasoning_level,
         process_images=images,
     )
+
+
+def _instrument_search_tool(tool_name: str, call_from_tool):
+    def _timed_tool(args_model, agent_state=None):
+        logger = agent_state.get("trace_logger") if agent_state else None
+        call_index = 0
+        if agent_state is not None:
+            call_index = agent_state.get("_trace_tool_calls", 0) + 1
+            agent_state["_trace_tool_calls"] = call_index
+        started = monotonic()
+        set_trace_stage(
+            agent_state,
+            "search_tool",
+            tool=tool_name,
+            call_index=call_index,
+        )
+        trace_event(
+            logger,
+            "agentic_tool_start",
+            tool=tool_name,
+            call_index=call_index,
+        )
+        try:
+            result = call_from_tool(args_model, agent_state=agent_state)
+        except Exception as exc:
+            trace_event(
+                logger,
+                "agentic_tool_error",
+                tool=tool_name,
+                call_index=call_index,
+                elapsed_seconds=round(monotonic() - started, 3),
+                error_type=type(exc).__name__,
+            )
+            raise
+        tool_error = (
+            isinstance(result, tuple)
+            and bool(result)
+            and isinstance(result[0], str)
+            and result[0].startswith("Tool error:")
+        )
+        trace_event(
+            logger,
+            "agentic_tool_complete",
+            tool=tool_name,
+            call_index=call_index,
+            elapsed_seconds=round(monotonic() - started, 3),
+            outcome="error" if tool_error else "ok",
+        )
+        set_trace_stage(
+            agent_state,
+            "agent_chat",
+            last_tool=tool_name,
+            call_index=call_index,
+        )
+        return result
+
+    return _timed_tool
+
+
+class _OpenAIRetryTraceLogger:
+    def __init__(self, logger, request_index: int):
+        self.logger = logger
+        self.request_index = request_index
+        self.retry_count = 0
+
+    def warning(self, message, *args, **kwargs):
+        self.retry_count += 1
+        error = args[0] if args else None
+        trace_event(
+            self.logger,
+            "agentic_openai_request_retry",
+            request_index=self.request_index,
+            attempt=self.retry_count + 1,
+            error_type=type(error).__name__ if error is not None else "unknown",
+        )
+        self.logger.warning(message, *args, **kwargs)
+
+
+class TracingOpenAIAgent(OpenAIAgent):
+    """OpenAI agent that records each Responses API attempt in the query trace."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._trace_request_index = 0
+        for tool_name, (args_model, tool_spec, call_from_tool) in tuple(
+            self.search_tools.items()
+        ):
+            self.search_tools[tool_name] = (
+                args_model,
+                tool_spec,
+                _instrument_search_tool(tool_name, call_from_tool),
+            )
+
+    def chat(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+        self._active_agent_state = agent_state
+        try:
+            return super().chat(
+                inputs=inputs,
+                agent_state=agent_state,
+                return_usage=return_usage,
+                logger=logger,
+            )
+        finally:
+            self._active_agent_state = None
+
+    def _call_responses_with_retry(self, inputs, tools, reasoning, active_logger):
+        # Delegate retry policy to cheat-at-search; its retry warnings are
+        # mirrored as structured events with the logical request ID.
+        self._trace_request_index += 1
+        request_index = self._trace_request_index
+        started = monotonic()
+        set_trace_stage(
+            getattr(self, "_active_agent_state", None),
+            "openai_request",
+            request_index=request_index,
+        )
+        trace_event(
+            active_logger,
+            "agentic_openai_request_start",
+            request_index=request_index,
+            model=self.model,
+        )
+        retry_logger = _OpenAIRetryTraceLogger(active_logger, request_index)
+        try:
+            response = super()._call_responses_with_retry(
+                inputs=inputs,
+                tools=tools,
+                reasoning=reasoning,
+                active_logger=retry_logger,
+            )
+        except Exception as exc:
+            trace_event(
+                active_logger,
+                "agentic_openai_request_error",
+                request_index=request_index,
+                elapsed_seconds=round(monotonic() - started, 3),
+                retry_count=retry_logger.retry_count,
+                error_type=type(exc).__name__,
+                status_code=getattr(exc, "status_code", None),
+            )
+            raise
+
+        output = getattr(response, "output", None) or []
+        function_calls = [
+            item for item in output if getattr(item, "type", None) == "function_call"
+        ]
+        trace_event(
+            active_logger,
+            "agentic_openai_request_complete",
+            request_index=request_index,
+            elapsed_seconds=round(monotonic() - started, 3),
+            retry_count=retry_logger.retry_count,
+            request_id=getattr(response, "_request_id", None),
+            output_items=len(output),
+            function_calls=len(function_calls),
+            requested_tools=[getattr(item, "name", None) for item in function_calls],
+        )
+        set_trace_stage(
+            getattr(self, "_active_agent_state", None),
+            "agent_chat",
+            request_index=request_index,
+            function_calls=len(function_calls),
+        )
+        return response
 
 
 class Agent:
@@ -289,6 +468,20 @@ class Agent:
         inputs.append({"role": "user", "content": user_prompt})
         step_tools_list = list(tools)
 
+        set_trace_stage(
+            agent_state,
+            "agent_setup",
+            step=step_index,
+            agent=agent_name,
+        )
+        setup_started = monotonic()
+        trace_event(
+            logger,
+            "agentic_agent_setup_start",
+            step=step_index,
+            agent=agent_name,
+            tool_count=len(step_tools_list),
+        )
         agent = build_openai_agent(
             tools=step_tools_list,
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
@@ -296,29 +489,115 @@ class Agent:
             reasoning_level=self.reasoning,
             images=self.images,
         )
+        trace_event(
+            logger,
+            "agentic_agent_setup_complete",
+            step=step_index,
+            agent=agent_name,
+            elapsed_seconds=round(monotonic() - setup_started, 3),
+        )
 
         num_loops = 0
         baseline_tool_calls = _tool_calls_from_inputs(inputs)
         while True:
-            resp, inputs, _ = agent.chat(inputs=inputs, agent_state=agent_state, logger=logger)
+            chat_started = monotonic()
+            set_trace_stage(
+                agent_state,
+                "agent_chat",
+                step=step_index,
+                agent=agent_name,
+                turn=num_loops + 1,
+            )
+            trace_event(
+                logger,
+                "agentic_chat_start",
+                step=step_index,
+                agent=agent_name,
+                turn=num_loops + 1,
+            )
+            try:
+                resp, inputs, _ = agent.chat(
+                    inputs=inputs,
+                    agent_state=agent_state,
+                    logger=logger,
+                )
+            except Exception as exc:
+                trace_event(
+                    logger,
+                    "agentic_chat_error",
+                    step=step_index,
+                    agent=agent_name,
+                    turn=num_loops + 1,
+                    elapsed_seconds=round(monotonic() - chat_started, 3),
+                    error_type=type(exc).__name__,
+                )
+                raise
             num_loops += 1
             tool_calls = _tool_calls_from_inputs(inputs) - baseline_tool_calls
             agent_state["num_tool_calls"] = _tool_calls_from_inputs(inputs)
+            trace_event(
+                logger,
+                "agentic_chat_complete",
+                step=step_index,
+                agent=agent_name,
+                turn=num_loops,
+                elapsed_seconds=round(monotonic() - chat_started, 3),
+                total_tool_calls=agent_state["num_tool_calls"],
+            )
             if num_loops >= self.max_loops:
+                trace_event(
+                    logger,
+                    "agentic_max_loops_reached",
+                    step=step_index,
+                    agent=agent_name,
+                    max_loops=self.max_loops,
+                )
                 break
             for validator in validators:
-                result = evaluate_validator(
-                    validator,
-                    num_loops=num_loops,
-                    tool_calls=tool_calls,
-                    resp=resp,
-                    query=query,
-                    corpus=self.corpus,
-                    lookup=self._lookup,
-                    judgments=self.judgments,
-                    agent_state=agent_state,
-                    logger=logger,
-                    images=self.images,
+                validation_started = monotonic()
+                set_trace_stage(
+                    agent_state,
+                    "validator",
+                    validator=validator["name"],
+                    turn=num_loops,
+                )
+                trace_event(
+                    logger,
+                    "agentic_validator_start",
+                    validator=validator["name"],
+                    turn=num_loops,
+                )
+                try:
+                    result = evaluate_validator(
+                        validator,
+                        num_loops=num_loops,
+                        tool_calls=tool_calls,
+                        resp=resp,
+                        query=query,
+                        corpus=self.corpus,
+                        lookup=self._lookup,
+                        judgments=self.judgments,
+                        agent_state=agent_state,
+                        logger=logger,
+                        images=self.images,
+                    )
+                except Exception as exc:
+                    trace_event(
+                        logger,
+                        "agentic_validator_error",
+                        validator=validator["name"],
+                        turn=num_loops,
+                        elapsed_seconds=round(monotonic() - validation_started, 3),
+                        error_type=type(exc).__name__,
+                    )
+                    raise
+                trace_event(
+                    logger,
+                    "agentic_validator_complete",
+                    validator=validator["name"],
+                    turn=num_loops,
+                    elapsed_seconds=round(monotonic() - validation_started, 3),
+                    outcome="passed" if result is True else "feedback",
                 )
                 if result is True:
                     continue
@@ -338,6 +617,12 @@ class Agent:
                     break
                 stop_prompt = None
                 for stopper in stops:
+                    set_trace_stage(
+                        agent_state,
+                        "stopper",
+                        stopper=stopper["name"],
+                        turn=num_loops,
+                    )
                     stop_result = evaluate_stopper(
                         stopper,
                         num_loops=num_loops,
@@ -418,15 +703,23 @@ class Agent:
         logger.info("Query: %s", query)
         agent_state["trace_logger"] = logger
         agent_state["run_dir"] = str(trace_dir)
-        resp, _ = self._run_plan(
+        set_trace_stage(agent_state, "agent_run_start")
+        trace_event(logger, "agentic_query_start", query=query)
+        query_started = monotonic()
+        with query_heartbeat(
             query=query,
-            inputs=inputs,
             agent_state=agent_state,
-            stops=stops,
-            validators=validators,
             logger=logger,
-            format_params=format_payload,
-        )
+        ):
+            resp, _ = self._run_plan(
+                query=query,
+                inputs=inputs,
+                agent_state=agent_state,
+                stops=stops,
+                validators=validators,
+                logger=logger,
+                format_params=format_payload,
+            )
         logger.info("agentic_output %s", resp.output_parsed if resp else None)
         if resp and hasattr(resp.output_parsed, "ranked_results"):
             ranked_results = resp.output_parsed.ranked_results or []
@@ -434,6 +727,13 @@ class Agent:
                 "agentic_complete %s",
                 {"query": query, "results": len(ranked_results)},
             )
+        trace_event(
+            logger,
+            "agentic_query_complete",
+            query=query,
+            elapsed_seconds=round(monotonic() - query_started, 3),
+            tool_calls=agent_state.get("num_tool_calls", 0),
+        )
         num_tool_calls = int(agent_state.get("num_tool_calls", 0))
         output = resp.output_parsed if resp else None
         if output and hasattr(output, "ranked_results"):

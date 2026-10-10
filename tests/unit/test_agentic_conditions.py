@@ -325,7 +325,7 @@ class _ScriptedNoulClient:
         self.calls = []
         self.__class__.instances.append(self)
 
-    def system_one(self, *, state, questions):
+    def system_one(self, *, state, questions, retry=None):
         self.calls.append((state, questions))
         probabilities = self.responses.pop(0)
         answers = {
@@ -342,6 +342,7 @@ def _evaluate_bag_of_decisions(
     agent_state=None,
     doc_ids=None,
     params=None,
+    logger=None,
 ):
     if agent_state is None:
         _ScriptedDecisionGenerator.instances = []
@@ -377,7 +378,7 @@ def _evaluate_bag_of_decisions(
         lookup=None,
         judgments=None,
         agent_state=current_state,
-        logger=None,
+        logger=logger,
     )
     return result, current_state
 
@@ -445,6 +446,30 @@ def test_jev_bag_of_decisions_judge_scores_and_emits_only_thresholded_questions(
     assert "made for kids" in state
     assert "Kids craft table" in state
     assert len(questions) == 3
+
+
+def test_jev_bag_of_decisions_judge_logs_per_document_progress(monkeypatch):
+    class CaptureLogger:
+        def __init__(self):
+            self.messages = []
+
+        def info(self, message, *args):
+            self.messages.append(message % args if args else message)
+
+    logger = CaptureLogger()
+    result, _ = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.9, 0.5, 0.1]],
+        logger=logger,
+    )
+
+    assert isinstance(result, str)
+    assert any("agentic_jev_rubric_start" in message for message in logger.messages)
+    assert any("agentic_jev_rubric_complete" in message for message in logger.messages)
+    assert any("agentic_jev_document_start" in message for message in logger.messages)
+    assert any("agentic_jev_request_start" in message for message in logger.messages)
+    assert any("agentic_jev_request_complete" in message for message in logger.messages)
+    assert any("agentic_jev_document_complete" in message for message in logger.messages)
 
 
 def test_jev_bag_of_decisions_judge_passes_results_with_positive_only_evidence(

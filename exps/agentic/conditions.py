@@ -4,18 +4,47 @@ import hashlib
 import json
 import math
 import string
+from time import monotonic
 from typing import Any, Literal
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
 from cheat_at_search.data_dir import key_for_provider
-from typesafe_sdk import Choice, Noul, NoulCriteria, TypeSafeClient
+from typesafe_sdk import Choice, Noul, NoulCriteria, RetryPolicy, TypeSafeClient
 
 from exps.bag_of_decisions.decision_generator import DecisionGenerator
 from exps.bag_of_decisions.decision_question import DecisionQuestion
+from exps.agentic.tracing import set_trace_stage, trace_event
 
 
 AllowedEmoji = Literal["🤩", "😃", "😐", "😞"]
+
+
+class _TracingRetryPolicy(RetryPolicy):
+    """Keep the TypeSafe defaults and expose retry attempts in agent traces."""
+
+    def __init__(self, *, logger, context: dict[str, Any]):
+        super().__init__()
+        object.__setattr__(self, "_trace_logger", logger)
+        object.__setattr__(self, "_trace_context", context)
+
+    def _retryable(self, error: BaseException) -> bool:
+        retryable = super()._retryable(error)
+        failure_number = self._trace_context.get("failure_number", 0) + 1
+        self._trace_context["failure_number"] = failure_number
+        trace_event(
+            self._trace_logger,
+            "agentic_jev_request_retry_check",
+            doc_index=self._trace_context["doc_index"],
+            total_docs=self._trace_context["total_docs"],
+            doc_id=self._trace_context["doc_id"],
+            failure_number=failure_number,
+            retrying=retryable and failure_number <= self.max_retries,
+            error_type=type(error).__name__,
+            status_code=getattr(error, "status", None),
+            request_id=getattr(error, "request_id", None),
+        )
+        return retryable
 
 
 class GradedSearchResult(BaseModel):
@@ -601,6 +630,7 @@ def _run_jev_bag_of_decisions_judge(
     negative_probability_threshold: float,
     state_format: str,
     agent_state: dict | None,
+    logger,
 ) -> list[dict[str, Any]]:
     """Score each result against an LLM-generated rubric of yes/no questions."""
     if not ranked_doc_ids:
@@ -632,6 +662,12 @@ def _run_jev_bag_of_decisions_judge(
             if isinstance(item, dict)
             and isinstance(item.get("instructions"), str)
         ]
+        trace_event(
+            logger,
+            "agentic_jev_rubric_reused",
+            query=query,
+            question_count=len(decisions),
+        )
     else:
         generator_options = {
             key: generator[key]
@@ -646,8 +682,28 @@ def _run_jev_bag_of_decisions_judge(
             )
             if key in generator
         }
-        question_generator = DecisionGenerator(**generator_options)
-        decisions = question_generator.generate(query)
+        rubric_started = monotonic()
+        set_trace_stage(
+            agent_state,
+            "jev_rubric_generation",
+            generator_model=generator_options.get("model"),
+        )
+        trace_event(
+            logger,
+            "agentic_jev_rubric_start",
+            generator_model=generator_options.get("model"),
+        )
+        try:
+            question_generator = DecisionGenerator(**generator_options)
+            decisions = question_generator.generate(query)
+        except Exception as exc:
+            trace_event(
+                logger,
+                "agentic_jev_rubric_error",
+                elapsed_seconds=round(monotonic() - rubric_started, 3),
+                error_type=type(exc).__name__,
+            )
+            raise
         decisions = [
             decision
             for decision in decisions
@@ -667,6 +723,12 @@ def _run_jev_bag_of_decisions_judge(
                 }
                 for decision in decisions
             ]
+        trace_event(
+            logger,
+            "agentic_jev_rubric_complete",
+            elapsed_seconds=round(monotonic() - rubric_started, 3),
+            question_count=len(decisions),
+        )
 
     if not decisions:
         return [
@@ -685,7 +747,25 @@ def _run_jev_bag_of_decisions_judge(
         model=_jev_model_name(model),
     )
     evaluations: list[dict[str, Any]] = []
-    for doc_id in ranked_doc_ids:
+    total_docs = len(ranked_doc_ids)
+    for doc_index, doc_id in enumerate(ranked_doc_ids, start=1):
+        document_started = monotonic()
+        set_trace_stage(
+            agent_state,
+            "jev_document_evaluation",
+            doc_index=doc_index,
+            total_docs=total_docs,
+            doc_id=str(doc_id),
+            question_count=len(decisions),
+        )
+        trace_event(
+            logger,
+            "agentic_jev_document_start",
+            doc_index=doc_index,
+            total_docs=total_docs,
+            doc_id=str(doc_id),
+            question_count=len(decisions),
+        )
         row, normalized_doc_id = _judge_row_for_doc_id(
             corpus=corpus,
             doc_id=doc_id,
@@ -693,6 +773,15 @@ def _run_jev_bag_of_decisions_judge(
         )
         title = str(row.get("title", "")) if row is not None else ""
         if row is None or normalized_doc_id is None:
+            trace_event(
+                logger,
+                "agentic_jev_document_complete",
+                doc_index=doc_index,
+                total_docs=total_docs,
+                doc_id=str(doc_id),
+                elapsed_seconds=round(monotonic() - document_started, 3),
+                outcome="document_not_found",
+            )
             evaluations.append(
                 {
                     "doc_id": str(doc_id),
@@ -722,7 +811,40 @@ def _run_jev_bag_of_decisions_judge(
                     criteria=NoulCriteria(**decision.criteria),
                 )
             questions[f"decision_{index}"] = question
-        response = client.system_one(state=state, questions=questions)
+        request_started = monotonic()
+        trace_event(
+            logger,
+            "agentic_jev_request_start",
+            doc_index=doc_index,
+            total_docs=total_docs,
+            doc_id=str(normalized_doc_id),
+            question_count=len(questions),
+        )
+        retry_policy = _TracingRetryPolicy(
+            logger=logger,
+            context={
+                "doc_index": doc_index,
+                "total_docs": total_docs,
+                "doc_id": str(normalized_doc_id),
+            },
+        )
+        try:
+            response = client.system_one(
+                state=state,
+                questions=questions,
+                retry=retry_policy,
+            )
+        except Exception as exc:
+            trace_event(
+                logger,
+                "agentic_jev_request_error",
+                doc_index=doc_index,
+                total_docs=total_docs,
+                doc_id=str(normalized_doc_id),
+                elapsed_seconds=round(monotonic() - request_started, 3),
+                error_type=type(exc).__name__,
+            )
+            raise
         answers = getattr(response, "answers", None)
         answers = answers if isinstance(answers, dict) else {}
 
@@ -755,6 +877,26 @@ def _run_jev_bag_of_decisions_judge(
                 "positive_decisions": positive_decisions,
                 "negative_decisions": negative_decisions,
             }
+        )
+        trace_event(
+            logger,
+            "agentic_jev_request_complete",
+            doc_index=doc_index,
+            total_docs=total_docs,
+            doc_id=str(normalized_doc_id),
+            elapsed_seconds=round(monotonic() - request_started, 3),
+            request_id=getattr(response, "request_id", None),
+            valid_answers=valid_answers,
+            score=score if valid_answers else None,
+        )
+        trace_event(
+            logger,
+            "agentic_jev_document_complete",
+            doc_index=doc_index,
+            total_docs=total_docs,
+            doc_id=str(normalized_doc_id),
+            elapsed_seconds=round(monotonic() - document_started, 3),
+            outcome="evaluated",
         )
     return evaluations
 
@@ -910,6 +1052,7 @@ def evaluate_validator(
             negative_probability_threshold=params["negative_probability_threshold"],
             state_format=params["state_format"],
             agent_state=agent_state,
+            logger=logger,
         )
         if _jev_bag_of_decisions_judge_is_passing(evaluations):
             return True

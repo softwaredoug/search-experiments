@@ -3,9 +3,24 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 import exps.agentic.agent as agent_mod
 from exps.agentic.agent import trace_logger
+
+
+def test_agentic_search_results_require_exactly_ten_ids():
+    schema = agent_mod.AgenticSearchResults.model_json_schema()
+    ranked_results_schema = schema["properties"]["ranked_results"]
+
+    assert ranked_results_schema["minItems"] == 10
+    assert ranked_results_schema["maxItems"] == 10
+    assert len(agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(10)]).ranked_results) == 10
+
+    with pytest.raises(ValidationError):
+        agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(9)])
+    with pytest.raises(ValidationError):
+        agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(11)])
 
 
 class _FakeOpenAIAgent:
@@ -79,6 +94,11 @@ def test_agent_runs_single_step(tmp_path):
     assert result.output == ["101", "202"]
     assert result.num_tool_calls == 1
     assert _FakeOpenAIAgent.instances[0].images is True
+    trace_text = trace_path.read_text(encoding="utf-8")
+    assert "agentic_query_start" in trace_text
+    assert "agentic_chat_start" in trace_text
+    assert "agentic_chat_complete" in trace_text
+    assert "agentic_query_complete" in trace_text
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])

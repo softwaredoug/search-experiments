@@ -11,6 +11,7 @@ from exps.agentic import conditions as conditions_mod
 
 class _FakeOpenAIAgent:
     last_instance = None
+    result_ids = ["101", "202", "303"] + [str(value) for value in range(4, 11)]
 
     def __init__(self, tools, model, response_model, reasoning_level, images=False, process_images=False):
         self.tools = tools
@@ -28,7 +29,7 @@ class _FakeOpenAIAgent:
         if agent_state is not None:
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        result = self.response_model(ranked_results=list(self.result_ids))
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -69,9 +70,9 @@ class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         if self.calls == 1:
-            result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+            result = self.response_model(ranked_results=list(self.result_ids))
         else:
-            result = agent_mod.SearchResults(ranked_results=["101", "202", "303", "404"])
+            result = self.response_model(ranked_results=list(self.result_ids))
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -121,6 +122,7 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     )
     strategy.search("query", k=2)
 
+    assert strategy.agent.response_model is agent_mod.AgenticSearchResults
     inputs = _FakeOpenAIAgent.last_instance.last_inputs
     reprompt_count = sum(
         1
@@ -131,6 +133,22 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     )
     assert reprompt_count == 1
     assert _FakeOpenAIAgent.last_instance.calls == 2
+
+
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
+@patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
+def test_agentic_cache_key_tracks_fixed_result_count(tmp_path, monkeypatch):
+    strategy = agentic_mod.AgenticSearchStrategy(
+        _sample_corpus(),
+        workers=1,
+        search_tools=[],
+        trace_path=tmp_path,
+    )
+    original_cache_key = strategy.cache_key
+
+    monkeypatch.setattr(agentic_mod, "AGENTIC_RANKED_RESULTS_LENGTH", 11)
+
+    assert strategy.cache_key != original_cache_key
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
@@ -159,7 +177,8 @@ def test_agentic_validator_runs_before_stopper(tmp_path):
         model="gpt-5-mini",
         search_tools=[],
         stop=[{"iterations": {"prompt": "Stop", "params": {"iterations": 2}}}],
-        validators=[{"num_results": {"prompt": "Need more results", "params": {"min_results": 4}}}],
+        validators=[{"num_results": {"prompt": "Need more results", "params": {"min_results": 11}}}],
+        max_loops=2,
         trace_path=tmp_path,
     )
     strategy.search("query", k=2)
@@ -229,7 +248,7 @@ def test_agentic_max_loops_stops(tmp_path):
         workers=1,
         model="gpt-5-mini",
         search_tools=[],
-        validators=[{"num_results": {"prompt": "Need more", "params": {"min_results": 10}}}],
+        validators=[{"num_results": {"prompt": "Need more", "params": {"min_results": 11}}}],
         max_loops=2,
         trace_path=tmp_path,
     )

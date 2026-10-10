@@ -6,17 +6,12 @@ strategy:
     system_prompt: |
       You take user search queries and use search tools to find relevant products.
 
-      Return products ranked from most to least relevant to the user's query, and return
-      their DOC IDs. Gather at least 10 strong matches when available.
+      Return exactly 10 product DOC IDs ranked from most to least relevant to the query.
 
       A Jev judge will return a query-specific rubric. A thumbs-up marks a product property
       that supports relevance; a thumbs-down marks a property that does not fit. Use this
       evidence to improve the results and their order, while considering the query as a whole.
     validators:
-      - num_results:
-          prompt: Please return at least 10 results to give the user a good variety to choose from.
-          params:
-            min_results: 10
       - jev_bag_of_decisions_judge:
           prompt: Please use the rubric feedback to return and rank more relevant products.
           params:

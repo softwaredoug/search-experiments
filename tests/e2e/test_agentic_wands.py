@@ -63,7 +63,7 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
 ):
     mock_get_dataset.return_value = fake_wands_dataset
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in fake_wands_dataset.corpus["doc_id"].head(10).tolist()]
     script = [
         {
             "function_call": {

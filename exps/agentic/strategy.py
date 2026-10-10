@@ -7,6 +7,8 @@ from pathlib import Path
 from cheat_at_search.strategy import SearchStrategy
 from exps.agentic.agent import (
     Agent,
+    AGENTIC_RANKED_RESULTS_LENGTH,
+    AgenticSearchResults,
     DEFAULT_SYSTEM_PROMPT,
     SUBAGENT_SYSTEM_PROMPT,
     _normalize_agents_for_cache,
@@ -73,6 +75,7 @@ class AgenticSearchStrategy(SearchStrategy):
             stop=stop,
             validators=validators,
             max_loops=self.max_loops,
+            response_model=AgenticSearchResults,
             embeddings_device=embeddings_device,
             dataset_name=self.dataset_name,
         )
@@ -165,6 +168,8 @@ class AgenticSearchStrategy(SearchStrategy):
             "stop": self.stop,
             "validators": self.validators,
             "max_loops": self.max_loops,
+            "ranked_results_min_length": AGENTIC_RANKED_RESULTS_LENGTH,
+            "ranked_results_max_length": AGENTIC_RANKED_RESULTS_LENGTH,
             "embeddings_device": self.embeddings_device,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")

@@ -23,7 +23,7 @@ strategy:
 
       Finally return results to the user per the SearchResults schema, ranked best to worst.
 
-      Gather results until you have 10 best matches you can find. It's important to return at least 10.
+      Return exactly 10 results ranked best to worst.
 
       It's very important you consider carefully the correct ranking as you'll be evaluated on
       how close that is to the average shoppers ideal ranking.
@@ -37,6 +37,12 @@ This calls OpenAI with
 - the system prompt here
 - the query being searched for as the user prompt. 
 - a set of simple search tools that the agent can call to gather info. In this case, BM25 and minilm embedding search. The agent can call these tools with different queries, etc to gather info. The agentic loop continues until the agent decides to stop (or max iterations is reached). Then the final ranked list of results is returned and evaluated.
+
+The standard `agentic` strategy's `AgenticSearchResults.ranked_results` response field is constrained to
+exactly 10 document IDs using Pydantic `min_length=10` and `max_length=10`. This is currently a
+fixed response-schema contract; no `num_results` validator is needed to enforce the count. The
+separate `scatter_gather_wands` strategy may use the unconstrained `SearchResults` model for its
+intermediate outputs.
 
 Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness applies validators + stop conditions around that agent loop.
 
@@ -183,6 +189,11 @@ Agentic runs record tool calls and outputs under a working folder rooted at:
 ```
 
 This path is created via the shared run-folder utility so that run/train commands use a consistent layout.
+
+Each query log includes timed start/completion/error events for model requests and tool calls,
+validator execution, and per-result Jev evaluation. Active queries emit a heartbeat every 30 seconds
+with their current phase and elapsed time, plus a worker stack event after two minutes. Request and
+result payload contents are not added to these diagnostic events.
 
 
 ## Harness constraints

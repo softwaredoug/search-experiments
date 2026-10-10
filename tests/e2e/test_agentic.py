@@ -114,7 +114,7 @@ def test_agentic_hello_world_e2e(
         mock_load_or_create_embeddings.side_effect = _mock_load_or_create_embeddings
         mock_load_model.side_effect = lambda *_args, **_kwargs: None
 
-        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(10).tolist()]
         script = [
             {
                 "function_call": {
@@ -185,7 +185,7 @@ def test_agentic_guarded_e2e(
         corpus = doug_blog_dataset.corpus
         judgments = doug_blog_dataset.judgments
         instances: list[FakeOpenAIAgent] = []
-        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(10).tolist()]
         script = [
             {
                 "function_call": {
@@ -261,7 +261,7 @@ def test_agentic_filesystem_e2e(
     try:
         corpus = doug_blog_dataset.corpus
         instances: list[FakeOpenAIAgent] = []
-        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(3).tolist()]
+        doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(10).tolist()]
         script = [
             {
                 "function_call": {
@@ -329,7 +329,7 @@ def test_agentic_query_rewrite_tool_e2e(
     doug_blog_dataset,
 ):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_query_rewrite_e2e.yml"
@@ -388,7 +388,7 @@ def test_agentic_orchestrate_bm25_e2e(
     doug_blog_dataset,
 ):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_orchestrate.yml"
@@ -447,7 +447,7 @@ def test_agentic_plan_agents_e2e(
     doug_blog_dataset,
 ):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [{"output": {"ranked_results": doc_ids}}]
 
     config_path = tmp_path / "agentic_plan.yml"
@@ -512,7 +512,7 @@ strategy:
 )
 def test_agentic_bash_tool_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [
         {
             "function_call": {
@@ -625,7 +625,7 @@ strategy:
 
 def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [
         {
             "function_call": {
@@ -714,7 +714,7 @@ strategy:
 
 def test_agentic_validator_tool_calls_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -790,7 +790,7 @@ strategy:
 
 def test_agentic_todo_tools_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -859,7 +859,7 @@ strategy:
 
 def test_agentic_stop_tool_calls_appends_prompt_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -935,7 +935,7 @@ strategy:
 def test_agentic_llm_judge_validator_e2e(tmp_path, doug_blog_dataset):
     FakeLLMJudgeAgent.reset()
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -1026,7 +1026,7 @@ def test_agentic_jev_judge_validator_e2e(
     mock_build_openai_agent, tmp_path, doug_blog_dataset
 ):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     FakeJevClient.reset(
         [
             ("Irrelevant", 0.95, 0.95),
@@ -1128,7 +1128,7 @@ def test_agentic_jev_bag_of_decisions_judge_e2e(
     instances: list[FakeOpenAIAgent] = []
     doc_ids = [
         str(doc_id)
-        for doc_id in doug_blog_dataset.corpus["doc_id"].head(2).tolist()
+        for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()
     ]
     query = str(doug_blog_dataset.judgments.iloc[0]["query"])
 
@@ -1156,16 +1156,15 @@ def test_agentic_jev_bag_of_decisions_judge_e2e(
             self.criteria = criteria
 
     class ScriptedNoulClient:
-        probabilities = [0.1, 0.9, 0.9, 0.9]
         calls = []
 
         def __init__(self, *, api_key, model):
             self.api_key = api_key
             self.model = model
 
-        def system_one(self, *, state, questions):
+        def system_one(self, *, state, questions, retry=None):
             type(self).calls.append((state, questions))
-            probability = type(self).probabilities[len(type(self).calls) - 1]
+            probability = 0.1 if len(type(self).calls) == 1 else 0.9
             return type(
                 "Response",
                 (),
@@ -1269,7 +1268,12 @@ strategy:
     assert not result.metric_series.empty
     assert len(instances) == 1
     assert instances[0].chat_calls == 2
-    assert len(ScriptedNoulClient.calls) == 4
+    assert len(doc_ids) == 10
+    assert not any(
+        "num_results" in validator
+        for validator in result.strategy_params["validators"]
+    )
+    assert len(ScriptedNoulClient.calls) == 20
     assert ScriptedNoulClient.calls[0][1]["decision_0"].instructions == (
         "Does this result satisfy the search query?"
     )
@@ -1293,7 +1297,7 @@ strategy:
 def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset):
     FakeLLMJudgeAgent.reset()
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -1397,7 +1401,7 @@ strategy:
 def test_agentic_llm_judge_max_runs_allows_stop_e2e(tmp_path, doug_blog_dataset):
     FakeLLMJudgeAgent.reset(emojis=["😞", "😞"])
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     scripts = [
         [
             {
@@ -1503,9 +1507,9 @@ def test_agentic_oracle_validator_max_runs_e2e(
     instances: list[FakeOpenAIAgent] = []
     corpus = pd.DataFrame(
         {
-            "doc_id": [1, 2, 3],
-            "title": ["Alpha", "Beta", "Gamma"],
-            "description": ["A", "B", "C"],
+            "doc_id": list(range(1, 11)),
+            "title": [f"Product {doc_id}" for doc_id in range(1, 11)],
+            "description": [f"Description {doc_id}" for doc_id in range(1, 11)],
         }
     )
     judgments = pd.DataFrame(
@@ -1523,7 +1527,7 @@ def test_agentic_oracle_validator_max_runs_e2e(
 
     mock_build_search_tools.return_value = [search_bm25]
     query = "test query"
-    doc_ids = ["2", "3"]
+    doc_ids = [str(doc_id) for doc_id in range(1, 11)]
     scripts = [
         [
             {
@@ -1697,7 +1701,7 @@ strategy:
 
 def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [
         {
             "function_call": {
@@ -1772,7 +1776,7 @@ def test_agentic_codegen_fixture_nonzero_e2e(
     doug_blog_dataset,
 ):
     instances: list[FakeOpenAIAgent] = []
-    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(3).tolist()]
+    doc_ids = [str(doc_id) for doc_id in doug_blog_dataset.corpus["doc_id"].head(10).tolist()]
     script = [
         {
             "function_call": {
