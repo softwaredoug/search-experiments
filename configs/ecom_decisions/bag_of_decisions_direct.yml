@@ -16,7 +16,7 @@ strategy:
             constraint, or only overlaps with incidental query terms.
       reranker:
         decision_model: jev/jev-latest
-        decision_weight: 10
+        decision_weight: 1000
         k: 100
         state_format: |
           Search query:

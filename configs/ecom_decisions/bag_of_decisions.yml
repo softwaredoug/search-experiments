@@ -17,7 +17,7 @@ strategy:
           {query}
       reranker:
         decision_model: jev/jev-latest
-        decision_weight: 10
+        decision_weight: 1000
         k: 100
         state_format: |
           {title}

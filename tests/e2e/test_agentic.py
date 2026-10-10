@@ -1122,6 +1122,174 @@ strategy:
     assert reprompt_count == 1
 
 
+def test_agentic_jev_bag_of_decisions_judge_e2e(
+    tmp_path, doug_blog_dataset
+):
+    instances: list[FakeOpenAIAgent] = []
+    doc_ids = [
+        str(doc_id)
+        for doc_id in doug_blog_dataset.corpus["doc_id"].head(2).tolist()
+    ]
+    query = str(doug_blog_dataset.judgments.iloc[0]["query"])
+
+    class ScriptedDecisionGenerator:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.queries = []
+            type(self).instances.append(self)
+
+        def generate(self, query):
+            self.queries.append(query)
+            from exps.bag_of_decisions.decision_question import DecisionQuestion
+
+            return [
+                DecisionQuestion(
+                    instructions="Does this result satisfy the search query?"
+                )
+            ]
+
+    class ScriptedNoul:
+        def __init__(self, *, instructions, criteria=None):
+            self.instructions = instructions
+            self.criteria = criteria
+
+    class ScriptedNoulClient:
+        probabilities = [0.1, 0.9, 0.9, 0.9]
+        calls = []
+
+        def __init__(self, *, api_key, model):
+            self.api_key = api_key
+            self.model = model
+
+        def system_one(self, *, state, questions):
+            type(self).calls.append((state, questions))
+            probability = type(self).probabilities[len(type(self).calls) - 1]
+            return type(
+                "Response",
+                (),
+                {
+                    "answers": {
+                        question_id: type(
+                            "Answer", (), {"noul": probability}
+                        )()
+                        for question_id in questions
+                    }
+                },
+            )()
+
+    ScriptedDecisionGenerator.instances = []
+    ScriptedNoulClient.calls = []
+    scripts = [
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": query, "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+        [
+            {
+                "function_call": {
+                    "name": "search_bm25",
+                    "params": {"keywords": query, "top_k": 5},
+                }
+            },
+            {"output": {"ranked_results": doc_ids}},
+        ],
+    ]
+    config_path = tmp_path / "agentic_jev_bag_of_decisions_judge.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_jev_bag_of_decisions_judge_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    reasoning: low
+    system_prompt: Use search tools to find products.
+    search_tools:
+      - bm25
+    validators:
+      - jev_bag_of_decisions_judge:
+          prompt: Please improve relevance using the rubric feedback.
+          params:
+            model: jev/jev-latest
+            positive_probability_threshold: 0.75
+            negative_probability_threshold: 0.25
+            max_runs: 2
+            generator:
+              model: gpt-5-mini
+              system_prompt: Generate relevance criteria.
+              prompt: Generate yes/no criteria for {query}.
+            state_format: |
+              Query: {query}
+              {title}
+              {description}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        base_path=None,
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+        no_cache=True,
+    )
+
+    with (
+        patch(
+            "exps.agentic.agent.build_openai_agent",
+            side_effect=_build_fake_agent(
+                scripts=scripts, doc_ids=doc_ids, instances=instances
+            ),
+        ),
+        patch(
+            "exps.agentic.conditions.DecisionGenerator",
+            ScriptedDecisionGenerator,
+            create=True,
+        ),
+        patch("exps.agentic.conditions.Noul", ScriptedNoul, create=True),
+        patch("exps.agentic.conditions.TypeSafeClient", ScriptedNoulClient),
+        patch(
+            "exps.agentic.conditions.key_for_provider",
+            lambda _provider: "test-key",
+        ),
+    ):
+        result = run_benchmark(params)
+
+    assert result.metric_series is not None
+    assert not result.metric_series.empty
+    assert len(instances) == 1
+    assert instances[0].chat_calls == 2
+    assert len(ScriptedNoulClient.calls) == 4
+    assert ScriptedNoulClient.calls[0][1]["decision_0"].instructions == (
+        "Does this result satisfy the search query?"
+    )
+    assert len(ScriptedDecisionGenerator.instances) == 1
+    assert len(ScriptedDecisionGenerator.instances[0].queries) == 1
+    assert ScriptedDecisionGenerator.instances[0].queries[0] in set(
+        doug_blog_dataset.judgments["query"]
+    )
+    feedback_messages = [
+        item.get("content", "")
+        for item in instances[0].last_inputs
+        if isinstance(item, dict)
+        and item.get("role") == "user"
+        and "Jev bag-of-decisions evaluations" in str(item.get("content"))
+    ]
+    assert len(feedback_messages) == 1
+    assert "👍" in feedback_messages[0]
+    assert "👎" in feedback_messages[0]
+
+
 def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset):
     FakeLLMJudgeAgent.reset()
     instances: list[FakeOpenAIAgent] = []

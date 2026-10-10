@@ -336,6 +336,47 @@ results and evaluated again. After `max_runs` attempts (default `2`), the valida
 results to avoid an infinite loop, matching the LLM judge validator behavior.
 
 
+### Jev Bag-of-Decisions Judge Validator
+
+`jev_bag_of_decisions_judge` generates a query-specific rubric of yes/no questions with an LLM,
+then evaluates every returned result against all rubric questions with Jev. Questions should be
+phrased so an affirmative answer is evidence that the result satisfies the query.
+
+```yaml
+    validators:
+      - jev_bag_of_decisions_judge:
+          prompt: Please use this rubric feedback to improve the relevance and ordering of your results.
+          params:
+            model: jev/jev-latest
+            positive_probability_threshold: 0.75
+            negative_probability_threshold: 0.25
+            max_runs: 2
+            generator:
+              model: gpt-5-mini
+              system_prompt: |
+                Generate concise yes/no questions that can help determine whether a result
+                satisfies the query. An affirmative answer should indicate evidence of relevance.
+              prompt: |
+                Generate a varied rubric of questions for this query:
+
+                {query}
+            state_format: |
+              {title}
+              {description}
+```
+
+Each document's rubric score is the sum of valid `P(yes)` values, including values in the
+uncertain band. Feedback only lists thresholded answers: probabilities greater than or equal to
+`positive_probability_threshold` are marked `👍`, and probabilities less than or equal to
+`negative_probability_threshold` are marked `👎`. Answers between those thresholds are omitted
+from the criteria list. The negative threshold must be less than the positive threshold.
+
+The rubric is generated once per query and reused during validator retries. The validator passes
+when every returned result has at least one positive criterion and no negative criteria. Results
+with no confident criteria, or with any negative criterion, are sent back as feedback. After
+`max_runs` attempts (default `2`), the validator accepts the results to bound retries.
+
+
 ### Oracle Judge Validator
 
 One type of validator - an oracle judge.

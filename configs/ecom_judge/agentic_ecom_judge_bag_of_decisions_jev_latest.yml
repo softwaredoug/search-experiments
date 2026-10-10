@@ -1,0 +1,57 @@
+strategy:
+  name: agentic_ecom_bm25_judge_bag_of_decisions_jev
+  type: agentic
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find relevant products.
+
+      Return products ranked from most to least relevant to the user's query, and return
+      their DOC IDs. Gather at least 10 strong matches when available.
+
+      A Jev judge will return a query-specific rubric. A thumbs-up marks a product property
+      that supports relevance; a thumbs-down marks a property that does not fit. Use this
+      evidence to improve the results and their order, while considering the query as a whole.
+    validators:
+      - num_results:
+          prompt: Please return at least 10 results to give the user a good variety to choose from.
+          params:
+            min_results: 10
+      - jev_bag_of_decisions_judge:
+          prompt: Please use the rubric feedback to return and rank more relevant products.
+          params:
+            model: jev/jev-latest
+            positive_probability_threshold: 0.75
+            negative_probability_threshold: 0.25
+            max_runs: 2
+            generator:
+              model: gpt-5-mini
+              reasoning: low
+              system_prompt: |
+                You generate concise, discriminative yes/no questions for judging product
+                search relevance. Each question must be phrased so that a yes answer is
+                evidence that the product satisfies the query. Consider product type,
+                intended audience, use, and important attributes when they help distinguish
+                relevant products. Avoid criteria that depend on unsupported assumptions.
+              prompt: |
+                Generate a varied set of yes/no questions that could help judge products
+                returned for this search query. An affirmative answer to each question should
+                support relevance.
+
+                Query: {query}
+            state_format: |
+              Search query: {query}
+              Product: {title}
+              {description}
+    stop:
+      - tool_calls:
+          prompt: Keep searching until you have made at least 4 tool calls so no stone is left unturned.
+          params:
+            num_calls: 4
+    search_tools:
+      - bm25:
+          guards:
+            - disallow_repeated_queries
+      - e5_base_v2:
+          guards:
+            - disallow_repeated_queries

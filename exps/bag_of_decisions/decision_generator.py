@@ -90,8 +90,6 @@ class DecisionGenerator:
             ):
                 normalized.append(DecisionQuestion(instructions=decision.strip()))
                 seen.add(decision.strip())
-        for idx, dec_q in enumerate(list(normalized)):
-            print(f"{idx + 1} -  {dec_q.instructions}")
         return list(normalized)
 
     @property

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import string
 from typing import Any, Literal
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from pydantic import BaseModel, Field
 from cheat_at_search.data_dir import key_for_provider
-from typesafe_sdk import Choice, TypeSafeClient
+from typesafe_sdk import Choice, Noul, NoulCriteria, TypeSafeClient
+
+from exps.bag_of_decisions.decision_generator import DecisionGenerator
+from exps.bag_of_decisions.decision_question import DecisionQuestion
 
 
 AllowedEmoji = Literal["🤩", "😃", "😐", "😞"]
@@ -49,18 +55,25 @@ def _require_prompt(condition: dict, *, kind: str) -> str:
     return prompt
 
 
-def _parse_jev_threshold(value: Any, *, name: str) -> float:
+def _parse_jev_threshold(
+    value: Any,
+    *,
+    name: str,
+    condition_name: str = "jev_judge_relevance",
+) -> float:
     if isinstance(value, bool):
-        raise ValueError(f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1.")
+        raise ValueError(
+            f"Condition '{condition_name}' requires params.{name} between 0 and 1."
+        )
     try:
         threshold = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(
-            f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1."
+            f"Condition '{condition_name}' requires params.{name} between 0 and 1."
         ) from exc
     if not math.isfinite(threshold) or not 0 <= threshold <= 1:
         raise ValueError(
-            f"Condition 'jev_judge_relevance' requires params.{name} between 0 and 1."
+            f"Condition '{condition_name}' requires params.{name} between 0 and 1."
         )
     return threshold
 
@@ -166,6 +179,101 @@ def normalize_conditions(condition_config: list | None, *, kind: str) -> list[di
             if max_runs <= 0:
                 raise ValueError(
                     "Condition 'jev_judge_relevance' requires params.max_runs > 0."
+                )
+            params_dict["max_runs"] = max_runs
+        elif name == "jev_bag_of_decisions_judge":
+            if kind != "validator":
+                raise ValueError(
+                    "jev_bag_of_decisions_judge is only supported for validators."
+                )
+            for key in (
+                "model",
+                "positive_probability_threshold",
+                "negative_probability_threshold",
+                "generator",
+                "state_format",
+            ):
+                if key not in params_dict:
+                    raise ValueError(
+                        "Condition 'jev_bag_of_decisions_judge' requires "
+                        f"params.{key}."
+                    )
+            params_dict["positive_probability_threshold"] = _parse_jev_threshold(
+                params_dict["positive_probability_threshold"],
+                name="positive_probability_threshold",
+                condition_name=name,
+            )
+            params_dict["negative_probability_threshold"] = _parse_jev_threshold(
+                params_dict["negative_probability_threshold"],
+                name="negative_probability_threshold",
+                condition_name=name,
+            )
+            if (
+                params_dict["negative_probability_threshold"]
+                >= params_dict["positive_probability_threshold"]
+            ):
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires "
+                    "negative_probability_threshold < positive_probability_threshold."
+                )
+            generator = params_dict["generator"]
+            if not isinstance(generator, dict):
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires "
+                    "params.generator as a mapping."
+                )
+            for key in ("model", "system_prompt", "prompt"):
+                if key not in generator:
+                    raise ValueError(
+                        "Condition 'jev_bag_of_decisions_judge' requires "
+                        f"params.generator.{key}."
+                    )
+            for key in ("model", "state_format"):
+                if not isinstance(params_dict.get(key), str) or not params_dict[key].strip():
+                    raise ValueError(
+                        f"Condition 'jev_bag_of_decisions_judge' requires a string {key}."
+                    )
+            try:
+                list(string.Formatter().parse(params_dict["state_format"]))
+            except ValueError as exc:
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires a valid "
+                    "params.state_format."
+                ) from exc
+            for key in ("model", "system_prompt", "prompt"):
+                if not isinstance(generator.get(key), str) or not generator[key].strip():
+                    raise ValueError(
+                        "Condition 'jev_bag_of_decisions_judge' requires a non-empty "
+                        f"params.generator.{key}."
+                    )
+            model = params_dict["model"]
+            provider, separator, model_name = (
+                model.partition("/") if isinstance(model, str) else ("", "", "")
+            )
+            if (
+                not isinstance(model, str)
+                or model.strip() != model
+                or provider.lower() != "jev"
+                or (separator and not model_name.strip())
+            ):
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires a Jev model (jev/*)."
+                )
+            params_dict.setdefault("max_runs", 2)
+            try:
+                raw_max_runs = params_dict["max_runs"]
+                if isinstance(raw_max_runs, bool):
+                    raise ValueError
+                max_runs = int(raw_max_runs)
+                if str(raw_max_runs).strip() not in {str(max_runs), f"{max_runs}.0"}:
+                    raise ValueError
+            except (OverflowError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires params.max_runs > 0."
+                ) from exc
+            if max_runs <= 0:
+                raise ValueError(
+                    "Condition 'jev_bag_of_decisions_judge' requires params.max_runs > 0."
                 )
             params_dict["max_runs"] = max_runs
         elif name == "oracle":
@@ -481,6 +589,227 @@ def _jev_judge_feedback(evaluations: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _run_jev_bag_of_decisions_judge(
+    *,
+    query: str,
+    corpus,
+    lookup: dict | None,
+    ranked_doc_ids: list[str],
+    model: str,
+    generator: dict[str, Any],
+    positive_probability_threshold: float,
+    negative_probability_threshold: float,
+    state_format: str,
+    agent_state: dict | None,
+) -> list[dict[str, Any]]:
+    """Score each result against an LLM-generated rubric of yes/no questions."""
+    if not ranked_doc_ids:
+        return []
+
+    rubric_key_payload = json.dumps(
+        {"query": query, "generator": generator},
+        sort_keys=True,
+        default=str,
+    ).encode("utf-8")
+    rubric_key = hashlib.sha256(rubric_key_payload).hexdigest()
+    rubric_cache = None
+    if agent_state is not None:
+        rubric_cache = agent_state.setdefault(
+            "jev_bag_of_decisions_judge_rubrics", {}
+        )
+        if not isinstance(rubric_cache, dict):
+            rubric_cache = {}
+            agent_state["jev_bag_of_decisions_judge_rubrics"] = rubric_cache
+
+    if rubric_cache is not None and rubric_key in rubric_cache:
+        raw_questions = rubric_cache[rubric_key]
+        decisions = [
+            DecisionQuestion(
+                instructions=item["instructions"],
+                criteria=item.get("criteria"),
+            )
+            for item in raw_questions
+            if isinstance(item, dict)
+            and isinstance(item.get("instructions"), str)
+        ]
+    else:
+        generator_options = {
+            key: generator[key]
+            for key in (
+                "model",
+                "system_prompt",
+                "prompt",
+                "reasoning",
+                "temperature",
+                "verbosity",
+                "no_cache",
+            )
+            if key in generator
+        }
+        question_generator = DecisionGenerator(**generator_options)
+        decisions = question_generator.generate(query)
+        decisions = [
+            decision
+            for decision in decisions
+            if isinstance(decision, DecisionQuestion)
+            and isinstance(decision.instructions, str)
+            and decision.instructions.strip()
+        ]
+        if rubric_cache is not None:
+            rubric_cache[rubric_key] = [
+                {
+                    "instructions": decision.instructions,
+                    "criteria": (
+                        dict(decision.criteria)
+                        if decision.criteria is not None
+                        else None
+                    ),
+                }
+                for decision in decisions
+            ]
+
+    if not decisions:
+        return [
+            {
+                "doc_id": str(doc_id),
+                "title": "",
+                "score": None,
+                "positive_decisions": [],
+                "negative_decisions": [],
+            }
+            for doc_id in ranked_doc_ids
+        ]
+
+    client = TypeSafeClient(
+        api_key=key_for_provider("typesafe"),
+        model=_jev_model_name(model),
+    )
+    evaluations: list[dict[str, Any]] = []
+    for doc_id in ranked_doc_ids:
+        row, normalized_doc_id = _judge_row_for_doc_id(
+            corpus=corpus,
+            doc_id=doc_id,
+            lookup=lookup,
+        )
+        title = str(row.get("title", "")) if row is not None else ""
+        if row is None or normalized_doc_id is None:
+            evaluations.append(
+                {
+                    "doc_id": str(doc_id),
+                    "title": title,
+                    "score": None,
+                    "positive_decisions": [],
+                    "negative_decisions": [],
+                }
+            )
+            continue
+
+        row_values = row.to_dict() if hasattr(row, "to_dict") else dict(row)
+        try:
+            state = state_format.format_map({**row_values, "query": query})
+        except (IndexError, KeyError, ValueError) as exc:
+            raise ValueError(
+                "Could not render params.state_format for a corpus row."
+            ) from exc
+
+        questions = {}
+        for index, decision in enumerate(decisions):
+            if decision.criteria is None:
+                question = Noul(instructions=decision.instructions)
+            else:
+                question = Noul(
+                    instructions=decision.instructions,
+                    criteria=NoulCriteria(**decision.criteria),
+                )
+            questions[f"decision_{index}"] = question
+        response = client.system_one(state=state, questions=questions)
+        answers = getattr(response, "answers", None)
+        answers = answers if isinstance(answers, dict) else {}
+
+        score = 0.0
+        valid_answers = 0
+        positive_decisions = []
+        negative_decisions = []
+        for index, decision in enumerate(decisions):
+            answer = answers.get(f"decision_{index}")
+            probability = getattr(answer, "noul", None)
+            if not _is_valid_jev_score(probability):
+                continue
+            probability = float(probability)
+            score += probability
+            valid_answers += 1
+            item = {
+                "question": decision.instructions,
+                "probability": probability,
+            }
+            if probability >= positive_probability_threshold:
+                positive_decisions.append(item)
+            elif probability <= negative_probability_threshold:
+                negative_decisions.append(item)
+
+        evaluations.append(
+            {
+                "doc_id": str(normalized_doc_id),
+                "title": title,
+                "score": score if valid_answers else None,
+                "positive_decisions": positive_decisions,
+                "negative_decisions": negative_decisions,
+            }
+        )
+    return evaluations
+
+
+def _jev_bag_of_decisions_judge_is_passing(
+    evaluations: list[dict[str, Any]],
+) -> bool:
+    if not evaluations:
+        return False
+    return all(
+        evaluation.get("score") is not None
+        and bool(evaluation.get("positive_decisions"))
+        and not evaluation.get("negative_decisions")
+        for evaluation in evaluations
+    )
+
+
+def _jev_bag_of_decisions_judge_feedback(
+    evaluations: list[dict[str, Any]],
+) -> str:
+    lines = []
+    for index, evaluation in enumerate(evaluations, start=1):
+        title = f" {evaluation['title']}" if evaluation.get("title") else ""
+        score = evaluation.get("score")
+        score_text = (
+            f"{score:.3f}"
+            if isinstance(score, (int, float))
+            and not isinstance(score, bool)
+            and math.isfinite(score)
+            and score >= 0
+            else "n/a"
+        )
+        lines.append(
+            f"{index}.{title} (ID: {evaluation['doc_id']}; "
+            f"rubric score: {score_text})"
+        )
+        positive_decisions = evaluation.get("positive_decisions") or []
+        negative_decisions = evaluation.get("negative_decisions") or []
+        for decision in positive_decisions:
+            lines.append(
+                f"   👍 {decision['question']} "
+                f"(P(yes)={decision['probability']:.3f})"
+            )
+        for decision in negative_decisions:
+            lines.append(
+                f"   👎 {decision['question']} "
+                f"(P(yes)={decision['probability']:.3f})"
+            )
+        if not positive_decisions and not negative_decisions:
+            lines.append("   No criteria cleared either probability threshold.")
+    if not lines:
+        return "No results were available to evaluate."
+    return "\n".join(lines)
+
+
 def evaluate_validator(
     condition: dict,
     *,
@@ -558,6 +887,38 @@ def evaluate_validator(
         return (
             f"{condition['prompt']}\n\n"
             f"Jev evaluations:\n\n{eval_block}\n\n"
+            "System reminder: return DOC IDs ranked best to worst."
+        )
+    if condition["name"] == "jev_bag_of_decisions_judge":
+        ranked = getattr(resp.output_parsed, "ranked_results", None) if resp else None
+        ranked_doc_ids = list(ranked or [])
+        params = condition["params"]
+        if agent_state is not None:
+            run_key = "jev_bag_of_decisions_judge_runs"
+            agent_state[run_key] = agent_state.get(run_key, 0) + 1
+            judge_runs = agent_state[run_key]
+        else:
+            judge_runs = num_loops
+        evaluations = _run_jev_bag_of_decisions_judge(
+            query=query,
+            corpus=corpus,
+            lookup=lookup,
+            ranked_doc_ids=ranked_doc_ids,
+            model=str(params["model"]),
+            generator=params["generator"],
+            positive_probability_threshold=params["positive_probability_threshold"],
+            negative_probability_threshold=params["negative_probability_threshold"],
+            state_format=params["state_format"],
+            agent_state=agent_state,
+        )
+        if _jev_bag_of_decisions_judge_is_passing(evaluations):
+            return True
+        if judge_runs >= int(params.get("max_runs", 2)):
+            return True
+        return (
+            f"{condition['prompt']}\n\n"
+            f"Jev bag-of-decisions evaluations:\n\n"
+            f"{_jev_bag_of_decisions_judge_feedback(evaluations)}\n\n"
             "System reminder: return DOC IDs ranked best to worst."
         )
     if condition["name"] == "oracle":

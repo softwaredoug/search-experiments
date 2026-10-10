@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from exps.agentic import conditions
+from exps.bag_of_decisions.decision_question import DecisionQuestion
 from tests.utils.agent_fakes import FakeJevChoice, FakeJevClient
 
 
@@ -263,3 +264,232 @@ def test_jev_judge_relevance_marks_unrenderable_results_uncertain():
     assert isinstance(result, str)
     assert "uncertain" in result.lower()
     assert fake_client.calls == []
+
+
+def _bag_of_decisions_condition_config(params: dict | None = None):
+    configured_params = {
+        "model": "jev/jev-latest",
+        "positive_probability_threshold": 0.75,
+        "negative_probability_threshold": 0.25,
+        "max_runs": 2,
+        "generator": {
+            "model": "gpt-5-mini",
+            "system_prompt": "Generate relevance criteria.",
+            "prompt": "Generate criteria for {query}.",
+        },
+        "state_format": "Query: {query}\n{title}\n{description}",
+    }
+    if params is not None:
+        configured_params.update(params)
+    return [
+        {
+            "jev_bag_of_decisions_judge": {
+                "prompt": "Improve the results.",
+                "params": configured_params,
+            }
+        }
+    ]
+
+
+class _ScriptedDecisionGenerator:
+    instances = []
+    questions = [
+        "Does this product satisfy the query?",
+        "Is this product intended for the requested audience?",
+        "Does this product match the requested use?",
+    ]
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.generate_calls = []
+        self.__class__.instances.append(self)
+
+    def generate(self, query):
+        self.generate_calls.append(query)
+        return [DecisionQuestion(instructions=q) for q in self.questions]
+
+
+class _ScriptedNoul:
+    def __init__(self, *, instructions, criteria=None):
+        self.instructions = instructions
+        self.criteria = criteria
+
+
+class _ScriptedNoulClient:
+    instances = []
+    responses = []
+
+    def __init__(self, *, api_key, model):
+        self.api_key = api_key
+        self.model = model
+        self.calls = []
+        self.__class__.instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        probabilities = self.responses.pop(0)
+        answers = {
+            question_id: SimpleNamespace(noul=probabilities[index])
+            for index, question_id in enumerate(questions)
+        }
+        return SimpleNamespace(answers=answers)
+
+
+def _evaluate_bag_of_decisions(
+    monkeypatch,
+    probabilities,
+    *,
+    agent_state=None,
+    doc_ids=None,
+    params=None,
+):
+    if agent_state is None:
+        _ScriptedDecisionGenerator.instances = []
+        _ScriptedNoulClient.instances = []
+    _ScriptedNoulClient.responses = list(probabilities)
+    monkeypatch.setattr(
+        conditions, "DecisionGenerator", _ScriptedDecisionGenerator, raising=False
+    )
+    monkeypatch.setattr(conditions, "Noul", _ScriptedNoul, raising=False)
+    monkeypatch.setattr(conditions, "TypeSafeClient", _ScriptedNoulClient)
+    monkeypatch.setattr(conditions, "key_for_provider", lambda _provider: "test-key")
+    condition = conditions.normalize_conditions(
+        _bag_of_decisions_condition_config(params), kind="validator"
+    )[0]
+    current_state = agent_state if agent_state is not None else {}
+    result = conditions.evaluate_validator(
+        condition,
+        num_loops=current_state.get("jev_bag_of_decisions_judge_runs", 0) + 1,
+        tool_calls=0,
+        resp=_ranked_response(["101"] if doc_ids is None else doc_ids),
+        query="made for kids",
+        corpus=pd.DataFrame(
+            {
+                "doc_id": [101, 202, 303],
+                "title": ["Kids craft table", "Red shoes", "Task lamp"],
+                "description": [
+                    "A small activity table for children.",
+                    "Leather footwear.",
+                    "An adjustable desk light.",
+                ],
+            }
+        ),
+        lookup=None,
+        judgments=None,
+        agent_state=current_state,
+        logger=None,
+    )
+    return result, current_state
+
+
+def test_normalize_jev_bag_of_decisions_judge_config():
+    condition = conditions.normalize_conditions(
+        _bag_of_decisions_condition_config(
+            {
+                "positive_probability_threshold": "0.8",
+                "negative_probability_threshold": "0.2",
+            }
+        ),
+        kind="validator",
+    )[0]
+
+    assert condition["name"] == "jev_bag_of_decisions_judge"
+    assert condition["params"]["positive_probability_threshold"] == 0.8
+    assert condition["params"]["negative_probability_threshold"] == 0.2
+    assert condition["params"]["max_runs"] == 2
+
+
+@pytest.mark.parametrize(
+    "params, message",
+    [
+        ({"positive_probability_threshold": 0.2}, "negative_probability_threshold <"),
+        ({"negative_probability_threshold": 0.75}, "negative_probability_threshold <"),
+        ({"positive_probability_threshold": 1.01}, "positive_probability_threshold"),
+        ({"negative_probability_threshold": -0.01}, "negative_probability_threshold"),
+        ({"model": "openai/gpt-5-mini"}, "Jev model"),
+        ({"generator": None}, "params.generator as a mapping"),
+        ({"max_runs": 0}, "max_runs > 0"),
+    ],
+)
+def test_normalize_jev_bag_of_decisions_judge_rejects_invalid_config(params, message):
+    with pytest.raises(ValueError, match=message):
+        conditions.normalize_conditions(
+            _bag_of_decisions_condition_config(params), kind="validator"
+        )
+
+
+def test_jev_bag_of_decisions_judge_is_validator_only():
+    with pytest.raises(ValueError, match="only supported for validators"):
+        conditions.normalize_conditions(
+            _bag_of_decisions_condition_config(), kind="stop"
+        )
+
+
+def test_jev_bag_of_decisions_judge_scores_and_emits_only_thresholded_questions(
+    monkeypatch,
+):
+    result, agent_state = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.75, 0.25, 0.5]],
+    )
+
+    assert isinstance(result, str)
+    assert "Jev bag-of-decisions evaluations" in result
+    assert "👍 Does this product satisfy the query?" in result
+    assert "👎 Is this product intended for the requested audience?" in result
+    assert "Does this product match the requested use?" not in result
+    assert "1.500" in result
+    assert agent_state["jev_bag_of_decisions_judge_runs"] == 1
+    assert len(_ScriptedNoulClient.instances[0].calls) == 1
+    state, questions = _ScriptedNoulClient.instances[0].calls[0]
+    assert "made for kids" in state
+    assert "Kids craft table" in state
+    assert len(questions) == 3
+
+
+def test_jev_bag_of_decisions_judge_passes_results_with_positive_only_evidence(
+    monkeypatch,
+):
+    result, _ = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.9, 0.5, 0.75]],
+    )
+
+    assert result is True
+
+
+def test_jev_bag_of_decisions_judge_accepts_after_max_runs(monkeypatch):
+    result, agent_state = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.1, 0.1, 0.1]],
+        params={"max_runs": 1},
+    )
+
+    assert result is True
+    assert agent_state["jev_bag_of_decisions_judge_runs"] == 1
+
+
+def test_jev_bag_of_decisions_judge_reuses_generated_rubric_across_retries(
+    monkeypatch,
+):
+    _ScriptedDecisionGenerator.instances = []
+    _ScriptedNoulClient.instances = []
+    state = {}
+    first_result, _ = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.1, 0.1, 0.1]],
+        agent_state=state,
+    )
+    assert isinstance(first_result, str)
+
+    second_result, _ = _evaluate_bag_of_decisions(
+        monkeypatch,
+        [[0.9, 0.9, 0.9]],
+        agent_state=state,
+    )
+
+    assert second_result is True
+    assert sum(
+        len(generator.generate_calls)
+        for generator in _ScriptedDecisionGenerator.instances
+    ) == 1
