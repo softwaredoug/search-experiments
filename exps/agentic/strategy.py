@@ -130,7 +130,10 @@ class AgenticSearchStrategy(SearchStrategy):
         self.num_tool_calls[query] = num_tool_calls
         summary_path = query_dir / "summary.json"
         summary_path.write_text(
-            json.dumps({"num_tool_calls": num_tool_calls}, indent=2) + "\n",
+            json.dumps(
+                {"query": query, "num_tool_calls": num_tool_calls}, indent=2
+            )
+            + "\n",
             encoding="utf-8",
         )
         return ranked_results, [1.0] * len(ranked_results)

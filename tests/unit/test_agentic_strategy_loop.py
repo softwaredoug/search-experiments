@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from unittest.mock import patch
@@ -166,6 +167,8 @@ def test_agentic_stop_tool_calls(tmp_path):
 
     agent_state = _FakeOpenAIAgent.last_instance.last_agent_state
     assert agent_state["num_tool_calls"] == 2
+    summary = json.loads((tmp_path / "query" / "summary.json").read_text())
+    assert summary == {"query": "query", "num_tool_calls": 2}
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent_with_results)
