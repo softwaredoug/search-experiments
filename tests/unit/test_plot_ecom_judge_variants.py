@@ -112,7 +112,7 @@ def test_collect_tool_calls_limits_rows_to_agentic_strategies(tmp_path):
     assert rows[0]["num_tool_calls"] == 4
 
 
-def test_pareto_points_use_per_query_trace_calls_over_cached_summary_calls(tmp_path):
+def test_pareto_points_require_trace_calls_and_ignore_summary_tool_calls(tmp_path):
     summary_path = tmp_path / "summary.csv"
     tool_calls_path = tmp_path / "tool_calls.csv"
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
@@ -165,6 +165,8 @@ def test_pareto_points_use_per_query_trace_calls_over_cached_summary_calls(tmp_p
             ]
         )
 
+    assert _read_pareto_points(summary_path, None) == {}
+
     points = _read_pareto_points(summary_path, tool_calls_path)["esci"]
 
     judge_point = next(
@@ -174,6 +176,9 @@ def test_pareto_points_use_per_query_trace_calls_over_cached_summary_calls(tmp_p
     )
     assert judge_point["tool_calls_mean"] == 4
     assert judge_point["mean_ndcg"] == 0.45
+    assert {point["strategy"] for point in points} == {
+        "agentic_ecom_bm25_fewshot_judge"
+    }
 
 
 def test_pareto_front_keeps_lower_call_higher_ndcg_points():

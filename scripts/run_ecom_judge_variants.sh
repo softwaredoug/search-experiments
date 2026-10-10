@@ -11,7 +11,7 @@ DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
 # Set NO_CACHE=false to reuse strategy results; tool-call collection then falls
 # back to the most recent saved trace for each query.
-NO_CACHE="${NO_CACHE:-true}"
+NO_CACHE="${NO_CACHE:-false}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 
 CONFIGS=(

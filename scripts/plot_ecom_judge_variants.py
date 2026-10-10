@@ -160,7 +160,6 @@ def _read_pareto_points(
     tool_calls_path: Path | None,
 ) -> dict[str, list[dict[str, float | str]]]:
     ndcg_totals: dict[tuple[str, str], list[float]] = defaultdict(list)
-    summary_calls: dict[tuple[str, str], list[float]] = defaultdict(list)
     with summary_path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
@@ -178,14 +177,6 @@ def _read_pareto_points(
                 raise ValueError(
                     f"Invalid mean_ndcg for {dataset}/{strategy} in {summary_path}"
                 ) from exc
-            raw_calls = row.get("tool_calls_mean")
-            if raw_calls not in (None, ""):
-                try:
-                    summary_calls[(dataset, strategy)].append(float(raw_calls))
-                except ValueError as exc:
-                    raise ValueError(
-                        f"Invalid tool_calls_mean for {dataset}/{strategy}."
-                    ) from exc
 
     traced_calls: dict[tuple[str, str], list[float]] = defaultdict(list)
     if tool_calls_path is not None and tool_calls_path.is_file():
@@ -201,9 +192,7 @@ def _read_pareto_points(
     labels = dict(STRATEGIES)
     points_by_dataset: dict[str, list[dict[str, float | str]]] = defaultdict(list)
     for (dataset, strategy), ndcg_values in ndcg_totals.items():
-        calls = traced_calls.get((dataset, strategy)) or summary_calls.get(
-            (dataset, strategy), []
-        )
+        calls = traced_calls.get((dataset, strategy), [])
         if not calls:
             continue
         mean_calls = sum(calls) / len(calls)
