@@ -2,7 +2,7 @@
 
 Scatter gather is a search strategy. Currently it only supports the WANDS dataset.
 
-Scatter gather utilizes a series of agents programatically. See docs/agentic_prd.md. All parameters
+Scatter gather utilizes a series of agents programatically. See the [agentic guide](agentic/agentic.md). All parameters
 supported by agents, would be supported here (implementation hint, both rely on the same core Agent class). That should already be distinct from the agentic strategy. 
 
 0. Select - An agent uses tools to gather the best N categories to search within

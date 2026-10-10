@@ -1,6 +1,6 @@
 # Agentic Filesystem Search Tools
 
-(This set of tools is an extension of the [agentic toolset](docs/agentic_prd.md) adding tools to search the file system).
+(This set of tools is an extension of the [agentic toolset](agentic/agentic.md) adding tools to search the file system).
 
 Modern agents can use coding tools to search filesystems surprisingly well. So a set of tools (grep, etc) can be used in an 
 agentic strategy to search a virtual filesystem
@@ -34,7 +34,7 @@ These are the best red shoes you'll ever find. They're super comfy and stylish.
 ## Tools
 
 Its expected in an agentic strategy we would have the following tools as python functions, similar to other tools in
-docs/agentic_prd.md
+[agentic/agentic.md](agentic/agentic.md)
 
 
 - `ls`: list files in a directory that match a glob. Can be used to navigate the virtual file system.

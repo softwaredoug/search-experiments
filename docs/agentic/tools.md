@@ -1,6 +1,6 @@
 This page documents teh available tools when experimenting with agentic strategies.
 
-See [Agentic Strategy Docs])docs/agentic/agentic.md) for the complete details of agentic data.
+See [Agentic Strategy Docs](agentic.md) for the complete details of agentic data.
 
 ## Tools
 
@@ -69,7 +69,7 @@ scores the token list as one term. Only title and description are supported.
 
 File system tools allow the agent to search the file system using standard commands like "ls", "cat", and "grep". It involves writing an index for the dataset on the filesystem and then giving the agent grep, ls, cat to search the file system.
 
-See docs/agentic_filesystem_prd.md
+See [Agentic filesystem tools](../agentic_filesystem_prd.md).
 
 ### TODO Tool
 

@@ -6,6 +6,33 @@ Its my labratory for search approaches - lexical, vector, agentic, etc retrieval
 
 This doc sets out the important requirements of this project.
 
+## Documentation map
+
+Start with this PRD for project-wide requirements, then follow the strategy guide for the
+`strategy.type` being configured. The type names below are the registered values in
+[`exps/strategy_config.py`](../exps/strategy_config.py); `strategy.name` is the experiment name,
+not the strategy type.
+
+| Strategy type | What it does | Strategy guide | Example config / implementation |
+| --- | --- | --- | --- |
+| `bm25` | Lexical retrieval baseline with configurable fields and boosts. | This PRD's [configurable strategies](#configurable-strategies) section; there is no separate BM25 PRD yet. | [E-commerce BM25 config](../configs/ecom_base/bm25.yml) · [implementation](../exps/strategies/bm25.py) |
+| `embedding` | Dense retrieval using an embedding model. | There is no separate embedding PRD yet. | [MiniLM config](../configs/ecom_base/embedding_minilm.yml) · [E5 MS MARCO config](../configs/msmarco/embedding_e5_msmarco.yml) · [implementation](../exps/strategies/embedding.py) |
+| `agentic` | Tool-using search agent with validators, stoppers, and optional agent plans. | [Agentic search guide](agentic/agentic.md). Related: [tools](agentic/tools.md), [conditionals](agentic/conditionals.md), [filesystem tools](agentic_filesystem_prd.md), [agent topology experiment](orchestrate_prd.md), and [agentic notebooks](notebooks_agentic.md). | [E-commerce agentic config](../configs/ecom_base/agentic_ecom_bm25_gpt5_mini.yml) · [implementation](../exps/agentic/strategy.py) |
+| `scatter_gather_wands` | Select WANDS categories, search each category, then gather and rerank candidates. | [Scatter/gather guide](scatter_gather.md) (WANDS-specific). | [Scatter/gather config](../configs/cheat-at-search/scatter_gather_wands.yml) · [implementation](../exps/agentic/scatter_gather.py) |
+| `bag_of_decisions` | Generate yes/no relevance decisions and use Jev probabilities to rerank candidates. | [Bag-of-decisions guide](bag_of_decisions.md). | [LLM-generated decisions config](../configs/ecom_decisions/bag_of_decisions.yml) · [implementation](../exps/bag_of_decisions/strategy.py) |
+| `query_understanding` | Enrich a query (for example, classify its category) before retrieval. | [Query-understanding guide](query_understanding/query_understanding.md), [enrichment engines](query_understanding/enrichment_engines.md), and [engine evaluation](query_understanding/enrichment_engines_eval.md). | [E-commerce query-understanding config](../configs/ecom_class/category/openai/ecom_query_understanding.yml) · [implementation](../exps/query_understanding/strategy.py) |
+| `rag` | Rewrite a query with an LLM, then retrieve documents with one search tool. | [RAG guide](rag.md). | [BM25 RAG config](../configs/rag_bm25.yml) · [implementation](../exps/strategies/rag.py) |
+| `codegen` | Train generated retrieval/reranking code against judgments. | [Code-generation PRD](codegen_prd.md). | [E-commerce codegen config](../configs/codegen/codegen_ecom.yml) · [implementation](../exps/codegen/strategy.py) |
+
+When adding a registered strategy type, add its guide or implementation/config entry here so agents
+can discover the strategy-specific requirements from `AGENTS.md` → this PRD.
+
+### Cross-cutting guides
+
+- [Testing practices](tests.md) and [end-to-end test guidance](e2e_tests.md)
+- [Runner tests PRD](runner_tests_prd.md)
+- [Notebook generation PRD](notebooks_prd.md), plus strategy-specific notebook guides where present
+
 ## Python tooling
 
 This project is managed by uv

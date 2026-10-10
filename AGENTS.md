@@ -2,7 +2,7 @@
 
 This repo runs various search relevance experiments, particularly agentic and code generation experiments.
 
-Details can be examined in the docs/ folder. Particularly [docs](docs/prd.md)
+Start with [docs/prd.md](docs/prd.md) for project-wide requirements and the index of strategy-specific guides.
 
 # Development Practices
 

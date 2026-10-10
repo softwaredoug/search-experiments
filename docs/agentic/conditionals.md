@@ -2,7 +2,7 @@
 
 Conditionals etc apply some kind of feedback to the agent after the tool calling loop is complete.
 
-See [Agentic Strategy Docs])docs/agentic/agentic.md) for the complete details of agentic data.
+See [Agentic Strategy Docs](agentic.md) for the complete details of agentic data.
 
 Some params require wrapping the agentic loop itself in a harness to drive execution.
 
@@ -215,4 +215,3 @@ If a dataset has four labels, the emojis should be: [🤩, 😃, 😐, 😞]
 
 If a document does not have a label for a query, it should receive the most negative emoji 😞 consistent
 with the rules of most open search datasets
-

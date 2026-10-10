@@ -101,7 +101,7 @@ And those would be inclulded in the prompt. If this corpus does not have this, t
 Search Tools or just 'tools' are configured in the agentic strategy, as above the 'bm25' and 'minilm' tools are
 specified
 
-More details can be found in [Tools Documentation](docs/agentic/tools.md)
+More details can be found in [Tools Documentation](tools.md)
 
 ### Top k
 
@@ -130,7 +130,7 @@ Some params require wrapping the agentic loop itself to give feedback to the age
 IE a judge or validator or something else that sits outside, checks the results that came back and fails
 if they don't meet the criteria. Then it can append a prompt to the context and call the agent again.
 
-More details can be found in [Conditionals Documentation](docs/agentic/conditionals.md)
+More details can be found in [Conditionals Documentation](conditionals.md)
 
 ## Plan through list of agents
 
