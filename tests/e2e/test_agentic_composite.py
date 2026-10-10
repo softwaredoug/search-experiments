@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 
 from exps.runners.run import RunParams, run_benchmark
 from tests.utils.agent_fakes import FakeOpenAIAgent
@@ -26,15 +27,32 @@ class _FakeJevClient:
         type(self).calls.append((state, questions))
         return SimpleNamespace(
             answers={
-                "relevance": SimpleNamespace(
+                question_id: SimpleNamespace(
+                    noul=0.9,
                     probabilities={"Relevant": 0.9, "Not Relevant": 0.1},
                     confidence=0.95,
                 )
+                for question_id in questions
             }
         )
 
 
-def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset):
+class _FakeQuestionGenerator:
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.response_model = kwargs["response_model"]
+        self.prompts = []
+        type(self).instances.append(self)
+
+    def enrich(self, prompt):
+        self.prompts.append(prompt)
+        return self.response_model(decisions=["Does this product satisfy the query?"])
+
+
+@pytest.mark.parametrize("reranker_type", ["jev", "bag_of_decisions"])
+def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset, reranker_type):
     corpus = doug_blog_dataset.corpus
     doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(10).tolist()]
     instances: list[FakeOpenAIAgent] = []
@@ -57,6 +75,34 @@ def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset):
         return agent
 
     config_path = tmp_path / "agentic_composite_rrf.yml"
+    reranker_config = (
+        """
+          reranker_engine:
+            type: jev
+            k: 3
+            params:
+              decision_model: jev/jev-latest
+              decision_weight: 10
+              confidence_threshold: 0.7
+              state_format: "{title}: {description}"
+              prompt: "Is this document relevant to the {query}?"
+"""
+        if reranker_type == "jev"
+        else """
+          reranker_engine:
+            type: bag_of_decisions
+            k: 3
+            params:
+              decision_model: jev/jev-latest
+              decision_weight: 10
+              state_format: "{title}: {description}"
+              generator:
+                type: llm
+                model: gpt-5-mini
+                system_prompt: Generate relevance questions for product search.
+                prompt: Generate yes/no questions for {query}.
+"""
+    )
     config_path.write_text(
         """
 strategy:
@@ -75,16 +121,7 @@ strategy:
               - e5_base_v2
             weights: [2, 1]
             rank_constant: 60
-          reranker_engine:
-            type: jev
-            k: 3
-            params:
-              decision_model: jev/jev-latest
-              decision_weight: 10
-              confidence_threshold: 0.7
-              state_format: "{title}: {description}"
-              prompt: "Is this document relevant to the {query}?"
-""".lstrip(),
+""".lstrip() + reranker_config,
         encoding="utf-8",
     )
     params = RunParams(
@@ -109,6 +146,7 @@ strategy:
         patch("exps.agentic.agent.build_openai_agent", side_effect=build_fake_agent),
         patch("exps.tools.reranker.TypeSafeClient", _FakeJevClient),
         patch("exps.tools.reranker.key_for_provider", return_value="typesafe-test-key"),
+        patch("exps.tools.reranker.AutoEnricher", _FakeQuestionGenerator),
     ):
         result = run_benchmark(params)
 
@@ -117,6 +155,10 @@ strategy:
     assert result.summary["tool_calls_mean"] >= 1.0
     assert mock_embeddings.call_count == 1
     assert len(_FakeJevClient.calls) == 3
+    if reranker_type == "bag_of_decisions":
+        assert _FakeQuestionGenerator.instances[-1].prompts == [
+            "Generate yes/no questions for salon chair."
+        ]
     assert len(instances) == 1
     tool_outputs = [
         item["output"]

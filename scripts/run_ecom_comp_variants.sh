@@ -16,6 +16,7 @@ CONFIGS=(
   "configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml"
   "configs/ecom_comp/agentic_ecom_composite_rrf_gpt5_mini.yml"
   "configs/ecom_comp/agentic_ecom_composite_rrf_jev_gpt5_mini.yml"
+  "configs/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_gpt5_mini.yml"
 )
 
 DATASETS=("esci" "wands")

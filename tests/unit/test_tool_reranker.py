@@ -33,6 +33,54 @@ class _ScriptedJevClient:
         )
 
 
+class _ScriptedQuestionGenerator:
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.response_model = kwargs["response_model"]
+        self.cached_calls = []
+        self.uncached_calls = []
+        self.enricher = SimpleNamespace(enrich=self.enrich_uncached)
+        type(self).instances.append(self)
+
+    def enrich_uncached(self, prompt):
+        self.uncached_calls.append(prompt)
+        return self.response_model(
+            decisions=["Is it a desk?", "Is it useful for studying?", "Is it a desk?"]
+        )
+
+    def enrich(self, prompt):
+        self.cached_calls.append(prompt)
+        return self.response_model(
+            decisions=["Is it a desk?", "Is it useful for studying?", "Is it a desk?"]
+        )
+
+
+class _ScriptedNoulClient:
+    instances = []
+
+    def __init__(self, *, api_key, model):
+        self.api_key = api_key
+        self.model = model
+        self.calls = []
+        type(self).instances.append(self)
+
+    def system_one(self, *, state, questions):
+        self.calls.append((state, questions))
+        title = state.splitlines()[1]
+        probabilities = {
+            "Alpha": {"decision_0": 0.1, "decision_1": 0.2},
+            "Beta": {"decision_0": 0.9, "decision_1": 0.8},
+        }[title]
+        return SimpleNamespace(
+            answers={
+                question_id: SimpleNamespace(noul=probabilities[question_id])
+                for question_id in questions
+            }
+        )
+
+
 def _corpus():
     return pd.DataFrame(
         {
@@ -87,6 +135,57 @@ def test_jev_reranker_adds_weighted_probability_and_sorts_candidates():
     assert question.criteria["Relevant"]
 
 
+def test_bag_of_decisions_generator_sums_nouls_and_reranks_candidates():
+    _ScriptedQuestionGenerator.instances = []
+    _ScriptedNoulClient.instances = []
+    config = {
+        "type": "bag_of_decisions",
+        "k": 2,
+        "params": {
+            "decision_model": "jev/jev-latest",
+            "decision_weight": 10,
+            "state_format": "Query: {query}\n{title}\n{description}",
+            "generator": {
+                "type": "llm",
+                "model": "gpt-5-mini",
+                "system_prompt": "Generate relevance questions.",
+                "prompt": "Generate yes/no questions for {query}.",
+                "no_cache": True,
+            },
+        },
+    }
+
+    with (
+        patch("exps.tools.reranker.AutoEnricher", _ScriptedQuestionGenerator),
+        patch("exps.tools.reranker.TypeSafeClient", _ScriptedNoulClient),
+        patch("exps.tools.reranker.key_for_provider", return_value="typesafe-test-key"),
+    ):
+        reranker = make_reranker(_corpus(), config)
+        results = reranker.rerank(
+            query="desk",
+            candidates=[
+                {"id": 1, "title": "Alpha", "description": "Description A", "score": 1.0},
+                {"id": 2, "title": "Beta", "description": "Description B", "score": 0.5},
+                {"id": 3, "title": "Gamma", "description": "Description C", "score": 0.1},
+            ],
+        )
+
+    assert [candidate["id"] for candidate in results] == [2, 1, 3]
+    assert [candidate["score"] for candidate in results] == pytest.approx(
+        [17.5, 4.0, 0.1]
+    )
+    generator = _ScriptedQuestionGenerator.instances[0]
+    assert generator.uncached_calls == ["Generate yes/no questions for desk."]
+    assert generator.cached_calls == []
+    client = _ScriptedNoulClient.instances[0]
+    assert len(client.calls) == 2
+    assert [question.instructions for question in client.calls[0][1].values()] == [
+        "Is it a desk?",
+        "Is it useful for studying?",
+    ]
+    assert _ScriptedNoulClient.instances[0].model == "jev-latest"
+
+
 def test_make_reranker_returns_none_when_not_configured():
     assert make_reranker(_corpus(), None) is None
 
@@ -94,7 +193,7 @@ def test_make_reranker_returns_none_when_not_configured():
 @pytest.mark.parametrize(
     ("config", "message"),
     [
-        ({"type": "llm"}, "supports only type 'jev'"),
+        ({"type": "llm"}, "supports types 'jev' and 'bag_of_decisions'"),
         (_reranker_config(decision_model="gpt-5"), "must be a Jev model"),
         (_reranker_config(confidence_threshold=1.1), "confidence_threshold"),
         (_reranker_config(state_format="{missing}"), "missing corpus fields"),

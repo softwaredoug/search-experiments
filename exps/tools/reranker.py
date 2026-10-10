@@ -6,7 +6,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from cheat_at_search.data_dir import key_for_provider
-from typesafe_sdk import Choice, TypeSafeClient
+from cheat_at_search.enrich.enrich import AutoEnricher
+from pydantic import Field, create_model
+from typesafe_sdk import Choice, Noul, TypeSafeClient
 
 
 _RELEVANT_LABEL = "Relevant"
@@ -195,24 +197,228 @@ class JevReranker:
         return reranked + [dict(candidate) for candidate in candidates[rerank_count:]]
 
 
-def make_reranker(corpus, config: dict | None) -> JevReranker | None:
+class BagOfDecisionsReranker:
+    """Generate query-specific questions and add their Jev P(yes) sum."""
+
+    def __init__(
+        self,
+        *,
+        corpus,
+        k: int,
+        decision_model: str,
+        decision_weight: float,
+        state_format: str,
+        generator: dict[str, Any],
+    ):
+        self.k = _positive_integer(k, "reranker.k")
+        if self.k > 100:
+            raise ValueError("reranker.k must be <= 100.")
+        self.decision_model = _jev_model_name(decision_model)
+        self.decision_weight = _finite_number(
+            decision_weight, "reranker.params.decision_weight"
+        )
+        if self.decision_weight < 0:
+            raise ValueError("reranker.params.decision_weight must be non-negative.")
+        if not isinstance(state_format, str) or not state_format.strip():
+            raise ValueError("reranker.params.state_format must be a non-empty string.")
+
+        available_fields = set(corpus.columns) | {"id", "query"}
+        missing_state_fields = sorted(
+            _template_fields(state_format, name="reranker.params.state_format")
+            - available_fields
+        )
+        if missing_state_fields:
+            raise ValueError(
+                "reranker.params.state_format references missing corpus fields: "
+                + ", ".join(missing_state_fields)
+            )
+        if not isinstance(generator, dict):
+            raise ValueError("reranker.params.generator must be a mapping.")
+        if generator.get("type", "llm") != "llm":
+            raise ValueError("bag_of_decisions generator.type must be 'llm'.")
+
+        generator_model = generator.get("model")
+        system_prompt = generator.get("system_prompt")
+        prompt = generator.get("prompt")
+        for value, name in (
+            (generator_model, "model"),
+            (system_prompt, "system_prompt"),
+            (prompt, "prompt"),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    f"reranker.params.generator.{name} must be a non-empty string."
+                )
+        prompt_fields = _template_fields(
+            prompt, name="reranker.params.generator.prompt"
+        )
+        if "query" not in prompt_fields or prompt_fields - {"query"}:
+            raise ValueError(
+                "reranker.params.generator.prompt must use {query} and no other fields."
+            )
+
+        self.state_format = state_format
+        self.generator_prompt = prompt
+        if "doc_id" in corpus.columns:
+            self._documents = {
+                str(row["doc_id"]): row.to_dict() for _, row in corpus.iterrows()
+            }
+        else:
+            self._documents = {
+                str(index): row.to_dict() for index, row in corpus.iterrows()
+            }
+
+        normalized_model = (
+            generator_model.strip()
+            if "/" in generator_model
+            else f"openai/{generator_model.strip()}"
+        )
+        self.no_cache = bool(generator.get("no_cache", False))
+        response_model = create_model(
+            "ToolBagOfDecisionsQuestions",
+            decisions=(
+                list[str],
+                Field(
+                    ...,
+                    description=(
+                        "Concise yes/no questions whose affirmative answers indicate "
+                        "that a document is relevant to the query."
+                    ),
+                ),
+            ),
+        )
+        self.generator = AutoEnricher(
+            model=normalized_model,
+            system_prompt=system_prompt,
+            response_model=response_model,
+            temperature=generator.get("temperature"),
+            reasoning_effort=generator.get("reasoning"),
+            verbosity=generator.get("verbosity"),
+        )
+        self.client = TypeSafeClient(
+            api_key=key_for_provider("typesafe"),
+            model=self.decision_model,
+        )
+
+    def _generate_questions(self, query: str) -> list[str]:
+        try:
+            prompt = self.generator_prompt.format(query=query)
+        except (IndexError, KeyError, ValueError) as exc:
+            raise ValueError(
+                "Could not render reranker.params.generator.prompt with {query}."
+            ) from exc
+        if self.no_cache:
+            response = self.generator.enricher.enrich(prompt)
+        else:
+            response = self.generator.enrich(prompt)
+        raw_questions = (
+            getattr(response, "decisions", None) if response is not None else None
+        )
+        if not isinstance(raw_questions, (list, tuple)):
+            return []
+        questions = []
+        seen = set()
+        for question in raw_questions:
+            if (
+                isinstance(question, str)
+                and question.strip()
+                and question.strip() not in seen
+            ):
+                normalized = question.strip()
+                questions.append(normalized)
+                seen.add(normalized)
+        return questions
+
+    def _probability_sum(
+        self,
+        *,
+        query: str,
+        candidate: Mapping[str, Any],
+        questions: list[str],
+    ) -> float:
+        doc_id = candidate.get("id", candidate.get("doc_id"))
+        document = self._documents.get(str(doc_id), {})
+        try:
+            state = self.state_format.format_map(
+                {**document, **candidate, "query": query}
+            )
+        except (IndexError, KeyError, ValueError) as exc:
+            raise ValueError("Could not render reranker.params.state_format.") from exc
+
+        typed_questions = {
+            f"decision_{index}": Noul(instructions=question)
+            for index, question in enumerate(questions)
+        }
+        response = self.client.system_one(state=state, questions=typed_questions)
+        answers = getattr(response, "answers", None)
+        answers = answers if isinstance(answers, dict) else {}
+        total_probability = 0.0
+        for question_id in typed_questions:
+            answer = answers.get(question_id)
+            probability = getattr(answer, "noul", None)
+            if JevReranker._valid_probability(probability):
+                total_probability += float(probability)
+        return total_probability
+
+    def rerank(
+        self,
+        *,
+        query: str,
+        candidates: list[dict[str, Any]],
+        agent_state: dict | None = None,
+    ) -> list[dict[str, Any]]:
+        del agent_state  # Reserved for future request tracing/cache context.
+        rerank_count = min(self.k, len(candidates))
+        reranked = [dict(candidate) for candidate in candidates[:rerank_count]]
+        questions = self._generate_questions(query)
+        if questions:
+            for candidate in reranked:
+                probability_sum = self._probability_sum(
+                    query=query,
+                    candidate=candidate,
+                    questions=questions,
+                )
+                candidate["score"] = float(candidate.get("score", 0.0)) + (
+                    self.decision_weight * probability_sum
+                )
+            reranked.sort(
+                key=lambda candidate: candidate.get("score", 0.0),
+                reverse=True,
+            )
+        return reranked + [dict(candidate) for candidate in candidates[rerank_count:]]
+
+
+def make_reranker(
+    corpus, config: dict | None
+) -> JevReranker | BagOfDecisionsReranker | None:
     """Build the configured reranker, or return ``None`` when omitted."""
     if config is None:
         return None
     if not isinstance(config, dict):
         raise ValueError("reranker_engine must be a mapping.")
-    if config.get("type") != "jev":
-        raise ValueError("reranker_engine currently supports only type 'jev'.")
-
+    reranker_type = config.get("type")
     params = config.get("params") or {}
     if not isinstance(params, dict):
         raise ValueError("reranker_engine.params must be a mapping.")
-    return JevReranker(
-        corpus=corpus,
-        k=config.get("k", 100),
-        decision_model=params.get("decision_model"),
-        decision_weight=params.get("decision_weight", 10),
-        confidence_threshold=params.get("confidence_threshold", 0.7),
-        state_format=params.get("state_format", "{title}\n{description}"),
-        prompt=params.get("prompt", "Is this document relevant to the {query}?"),
+    if reranker_type == "jev":
+        return JevReranker(
+            corpus=corpus,
+            k=config.get("k", 100),
+            decision_model=params.get("decision_model"),
+            decision_weight=params.get("decision_weight", 10),
+            confidence_threshold=params.get("confidence_threshold", 0.7),
+            state_format=params.get("state_format", "{title}\n{description}"),
+            prompt=params.get("prompt", "Is this document relevant to the {query}?"),
+        )
+    if reranker_type == "bag_of_decisions":
+        return BagOfDecisionsReranker(
+            corpus=corpus,
+            k=config.get("k", 100),
+            decision_model=params.get("decision_model"),
+            decision_weight=params.get("decision_weight", 10),
+            state_format=params.get("state_format", "{title}\n{description}"),
+            generator=params.get("generator"),
+        )
+    raise ValueError(
+        "reranker_engine currently supports types 'jev' and 'bag_of_decisions'."
     )

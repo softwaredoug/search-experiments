@@ -14,6 +14,10 @@ STRATEGIES = (
     ("agentic_bm25_e5_ecommerce_gpt5_mini", "Agentic BM25 + E5"),
     ("agentic_ecom_composite_rrf_gpt5_mini", "BM25 + E5 RRF"),
     ("agentic_ecom_composite_rrf_jev_gpt5_mini", "BM25 + E5 RRF + Jev"),
+    (
+        "agentic_ecom_composite_rrf_bag_of_decisions_gpt5_mini",
+        "BM25 + E5 RRF + Bag of Decisions",
+    ),
 )
 
 
@@ -64,7 +68,14 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     means = _read_mean_ndcg(input_path)
     labels = [label for _, label in STRATEGIES]
     positions = range(len(STRATEGIES))
-    colors = ["#4C78A8", "#72B7B2", "#F2CF5B", "#54A24B", "#E45756"]
+    colors = [
+        "#4C78A8",
+        "#72B7B2",
+        "#F2CF5B",
+        "#54A24B",
+        "#E45756",
+        "#B279A2",
+    ]
 
     fig, axes = plt.subplots(1, len(DATASETS), figsize=(15, 5), sharey=True)
     for ax, dataset in zip(axes, DATASETS):

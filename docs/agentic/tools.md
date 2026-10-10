@@ -71,29 +71,114 @@ support guards.
         max_alternatives: 3
 ```
 
+### Composite tools
+
+We need to create tools that combine multiple search tools together. Composite tools can take
+a set of other tools, combine them with some strategy (ie RRF) and then optionally rerank the results.
+
+
+```yaml
+params:
+  search_tools:
+    - composite:
+        retrieval_engine:
+          type: rrf     # Weighted Reciprocal Rank Fusion
+          tools:       # Any other tool can go here
+            - bm25:
+                params:
+                  title_boost: 9.3
+                  description_boost: 4.1
+                guards:
+                  - disallow_repeated_queries
+            - e5_base_v2
+          weights: [1, 1]   # Weights for each tool in the same order as above
+        reranker_engine:    # Optional reranker engine to rerank the results of the retrieval engine
+            type: jev
+            k: 100  # Rerank the top 100 results from the retrieval engine
+            params:
+                decision_model: jev/jev-latest
+                decision_weight: 10
+                confidence_threshold: 0.7
+                state_format: |
+                {title}
+                {description}
+                prompt: "Is this document relevant to the {query}?"
+```
+
+#### Retrieval Engine
+
+Retrieval engine simply defines the initial retrieval arms or arm that would produce top K results.
+
+- Currently the only retrieval engine supported is `rrf`
+- In `tools` any other search tool could be used
+
+#### Reranker Engine
+
+The reranker engine reranks up to `k` candidates from the retrieval engine. Two
+types are supported: `jev` and `bag_of_decisions`.
+
+`jev` asks one relevance question per candidate and adds its weighted relevance
+probability to the retrieval score. Jev is a decision model from Typesafe; see
+the [reranker cookbook](https://docs.typesafe.ai/cookbooks/rerank_typesafe).
+
+`bag_of_decisions` first uses an LLM to generate query-specific yes/no
+questions, then asks Jev for the probability that each question is true for each
+candidate. It adds `decision_weight` times the sum of those probabilities to the
+RRF score. Noul probabilities have no separate confidence value or threshold.
+
+```yaml
+reranker_engine:
+  type: bag_of_decisions
+  k: 100
+  params:
+    decision_model: jev/jev-latest
+    decision_weight: 10
+    state_format: |
+      Query: {query}
+      {title}
+      {description}
+    generator:
+      type: llm
+      model: gpt-5-mini
+      system_prompt: |
+        Generate concise, distinct yes/no questions for search relevance.
+        A yes answer should indicate that a candidate satisfies the query.
+      prompt: |
+        Generate varied yes/no questions for deciding whether a search result
+        is relevant to this query: {query}
+```
+
+The LLM generator accepts `model`, `system_prompt`, `prompt`, and optional
+`reasoning`, `temperature`, `verbosity`, and `no_cache` settings. Its prompt may
+use `{query}`. The state format may reference corpus fields and `{query}`.
+
+The `reranker_engine` can be omitted, in which case the results from the
+retrieval engine are returned as-is.
+
+
 ### WANDS-specific tools
 
-These tools use WANDS category or product-feature data. The WANDS-suffixed search and filesystem
+these tools use wands category or product-feature data. the wands-suffixed search and filesystem
 tools require the `wands` dataset. `top_categories` uses its configured category column, and
 `check_features_wands` requires a `features` column:
 
-- `bm25_wands`: BM25 title/description search, optionally filtered by one or more categories.
-- `bm25_wands_prefiltered`: BM25 search within the required category; used by scatter/gather.
+- `bm25_wands`: bm25 title/description search, optionally filtered by one or more categories.
+- `bm25_wands_prefiltered`: bm25 search within the required category; used by scatter/gather.
 - `minilm_wands`: default-model embedding search, optionally category-filtered.
-- `e5_base_v2_wands`: E5-base-v2 search with query/passage prefixes, optionally category-filtered.
-- `e5_base_v2_wands_prefiltered`: E5-base-v2 search within the required category; used by
+- `e5_base_v2_wands`: e5-base-v2 search with query/passage prefixes, optionally category-filtered.
+- `e5_base_v2_wands_prefiltered`: e5-base-v2 search within the required category; used by
   scatter/gather.
-- `top_categories`: returns common WANDS categories for category selection.
-- `check_features_wands`: finds WANDS product features similar to requested feature names for a
-  given document ID.
+- `top_categories`: returns common wands categories for category selection.
+- `check_features_wands`: finds wands product features similar to requested feature names for a
+  given document id.
 
-The `*_prefiltered` tools require a category argument. Scatter/gather configurations commonly use
-`top_categories` in the select step and the prefiltered BM25/embedding tools in the scatter step;
+the `*_prefiltered` tools require a category argument. scatter/gather configurations commonly use
+`top_categories` in the select step and the prefiltered bm25/embedding tools in the scatter step;
 see the [scatter/gather guide](../scatter_gather.md).
 
-### Tool guards
+### tool guards
 
-Guards reject a tool call based on its arguments or per-query agent state. A guard's description is
+guards reject a tool call based on its arguments or per-query agent state. A guard's description is
 appended to the tool description. The registered guards are:
 
 - `disallow_repeated_queries`: rejects a query already used with that tool during the run.
