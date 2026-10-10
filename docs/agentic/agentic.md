@@ -51,6 +51,19 @@ Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-sear
 
 Everytime we start a search, we initiate "agent_state". That's like a scratchpad for the agentic loop, harness, and tools to track state and prevent illegal operations. See more in "Tool guards" below. 
 
+## Agentic trace folders
+
+Agentic runs record tool calls and outputs under a working folder rooted at:
+
+```
+~/.search-experiments/agentic/<dataset>/<strategy_name>/<timestamp>
+```
+
+Each query has its own folder and log. Logs record timed model requests and retries, tool calls,
+validator execution, and per-result Jev evaluation. Active queries emit a heartbeat every 30 seconds
+with their current phase and elapsed time, plus a worker stack event after two minutes. Request and
+result payload contents are not added to these diagnostic events.
+
 ## Few shop options
 
 Options to add few-shot examples to the system prompt. These can be configured in the yml as well, and are added to the system prompt before the agentic loop starts.
