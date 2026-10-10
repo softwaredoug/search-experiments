@@ -1,0 +1,38 @@
+strategy:
+  name: agentic_ecom_composite_rrf_jev_gpt5_mini
+  type: agentic
+  description: Agentic search using BM25/E5 RRF followed by Jev reranking.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+
+      Look at the search tools you have, their limitations, and how they work when forming your plan.
+
+      Return 10 results to the user per the SearchResults schema, ranked best to worst.
+    search_tools:
+      - composite:
+          retrieval_engine:
+            type: rrf
+            tools:
+              - bm25:
+                  params:
+                    k1: 1.2
+                    b: 0.75
+                    title_boost: 9.3
+                    description_boost: 4.1
+              - e5_base_v2
+            weights: [1, 1]
+            rank_constant: 60
+          reranker_engine:
+            type: jev
+            k: 100
+            params:
+              decision_model: jev/jev-latest
+              decision_weight: 10
+              confidence_threshold: 0.7
+              state_format: |
+                Query: {query}
+                {title}
+                {description}
+              prompt: "Is this document relevant to the {query}?"

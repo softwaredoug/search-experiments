@@ -1,0 +1,26 @@
+strategy:
+  name: agentic_ecom_composite_rrf_gpt5_mini
+  type: agentic
+  description: Agentic search using weighted RRF over BM25 and E5-base-v2.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use a search tool to find products.
+
+      Look at the search tools you have, their limitations, and how they work when forming your plan.
+
+      Return 10 results to the user per the SearchResults schema, ranked best to worst.
+    search_tools:
+      - composite:
+          retrieval_engine:
+            type: rrf
+            tools:
+              - bm25:
+                  params:
+                    k1: 1.2
+                    b: 0.75
+                    title_boost: 9.3
+                    description_boost: 4.1
+              - e5_base_v2
+            weights: [1, 1]
+            rank_constant: 60
