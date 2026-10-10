@@ -42,6 +42,7 @@ def make_rrf_tool(
     weights: list[float] | None = None,
     *,
     rank_constant: int = 60,
+    reranker=None,
 ):
     """Build a weighted reciprocal-rank-fusion search tool.
 
@@ -83,17 +84,22 @@ def make_rrf_tool(
         top_k: int = 5,
         agent_state=None,
     ) -> list[dict]:
-        """Search configured tools and fuse their ranked results with RRF."""
+        """Fuse configured search tools with RRF and optionally rerank results."""
         if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 0:
             raise ValueError("top_k must be a non-negative integer.")
         if top_k > _MAX_TOP_K:
             return "Error! top_k must be <= 100."
         if top_k == 0:
             return []
+        retrieval_top_k = max(top_k, reranker.k) if reranker is not None else top_k
 
         fused_by_id: dict[str, dict[str, Any]] = {}
         for tool, query_name, weight in zip(search_tools, child_arguments, parsed_weights):
-            child_kwargs = {query_name: query, "top_k": top_k, "agent_state": agent_state}
+            child_kwargs = {
+                query_name: query,
+                "top_k": retrieval_top_k,
+                "agent_state": agent_state,
+            }
             signature = inspect.signature(tool)
             child_kwargs = {
                 name: value
@@ -132,6 +138,12 @@ def make_rrf_tool(
             key=lambda result: result["score"],
             reverse=True,
         )
+        if reranker is not None:
+            ranked_results = reranker.rerank(
+                query=query,
+                candidates=ranked_results,
+                agent_state=agent_state,
+            )
         return ranked_results[:top_k]
 
     return search_composite

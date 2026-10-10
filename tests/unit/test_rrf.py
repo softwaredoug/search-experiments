@@ -52,3 +52,34 @@ def test_rrf_requires_one_weight_per_search_tool():
 
     with pytest.raises(ValueError, match="weights"):
         make_rrf_tool(search_tools=[first, second], weights=[1.0])
+
+
+def test_rrf_fuses_reranker_candidate_depth_before_reranking():
+    arm_calls = []
+
+    def first(query, top_k=5, agent_state=None):
+        arm_calls.append(("first", top_k))
+        return [{"id": doc_id, "score": 1.0} for doc_id in ["a", "b", "c"][:top_k]]
+
+    def second(query, top_k=5, agent_state=None):
+        arm_calls.append(("second", top_k))
+        return [{"id": doc_id, "score": 1.0} for doc_id in ["b", "c", "a"][:top_k]]
+
+    class ReverseReranker:
+        k = 3
+
+        def rerank(self, *, query, candidates, agent_state=None):
+            assert query == "desk"
+            assert [candidate["id"] for candidate in candidates] == ["b", "a", "c"]
+            return list(reversed(candidates))
+
+    search = make_rrf_tool(
+        search_tools=[first, second],
+        weights=[1, 1],
+        reranker=ReverseReranker(),
+    )
+
+    results = search("desk", top_k=1)
+
+    assert arm_calls == [("first", 3), ("second", 3)]
+    assert [candidate["id"] for candidate in results] == ["c"]

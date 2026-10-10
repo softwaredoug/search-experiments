@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -11,6 +12,26 @@ from tests.utils.agent_fakes import FakeOpenAIAgent
 class _FakeEmbeddingModel:
     def encode(self, _text):
         return np.array([1.0, 0.0])
+
+
+class _FakeJevClient:
+    calls = []
+
+    def __init__(self, *, api_key, model):
+        self.api_key = api_key
+        self.model = model
+        type(self).calls = []
+
+    def system_one(self, *, state, questions):
+        type(self).calls.append((state, questions))
+        return SimpleNamespace(
+            answers={
+                "relevance": SimpleNamespace(
+                    probabilities={"Relevant": 0.9, "Not Relevant": 0.1},
+                    confidence=0.95,
+                )
+            }
+        )
 
 
 def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset):
@@ -54,6 +75,15 @@ strategy:
               - e5_base_v2
             weights: [2, 1]
             rank_constant: 60
+          reranker_engine:
+            type: jev
+            k: 3
+            params:
+              decision_model: jev/jev-latest
+              decision_weight: 10
+              confidence_threshold: 0.7
+              state_format: "{title}: {description}"
+              prompt: "Is this document relevant to the {query}?"
 """.lstrip(),
         encoding="utf-8",
     )
@@ -77,6 +107,8 @@ strategy:
         ) as mock_embeddings,
         patch("exps.tools.embeddings.load_model", return_value=_FakeEmbeddingModel()),
         patch("exps.agentic.agent.build_openai_agent", side_effect=build_fake_agent),
+        patch("exps.tools.reranker.TypeSafeClient", _FakeJevClient),
+        patch("exps.tools.reranker.key_for_provider", return_value="typesafe-test-key"),
     ):
         result = run_benchmark(params)
 
@@ -84,6 +116,7 @@ strategy:
     assert not result.metric_series.empty
     assert result.summary["tool_calls_mean"] >= 1.0
     assert mock_embeddings.call_count == 1
+    assert len(_FakeJevClient.calls) == 3
     assert len(instances) == 1
     tool_outputs = [
         item["output"]

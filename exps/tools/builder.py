@@ -6,6 +6,7 @@ from typing import Any, Optional, Union
 
 from exps.tools.guards import GUARDS
 from exps.tools.registry import TOOL_REGISTRY, tool_kind
+from exps.tools.reranker import make_reranker
 
 
 def _parse_guard_entry(entry: Any) -> tuple[str, dict]:
@@ -317,8 +318,6 @@ def build_search_tools(
             tool_fn = builder(corpus, **tool_params)
         elif tool_name == "composite":
             tool_config = tool.get("config") or {}
-            if tool_config.get("reranker_engine") is not None:
-                raise ValueError("reranker_engine is not supported by composite tools yet.")
             retrieval_engine = tool_config.get("retrieval_engine")
             if not isinstance(retrieval_engine, dict):
                 raise ValueError("composite requires a retrieval_engine mapping.")
@@ -335,10 +334,12 @@ def build_search_tools(
                 context=context,
                 system_prompt=system_prompt,
             )
+            reranker = make_reranker(corpus, tool_config.get("reranker_engine"))
             tool_fn = builder(
                 search_tools=child_tools,
                 weights=retrieval_engine.get("weights"),
                 rank_constant=retrieval_engine.get("rank_constant", 60),
+                reranker=reranker,
             )
         elif tool_name == "bm25_wands":
             tool_params = {key: value for key, value in (tool.get("config") or {}).items() if key != "columns"}
