@@ -256,7 +256,7 @@ It delegates a scoped search to a sub-agent and does not allow nested delegation
 variants are `ls_wands`, `grep_wands`, `cat_wands`, and `search_directory_wands`; the WANDS search
 directory helper is automatically added when all three WANDS file tools are configured.
 
-See the [Agentic filesystem guide](../agentic_filesystem_prd.md) for the virtual filesystem layout
+See the [Agentic filesystem guide](agentic_filesystem_prd.md) for the virtual filesystem layout
 and examples.
 
 ### Bash tools

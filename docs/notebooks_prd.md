@@ -143,7 +143,7 @@ The path param helps restart runs locally, but in a notebook assume a fresh run.
 
 ### Agentic notebooks
 
-For yml with strategy:agentic, see docs/notebooks_agentic.prd
+For yml with strategy:agentic, see the [agentic notebook guide](agentic/notebooks_agentic.md).
 
 ### Codegen notebooks
 
