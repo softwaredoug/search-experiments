@@ -1,0 +1,28 @@
+strategy:
+  name: ecom_bm25_random
+  type: random_search
+  params:
+    retrieval_engine:
+      base: bm25
+      params:
+        k1: "{k1}"
+        b: "{b}"
+        title_boost: 9.3
+        description_boost: 4.1
+    train:
+      rounds: 100
+      search_seed: 42
+      search_space:
+        k1:
+          distribution: uniform
+          min: 0.2
+          max: 2.0
+        b:
+          distribution: uniform
+          min: 0.0
+          max: 1.0
+      objective: ndcg
+      eval:
+        train_fraction: 0.7
+        validation_fraction: 0.15
+        seed: 1234

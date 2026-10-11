@@ -13,6 +13,38 @@ from exps.tools import build_search_tools
 class CodeGenSearchStrategy(SearchStrategy):
     _type = "codegen"
 
+    @classmethod
+    def train(
+        cls,
+        *,
+        strategy_name: str,
+        dataset: str,
+        corpus,
+        judgments,
+        params: dict,
+        run_path: str | Path,
+        device: str | None = None,
+        workers: int = 1,
+        report_num_queries: int | None = None,
+        report_seed: int = 42,
+    ):
+        # Keep codegen's iterative implementation behind the strategy's training
+        # hook so the shared runner can dispatch through the strategy factory.
+        from exps.codegen.train import train_codegen_strategy
+
+        return train_codegen_strategy(
+            strategy_name=strategy_name,
+            dataset=dataset,
+            corpus=corpus,
+            judgments=judgments,
+            params=params,
+            run_path=run_path,
+            device=device,
+            workers=workers,
+            report_num_queries=report_num_queries,
+            report_seed=report_seed,
+        )
+
     def __init__(
         self,
         corpus,

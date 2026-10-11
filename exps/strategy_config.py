@@ -14,6 +14,7 @@ from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
 from exps.strategies.rag import RagSearchStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy
+from exps.random_search.strategy import RandomSearchStrategy
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ STRATEGY_TYPES = {
     QueryUnderstandingStrategy._type: QueryUnderstandingStrategy,
     RagSearchStrategy._type: RagSearchStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
+    RandomSearchStrategy._type: RandomSearchStrategy,
 }
 
 

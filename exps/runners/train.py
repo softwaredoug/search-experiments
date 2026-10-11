@@ -7,9 +7,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from exps.codegen.train import train_codegen_strategy
 from exps.datasets import DatasetName, get_dataset
-from exps.strategy_config import load_strategy_config
+from exps.strategy_config import load_strategy_config, resolve_strategy_class
 from exps.strategy_factory import requires_bm25, strategy_params_for_config
 from exps.train_runs import make_train_run_dir
 
@@ -51,7 +50,7 @@ def _write_summary_csv(path: str, *, dataset: str, result: TrainResult) -> None:
         "commit_sha": commit_sha,
         "strategy_name": result.strategy_name,
         "strategy_params": json.dumps(result.strategy_params, sort_keys=True),
-        "codegen_artifact_path": result.artifact_path,
+        "artifact_path": result.artifact_path,
         "train_metadata": json.dumps(result.metadata, sort_keys=True),
     }
 
@@ -64,6 +63,11 @@ def _write_summary_csv(path: str, *, dataset: str, result: TrainResult) -> None:
 
     if not fieldnames:
         fieldnames = list(row.keys())
+    elif "codegen_artifact_path" in fieldnames and "artifact_path" not in fieldnames:
+        # Preserve append compatibility with CSVs written by the codegen-only
+        # runner while using a strategy-neutral column for new summaries.
+        row["codegen_artifact_path"] = row["artifact_path"]
+        row.pop("artifact_path")
 
     write_header = not file_exists or output_path.stat().st_size == 0
     with output_path.open("a", newline="") as handle:
@@ -75,13 +79,17 @@ def _write_summary_csv(path: str, *, dataset: str, result: TrainResult) -> None:
 
 def train_strategy(params: TrainParams) -> TrainResult:
     strategy_config = load_strategy_config(params.strategy_path, base_path=params.base_path)
-    if strategy_config.type != "codegen":
-        raise ValueError("Training is only supported for codegen strategies.")
     strategy_params = strategy_params_for_config(strategy_config, device=params.device)
     train_params = dict(strategy_params.get("train") or {})
     if params.rounds is not None:
         train_params["rounds"] = params.rounds
     strategy_params["train"] = train_params
+    strategy_cls = resolve_strategy_class(strategy_config.type)
+    train_method = getattr(strategy_cls, "train", None)
+    if not callable(train_method):
+        raise ValueError(
+            f"Training is not supported for strategy type {strategy_config.type!r}."
+        )
 
     dataset = get_dataset(
         params.dataset,
@@ -100,7 +108,7 @@ def train_strategy(params: TrainParams) -> TrainResult:
             strategy_name=strategy_config.name,
             strategy_type=strategy_config.type,
         )
-    artifact = train_codegen_strategy(
+    artifact = train_method(
         strategy_name=strategy_config.name,
         dataset=params.dataset,
         corpus=dataset.corpus,
@@ -112,12 +120,19 @@ def train_strategy(params: TrainParams) -> TrainResult:
         report_num_queries=params.num_queries,
         report_seed=params.seed,
     )
-    metadata_path = artifact.path / "metadata.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
+    artifact_path = Path(artifact.path)
+    metadata = getattr(artifact, "metadata", None)
+    if metadata is None:
+        metadata_path = artifact_path / "metadata.json"
+        metadata = (
+            json.loads(metadata_path.read_text(encoding="utf-8"))
+            if metadata_path.exists()
+            else {}
+        )
     rval = TrainResult(
         strategy_name=strategy_config.name,
         strategy_params=strategy_params,
-        artifact_path=str(artifact.path),
+        artifact_path=str(artifact_path),
         metadata=metadata,
     )
     return rval

@@ -23,9 +23,14 @@ not the strategy type.
 | `query_understanding` | Enrich a query (for example, classify its category) before retrieval. | [Query-understanding guide](query_understanding/query_understanding.md), [enrichment engines](query_understanding/enrichment_engines.md), and [engine evaluation](query_understanding/enrichment_engines_eval.md). | [E-commerce query-understanding config](../configs/ecom_class/category/openai/ecom_query_understanding.yml) · [implementation](../exps/query_understanding/strategy.py) |
 | `rag` | Rewrite a query with an LLM, then retrieve documents with one search tool. | [RAG guide](rag.md). | [BM25 RAG config](../configs/rag_bm25.yml) · [implementation](../exps/strategies/rag.py) |
 | `codegen` | Train generated retrieval/reranking code against judgments. | [Code-generation PRD](codegen_prd.md). | [E-commerce codegen config](../configs/codegen/codegen_ecom.yml) · [implementation](../exps/codegen/strategy.py) |
+| `random_search` | Tune BM25 retrieval parameters against judged queries. | [Random-search guide](random_search.md). | [Example config](../configs/random_search/ecom_bm25_random.yml) · [implementation](../exps/random_search/strategy.py) |
 
 When adding a registered strategy type, add its guide or implementation/config entry here so agents
 can discover the strategy-specific requirements from `AGENTS.md` → this PRD.
+
+## Random search
+
+`random_search` tunes BM25 parameters against judged queries and saves the selected configuration as a runnable artifact. See the [random-search guide](random_search.md) for its configuration, training, and artifact contract.
 
 ### Cross-cutting guides
 

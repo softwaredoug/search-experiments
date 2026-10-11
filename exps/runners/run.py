@@ -45,6 +45,8 @@ class RunResult(BaseModel):
     most_relevant_row: pd.Series | None = None
     most_relevant_grade_col: str | None = None
     relevant_examples: list[dict] | None = None
+    artifact_path: str | None = None
+    # Retained as a compatibility alias for codegen run consumers.
     codegen_artifact_path: str | None = None
 
 
@@ -187,10 +189,8 @@ def run_benchmark(params: RunParams) -> RunResult:
         codegen_run_round=params.codegen_run_round,
         no_cache=params.no_cache,
     )
-    codegen_artifact_path = getattr(strategy, "artifact_path", None)
-    codegen_artifact_path = (
-        str(codegen_artifact_path) if codegen_artifact_path is not None else None
-    )
+    artifact_path = getattr(strategy, "artifact_path", None)
+    artifact_path = str(artifact_path) if artifact_path is not None else None
     if params.query:
         query_results, grade_col = _query_results(
             strategy=strategy,
@@ -213,7 +213,10 @@ def run_benchmark(params: RunParams) -> RunResult:
             most_relevant_row=most_relevant_row,
             most_relevant_grade_col=relevant_grade_col or most_relevant_grade_col,
             relevant_examples=relevant_examples,
-            codegen_artifact_path=codegen_artifact_path,
+            artifact_path=artifact_path,
+            codegen_artifact_path=(
+                artifact_path if strategy_config.type == "codegen" else None
+            ),
         )
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
     num_queries = params.num_queries or len(available_queries)
@@ -265,5 +268,8 @@ def run_benchmark(params: RunParams) -> RunResult:
         metric_series=metric_series,
         summary=summary,
         graded=graded,
-        codegen_artifact_path=codegen_artifact_path,
+        artifact_path=artifact_path,
+        codegen_artifact_path=(
+            artifact_path if strategy_config.type == "codegen" else None
+        ),
     )

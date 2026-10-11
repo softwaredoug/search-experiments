@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument(
         "--rounds",
         type=int,
-        help="Override codegen training rounds.",
+        help="Override the strategy's outer training-round budget.",
     )
     parser.add_argument(
         "--summary-csv",
@@ -59,7 +59,7 @@ def main() -> None:
         rounds=args.rounds,
     )
     result = train_strategy(params)
-    print(f"Codegen artifact: {result.artifact_path}")
+    print(f"Training artifact: {result.artifact_path}")
     if args.summary_csv:
         _write_summary_csv(args.summary_csv, dataset=args.dataset, result=result)
 

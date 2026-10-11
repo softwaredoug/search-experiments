@@ -146,6 +146,9 @@ def main() -> None:
         if result.codegen_artifact_path:
             print(f"Codegen artifact: {result.codegen_artifact_path}")
             print("")
+        elif result.artifact_path:
+            print(f"Strategy artifact: {result.artifact_path}")
+            print("")
         if result.relevant_examples:
             print("Relevant examples:")
             for example in result.relevant_examples:
@@ -187,6 +190,9 @@ def main() -> None:
     result = run_benchmark(params)
     if result.codegen_artifact_path:
         print(f"Codegen artifact: {result.codegen_artifact_path}")
+        print("")
+    elif result.artifact_path:
+        print(f"Strategy artifact: {result.artifact_path}")
         print("")
     _report_metric(result.metric_name, result.metric_series, result.graded)
     if args.summary_csv:
