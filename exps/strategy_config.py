@@ -12,6 +12,7 @@ from exps.bag_of_decisions import BagOfDecisionsStrategy
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.strategies.bm25 import BM25Strategy
 from exps.strategies.embedding import EmbeddingStrategy
+from exps.strategies.judge import LLMJudgeStrategy
 from exps.strategies.rag import RagSearchStrategy
 from exps.codegen.strategy import CodeGenSearchStrategy
 from exps.random_search.strategy import RandomSearchStrategy
@@ -33,6 +34,7 @@ STRATEGY_TYPES = {
     BagOfDecisionsStrategy._type: BagOfDecisionsStrategy,
     QueryUnderstandingStrategy._type: QueryUnderstandingStrategy,
     RagSearchStrategy._type: RagSearchStrategy,
+    LLMJudgeStrategy._type: LLMJudgeStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
     RandomSearchStrategy._type: RandomSearchStrategy,
 }

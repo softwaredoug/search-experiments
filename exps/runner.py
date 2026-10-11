@@ -20,6 +20,15 @@ def _report_metric(metric_name: str, metric_series, graded=None) -> None:
     print("Summary:")
     print(f"mean_{metric_key}={metric_series.mean():.4f}")
     print(f"median_{metric_key}={metric_series.median():.4f}")
+    if graded is not None:
+        if "agreement" in graded:
+            agreement = graded.groupby(["query", "query_id"])["agreement"].first()
+            print(f"mean_agreement={agreement.mean():.4f}")
+        if "pairwise_agreement" in graded:
+            agreement = graded.groupby(["query", "query_id"])[
+                "pairwise_agreement"
+            ].first()
+            print(f"mean_pairwise_agreement={agreement.mean():.4f}")
 
 
 def _write_summary_csv(path: str, *, dataset: str, result) -> None:

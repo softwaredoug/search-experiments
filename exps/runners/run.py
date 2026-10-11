@@ -228,6 +228,8 @@ def run_benchmark(params: RunParams) -> RunResult:
         seed=params.seed,
         cache=not params.no_cache,
         batch_size=batch_size,
+        include_agreement=True,
+        include_pairwise_agreement=True,
     )
     if trace_path is not None:
         query_dirs = [path for path in trace_path.iterdir() if path.is_dir()]
@@ -261,6 +263,17 @@ def run_benchmark(params: RunParams) -> RunResult:
         "tool_calls_median": float(statistics.median(tool_calls)),
         "tool_calls_std": float(statistics.pstdev(tool_calls)),
     }
+    if not graded.empty:
+        query_agreement = graded.groupby(["query", "query_id"], sort=False)
+        summary["mean_agreement"] = float(
+            query_agreement["agreement"].first().mean()
+        )
+        summary["mean_pairwise_agreement"] = float(
+            query_agreement["pairwise_agreement"].first().mean()
+        )
+    else:
+        summary["mean_agreement"] = 0.0
+        summary["mean_pairwise_agreement"] = 0.0
     return RunResult(
         strategy_name=strategy_config.name,
         strategy_params=dict(strategy_config.params),

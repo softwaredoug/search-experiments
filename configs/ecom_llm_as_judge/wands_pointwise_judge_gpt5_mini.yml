@@ -1,0 +1,33 @@
+strategy:
+  name: wands_pointwise_judge_gpt5_mini
+  type: llm_pontwise_judge
+  description: WANDS-only pointwise relevance judgment using the WANDS 0-2 rubric.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You are a careful product-search relevance judge. Grade only from the
+      query and product information provided. Apply the rubric consistently
+      and return exactly one of its numeric grades.
+    prompt: |
+      Grade this WANDS product result for the search query.
+
+      Query: {query}
+
+      Product title: {title}
+      Product description: {description}
+      Product category: {category}
+      Product subcategory: {subcategory}
+
+      Rubric:
+      {rubric}
+
+      Consider whether the product matches the requested item and shopping
+      intent. Give the highest grade only when the product is a direct match;
+      use the middle grade for a related but imperfect match; use the lowest
+      grade when it does not satisfy the query.
+    rubric:
+      2: The product directly matches the requested item and intent, including any explicit attributes in the query.
+      1: The product is related and may be a partial match or reasonable substitute, but misses an important part of the intent.
+      0: The product is unrelated, conflicts with the requested item, or does not satisfy the query.
+    sample_size: 10
+    sampling_seed: 42
