@@ -76,6 +76,40 @@ columns such as `{title}` and the current `{query}`.
 
 We will rerank the top `decision_engine.reranker.k` documents from the retrieval engine.
 
+### Acceptance threshold
+
+The optional `decision_threshold` parameter is configured under
+`decision_engine.reranker`. It is a minimum acceptance threshold for each
+individual decision probability returned by Jev, not a threshold on the total
+score for a candidate. For each candidate document, include a decision's
+`P(yes)` in the sum only when it is strictly greater than `decision_threshold`.
+Probabilities equal to or below the threshold are ignored; they contribute
+neither a positive nor a negative amount to the sum. The strategy then applies
+`decision_weight` to the sum of the accepted probabilities as usual.
+
+For example, with `decision_threshold: 0.7`, a candidate whose decisions have
+`P(yes)` values of `0.92`, `0.70`, and `0.31` has an accepted probability sum
+of `0.92`: `0.70` is equal to (not greater than) the threshold, and `0.31` is
+below it, so neither is included. With `decision_weight: 10`, the decisions add
+`9.2` to the candidate's retrieval score.
+
+```yaml
+decision_engine:
+  reranker:
+    decision_model: jev/jev-latest
+    decision_weight: 10
+    decision_threshold: 0.7
+    k: 100
+    state_format: |
+      {title}
+      {description}
+```
+
+If `decision_threshold` is omitted, all returned `P(yes)` values are summed,
+as described above. This only filters the probabilities used in the reranking
+boost; it does not discard candidate documents or change which questions are
+sent to Jev.
+
 ### Direct generator
 
 Set `decision_engine.generator.type` to `direct` to use a single configured

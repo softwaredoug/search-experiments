@@ -52,6 +52,7 @@ class DecisionReranker:
         *,
         decision_model: str,
         decision_weight: float,
+        decision_threshold: float | None = None,
         state_format: str,
         corpus_fields: Sequence[str],
         no_cache: bool = False,
@@ -66,6 +67,20 @@ class DecisionReranker:
         )
         if self.decision_weight < 0:
             raise ValueError("decision_engine.decision_weight must be non-negative.")
+        if decision_threshold is None:
+            self.decision_threshold = None
+        else:
+            if isinstance(decision_threshold, bool):
+                raise ValueError(
+                    "decision_engine.decision_threshold must be between 0 and 1."
+                )
+            self.decision_threshold = _finite_number(
+                decision_threshold, "decision_engine.decision_threshold"
+            )
+            if not 0 <= self.decision_threshold <= 1:
+                raise ValueError(
+                    "decision_engine.decision_threshold must be between 0 and 1."
+                )
         if not isinstance(state_format, str) or not state_format.strip():
             raise ValueError("decision_engine.state_format must be a non-empty string.")
         self.state_format = state_format
@@ -134,6 +149,10 @@ class DecisionReranker:
                 and not isinstance(probability, bool)
                 and math.isfinite(probability)
                 and 0 <= probability <= 1
+                and (
+                    self.decision_threshold is None
+                    or probability > self.decision_threshold
+                )
             ):
                 probability_sum += float(probability)
         if not self.no_cache:
@@ -164,6 +183,7 @@ class DecisionReranker:
             "type": "decision_reranker",
             "decision_model": self.decision_model,
             "decision_weight": self.decision_weight,
+            "decision_threshold": self.decision_threshold,
             "state_format": self.state_format,
             "no_cache": self.no_cache,
         }

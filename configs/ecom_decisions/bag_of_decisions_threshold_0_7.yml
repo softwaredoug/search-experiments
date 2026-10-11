@@ -1,0 +1,29 @@
+strategy:
+  name: bag_of_decisions_threshold_0_7
+  type: bag_of_decisions
+  params:
+    decision_engine:
+      generator:
+        type: llm
+        model: gpt-5
+        system_prompt: |
+          You are a search relevance decision engine. You will be given a query, and your job is to generate a list of yes/no questions that can be used to determine if a document is relevant to the query.
+        prompt: |
+          For the given query, please generate a list of yes/no questions where the affirmative
+          indicates the document is relevant to the query.
+
+          Here's the query:
+
+          {query}
+      reranker:
+        decision_model: jev/jev-latest
+        decision_weight: 1000
+        decision_threshold: 0.7
+        k: 100
+        state_format: |
+          {title}
+          {description}
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title^9.4, description^4]

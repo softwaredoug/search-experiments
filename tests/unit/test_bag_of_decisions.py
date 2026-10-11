@@ -193,6 +193,49 @@ def test_noul_score_sums_all_yes_probabilities_without_thresholding():
     assert scores[0] - scores[1] == pytest.approx((score_sum_a - score_sum_b) * 10)
 
 
+def test_decision_threshold_only_sums_probabilities_strictly_above_threshold():
+    ScriptedAutoEnricher.instances = []
+    ScriptedAutoEnricher.decisions = ["first?", "second?", "third?"]
+    ScriptedNoulClient.instances = []
+    ScriptedNoulClient.probabilities = {
+        "desk\ndesk alpha\nfirst": {
+            "decision_0": 0.92,
+            "decision_1": 0.7,
+            "decision_2": 0.31,
+        },
+        "desk\ndesk beta\nsecond": {
+            "decision_0": 0.69,
+            "decision_1": 0.15,
+            "decision_2": 0.7,
+        },
+    }
+
+    with (
+        patch(
+            "exps.bag_of_decisions.decision_generator.AutoEnricher",
+            ScriptedAutoEnricher,
+        ),
+        patch(
+            "exps.bag_of_decisions.decision_reranker.TypeSafeClient",
+            ScriptedNoulClient,
+        ),
+        patch(
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+    ):
+        strategy = BagOfDecisionsStrategy.build(
+            _params(reranker_overrides={"decision_threshold": 0.7}),
+            corpus=_corpus(),
+        )
+        baseline = strategy._baseline_scores("desk")
+        indices, scores = strategy.search("desk", k=3)
+
+    final_scores = dict(zip(indices.tolist(), scores.tolist()))
+    assert final_scores[0] - baseline[0] == pytest.approx(0.92 * 10)
+    assert final_scores[1] - baseline[1] == pytest.approx(0)
+
+
 def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
     ScriptedAutoEnricher.instances = []
     ScriptedAutoEnricher.decisions = []
@@ -233,6 +276,9 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
         ),
         ("reranker", {"decision_model": "gpt-5"}, "Jev"),
         ("reranker", {"decision_weight": -1}, "decision_weight"),
+        ("reranker", {"decision_threshold": -0.1}, "decision_threshold"),
+        ("reranker", {"decision_threshold": 1.1}, "decision_threshold"),
+        ("reranker", {"decision_threshold": True}, "decision_threshold"),
         ("reranker", {"k": 0}, "reranker.k"),
         ("reranker", {"state_format": "{missing}"}, "state_format"),
     ],
