@@ -81,6 +81,30 @@ class _ScriptedNoulClient:
         )
 
 
+class _DecisionAnnotationNoulClient:
+    instances = []
+
+    def __init__(self, *, api_key, model):
+        self.api_key = api_key
+        self.model = model
+        type(self).instances.append(self)
+
+    def system_one(self, *, state, questions):
+        title = state.splitlines()[1]
+        probabilities = {
+            "Alpha": {"decision_0": 0.7, "decision_1": 0.3},
+            "Beta": {"decision_0": 0.3, "decision_1": 0.7},
+            "Gamma": {"decision_0": 0.5, "decision_1": None},
+        }[title]
+        return SimpleNamespace(
+            answers={
+                question_id: SimpleNamespace(noul=probabilities[question_id])
+                for question_id in questions
+                if probabilities[question_id] is not None
+            }
+        )
+
+
 def _corpus():
     return pd.DataFrame(
         {
@@ -174,6 +198,14 @@ def test_bag_of_decisions_generator_sums_nouls_and_reranks_candidates():
     assert [candidate["score"] for candidate in results] == pytest.approx(
         [17.5, 4.0, 0.1]
     )
+    assert all(
+        not {
+            "requirements_met",
+            "requirements_failed",
+            "requirements_uncertain",
+        }.intersection(candidate)
+        for candidate in results
+    )
     generator = _ScriptedQuestionGenerator.instances[0]
     assert generator.uncached_calls == ["Generate yes/no questions for desk."]
     assert generator.cached_calls == []
@@ -184,6 +216,68 @@ def test_bag_of_decisions_generator_sums_nouls_and_reranks_candidates():
         "Is it useful for studying?",
     ]
     assert _ScriptedNoulClient.instances[0].model == "jev-latest"
+
+
+def test_bag_of_decisions_can_expose_decision_annotations_without_changing_scores():
+    _ScriptedQuestionGenerator.instances = []
+    _DecisionAnnotationNoulClient.instances = []
+    config = {
+        "type": "bag_of_decisions",
+        "k": 3,
+        "params": {
+            "decision_model": "jev/jev-latest",
+            "decision_weight": 10,
+            "state_format": "Query: {query}\n{title}\n{description}",
+            "expose_decisions": True,
+            "generator": {
+                "type": "llm",
+                "model": "gpt-5-mini",
+                "system_prompt": "Generate relevance questions.",
+                "prompt": "Generate yes/no questions for {query}.",
+            },
+        },
+    }
+
+    with (
+        patch("exps.tools.reranker.AutoEnricher", _ScriptedQuestionGenerator),
+        patch("exps.tools.reranker.TypeSafeClient", _DecisionAnnotationNoulClient),
+        patch("exps.tools.reranker.key_for_provider", return_value="typesafe-test-key"),
+    ):
+        reranker = make_reranker(_corpus(), config)
+        results = reranker.rerank(
+            query="desk",
+            candidates=[
+                {"id": 1, "title": "Alpha", "description": "Description A", "score": 1.0},
+                {"id": 2, "title": "Beta", "description": "Description B", "score": 0.5},
+                {"id": 3, "title": "Gamma", "description": "Description C", "score": 0.1},
+                {"id": 4, "title": "Delta", "description": "Description D", "score": 0.0},
+            ],
+        )
+
+    by_title = {candidate["title"]: candidate for candidate in results}
+    assert by_title["Alpha"]["requirements_met"] == ["✅ Is it a desk?"]
+    assert by_title["Alpha"]["requirements_failed"] == [
+        "❌ Is it useful for studying?"
+    ]
+    assert by_title["Alpha"]["requirements_uncertain"] == []
+    assert by_title["Beta"]["requirements_met"] == [
+        "✅ Is it useful for studying?"
+    ]
+    assert by_title["Beta"]["requirements_failed"] == ["❌ Is it a desk?"]
+    assert by_title["Gamma"]["requirements_met"] == []
+    assert by_title["Gamma"]["requirements_failed"] == []
+    assert by_title["Gamma"]["requirements_uncertain"] == [
+        "🤷 Is it a desk?",
+        "🤷 Is it useful for studying?",
+    ]
+    assert not {
+        "requirements_met",
+        "requirements_failed",
+        "requirements_uncertain",
+    }.intersection(by_title["Delta"])
+    assert [candidate["score"] for candidate in results] == pytest.approx(
+        [11.0, 10.5, 5.1, 0.0]
+    )
 
 
 def test_make_reranker_returns_none_when_not_configured():

@@ -124,7 +124,15 @@ the [reranker cookbook](https://docs.typesafe.ai/cookbooks/rerank_typesafe).
 `bag_of_decisions` first uses an LLM to generate query-specific yes/no
 questions, then asks Jev for the probability that each question is true for each
 candidate. It adds `decision_weight` times the sum of those probabilities to the
-RRF score. Noul probabilities have no separate confidence value or threshold.
+RRF score. Noul probabilities have no separate confidence value; every valid
+probability contributes to scoring, regardless of its annotation category.
+By default, decision details are used only for scoring. Set
+`params.expose_decisions: true` to also return decision evidence on each evaluated
+candidate. The tool output then includes `requirements_met`,
+`requirements_failed`, and `requirements_uncertain` string lists. Probabilities
+at least `0.7` are marked met, probabilities at most `0.3` are marked failed,
+and probabilities between those thresholds (or missing/invalid probabilities)
+are marked uncertain. This does not change the reranking score.
 
 ```yaml
 reranker_engine:
@@ -133,6 +141,7 @@ reranker_engine:
   params:
     decision_model: jev/jev-latest
     decision_weight: 10
+    expose_decisions: true  # Optional; defaults to false.
     state_format: |
       Query: {query}
       {title}
@@ -147,6 +156,21 @@ reranker_engine:
         Generate varied yes/no questions for deciding whether a search result
         is relevant to this query: {query}
 ```
+
+When enabled, a candidate's tool result includes fields such as:
+
+```json
+{
+  "requirements_met": ["✅ Is this a desk?"],
+  "requirements_failed": ["❌ Is this intended for outdoor use?"],
+  "requirements_uncertain": ["🤷 Is this useful for studying?"]
+}
+```
+
+Only candidates within the configured reranker `k` receive these fields; when no
+questions are generated, their three lists are empty.
+An e-commerce composite example with decision exposure enabled is available at
+[`configs/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml`](../../configs/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml).
 
 The LLM generator accepts `model`, `system_prompt`, `prompt`, and optional
 `reasoning`, `temperature`, `verbosity`, and `no_cache` settings. Its prompt may

@@ -95,6 +95,7 @@ def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset, reranker_type):
             params:
               decision_model: jev/jev-latest
               decision_weight: 10
+              expose_decisions: true
               state_format: "{title}: {description}"
               generator:
                 type: llm
@@ -168,3 +169,9 @@ strategy:
     assert isinstance(tool_outputs[0], list)
     assert tool_outputs[0]
     assert {"id", "score"}.issubset(tool_outputs[0][0])
+    if reranker_type == "bag_of_decisions":
+        assert tool_outputs[0][0]["requirements_met"] == [
+            "✅ Does this product satisfy the query?"
+        ]
+        assert tool_outputs[0][0]["requirements_failed"] == []
+        assert tool_outputs[0][0]["requirements_uncertain"] == []

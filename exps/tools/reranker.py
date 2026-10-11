@@ -209,6 +209,7 @@ class BagOfDecisionsReranker:
         decision_weight: float,
         state_format: str,
         generator: dict[str, Any],
+        expose_decisions: bool = False,
     ):
         self.k = _positive_integer(k, "reranker.k")
         if self.k > 100:
@@ -219,6 +220,9 @@ class BagOfDecisionsReranker:
         )
         if self.decision_weight < 0:
             raise ValueError("reranker.params.decision_weight must be non-negative.")
+        if not isinstance(expose_decisions, bool):
+            raise ValueError("reranker.params.expose_decisions must be a boolean.")
+        self.expose_decisions = expose_decisions
         if not isinstance(state_format, str) or not state_format.strip():
             raise ValueError("reranker.params.state_format must be a non-empty string.")
 
@@ -335,7 +339,7 @@ class BagOfDecisionsReranker:
         query: str,
         candidate: Mapping[str, Any],
         questions: list[str],
-    ) -> float:
+    ) -> tuple[float, dict[str, list[str]] | None]:
         doc_id = candidate.get("id", candidate.get("doc_id"))
         document = self._documents.get(str(doc_id), {})
         try:
@@ -353,12 +357,31 @@ class BagOfDecisionsReranker:
         answers = getattr(response, "answers", None)
         answers = answers if isinstance(answers, dict) else {}
         total_probability = 0.0
-        for question_id in typed_questions:
+        requirements = (
+            {
+                "requirements_met": [],
+                "requirements_failed": [],
+                "requirements_uncertain": [],
+            }
+            if self.expose_decisions
+            else None
+        )
+        for decision_index, decision in enumerate(questions):
+            question_id = f"decision_{decision_index}"
             answer = answers.get(question_id)
             probability = getattr(answer, "noul", None)
             if JevReranker._valid_probability(probability):
                 total_probability += float(probability)
-        return total_probability
+                if requirements is not None:
+                    if probability >= 0.7:
+                        requirements["requirements_met"].append(f"✅ {decision}")
+                    elif probability <= 0.3:
+                        requirements["requirements_failed"].append(f"❌ {decision}")
+                    else:
+                        requirements["requirements_uncertain"].append(f"🤷 {decision}")
+            elif requirements is not None:
+                requirements["requirements_uncertain"].append(f"🤷 {decision}")
+        return total_probability, requirements
 
     def rerank(
         self,
@@ -371,9 +394,14 @@ class BagOfDecisionsReranker:
         rerank_count = min(self.k, len(candidates))
         reranked = [dict(candidate) for candidate in candidates[:rerank_count]]
         questions = self._generate_questions(query)
+        if self.expose_decisions:
+            for candidate in reranked:
+                candidate["requirements_met"] = []
+                candidate["requirements_failed"] = []
+                candidate["requirements_uncertain"] = []
         if questions:
             for candidate in reranked:
-                probability_sum = self._probability_sum(
+                probability_sum, requirements = self._probability_sum(
                     query=query,
                     candidate=candidate,
                     questions=questions,
@@ -381,6 +409,8 @@ class BagOfDecisionsReranker:
                 candidate["score"] = float(candidate.get("score", 0.0)) + (
                     self.decision_weight * probability_sum
                 )
+                if requirements is not None:
+                    candidate.update(requirements)
             reranked.sort(
                 key=lambda candidate: candidate.get("score", 0.0),
                 reverse=True,
@@ -418,6 +448,7 @@ def make_reranker(
             decision_weight=params.get("decision_weight", 10),
             state_format=params.get("state_format", "{title}\n{description}"),
             generator=params.get("generator"),
+            expose_decisions=params.get("expose_decisions", False),
         )
     raise ValueError(
         "reranker_engine currently supports types 'jev' and 'bag_of_decisions'."

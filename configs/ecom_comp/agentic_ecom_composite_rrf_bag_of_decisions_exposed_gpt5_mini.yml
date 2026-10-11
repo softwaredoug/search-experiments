@@ -1,0 +1,53 @@
+strategy:
+  name: agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini
+  type: agentic
+  description: Agentic search using BM25/E5 RRF and exposing bag-of-decisions evidence to the agent.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You take user search queries and use search tools to find products.
+
+      Look at the search tools you have, their limitations, and how they work when forming your plan.
+
+      Search results may include requirements_met, requirements_failed, and requirements_uncertain
+      evidence from a bag-of-decisions reranker. Use that evidence, along with the query and product
+      details, when deciding which products to return and how to rank them.
+
+      Return 10 results to the user per the SearchResults schema, ranked best to worst.
+    search_tools:
+      - composite:
+          retrieval_engine:
+            type: rrf
+            tools:
+              - bm25:
+                  params:
+                    k1: 1.2
+                    b: 0.75
+                    title_boost: 9.3
+                    description_boost: 4.1
+              - e5_base_v2
+            weights: [1, 1]
+            rank_constant: 60
+          reranker_engine:
+            type: bag_of_decisions
+            k: 100
+            params:
+              decision_model: jev/jev-latest
+              decision_weight: 10
+              expose_decisions: true
+              state_format: |
+                Query: {query}
+                {title}
+                {description}
+              generator:
+                type: llm
+                model: gpt-5-mini
+                system_prompt: |
+                  You generate concise, distinct yes/no questions for search relevance.
+                  A yes answer should indicate that a candidate document satisfies the query.
+                prompt: |
+                  Generate a short list of varied yes/no questions for deciding whether a
+                  search result is relevant to the query below. Keep every question specific
+                  to this query and make an affirmative answer support relevance.
+
+                  Query: {query}
