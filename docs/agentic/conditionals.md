@@ -27,19 +27,6 @@ as user message and the agent called again
 
 Validators are just stoppers, but ALL conditions must be met. Validators should be checked in the order they're listed
 
-```
-    validators:
-      - num_results:
-          prompt: "Please return at least 10 results to give the user a good variety to choose from."
-          params:
-            min_results: 10
-    stop:
-      - tool_calls:
-          prompt: "Please make at least 4 tool calls to gather enough information before returning results."
-          params:
-            num_calls: 4
-```
-
 Logically first validators are checked (in order listed). If any validator fails, its prompt is appended and the loop repeats.
 
 Then stoppers are checked. If any stopper succeeds, the loop ends. If not, the first stopper's prompt is appended and the loop continues.

@@ -17,10 +17,6 @@ strategy:
       Gather results until you have 10 best matches you can find. It's important to return at least 10.
       Return the *DOC IDs*
     validators:
-      - num_results:
-          prompt: Please return at least 10 results to give the user a good variety to choose from.
-          params:
-            min_results: 10
       - oracle:
           prompt: Thanks, but here's an evaluation of the search results you gave me. Please keep relevant results, but search to replace the irrelevant results with better ones.
           params:

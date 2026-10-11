@@ -8,7 +8,7 @@ import pytest
 
 from exps.agentic import conditions
 from exps.agentic.conditions.base import ConditionContext, ConditionResult
-from exps.agentic.conditions.simple import IterationsCondition, NumResultsCondition
+from exps.agentic.conditions.simple import IterationsCondition
 from exps.bag_of_decisions.decision_question import DecisionQuestion
 from tests.utils.agent_fakes import FakeJevChoice, FakeJevClient
 
@@ -101,18 +101,12 @@ def _outcome(label="Relevant", probability=0.9, confidence=0.9):
     }
 
 
-def test_normalize_conditions_builds_typed_conditions_with_shared_result_contract():
+def test_normalize_conditions_builds_typed_iteration_condition():
     stop = conditions.normalize_conditions(
         [{"iterations": {"prompt": "Keep going", "params": {"iterations": 2}}}],
         kind="stop",
     )[0]
-    validator = conditions.normalize_conditions(
-        [{"num_results": {"prompt": "Need results", "params": {"min_results": 3}}}],
-        kind="validator",
-    )[0]
-
     assert isinstance(stop, IterationsCondition)
-    assert isinstance(validator, NumResultsCondition)
     assert stop.evaluate(
         ConditionContext(
             num_loops=1,

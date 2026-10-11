@@ -9,7 +9,6 @@ from exps.agentic.conditions.llm_judge import LLMJudgeRelevance
 from exps.agentic.conditions.oracle import OracleValidator
 from exps.agentic.conditions.simple import (
     IterationsCondition,
-    NumResultsCondition,
     ToolCallsCondition,
 )
 
@@ -17,7 +16,6 @@ from exps.agentic.conditions.simple import (
 _FACTORIES: dict[str, type[BaseCondition]] = {
     "iterations": IterationsCondition,
     "tool_calls": ToolCallsCondition,
-    "num_results": NumResultsCondition,
     "llm_judge_relevance": LLMJudgeRelevance,
     "jev_judge_relevance": JevJudgeRelevance,
     "jev_bag_of_decisions_judge": JevBagOfDecisionsJudge,

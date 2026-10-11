@@ -1276,10 +1276,6 @@ strategy:
     assert len(instances) == 1
     assert instances[0].chat_calls == 2
     assert len(doc_ids) == 10
-    assert not any(
-        "num_results" in validator
-        for validator in result.strategy_params["validators"]
-    )
     assert len(ScriptedNoulClient.calls) == 20
     assert ScriptedNoulClient.calls[0][1]["decision_0"].instructions == (
         "Does this result satisfy the search query?"

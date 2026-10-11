@@ -180,7 +180,7 @@ def test_agentic_validator_runs_before_stopper(tmp_path):
         model="gpt-5-mini",
         search_tools=[],
         stop=[{"iterations": {"prompt": "Stop", "params": {"iterations": 2}}}],
-        validators=[{"num_results": {"prompt": "Need more results", "params": {"min_results": 11}}}],
+        validators=[{"iterations": {"prompt": "Need more results", "params": {"iterations": 2}}}],
         max_loops=2,
         trace_path=tmp_path,
     )
@@ -251,7 +251,7 @@ def test_agentic_max_loops_stops(tmp_path):
         workers=1,
         model="gpt-5-mini",
         search_tools=[],
-        validators=[{"num_results": {"prompt": "Need more", "params": {"min_results": 11}}}],
+        validators=[{"iterations": {"prompt": "Need more", "params": {"iterations": 3}}}],
         max_loops=2,
         trace_path=tmp_path,
     )

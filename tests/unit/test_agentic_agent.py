@@ -177,7 +177,7 @@ def test_agent_validators_then_stop(
     agent = agent_mod.Agent(
         corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
         search_tools=["bm25"],
-        validators=[{"num_results": {"prompt": "Fix results", "params": {"min_results": 3}}}],
+        validators=[{"oracle": {"prompt": "Fix results"}}],
         stop=[{"iterations": {"prompt": "Try again", "params": {"iterations": 2}}}],
         max_loops=3,
     )
