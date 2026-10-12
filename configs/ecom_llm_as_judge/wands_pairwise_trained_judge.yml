@@ -1,0 +1,35 @@
+strategy:
+  name: wands_pairwise_trained_judge
+  type: pairwise_trained_judge
+  description: WANDS pairwise relevance classifier trained on title and description judge features.
+  params:
+    train:
+      cross_validation: 5
+    sample_size: 10
+    sampling_seed: 42
+    to_pointwise: copeland
+    model: decision_tree
+    features:
+      - title:
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
+
+            LHS Doc:
+            Title: {title_lhs}
+
+            RHS Doc:
+            Title: {title_rhs}
+          question: Which document is more relevant to the query?
+      - description:
+          model: jev/jev-latest
+          system_prompt: You are a careful search relevance judge.
+          prompt: |
+            Query: {query}
+
+            LHS Doc:
+            Description: {description_lhs}
+
+            RHS Doc:
+            Description: {description_rhs}
+          question: Which document is more relevant to the query?

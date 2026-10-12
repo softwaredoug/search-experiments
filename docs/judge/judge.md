@@ -229,6 +229,9 @@ target classes are only `lhs` and `rhs`. Feature judges may still return
 `neither`, which remains a categorical feature value. Feature prompts use
 `{query}` and corpus fields suffixed with `_lhs` or `_rhs`.
 
+Pass `--workers N` to `uv run train` to compute feature values for up to `N`
+document pairs concurrently.
+
 Training creates an artifact under the usual strategy training directory. Point
 `strategy.path` at that artifact when running, or omit it to load the latest
 trained run for the strategy and dataset.

@@ -8,7 +8,6 @@ dependencies = [
     "cheat-at-search",
     "pyyaml>=6.0.2",
     "typesafe-sdk>=0.7.1",
-    "scikit-learn>=1.2",
 ]
 
 [project.optional-dependencies]

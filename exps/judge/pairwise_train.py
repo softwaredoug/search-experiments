@@ -6,6 +6,8 @@ import json
 import math
 import random
 import string
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,7 @@ from sklearn.model_selection import GroupKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier
+from tqdm import tqdm
 
 from exps.judge.engines.common import PairwiseJudgeResult, grade_value
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
@@ -315,10 +318,11 @@ def train_pairwise_strategy(
     report_num_queries: int | None = None,
     report_seed: int = 42,
 ):
-    del workers
     run_path = Path(run_path).expanduser()
     if not run_path.exists() or not run_path.is_dir():
         raise ValueError(f"Pairwise training run path must be an existing directory: {run_path}")
+    if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
+        raise ValueError("workers must be an integer of at least one.")
     sample_size = params.get("sample_size", 10)
     if isinstance(sample_size, bool) or not isinstance(sample_size, int) or not 1 <= sample_size <= 10:
         raise ValueError("strategy.params.sample_size must be an integer from 1 to 10.")
@@ -370,24 +374,68 @@ def train_pairwise_strategy(
             "train.cross_validation cannot exceed the number of queries with "
             "unequal-grade sampled pairs."
         )
-    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=params["features"])
-    feature_configs = feature_computer.features
+    feature_configs = _normalize_features(params["features"], corpus)
     grade_column = next(column for column in _GRADE_COLUMNS if column in selected_judgments)
-    comparisons = []
+    query_jobs = []
     for query in available_queries:
         docs = samples.get(str(query), [])
+        query_pairs = []
         for (lhs_index, lhs_grade), (rhs_index, rhs_grade) in itertools.combinations(docs, 2):
             if lhs_grade == rhs_grade:
                 continue
-            lhs = corpus.iloc[lhs_index]
-            rhs = corpus.iloc[rhs_index]
+            query_pairs.append((lhs_index, lhs_grade, rhs_index, rhs_grade))
+        if query_pairs:
+            query_jobs.append((str(query), query_pairs))
+
+    worker_state = threading.local()
+
+    def compute_query(query_job):
+        query, query_pairs = query_job
+        feature_computer = getattr(worker_state, "feature_computer", None)
+        if feature_computer is None:
+            feature_computer = PairwiseFeatureComputer(
+                corpus=corpus,
+                features=params["features"],
+            )
+            worker_state.feature_computer = feature_computer
+        rows = []
+        for lhs_index, lhs_grade, rhs_index, rhs_grade in query_pairs:
             row = {
-                "query": str(query),
+                "query": query,
                 "grade_lhs": lhs_grade,
                 "grade_rhs": rhs_grade,
             }
-            row.update(feature_computer.compute(str(query), lhs, rhs))
-            comparisons.append(row)
+            row.update(
+                feature_computer.compute(
+                    query,
+                    corpus.iloc[lhs_index],
+                    corpus.iloc[rhs_index],
+                )
+            )
+            rows.append(row)
+        return rows
+
+    comparisons_by_query = [None] * len(query_jobs)
+    with tqdm(
+        total=len(query_jobs),
+        desc="Generating pairwise features",
+        unit="query",
+    ) as progress:
+        if workers == 1:
+            for index, query_job in enumerate(query_jobs):
+                comparisons_by_query[index] = compute_query(query_job)
+                progress.update(1)
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(compute_query, query_job): index
+                    for index, query_job in enumerate(query_jobs)
+                }
+                for future in as_completed(futures):
+                    comparisons_by_query[futures[future]] = future.result()
+                    progress.update(1)
+    comparisons = [row for query_rows in comparisons_by_query for row in query_rows]
+
     feature_columns = [feature["name"] for feature in feature_configs]
     comparison_frame = pd.DataFrame(
         comparisons,

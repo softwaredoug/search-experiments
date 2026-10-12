@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,6 +16,9 @@ from exps.runners.train import TrainParams, train_strategy
 
 class ScriptedPairwiseFeatureEnricher:
     instances = []
+    active_calls = 0
+    max_active_calls = 0
+    calls_lock = threading.Lock()
 
     def __init__(self, *, model, system_prompt, response_model):
         self.model = model
@@ -25,16 +30,26 @@ class ScriptedPairwiseFeatureEnricher:
 
     def enrich(self, prompt):
         self.prompts.append(prompt)
-        lhs_grade, rhs_grade = map(
-            int,
-            re.search(
-                r"LHS (?:title|description): grade=(\d+)\s+"
-                r"RHS (?:title|description): grade=(\d+)",
-                prompt,
-            ).groups(),
-        )
-        winner = "lhs" if lhs_grade > rhs_grade else "rhs"
-        return self.response_model(winner=winner)
+        with type(self).calls_lock:
+            type(self).active_calls += 1
+            type(self).max_active_calls = max(
+                type(self).max_active_calls, type(self).active_calls
+            )
+        try:
+            time.sleep(0.01)
+            lhs_grade, rhs_grade = map(
+                int,
+                re.search(
+                    r"LHS (?:title|description): grade=(\d+)\s+"
+                    r"RHS (?:title|description): grade=(\d+)",
+                    prompt,
+                ).groups(),
+            )
+            winner = "lhs" if lhs_grade > rhs_grade else "rhs"
+            return self.response_model(winner=winner)
+        finally:
+            with type(self).calls_lock:
+                type(self).active_calls -= 1
 
 
 def _dataset():
@@ -104,13 +119,15 @@ strategy:
 
 
 def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, capsys
 ):
     from exps import paths, train_runs
     from exps.runners import run as run_module
     from exps.runners import train as train_module
 
     ScriptedPairwiseFeatureEnricher.instances = []
+    ScriptedPairwiseFeatureEnricher.active_calls = 0
+    ScriptedPairwiseFeatureEnricher.max_active_calls = 0
     dataset = _dataset()
     artifact_root = tmp_path / "artifacts"
     monkeypatch.setattr(paths, "SEARCH_EXPERIMENTS_ROOT", artifact_root)
@@ -128,10 +145,13 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
                 strategy_path=str(config_path),
                 dataset="doug_blog",
                 seed=17,
-                workers=1,
+                workers=3,
                 device="cpu",
             )
         )
+        progress_output = capsys.readouterr().err
+        assert "Generating pairwise features" in progress_output
+        assert "6/6" in progress_output
 
         artifact_path = Path(trained.artifact_path)
         assert (artifact_path / "model.joblib").exists()
@@ -165,5 +185,6 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
 
     assert result.artifact_path == str(artifact_path)
     assert result.summary["mean_pairwise_agreement"] == 1.0
-    assert len(ScriptedPairwiseFeatureEnricher.instances) == 4
+    assert len(ScriptedPairwiseFeatureEnricher.instances) >= 4
     assert all(instance.prompts for instance in ScriptedPairwiseFeatureEnricher.instances)
+    assert ScriptedPairwiseFeatureEnricher.max_active_calls > 1
