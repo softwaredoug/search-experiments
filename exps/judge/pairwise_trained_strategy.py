@@ -11,6 +11,7 @@ import joblib
 
 from exps.judge.pairwise_train import (
     PairwiseFeatureComputer,
+    _predict_pairwise_outcomes,
     _sample_documents,
     train_pairwise_strategy,
 )
@@ -120,6 +121,12 @@ class PairwiseTrainedJudgeStrategy(SearchStrategy):
         self.model_signature = signature.hexdigest()
         self.sample_size = feature_schema["sample_size"]
         self.sampling_seed = feature_schema["sampling_seed"]
+        model_config = feature_schema.get("model", {})
+        self.prediction_threshold = (
+            model_config.get("params", {}).get("prediction_threshold")
+            if isinstance(model_config, dict)
+            else None
+        )
         if feature_schema.get("to_pointwise") != "copeland":
             raise ValueError("Pairwise-trained judge artifact must use Copeland conversion.")
         self.feature_names = [
@@ -154,12 +161,19 @@ class PairwiseTrainedJudgeStrategy(SearchStrategy):
                     self.corpus.iloc[rhs_index],
                 )
             )
-        predictions = self.model.predict(pd.DataFrame(feature_rows, columns=self.feature_names))
+        predictions = _predict_pairwise_outcomes(
+            self.model,
+            pd.DataFrame(feature_rows, columns=self.feature_names),
+            self.prediction_threshold,
+        )
         for ((lhs_index, _), (rhs_index, _)), winner in zip(pairs, predictions):
             if winner == "lhs":
                 points[lhs_index] += 1.0
             elif winner == "rhs":
                 points[rhs_index] += 1.0
+            elif winner == "neither":
+                points[lhs_index] += 0.5
+                points[rhs_index] += 0.5
             else:
                 raise ValueError(f"Pairwise model returned invalid class {winner!r}.")
         ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))

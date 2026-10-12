@@ -8,7 +8,10 @@ strategy:
     sample_size: 10
     sampling_seed: 42
     to_pointwise: copeland
-    model: decision_tree
+    model:
+      type: decision_tree
+      params:
+        prediction_threshold: 0.7
     features:
       - title:
           model: jev/jev-latest

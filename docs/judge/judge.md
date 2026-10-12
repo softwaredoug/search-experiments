@@ -191,7 +191,10 @@ strategy:
     sample_size: 10
     sampling_seed: 42
     to_pointwise: copeland
-    model: decision_tree
+    model:
+      type: decision_tree
+      params:
+        prediction_threshold: 0.7
     features:
       - title:
           model: jev/jev-latest
@@ -224,6 +227,11 @@ validation sets. The reported accuracy is pairwise accuracy on each validation
 fold. After cross-validation, the selected classifier is fit on all available
 training pairs and saved with its feature definitions in the training artifact.
 The supported classifiers are `decision_tree` and `gradient_boosted_tree`.
+The optional `model.params.prediction_threshold` uses the maximum class
+probability from the classifier: predictions below the threshold become
+`neither`. An abstention awards each document half a Copeland point and counts as
+incorrect in cross-validation accuracy. If omitted, the classifier always
+predicts its most likely class.
 
 Pairs whose judged grades are equal are omitted from supervised training; the
 target classes are only `lhs` and `rhs`. Feature judges may still return

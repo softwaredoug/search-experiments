@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from exps.judge.pairwise_train import (
     PairwiseFeatureComputer,
+    _normalize_model_config,
+    _predict_pairwise_outcomes,
     build_binary_training_data,
     query_group_folds,
 )
@@ -68,6 +70,67 @@ def test_query_group_folds_keep_each_query_entirely_in_one_validation_fold():
 def test_query_group_folds_rejects_invalid_fold_counts(groups, n_splits, message):
     with pytest.raises(ValueError, match=message):
         query_group_folds(groups, n_splits=n_splits)
+
+
+def test_model_config_normalizes_prediction_threshold():
+    assert _normalize_model_config(
+        {"type": "decision_tree", "params": {"prediction_threshold": 0.7}}
+    ) == {
+        "type": "decision_tree",
+        "params": {"prediction_threshold": 0.7},
+    }
+
+
+@pytest.mark.parametrize("threshold", [-0.1, 1.1, float("nan"), True])
+def test_model_config_rejects_invalid_prediction_threshold(threshold):
+    with pytest.raises(ValueError, match="prediction_threshold"):
+        _normalize_model_config(
+            {"type": "decision_tree", "params": {"prediction_threshold": threshold}}
+        )
+
+
+def test_prediction_threshold_abstains_below_confidence_threshold():
+    class FakeModel:
+        def predict(self, _features):
+            return ["lhs", "lhs", "rhs"]
+
+        def predict_proba(self, _features):
+            return [[0.8, 0.2], [0.55, 0.45], [0.3, 0.7]]
+
+    assert _predict_pairwise_outcomes(FakeModel(), None, 0.7) == [
+        "lhs",
+        "neither",
+        "rhs",
+    ]
+    assert _predict_pairwise_outcomes(FakeModel(), None, None) == ["lhs", "lhs", "rhs"]
+
+
+def test_pairwise_trained_judge_gives_half_a_point_to_each_abstained_pair():
+    from exps.judge.pairwise_trained_strategy import PairwiseTrainedJudgeStrategy
+
+    class FakeFeatureComputer:
+        def compute(self, *_args):
+            return {"signal": "ambiguous"}
+
+    class FakeModel:
+        def predict(self, _features):
+            return ["lhs"]
+
+        def predict_proba(self, _features):
+            return [[0.6, 0.4]]
+
+    strategy = PairwiseTrainedJudgeStrategy.__new__(PairwiseTrainedJudgeStrategy)
+    strategy.samples = {"query": [(0, 1), (1, 0)]}
+    strategy.feature_computer = FakeFeatureComputer()
+    strategy.corpus = pd.DataFrame({"doc_id": [0, 1]})
+    strategy.feature_names = ["signal"]
+    strategy.model = FakeModel()
+    strategy.prediction_threshold = 0.7
+
+    indices, scores = strategy.search("query")
+
+    assert indices == [0, 1]
+    assert scores == [0.5, 0.5]
 
 
 def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():

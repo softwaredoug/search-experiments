@@ -137,7 +137,10 @@ strategy:
     sample_size: 3
     sampling_seed: 17
     to_pointwise: copeland
-    model: decision_tree
+    model:
+      type: decision_tree
+      params:
+        prediction_threshold: 0.7
     features:
       - title:
           model: jev/jev-latest
@@ -209,6 +212,10 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         assert trained.metadata["cross_validation"]["folds"] == 3
         assert len(trained.metadata["cross_validation"]["fold_scores"]) == 3
         assert trained.metadata["training_pair_count"] == 18
+        assert trained.metadata["model"] == {
+            "type": "decision_tree",
+            "params": {"prediction_threshold": 0.7},
+        }
         assert set(trained.metadata["target_classes"]) == {"rhs", "lhs"}
         fold_details = trained.metadata["cross_validation"]["folds_detail"]
         validation_queries = []

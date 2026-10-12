@@ -324,7 +324,7 @@ def _new_classifier(model_name: str):
     if model_name == "gradient_boosted_tree":
         return GradientBoostingClassifier(random_state=42)
     raise ValueError(
-        "strategy.params.model must be 'decision_tree' or 'gradient_boosted_tree'."
+        "strategy.params.model.type must be 'decision_tree' or 'gradient_boosted_tree'."
     )
 
 
@@ -333,6 +333,69 @@ def _new_pipeline(model_name: str):
         OneHotEncoder(handle_unknown="ignore", sparse_output=False),
         _new_classifier(model_name),
     )
+
+
+def _normalize_model_config(raw_model: Any) -> dict[str, Any]:
+    if raw_model is None:
+        raw_model = {"type": "decision_tree"}
+    if not isinstance(raw_model, dict):
+        raise ValueError("strategy.params.model must be a mapping with a 'type'.")
+    unknown = set(raw_model) - {"type", "params"}
+    if unknown:
+        raise ValueError(
+            "Unsupported strategy.params.model option(s): " + ", ".join(sorted(unknown))
+        )
+    model_type = raw_model.get("type", "decision_tree")
+    if not isinstance(model_type, str) or model_type not in {
+        "decision_tree",
+        "gradient_boosted_tree",
+    }:
+        raise ValueError(
+            "strategy.params.model.type must be 'decision_tree' or 'gradient_boosted_tree'."
+        )
+    model_params = raw_model.get("params", {})
+    if model_params is None:
+        model_params = {}
+    if not isinstance(model_params, dict):
+        raise ValueError("strategy.params.model.params must be a mapping.")
+    unknown_params = set(model_params) - {"prediction_threshold"}
+    if unknown_params:
+        raise ValueError(
+            "Unsupported strategy.params.model.params option(s): "
+            + ", ".join(sorted(unknown_params))
+        )
+    prediction_threshold = model_params.get("prediction_threshold")
+    if prediction_threshold is not None and (
+        isinstance(prediction_threshold, bool)
+        or not isinstance(prediction_threshold, (int, float))
+        or not math.isfinite(prediction_threshold)
+        or not 0 <= prediction_threshold <= 1
+    ):
+        raise ValueError(
+            "strategy.params.model.params.prediction_threshold must be between zero and one."
+        )
+    return {
+        "type": model_type,
+        "params": {
+            **model_params,
+            **(
+                {"prediction_threshold": float(prediction_threshold)}
+                if prediction_threshold is not None
+                else {}
+            ),
+        },
+    }
+
+
+def _predict_pairwise_outcomes(model, features, prediction_threshold: float | None):
+    predictions = model.predict(features)
+    if prediction_threshold is None:
+        return predictions
+    probabilities = model.predict_proba(features)
+    return [
+        prediction if max(class_probabilities) >= prediction_threshold else "neither"
+        for prediction, class_probabilities in zip(predictions, probabilities)
+    ]
 
 
 def train_pairwise_strategy(
@@ -360,9 +423,9 @@ def train_pairwise_strategy(
         raise ValueError("strategy.params.sampling_seed must be an integer.")
     if params.get("to_pointwise", "copeland") != "copeland":
         raise ValueError("strategy.params.to_pointwise must be 'copeland'.")
-    model_name = params.get("model", "decision_tree")
-    if model_name not in {"decision_tree", "gradient_boosted_tree"}:
-        raise ValueError("strategy.params.model must be 'decision_tree' or 'gradient_boosted_tree'.")
+    model_config = _normalize_model_config(params.get("model"))
+    model_name = model_config["type"]
+    prediction_threshold = model_config["params"].get("prediction_threshold")
     train_config = params.get("train") or {}
     if not isinstance(train_config, dict):
         raise ValueError("strategy.params.train must be a mapping.")
@@ -481,7 +544,11 @@ def train_pairwise_strategy(
             )
         fold_model = _new_pipeline(model_name)
         fold_model.fit(features.iloc[train_indices], train_targets)
-        predictions = fold_model.predict(features.iloc[validation_indices])
+        predictions = _predict_pairwise_outcomes(
+            fold_model,
+            features.iloc[validation_indices],
+            prediction_threshold,
+        )
         score = float(accuracy_score(targets.iloc[validation_indices], predictions))
         fold_scores.append(score)
         fold_metadata.append(
@@ -503,7 +570,7 @@ def train_pairwise_strategy(
         "sample_size": sample_size,
         "sampling_seed": sampling_seed,
         "to_pointwise": "copeland",
-        "model": model_name,
+        "model": model_config,
         "features": params["features"],
     }
     (run_path / "feature_schema.json").write_text(
@@ -513,7 +580,7 @@ def train_pairwise_strategy(
         "strategy_type": "pairwise_trained_judge",
         "strategy_name": strategy_name,
         "dataset": dataset,
-        "model": model_name,
+        "model": model_config,
         "target_classes": list(final_model.classes_),
         "feature_names": feature_columns,
         "base_queries": [str(query) for query in available_queries],
