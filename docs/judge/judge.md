@@ -171,3 +171,55 @@ Swap LHS / RHS and if you result with a different pairwise evaluation, return "N
 `to_pointwise: copeland` converts pairwise outcomes to ranking scores. A win is
 1 point, a loss is 0 points, and a tie or `Neither` is 0.5 points for each
 document. Documents are sorted by total points, with corpus order breaking ties.
+
+
+## LLM Pairwise Trained Judge
+
+LLM Pairwise trained judge. Requires to be trained first via `uv run train`
+
+1. Runs a set of judges, focused on different attributes (templated like pairwise judge above)
+2. Trains a model to predict teh true pairwise outcome using these comparisons as features (model below)
+
+(model can either be a decision tree or gradient boosted tree, from sklearn)
+
+(See [this article](https://softwaredoug.com/blog/2025/01/21/llm-judge-decision-tree))
+
+We refer to the attributes as \*_lhs and \*_rhs.
+
+```yaml
+strategy:
+  name: llm_judge_relevance
+  type: llm_pairwise_trained_judge
+  params:
+    train:
+      - cross_validation: 5
+    sample_size: 10
+    sampling_seed: 42
+    to_pointwise: copeland
+    model: decision_tree
+    features:
+      - title:
+            model: jev/jev-latest
+            prompt: |
+              Query: {query}
+
+              LHS Doc:
+              Title: {title_lhs}
+
+              RHS Doc:
+              Title: {title_rhs}
+            question: |
+              Which document is more relevant to the query?
+      - description:
+            model: jev/jev-latest
+            prompt: |
+              Query: {query}
+
+              LHS Doc:
+              Description: {description_lhs}
+
+              RHS Doc:
+              Description: {description_rhs}
+            question: |
+              Which document is more relevant to the query?
+        ```
