@@ -931,6 +931,7 @@ source = { editable = "." }
 dependencies = [
     { name = "cheat-at-search" },
     { name = "pyyaml" },
+    { name = "scikit-learn" },
     { name = "typesafe-sdk" },
 ]
 
@@ -963,6 +964,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "scikit-learn", specifier = ">=1.2" },
     { name = "snakeviz", marker = "extra == 'dev'", specifier = ">=2.2.2" },
     { name = "typesafe-sdk", specifier = ">=0.7.1" },
 ]

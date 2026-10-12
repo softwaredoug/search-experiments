@@ -10,6 +10,7 @@ from exps.agentic.scatter_gather import ScatterGatherWandsStrategy
 from exps.agentic.strategy import AgenticSearchStrategy
 from exps.bag_of_decisions import BagOfDecisionsStrategy
 from exps.judge.pairwise_strategy import PairwiseJudgeStrategy
+from exps.judge.pairwise_trained_strategy import PairwiseTrainedJudgeStrategy
 from exps.judge.pontwise_strategy import PointwiseJudgeStrategy
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.strategies.bm25 import BM25Strategy
@@ -37,6 +38,7 @@ STRATEGY_TYPES = {
     RagSearchStrategy._type: RagSearchStrategy,
     PointwiseJudgeStrategy._type: PointwiseJudgeStrategy,
     PairwiseJudgeStrategy._type: PairwiseJudgeStrategy,
+    PairwiseTrainedJudgeStrategy._type: PairwiseTrainedJudgeStrategy,
     CodeGenSearchStrategy._type: CodeGenSearchStrategy,
     RandomSearchStrategy._type: RandomSearchStrategy,
 }

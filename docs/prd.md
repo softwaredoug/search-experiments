@@ -24,6 +24,7 @@ not the strategy type.
 | `rag` | Rewrite a query with an LLM, then retrieve documents with one search tool. | [RAG guide](rag.md). | [BM25 RAG config](../configs/rag_bm25.yml) · [implementation](../exps/strategies/rag.py) |
 | `llm_pontwise_judge` | Sample judged query-document pairs and rank them by a configured pointwise relevance judge. | [LLM judge guide](judge/judge.md). | [WANDS GPT-5-mini config](../configs/ecom_llm_as_judge/wands_pointwise_judge_gpt5_mini.yml) · [implementation](../exps/strategies/judge.py) |
 | `llm_pairwise_judge` | Compare sampled judged documents pairwise and rank them with the configured Copeland conversion. | [LLM judge guide](judge/judge.md). | [implementation](../exps/judge/pairwise_strategy.py) |
+| `pairwise_trained_judge` | Train a binary pairwise outcome classifier from Jev/LLM judge features, then rank by predicted wins. | [Pairwise trained judge guide](judge/judge.md#pairwise-trained-judge). | [implementation](../exps/judge/pairwise_trained_strategy.py) · [training](../exps/judge/pairwise_train.py) |
 | `codegen` | Train generated retrieval/reranking code against judgments. | [Code-generation PRD](codegen_prd.md). | [E-commerce codegen config](../configs/codegen/codegen_ecom.yml) · [implementation](../exps/codegen/strategy.py) |
 | `random_search` | Tune BM25 retrieval parameters against judged queries. | [Random-search guide](random_search.md). | [Example config](../configs/random_search/ecom_bm25_random.yml) · [implementation](../exps/random_search/strategy.py) |
 

@@ -172,54 +172,63 @@ Swap LHS / RHS and if you result with a different pairwise evaluation, return "N
 1 point, a loss is 0 points, and a tie or `Neither` is 0.5 points for each
 document. Documents are sorted by total points, with corpus order breaking ties.
 
+## Pairwise Trained Judge
 
-## LLM Pairwise Trained Judge
-
-LLM Pairwise trained judge. Requires to be trained first via `uv run train`
-
-1. Runs a set of judges, focused on different attributes (templated like pairwise judge above)
-2. Trains a model to predict teh true pairwise outcome using these comparisons as features (model below)
-
-(model can either be a decision tree or gradient boosted tree, from sklearn)
-
-(See [this article](https://softwaredoug.com/blog/2025/01/21/llm-judge-decision-tree))
-
-We refer to the attributes as \*_lhs and \*_rhs.
+The pairwise trained judge computes categorical pairwise-judge features and fits
+a binary classifier to predict which document has the higher judged relevance.
+Train it with `uv run train`; the final model is refit on all training pairs after
+cross-validation. At runtime, the strategy computes the same features, predicts
+each pair's winner, and converts wins to Copeland scores.
 
 ```yaml
 strategy:
-  name: llm_judge_relevance
-  type: llm_pairwise_trained_judge
+  name: pairwise_judge_relevance
+  type: pairwise_trained_judge
   params:
     train:
-      - cross_validation: 5
+      cross_validation: 5
     sample_size: 10
     sampling_seed: 42
     to_pointwise: copeland
     model: decision_tree
     features:
       - title:
-            model: jev/jev-latest
-            prompt: |
-              Query: {query}
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
 
-              LHS Doc:
-              Title: {title_lhs}
+            LHS Doc:
+            Title: {title_lhs}
 
-              RHS Doc:
-              Title: {title_rhs}
-            question: |
-              Which document is more relevant to the query?
+            RHS Doc:
+            Title: {title_rhs}
+          question: Which document is more relevant to the query?
       - description:
-            model: jev/jev-latest
-            prompt: |
-              Query: {query}
+          model: gpt-5-mini
+          system_prompt: You are a careful search relevance judge.
+          prompt: |
+            Query: {query}
 
-              LHS Doc:
-              Description: {description_lhs}
+            LHS Doc:
+            Description: {description_lhs}
 
-              RHS Doc:
-              Description: {description_rhs}
-            question: |
-              Which document is more relevant to the query?
-        ```
+            RHS Doc:
+            Description: {description_rhs}
+          question: Which document is more relevant to the query?
+```
+
+`train.cross_validation` is the number of folds (at least 2). Folds are grouped
+by query so pairs from one query cannot appear in both the fold's training and
+validation sets. The reported accuracy is pairwise accuracy on each validation
+fold. After cross-validation, the selected classifier is fit on all available
+training pairs and saved with its feature definitions in the training artifact.
+The supported classifiers are `decision_tree` and `gradient_boosted_tree`.
+
+Pairs whose judged grades are equal are omitted from supervised training; the
+target classes are only `lhs` and `rhs`. Feature judges may still return
+`neither`, which remains a categorical feature value. Feature prompts use
+`{query}` and corpus fields suffixed with `_lhs` or `_rhs`.
+
+Training creates an artifact under the usual strategy training directory. Point
+`strategy.path` at that artifact when running, or omit it to load the latest
+trained run for the strategy and dataset.

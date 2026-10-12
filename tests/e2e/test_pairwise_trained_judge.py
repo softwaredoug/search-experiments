@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pandas as pd
+import joblib
+
+from exps.runners.run import RunParams, run_benchmark
+from exps.runners.train import TrainParams, train_strategy
+
+
+class ScriptedPairwiseFeatureEnricher:
+    instances = []
+
+    def __init__(self, *, model, system_prompt, response_model):
+        self.model = model
+        self.system_prompt = system_prompt
+        self.response_model = response_model
+        self.prompts = []
+        self.enricher = self
+        type(self).instances.append(self)
+
+    def enrich(self, prompt):
+        self.prompts.append(prompt)
+        lhs_grade, rhs_grade = map(
+            int,
+            re.search(
+                r"LHS (?:title|description): grade=(\d+)\s+"
+                r"RHS (?:title|description): grade=(\d+)",
+                prompt,
+            ).groups(),
+        )
+        winner = "lhs" if lhs_grade > rhs_grade else "rhs"
+        return self.response_model(winner=winner)
+
+
+def _dataset():
+    queries = [f"query-{index}" for index in range(6)]
+    corpus_rows = []
+    judgment_rows = []
+    doc_id = 0
+    for query_id, query in enumerate(queries):
+        for grade in (2, 1, 0):
+            corpus_rows.append(
+                {
+                    "doc_id": doc_id,
+                    "title": f"grade={grade}",
+                    "description": f"grade={grade}",
+                }
+            )
+            judgment_rows.append(
+                {
+                    "query_id": query_id,
+                    "query": query,
+                    "doc_id": doc_id,
+                    "grade": grade,
+                }
+            )
+            doc_id += 1
+    return SimpleNamespace(
+        corpus=pd.DataFrame(corpus_rows),
+        judgments=pd.DataFrame(judgment_rows),
+    )
+
+
+def _write_config(path, *, artifact_path=None):
+    strategy_path = "" if artifact_path is None else f"  path: {artifact_path}\n"
+    path.write_text(
+        f"""
+strategy:
+  name: pairwise_trained_fixture
+  type: pairwise_trained_judge
+{strategy_path}  params:
+    sample_size: 3
+    sampling_seed: 17
+    to_pointwise: copeland
+    model: decision_tree
+    features:
+      - title:
+          model: gpt-5-mini
+          system_prompt: Compare title relevance.
+          prompt: |
+            Query: {{query}}
+            LHS title: {{title_lhs}}
+            RHS title: {{title_rhs}}
+          question: Which title is more relevant?
+      - description:
+          model: gpt-5-mini
+          system_prompt: Compare description relevance.
+          prompt: |
+            Query: {{query}}
+            LHS description: {{description_lhs}}
+            RHS description: {{description_rhs}}
+          question: Which description is more relevant?
+    train:
+      cross_validation: 3
+""".lstrip(),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
+    tmp_path, monkeypatch
+):
+    from exps import paths, train_runs
+    from exps.runners import run as run_module
+    from exps.runners import train as train_module
+
+    ScriptedPairwiseFeatureEnricher.instances = []
+    dataset = _dataset()
+    artifact_root = tmp_path / "artifacts"
+    monkeypatch.setattr(paths, "SEARCH_EXPERIMENTS_ROOT", artifact_root)
+    monkeypatch.setattr(train_runs, "SEARCH_EXPERIMENTS_ROOT", artifact_root)
+    monkeypatch.setattr(train_module, "get_dataset", lambda *args, **kwargs: dataset)
+    monkeypatch.setattr(run_module, "get_dataset", lambda *args, **kwargs: dataset)
+
+    with patch(
+        "exps.judge.engines.llm_pairwise.AutoEnricher",
+        ScriptedPairwiseFeatureEnricher,
+    ):
+        config_path = _write_config(tmp_path / "trained_judge.yml")
+        trained = train_strategy(
+            TrainParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                seed=17,
+                workers=1,
+                device="cpu",
+            )
+        )
+
+        artifact_path = Path(trained.artifact_path)
+        assert (artifact_path / "model.joblib").exists()
+        assert (artifact_path / "metadata.json").exists()
+        assert trained.metadata["cross_validation"]["folds"] == 3
+        assert len(trained.metadata["cross_validation"]["fold_scores"]) == 3
+        assert trained.metadata["training_pair_count"] == 18
+        assert set(trained.metadata["target_classes"]) == {"rhs", "lhs"}
+        fold_details = trained.metadata["cross_validation"]["folds_detail"]
+        validation_queries = []
+        for fold in fold_details:
+            assert set(fold["train_queries"]).isdisjoint(fold["validation_queries"])
+            validation_queries.extend(fold["validation_queries"])
+        assert sorted(validation_queries) == [f"query-{index}" for index in range(6)]
+        trained_model = joblib.load(artifact_path / "model.joblib")
+        assert trained_model.named_steps["decisiontreeclassifier"].tree_.n_node_samples[0] == 18
+
+        runtime_config = _write_config(
+            tmp_path / "trained_judge_run.yml", artifact_path=artifact_path
+        )
+        result = run_benchmark(
+            RunParams(
+                strategy_path=str(runtime_config),
+                dataset="doug_blog",
+                workers=1,
+                seed=17,
+                device="cpu",
+                no_cache=True,
+            )
+        )
+
+    assert result.artifact_path == str(artifact_path)
+    assert result.summary["mean_pairwise_agreement"] == 1.0
+    assert len(ScriptedPairwiseFeatureEnricher.instances) == 4
+    assert all(instance.prompts for instance in ScriptedPairwiseFeatureEnricher.instances)
