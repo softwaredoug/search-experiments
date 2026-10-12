@@ -11,6 +11,12 @@ class JudgeResult:
     probability: float | None = None
 
 
+@dataclass(frozen=True)
+class PairwiseJudgeResult:
+    outcome: str
+    probability: float | None = None
+
+
 def grade_value(value) -> float:
     if isinstance(value, bool):
         raise ValueError("Judgment grades must be finite numeric values.")

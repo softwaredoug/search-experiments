@@ -42,7 +42,7 @@ def requires_bm25(strategy_type: str, params: dict) -> bool:
         return True
     if strategy_type == "embedding":
         return False
-    if strategy_type == "llm_pontwise_judge":
+    if strategy_type in {"llm_pontwise_judge", "llm_pairwise_judge"}:
         return False
     if strategy_type in {"agentic", "scatter_gather_wands"}:
         return True
@@ -105,7 +105,7 @@ def create_strategy(
             build_kwargs["judgments"] = judgments
         if strategy_config.type == "bag_of_decisions":
             build_kwargs["no_cache"] = no_cache
-        if strategy_config.type == "llm_pontwise_judge":
+        if strategy_config.type in {"llm_pontwise_judge", "llm_pairwise_judge"}:
             build_kwargs["judgments"] = judgments
             build_kwargs["no_cache"] = no_cache
         if strategy_config.type in {"codegen", "random_search"}:
