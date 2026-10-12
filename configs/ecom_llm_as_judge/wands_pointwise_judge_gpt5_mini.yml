@@ -15,8 +15,6 @@ strategy:
 
       Product title: {title}
       Product description: {description}
-      Product category: {category}
-      Product subcategory: {subcategory}
 
       Rubric:
       {rubric}

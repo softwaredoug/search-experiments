@@ -168,5 +168,6 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
     state, questions = client.calls[0]
     assert "Query: find relevant documents" in state
     assert "LHS: grade=" in state and "RHS: grade=" in state
+    assert "Compare these WANDS" not in state
     assert questions["winner"].instructions == "Which document is more relevant?"
     assert set(questions["winner"].criteria) == {"lhs", "rhs"}

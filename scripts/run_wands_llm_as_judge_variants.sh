@@ -12,6 +12,9 @@ NO_CACHE="${NO_CACHE:-false}"
 CONFIGS=(
   "configs/ecom_llm_as_judge/wands_pointwise_judge_gpt5_mini.yml"
   "configs/ecom_llm_as_judge/wands_pointwise_judge_gpt5.yml"
+  "configs/ecom_llm_as_judge/wands_pointwise_judge_jev_latest.yml"
+  "configs/ecom_llm_as_judge/wands_pairwise_judge_gpt5_mini.yml"
+  "configs/ecom_llm_as_judge/wands_pairwise_judge_jev_latest.yml"
 )
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT}")"

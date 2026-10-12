@@ -50,6 +50,27 @@ def test_reads_and_averages_wands_agreement_metrics(tmp_path):
                 "mean_agreement": 0.7,
                 "mean_pairwise_agreement": 0.8,
             },
+            {
+                "dataset": "wands",
+                "strategy_name": "wands_pointwise_judge_jev_latest",
+                "metric_name": "NDCG",
+                "mean_agreement": 0.9,
+                "mean_pairwise_agreement": 0.95,
+            },
+            {
+                "dataset": "wands",
+                "strategy_name": "wands_pairwise_judge_gpt5_mini",
+                "metric_name": "NDCG",
+                "mean_agreement": 0.75,
+                "mean_pairwise_agreement": 0.85,
+            },
+            {
+                "dataset": "wands",
+                "strategy_name": "wands_pairwise_judge_jev_latest",
+                "metric_name": "NDCG",
+                "mean_agreement": 0.76,
+                "mean_pairwise_agreement": 0.86,
+            },
         ],
     )
 
@@ -64,6 +85,15 @@ def test_reads_and_averages_wands_agreement_metrics(tmp_path):
     assert means["wands_pointwise_judge_gpt5", "mean_agreement"] == pytest.approx(
         0.7
     )
+    assert means[
+        "wands_pointwise_judge_jev_latest", "mean_pairwise_agreement"
+    ] == pytest.approx(0.95)
+    assert means[
+        "wands_pairwise_judge_gpt5_mini", "mean_pairwise_agreement"
+    ] == pytest.approx(0.85)
+    assert means[
+        "wands_pairwise_judge_jev_latest", "mean_pairwise_agreement"
+    ] == pytest.approx(0.86)
 
 
 def test_rejects_non_wands_reports(tmp_path):
@@ -101,6 +131,9 @@ def test_plot_writes_agreement_chart(tmp_path):
             for strategy in (
                 "wands_pointwise_judge_gpt5_mini",
                 "wands_pointwise_judge_gpt5",
+                "wands_pointwise_judge_jev_latest",
+                "wands_pairwise_judge_gpt5_mini",
+                "wands_pairwise_judge_jev_latest",
             )
         ],
     )

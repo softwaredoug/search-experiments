@@ -1,0 +1,30 @@
+strategy:
+  name: wands_pairwise_judge_gpt5_mini
+  type: llm_pairwise_judge
+  description: WANDS pairwise relevance judgment using GPT-5-mini and Copeland ranking.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You are a careful product-search relevance judge. Compare the two
+      products only from the query and product information provided. Choose
+      the more relevant product, or neither when they are equally relevant.
+    prompt: |
+      Compare these WANDS product results for the search query.
+
+      Query: {query}
+
+      LHS product title: {title_lhs}
+      LHS product description: {description_lhs}
+
+      RHS product title: {title_rhs}
+      RHS product description: {description_rhs}
+
+      Relevance guidance:
+      - A direct match to the requested item and shopping intent is most relevant.
+      - A related but imperfect match or reasonable substitute is less relevant.
+      - An unrelated product or one that conflicts with the query is least relevant.
+    question: Which product is more relevant to the query? Choose neither if they are equally relevant.
+    to_pointwise: copeland
+    sample_size: 10
+    sampling_seed: 42
+    explicit_neither: true

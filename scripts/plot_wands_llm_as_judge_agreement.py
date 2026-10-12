@@ -7,8 +7,11 @@ from collections import defaultdict
 from pathlib import Path
 
 STRATEGIES = (
-    ("wands_pointwise_judge_gpt5_mini", "GPT-5-mini"),
-    ("wands_pointwise_judge_gpt5", "GPT-5"),
+    ("wands_pointwise_judge_gpt5_mini", "GPT-5-mini pointwise"),
+    ("wands_pointwise_judge_gpt5", "GPT-5 pointwise"),
+    ("wands_pointwise_judge_jev_latest", "Jev latest pointwise"),
+    ("wands_pairwise_judge_gpt5_mini", "GPT-5-mini pairwise"),
+    ("wands_pairwise_judge_jev_latest", "Jev latest pairwise"),
 )
 AGREEMENT_FIELDS = ("mean_agreement", "mean_pairwise_agreement")
 
@@ -27,7 +30,7 @@ def _read_agreement_means(path: Path) -> dict[tuple[str, str], float]:
             strategy = row["strategy_name"]
             if dataset != "wands" or strategy not in {name for name, _ in STRATEGIES}:
                 raise ValueError(
-                    f"Expected only WANDS pointwise judge rows; got {dataset}/{strategy}."
+                    f"Expected only WANDS judge rows; got {dataset}/{strategy}."
                 )
             if row["metric_name"].lower() != "ndcg":
                 raise ValueError(
@@ -64,7 +67,7 @@ def plot_agreement(input_path: Path, output_path: Path) -> None:
     labels = [label for _, label in STRATEGIES]
     positions = list(range(len(STRATEGIES)))
     width = 0.34
-    fig, axis = plt.subplots(figsize=(8, 5))
+    fig, axis = plt.subplots(figsize=(12, 5))
 
     for index, (field, label, color) in enumerate(
         (
@@ -90,7 +93,7 @@ def plot_agreement(input_path: Path, output_path: Path) -> None:
     axis.set_xticklabels(labels)
     axis.set_ylim(0, 1)
     axis.set_ylabel("Mean agreement")
-    axis.set_title("WANDS pointwise LLM judge agreement")
+    axis.set_title("WANDS judge agreement")
     axis.grid(axis="y", linestyle="--", alpha=0.4)
     axis.set_axisbelow(True)
     axis.legend()
@@ -102,7 +105,7 @@ def plot_agreement(input_path: Path, output_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Plot WANDS pointwise and pairwise judge agreement."
+        description="Plot pointwise and pairwise judge agreement on WANDS."
     )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

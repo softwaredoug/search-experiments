@@ -1,0 +1,18 @@
+strategy:
+  name: wands_pointwise_judge_jev_latest
+  type: llm_pontwise_judge
+  description: WANDS-only Jev pointwise relevance judgment using the WANDS 0-2 rubric.
+  params:
+    model: jev/jev-latest
+    prompt: |
+      Query: {query}
+
+      Product title: {title}
+      Product description: {description}
+    question: Which numeric relevance grade best describes this product for the search query?
+    rubric:
+      2: The product directly matches the requested item and intent, including any explicit attributes in the query.
+      1: The product is related and may be a partial match or reasonable substitute, but misses an important part of the intent.
+      0: The product is unrelated, conflicts with the requested item, or does not satisfy the query.
+    sample_size: 10
+    sampling_seed: 42

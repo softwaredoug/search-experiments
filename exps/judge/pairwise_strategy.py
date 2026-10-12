@@ -141,6 +141,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
 
         self.corpus = corpus
         self.model = model.strip()
+        self.is_jev = is_jev
         self.prompt_template = prompt
         self.question_template = question
         self.system_prompt = system_prompt
@@ -279,11 +280,17 @@ class PairwiseJudgeStrategy(SearchStrategy):
 
     def _judge_once(self, query: str, lhs_index: int, rhs_index: int) -> PairwiseJudgeResult:
         request = self._render_request(query, lhs_index, rhs_index)
-        result = self.engine.judge(
-            prompt=request.prompt,
-            question=request.question,
-            prompt_has_question=request.prompt_has_question,
-        )
+        if self.is_jev:
+            result = self.engine.judge(
+                state=request.prompt,
+                question=request.question,
+            )
+        else:
+            result = self.engine.judge(
+                prompt=request.prompt,
+                question=request.question,
+                prompt_has_question=request.prompt_has_question,
+            )
         decision = self._validated_outcome(result)
         if self.confidence_threshold is not None:
             if (

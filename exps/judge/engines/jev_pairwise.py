@@ -30,14 +30,14 @@ class JevPairwiseJudgeEngine:
             model=self.model,
         )
 
-    def judge(self, *, prompt: str, question: str, **_kwargs) -> PairwiseJudgeResult:
-        if not isinstance(prompt, str) or not prompt.strip():
-            raise ValueError("Judge prompt must be a non-empty string.")
+    def judge(self, *, state: str, question: str, **_kwargs) -> PairwiseJudgeResult:
+        if not isinstance(state, str) or not state.strip():
+            raise ValueError("Jev judge state must be a non-empty string.")
         if not isinstance(question, str) or not question.strip():
             raise ValueError("Judge question must be a non-empty string.")
         question_id = "winner"
         response = self.client.system_one(
-            state=prompt,
+            state=state,
             questions={
                 question_id: Choice(
                     instructions=question,

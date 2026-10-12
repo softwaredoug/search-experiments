@@ -135,7 +135,7 @@ def test_jev_engine_sends_choice_and_returns_probability():
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest", explicit_neither=True)
         result = engine.judge(
-            prompt="Query: desk\nLHS: left\nRHS: right",
+            state="Query: desk\nLHS: left\nRHS: right",
             question="Which is more relevant?",
         )
 
@@ -161,7 +161,7 @@ def test_jev_engine_omits_neither_criterion_by_default():
         patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest")
-        engine.judge(prompt="state", question="question")
+        engine.judge(state="state", question="question")
     assert engine.criteria == {
         "lhs": "The left-hand document is more relevant to the query.",
         "rhs": "The right-hand document is more relevant to the query.",
@@ -180,7 +180,7 @@ def test_jev_engine_rejects_unknown_or_missing_choice(choice):
             choices={"winner": SimpleNamespace(choice=choice, probabilities={})}
         )
         with pytest.raises(ValueError, match="invalid pairwise outcome"):
-            engine.judge(prompt="state", question="question")
+            engine.judge(state="state", question="question")
 
 
 @pytest.mark.parametrize("probability", [-0.1, 1.1, float("nan"), True, "0.9"])
@@ -199,4 +199,4 @@ def test_jev_engine_rejects_invalid_probability(probability):
             }
         )
         with pytest.raises(ValueError, match="invalid probability"):
-            engine.judge(prompt="state", question="question")
+            engine.judge(state="state", question="question")

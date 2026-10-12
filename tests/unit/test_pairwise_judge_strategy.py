@@ -191,6 +191,10 @@ def test_confidence_threshold_abstains_at_or_below_threshold():
     ]
 
     assert strategy._judge_once("desk", 0, 1).outcome == "neither"
+    assert strategy.engine.judge.call_args.kwargs == {
+        "state": "desk title-0 title-1",
+        "question": "Which?",
+    }
 
 
 def test_confidence_threshold_accepts_probability_above_threshold():
