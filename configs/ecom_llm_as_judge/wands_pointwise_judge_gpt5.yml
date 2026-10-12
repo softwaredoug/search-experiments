@@ -25,6 +25,7 @@ strategy:
       intent. Give the highest grade only when the product is a direct match;
       use the middle grade for a related but imperfect match; use the lowest
       grade when it does not satisfy the query.
+    question: Which numeric relevance grade best describes this product for the search query?
     rubric:
       2: The product directly matches the requested item and intent, including any explicit attributes in the query.
       1: The product is related and may be a partial match or reasonable substitute, but misses an important part of the intent.

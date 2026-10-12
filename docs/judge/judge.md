@@ -44,9 +44,11 @@ evenly as possible across the query's available grades. `sample_size` may be
 between 1 and 10; if a query has fewer judged documents, all available
 documents are used.
 
-Prompt placeholders include `{query}`, `{rubric}`, and any corpus column, such
-as `{title}` or `{description}`. The response uses a structured numeric grade
-constrained to the rubric's grade keys.
+`question` is an explicit required instruction for selecting a rubric grade.
+Prompt and question placeholders include `{query}` and any corpus column, such
+as `{title}` or `{description}`. The prompt can also include `{question}` and
+`{rubric}`. The response uses a structured numeric grade constrained to the
+rubric's grade keys.
 
 ```yaml
 strategy:
@@ -81,17 +83,21 @@ Models can be OpenAI or Jev models. OpenAI models either look like openai/gpt-5
 or just gpt-5 (ie no prefix implies OpenAI). Jev models always prefix jev/, ie
 jev/jev-latest
 
-When OpenAI is used, we use the `AutoEnricher` class from cheat-at-search for 
-caching and retries. If `--no-cache` is passed to `uv run run` (or any 
-similar runner) we will bypass the cache for the LLM call. If {question} and 
-{rubric} are not in the prompt, we will concat them to the LLM prompt
+When an OpenAI model is used, `LLMJudgeEngine` wraps cheat-at-search's
+`AutoEnricher` for caching and retries. If `--no-cache` is passed to `uv run
+run` (or a similar runner), the engine bypasses the enricher cache for that
+call. The engine appends the explicit question and rubric independently when
+the configured prompt does not contain the corresponding `{question}` or
+`{rubric}` placeholder:
 
 ```
 {question}
 {rubric}
 ```
 
-When Jev is used, we use typesafe's API, with the rubric as the list of choices
-to a Jev `choice` in its API. The `prompt` becomes the `state`. Then the `question`
-becomes the `question` in the Jev API. The Jev model returns a choice and a 
-probability for that choice.
+When a `jev/...` model is used, `JevJudgeEngine` calls Typesafe's API. The
+rendered `prompt` becomes the Jev `state`; the explicit `question` becomes the
+instructions for a Jev `Choice`; and the rubric's numeric grade keys and
+descriptions become that choice's criteria. The selected choice maps back to a
+numeric grade for ranking and agreement metrics. The engine also retains the
+probability for the selected choice in its judgment result.
