@@ -63,6 +63,8 @@ class ScriptedPairwiseDecisionEnricher:
         self.model = model
         self.calls = []
         self.delete_cache_calls = 0
+        self.save_cache_calls = 0
+        self.cached_enricher = self
         type(self).instances.append(self)
 
     def score(self, *, state, question):
@@ -90,6 +92,9 @@ class ScriptedPairwiseDecisionEnricher:
 
     def delete_cache(self):
         self.delete_cache_calls += 1
+
+    def save_cache(self):
+        self.save_cache_calls += 1
 
 
 def _dataset():
@@ -235,4 +240,5 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
     assert ScriptedPairwiseFeatureEnricher.max_active_calls > 1
     assert len(ScriptedPairwiseDecisionEnricher.instances) == 2
     assert [instance.delete_cache_calls for instance in ScriptedPairwiseDecisionEnricher.instances] == [0, 1]
+    assert [instance.save_cache_calls for instance in ScriptedPairwiseDecisionEnricher.instances] == [1, 0]
     assert ScriptedPairwiseDecisionEnricher.max_active_calls > 1

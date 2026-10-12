@@ -72,3 +72,6 @@ class JevPairwiseJudgeEngine:
         outcome = max(allowed_probabilities, key=allowed_probabilities.get)
         probability = float(allowed_probabilities[outcome])
         return PairwiseJudgeResult(outcome=outcome, probability=probability)
+
+    def flush_cache(self) -> None:
+        self.enricher.cached_enricher.save_cache()

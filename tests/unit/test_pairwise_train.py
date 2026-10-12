@@ -78,10 +78,15 @@ def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():
             self.choices = choices
             self.model = model
             self.delete_cache_calls = 0
+            self.save_cache_calls = 0
+            self.cached_enricher = self
             type(self).instances.append(self)
 
         def delete_cache(self):
             self.delete_cache_calls += 1
+
+        def save_cache(self):
+            self.save_cache_calls += 1
 
     corpus = pd.DataFrame({"doc_id": [1], "title": ["desk lamp"]})
     features = [
@@ -111,7 +116,9 @@ def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():
             features=features,
             no_cache=True,
         )
+        feature_computer.flush_caches()
 
     assert feature_computer.engines[0] is feature_computer.engines[1]
     assert len(FakeAutoDecisionEnricher.instances) == 1
     assert FakeAutoDecisionEnricher.instances[0].delete_cache_calls == 1
+    assert FakeAutoDecisionEnricher.instances[0].save_cache_calls == 1

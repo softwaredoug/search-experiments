@@ -40,6 +40,8 @@ class _FakeAutoDecisionEnricher:
         self.score_calls = []
         self.probabilities = {"lhs": 0.91, "rhs": 0.09}
         self.delete_cache_calls = 0
+        self.save_cache_calls = 0
+        self.cached_enricher = self
         type(self).instances.append(self)
 
     def score(self, *, state, question):
@@ -48,6 +50,9 @@ class _FakeAutoDecisionEnricher:
 
     def delete_cache(self):
         self.delete_cache_calls += 1
+
+    def save_cache(self):
+        self.save_cache_calls += 1
 
 
 def test_llm_engine_formats_outcome_and_normalizes_model():
@@ -203,3 +208,15 @@ def test_jev_engine_deletes_cache_when_no_cache_is_requested():
         JevPairwiseJudgeEngine(model="jev/jev-latest", no_cache=True)
 
     assert _FakeAutoDecisionEnricher.instances[0].delete_cache_calls == 1
+
+
+def test_jev_engine_flushes_decision_cache():
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
+    ):
+        engine = JevPairwiseJudgeEngine(model="jev/jev-latest")
+        engine.flush_cache()
+
+    assert _FakeAutoDecisionEnricher.instances[0].save_cache_calls == 1

@@ -210,6 +210,13 @@ class PairwiseFeatureComputer:
             output[config["name"]] = first
         return output
 
+    def flush_caches(self) -> None:
+        flushed = set()
+        for engine in self.engines:
+            if isinstance(engine, JevPairwiseJudgeEngine) and id(engine) not in flushed:
+                engine.flush_cache()
+                flushed.add(id(engine))
+
 
 def _sample_documents(
     *, corpus: pd.DataFrame, judgments: pd.DataFrame, sample_size: int, seed: int
@@ -430,24 +437,27 @@ def train_pairwise_strategy(
         return rows
 
     comparisons_by_query = [None] * len(query_jobs)
-    with tqdm(
-        total=len(query_jobs),
-        desc="Generating pairwise features",
-        unit="query",
-    ) as progress:
-        if workers == 1:
-            for index, query_job in enumerate(query_jobs):
-                comparisons_by_query[index] = compute_query(query_job)
-                progress.update(1)
-        else:
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = {
-                    executor.submit(compute_query, query_job): index
-                    for index, query_job in enumerate(query_jobs)
-                }
-                for future in as_completed(futures):
-                    comparisons_by_query[futures[future]] = future.result()
+    try:
+        with tqdm(
+            total=len(query_jobs),
+            desc="Generating pairwise features",
+            unit="query",
+        ) as progress:
+            if workers == 1:
+                for index, query_job in enumerate(query_jobs):
+                    comparisons_by_query[index] = compute_query(query_job)
                     progress.update(1)
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futures = {
+                        executor.submit(compute_query, query_job): index
+                        for index, query_job in enumerate(query_jobs)
+                    }
+                    for future in as_completed(futures):
+                        comparisons_by_query[futures[future]] = future.result()
+                        progress.update(1)
+    finally:
+        feature_computer.flush_caches()
     comparisons = [row for query_rows in comparisons_by_query for row in query_rows]
 
     feature_columns = [feature["name"] for feature in feature_configs]
