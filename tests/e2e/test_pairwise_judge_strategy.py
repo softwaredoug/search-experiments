@@ -30,30 +30,28 @@ class ScriptedPairwiseEnricher:
         return self.response_model(winner=winner)
 
 
-class ScriptedPairwiseJevClient:
+class ScriptedPairwiseJevEnricher:
     instances = []
 
-    def __init__(self, *, api_key, model):
-        self.api_key = api_key
+    def __init__(self, *, choices, model):
+        self.choices = choices
         self.model = model
         self.calls = []
+        self.delete_cache_calls = 0
         type(self).instances.append(self)
 
-    def system_one(self, *, state, questions):
-        self.calls.append((state, questions))
+    def score(self, *, state, question):
+        self.calls.append((state, question))
         lhs_grade, rhs_grade = map(
             int,
             re.search(r"LHS: grade=(\d+)\s+RHS: grade=(\d+)", state).groups(),
         )
         winner = "lhs" if lhs_grade > rhs_grade else "rhs" if rhs_grade > lhs_grade else "neither"
-        return SimpleNamespace(
-            choices={
-                "winner": SimpleNamespace(
-                    choice=winner,
-                    probabilities={winner: 0.99},
-                )
-            }
-        )
+        loser = {"lhs": "rhs", "rhs": "lhs", "neither": "lhs"}[winner]
+        return {winner: 0.99, loser: 0.01}, 0.95
+
+    def delete_cache(self):
+        self.delete_cache_calls += 1
 
 
 def _dataset():
@@ -135,7 +133,7 @@ def test_pairwise_openai_strategy_runs_through_benchmark(tmp_path):
 
 
 def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
-    ScriptedPairwiseJevClient.instances = []
+    ScriptedPairwiseJevEnricher.instances = []
     config_path = tmp_path / "jev_pairwise.yml"
     _write_config(config_path, "jev/jev-latest")
     config_text = config_path.read_text(encoding="utf-8").replace(
@@ -146,10 +144,9 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
     with (
         patch("exps.runners.run.get_dataset", return_value=_dataset()),
         patch(
-            "exps.judge.engines.jev_pairwise.TypeSafeClient",
-            ScriptedPairwiseJevClient,
+            "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+            ScriptedPairwiseJevEnricher,
         ),
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="fake-key"),
     ):
         result = run_benchmark(
             RunParams(
@@ -162,12 +159,13 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
 
     assert len(result.graded) == 3
     assert result.graded["agreement"].unique().tolist() == [1.0]
-    client = ScriptedPairwiseJevClient.instances[0]
-    assert client.model == "jev-latest"
+    client = ScriptedPairwiseJevEnricher.instances[0]
+    assert client.model == "jev/jev-latest"
+    assert client.delete_cache_calls == 1
     assert len(client.calls) == 3
-    state, questions = client.calls[0]
+    state, question = client.calls[0]
     assert "Query: find relevant documents" in state
     assert "LHS: grade=" in state and "RHS: grade=" in state
     assert "Compare these WANDS" not in state
-    assert questions["winner"].instructions == "Which document is more relevant?"
-    assert set(questions["winner"].criteria) == {"lhs", "rhs"}
+    assert question == "Which document is more relevant?"
+    assert set(client.choices) == {"lhs", "rhs"}

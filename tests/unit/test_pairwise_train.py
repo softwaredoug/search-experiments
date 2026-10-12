@@ -1,7 +1,12 @@
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
-from exps.judge.pairwise_train import build_binary_training_data, query_group_folds
+from exps.judge.pairwise_train import (
+    PairwiseFeatureComputer,
+    build_binary_training_data,
+    query_group_folds,
+)
 
 
 def test_binary_training_data_drops_grade_ties_and_targets_the_higher_grade_side():
@@ -63,3 +68,50 @@ def test_query_group_folds_keep_each_query_entirely_in_one_validation_fold():
 def test_query_group_folds_rejects_invalid_fold_counts(groups, n_splits, message):
     with pytest.raises(ValueError, match=message):
         query_group_folds(groups, n_splits=n_splits)
+
+
+def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():
+    class FakeAutoDecisionEnricher:
+        instances = []
+
+        def __init__(self, *, choices, model):
+            self.choices = choices
+            self.model = model
+            self.delete_cache_calls = 0
+            type(self).instances.append(self)
+
+        def delete_cache(self):
+            self.delete_cache_calls += 1
+
+    corpus = pd.DataFrame({"doc_id": [1], "title": ["desk lamp"]})
+    features = [
+        {
+            "title": {
+                "model": "jev/jev-latest",
+                "prompt": "{query} {title_lhs} {title_rhs}",
+                "question": "Which is more relevant?",
+            }
+        },
+        {
+            "title_detail": {
+                "model": "jev/jev-latest",
+                "prompt": "{query} {title_lhs} {title_rhs}",
+                "question": "Which is more relevant?",
+            }
+        },
+    ]
+    FakeAutoDecisionEnricher.instances = []
+
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        FakeAutoDecisionEnricher,
+    ):
+        feature_computer = PairwiseFeatureComputer(
+            corpus=corpus,
+            features=features,
+            no_cache=True,
+        )
+
+    assert feature_computer.engines[0] is feature_computer.engines[1]
+    assert len(FakeAutoDecisionEnricher.instances) == 1
+    assert FakeAutoDecisionEnricher.instances[0].delete_cache_calls == 1

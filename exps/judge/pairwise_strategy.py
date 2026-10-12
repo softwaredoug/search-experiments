@@ -181,6 +181,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
             self.engine = JevPairwiseJudgeEngine(
                 model=self.model,
                 explicit_neither=explicit_neither,
+                no_cache=no_cache,
             )
         else:
             self.engine = LLMPairwiseJudgeEngine(

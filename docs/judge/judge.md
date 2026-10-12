@@ -147,10 +147,11 @@ strictly greater than `confidence_threshold`. Otherwise, return `Neither` for
 this pair. OpenAI pairwise judges do not provide choice probabilities, so this
 option is rejected for OpenAI models.
 
-For Jev, the rendered `prompt` is the state being evaluated. The `question` is
-sent separately as the `Choice` instructions, with `lhs` and `rhs` as the
-available choices. A confidence-threshold abstention is applied by the strategy;
-it does not require adding `neither` as a Jev choice.
+For Jev, the rendered `prompt` is the state being evaluated. The pairwise engine
+uses cheat-at-search's `AutoDecisionEnricher` to send that state, question, and
+the configured `lhs`/`rhs` choices (plus optional `neither`) to Jev. Decision
+probabilities are cached by request and used for pairwise confidence thresholds.
+`uv run run --no-cache` clears the relevant decision cache before running.
 
 ```
 explicit_neither: true

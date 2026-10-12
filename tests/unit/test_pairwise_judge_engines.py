@@ -31,25 +31,23 @@ class _FakeAutoEnricher:
         return self.response
 
 
-class _FakeJevClient:
+class _FakeAutoDecisionEnricher:
     instances = []
 
-    def __init__(self, *, api_key, model):
-        self.api_key = api_key
+    def __init__(self, *, choices, model):
+        self.choices = choices
         self.model = model
-        self.calls = []
-        self.response = SimpleNamespace(
-            choices={
-                "winner": SimpleNamespace(
-                    choice="lhs", probabilities={"lhs": 0.91, "rhs": 0.09}
-                )
-            }
-        )
+        self.score_calls = []
+        self.probabilities = {"lhs": 0.91, "rhs": 0.09}
+        self.delete_cache_calls = 0
         type(self).instances.append(self)
 
-    def system_one(self, *, state, questions):
-        self.calls.append((state, questions))
-        return self.response
+    def score(self, *, state, question):
+        self.score_calls.append((state, question))
+        return self.probabilities, 0.95
+
+    def delete_cache(self):
+        self.delete_cache_calls += 1
 
 
 def test_llm_engine_formats_outcome_and_normalizes_model():
@@ -128,10 +126,10 @@ def test_llm_engine_requires_non_empty_prompt_and_question(field):
 
 
 def test_jev_engine_sends_choice_and_returns_probability():
-    _FakeJevClient.instances = []
-    with (
-        patch("exps.judge.engines.jev_pairwise.TypeSafeClient", _FakeJevClient),
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest", explicit_neither=True)
         result = engine.judge(
@@ -139,15 +137,14 @@ def test_jev_engine_sends_choice_and_returns_probability():
             question="Which is more relevant?",
         )
 
-    client = _FakeJevClient.instances[0]
-    assert client.model == "jev-latest"
-    assert client.api_key == "key"
+    client = _FakeAutoDecisionEnricher.instances[0]
+    assert client.model == "jev/jev-latest"
     assert result.outcome == "lhs"
     assert result.probability == 0.91
-    state, questions = client.calls[0]
-    assert state == "Query: desk\nLHS: left\nRHS: right"
-    assert questions["winner"].instructions == "Which is more relevant?"
-    assert questions["winner"].criteria == {
+    assert client.score_calls == [
+        ("Query: desk\nLHS: left\nRHS: right", "Which is more relevant?")
+    ]
+    assert client.choices == {
         "lhs": "The left-hand document is more relevant to the query.",
         "rhs": "The right-hand document is more relevant to the query.",
         "neither": "Neither document is more relevant than the other.",
@@ -155,10 +152,10 @@ def test_jev_engine_sends_choice_and_returns_probability():
 
 
 def test_jev_engine_omits_neither_criterion_by_default():
-    _FakeJevClient.instances = []
-    with (
-        patch("exps.judge.engines.jev_pairwise.TypeSafeClient", _FakeJevClient),
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest")
         engine.judge(state="state", question="question")
@@ -170,33 +167,39 @@ def test_jev_engine_omits_neither_criterion_by_default():
 
 @pytest.mark.parametrize("choice", ["unknown", None])
 def test_jev_engine_rejects_unknown_or_missing_choice(choice):
-    _FakeJevClient.instances = []
-    with (
-        patch("exps.judge.engines.jev_pairwise.TypeSafeClient", _FakeJevClient),
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest")
-        _FakeJevClient.instances[0].response = SimpleNamespace(
-            choices={"winner": SimpleNamespace(choice=choice, probabilities={})}
-        )
+        _FakeAutoDecisionEnricher.instances[0].probabilities = {choice: 0.9}
         with pytest.raises(ValueError, match="invalid pairwise outcome"):
             engine.judge(state="state", question="question")
 
 
 @pytest.mark.parametrize("probability", [-0.1, 1.1, float("nan"), True, "0.9"])
 def test_jev_engine_rejects_invalid_probability(probability):
-    _FakeJevClient.instances = []
-    with (
-        patch("exps.judge.engines.jev_pairwise.TypeSafeClient", _FakeJevClient),
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
     ):
         engine = JevPairwiseJudgeEngine(model="jev/jev-latest")
-        _FakeJevClient.instances[0].response = SimpleNamespace(
-            choices={
-                "winner": SimpleNamespace(
-                    choice="lhs", probabilities={"lhs": probability}
-                )
-            }
-        )
+        _FakeAutoDecisionEnricher.instances[0].probabilities = {
+            "lhs": probability,
+            "rhs": 1 - probability if isinstance(probability, (int, float)) else 0,
+        }
         with pytest.raises(ValueError, match="invalid probability"):
             engine.judge(state="state", question="question")
+
+
+def test_jev_engine_deletes_cache_when_no_cache_is_requested():
+    _FakeAutoDecisionEnricher.instances = []
+    with patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        _FakeAutoDecisionEnricher,
+    ):
+        JevPairwiseJudgeEngine(model="jev/jev-latest", no_cache=True)
+
+    assert _FakeAutoDecisionEnricher.instances[0].delete_cache_calls == 1

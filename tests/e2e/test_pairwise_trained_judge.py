@@ -52,6 +52,46 @@ class ScriptedPairwiseFeatureEnricher:
                 type(self).active_calls -= 1
 
 
+class ScriptedPairwiseDecisionEnricher:
+    instances = []
+    active_calls = 0
+    max_active_calls = 0
+    calls_lock = threading.Lock()
+
+    def __init__(self, *, choices, model):
+        self.choices = choices
+        self.model = model
+        self.calls = []
+        self.delete_cache_calls = 0
+        type(self).instances.append(self)
+
+    def score(self, *, state, question):
+        self.calls.append((state, question))
+        with type(self).calls_lock:
+            type(self).active_calls += 1
+            type(self).max_active_calls = max(
+                type(self).max_active_calls, type(self).active_calls
+            )
+        try:
+            time.sleep(0.01)
+            lhs_grade, rhs_grade = map(
+                int,
+                re.search(
+                    r"LHS title: grade=(\d+)\s+RHS title: grade=(\d+)",
+                    state,
+                ).groups(),
+            )
+            winner = "lhs" if lhs_grade > rhs_grade else "rhs"
+            loser = "rhs" if winner == "lhs" else "lhs"
+            return {winner: 0.99, loser: 0.01}, 0.95
+        finally:
+            with type(self).calls_lock:
+                type(self).active_calls -= 1
+
+    def delete_cache(self):
+        self.delete_cache_calls += 1
+
+
 def _dataset():
     queries = [f"query-{index}" for index in range(6)]
     corpus_rows = []
@@ -95,8 +135,7 @@ strategy:
     model: decision_tree
     features:
       - title:
-          model: gpt-5-mini
-          system_prompt: Compare title relevance.
+          model: jev/jev-latest
           prompt: |
             Query: {{query}}
             LHS title: {{title_lhs}}
@@ -128,6 +167,9 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
     ScriptedPairwiseFeatureEnricher.instances = []
     ScriptedPairwiseFeatureEnricher.active_calls = 0
     ScriptedPairwiseFeatureEnricher.max_active_calls = 0
+    ScriptedPairwiseDecisionEnricher.instances = []
+    ScriptedPairwiseDecisionEnricher.active_calls = 0
+    ScriptedPairwiseDecisionEnricher.max_active_calls = 0
     dataset = _dataset()
     artifact_root = tmp_path / "artifacts"
     monkeypatch.setattr(paths, "SEARCH_EXPERIMENTS_ROOT", artifact_root)
@@ -138,6 +180,9 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
     with patch(
         "exps.judge.engines.llm_pairwise.AutoEnricher",
         ScriptedPairwiseFeatureEnricher,
+    ), patch(
+        "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
+        ScriptedPairwiseDecisionEnricher,
     ):
         config_path = _write_config(tmp_path / "trained_judge.yml")
         trained = train_strategy(
@@ -188,3 +233,6 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
     assert len(ScriptedPairwiseFeatureEnricher.instances) >= 4
     assert all(instance.prompts for instance in ScriptedPairwiseFeatureEnricher.instances)
     assert ScriptedPairwiseFeatureEnricher.max_active_calls > 1
+    assert len(ScriptedPairwiseDecisionEnricher.instances) == 2
+    assert [instance.delete_cache_calls for instance in ScriptedPairwiseDecisionEnricher.instances] == [0, 1]
+    assert ScriptedPairwiseDecisionEnricher.max_active_calls > 1

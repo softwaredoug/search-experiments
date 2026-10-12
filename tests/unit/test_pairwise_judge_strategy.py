@@ -171,10 +171,7 @@ def test_double_check_requires_reversed_outcome_and_swaps_rendered_fields():
 
 def test_confidence_threshold_abstains_at_or_below_threshold():
     corpus, judgments = _fixture_data()
-    with (
-        patch("exps.judge.pairwise_strategy.JevPairwiseJudgeEngine") as engine,
-        patch("exps.judge.engines.jev_pairwise.key_for_provider", return_value="key"),
-    ):
+    with patch("exps.judge.pairwise_strategy.JevPairwiseJudgeEngine") as engine:
         strategy = PairwiseJudgeStrategy(
             corpus,
             judgments=judgments,

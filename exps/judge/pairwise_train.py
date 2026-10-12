@@ -131,21 +131,42 @@ class PairwiseFeatureComputer:
     def __init__(self, *, corpus: pd.DataFrame, features: list[dict], no_cache: bool = False):
         self.corpus = corpus
         self.features = _normalize_features(features, corpus)
+        self.no_cache = no_cache
         self.engines = []
+        self._thread_local = threading.local()
+        jev_engines = {}
         for config in self.features:
             if config["is_jev"]:
-                engine = JevPairwiseJudgeEngine(
-                    model=config["model"],
-                    explicit_neither=config["explicit_neither"],
+                _, separator, model_name = config["model"].partition("/")
+                engine_key = (
+                    (model_name if separator else "jev-latest").lower(),
+                    config["explicit_neither"],
                 )
+                if engine_key not in jev_engines:
+                    jev_engines[engine_key] = JevPairwiseJudgeEngine(
+                        model=config["model"],
+                        explicit_neither=config["explicit_neither"],
+                        no_cache=no_cache,
+                    )
+                self.engines.append(jev_engines[engine_key])
             else:
-                engine = LLMPairwiseJudgeEngine(
-                    model=config["model"],
-                    system_prompt=config["system_prompt"],
-                    explicit_neither=config["explicit_neither"],
-                    no_cache=no_cache,
-                )
-            self.engines.append(engine)
+                self.engines.append(None)
+
+    def _engine_for(self, index: int, config: dict):
+        if config["is_jev"]:
+            return self.engines[index]
+        thread_engines = getattr(self._thread_local, "engines", None)
+        if thread_engines is None:
+            thread_engines = {}
+            self._thread_local.engines = thread_engines
+        if index not in thread_engines:
+            thread_engines[index] = LLMPairwiseJudgeEngine(
+                model=config["model"],
+                system_prompt=config["system_prompt"],
+                explicit_neither=config["explicit_neither"],
+                no_cache=self.no_cache,
+            )
+        return thread_engines[index]
 
     def _judge(self, config: dict, engine, query: str, lhs, rhs) -> PairwiseJudgeResult:
         values = {"query": query}
@@ -178,7 +199,8 @@ class PairwiseFeatureComputer:
 
     def compute(self, query: str, lhs, rhs) -> dict[str, str]:
         output = {}
-        for config, engine in zip(self.features, self.engines):
+        for index, config in enumerate(self.features):
+            engine = self._engine_for(index, config)
             first = self._judge(config, engine, query, lhs, rhs).outcome
             if config["double_check"]:
                 swapped = self._judge(config, engine, query, rhs, lhs).outcome
@@ -374,7 +396,8 @@ def train_pairwise_strategy(
             "train.cross_validation cannot exceed the number of queries with "
             "unequal-grade sampled pairs."
         )
-    feature_configs = _normalize_features(params["features"], corpus)
+    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=params["features"])
+    feature_configs = feature_computer.features
     grade_column = next(column for column in _GRADE_COLUMNS if column in selected_judgments)
     query_jobs = []
     for query in available_queries:
@@ -387,17 +410,8 @@ def train_pairwise_strategy(
         if query_pairs:
             query_jobs.append((str(query), query_pairs))
 
-    worker_state = threading.local()
-
     def compute_query(query_job):
         query, query_pairs = query_job
-        feature_computer = getattr(worker_state, "feature_computer", None)
-        if feature_computer is None:
-            feature_computer = PairwiseFeatureComputer(
-                corpus=corpus,
-                features=params["features"],
-            )
-            worker_state.feature_computer = feature_computer
         rows = []
         for lhs_index, lhs_grade, rhs_index, rhs_grade in query_pairs:
             row = {
