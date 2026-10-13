@@ -1,0 +1,47 @@
+strategy:
+  name: wands_pairwise_trained_judge_gpt4_1_mini
+  type: pairwise_trained_judge
+  description: WANDS pairwise trained judge with GPT-4.1-mini title, description, and category hierarchy features, matched to the Jev configuration.
+  params:
+    train:
+      cross_validation: 5
+    sample_size: 10
+    sampling_seed: 42
+    to_pointwise: copeland
+    model:
+      type: decision_tree
+      params:
+        prediction_threshold: 0.9
+    features:
+      - title:
+          empty_value: No Title Provided
+          model: openai/gpt-4.1-mini
+          system_prompt: You evaluate product search relevance for furniture, hardware, and home-goods ecommerce search queries
+          prompt: |
+            Query: {query}
+
+            LHS Product Title: {title_lhs}
+
+            RHS Product Title: {title_rhs}
+          question: Which product title is more relevant to the e-commerce search query?
+      - description:
+          empty_value: No Description Provided
+          model: openai/gpt-4.1-mini
+          system_prompt: You evaluate product search relevance for furniture, hardware, and home-goods ecommerce search queries
+          prompt: |
+            Query: {query}
+
+            LHS Product Description: {description_lhs}
+
+            RHS Product Description: {description_rhs}
+          question: Which product description is more relevant to the e-commerce search query?
+      - category_hierarchy:
+          model: openai/gpt-4.1-mini
+          system_prompt: You evaluate product search relevance for furniture, hardware, and home-goods ecommerce search queries
+          prompt: |
+            Query: {query}
+
+            LHS Product Category Hierarchy: {category hierarchy_lhs}
+
+            RHS Product Category Hierarchy: {category hierarchy_rhs}
+          question: Which product category hierarchy is more relevant to the e-commerce search query?
