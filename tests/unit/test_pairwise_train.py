@@ -390,24 +390,37 @@ def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():
     assert FakeAutoDecisionEnricher.instances[0].save_cache_calls == 1
 
 
-def test_pairwise_feature_computer_shares_openai_engine_across_features_and_workers():
+def test_pairwise_feature_computer_uses_one_openai_engine_per_feature_across_workers():
+    class FakeCache:
+        def __init__(self):
+            self.cache_file = "shared-cache.json"
+            self.cache = {}
+            self.save_cache_calls = 0
+            self.saved_entries = None
+
+        def save_cache(self):
+            self.save_cache_calls += 1
+            self.saved_entries = self.cache.copy()
+
     class FakeLLMPairwiseJudgeEngine:
         instances = []
 
         def __init__(self, **_kwargs):
             self.thread_ids = set()
             self.barrier = threading.Barrier(2)
-            self.flush_cache_calls = 0
+            self.no_cache = False
+            self.cache_backend = FakeCache()
             type(self).instances.append(self)
 
-        def judge(self, **_kwargs):
+        def judge(self, *, prompt, **_kwargs):
             self.thread_ids.add(threading.get_ident())
             self.barrier.wait(timeout=5)
             time.sleep(0.01)
+            self.cache_backend.cache[prompt] = "lhs"
             return SimpleNamespace(outcome="lhs")
 
         def flush_cache(self):
-            self.flush_cache_calls += 1
+            self.cache_backend.save_cache()
 
     corpus = pd.DataFrame(
         {"doc_id": [1, 2], "title": ["left title", "right title"]}
@@ -439,7 +452,7 @@ def test_pairwise_feature_computer_shares_openai_engine_across_features_and_work
         FakeLLMPairwiseJudgeEngine,
     ):
         feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
-        assert feature_computer.engines[0] is feature_computer.engines[1]
+        assert feature_computer.engines[0] is not feature_computer.engines[1]
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             outputs = list(
@@ -458,6 +471,17 @@ def test_pairwise_feature_computer_shares_openai_engine_across_features_and_work
         {"title": "lhs", "title_detail": "lhs"},
         {"title": "lhs", "title_detail": "lhs"},
     ]
-    assert len(FakeLLMPairwiseJudgeEngine.instances) == 1
-    assert len(FakeLLMPairwiseJudgeEngine.instances[0].thread_ids) == 2
-    assert FakeLLMPairwiseJudgeEngine.instances[0].flush_cache_calls == 1
+    assert len(FakeLLMPairwiseJudgeEngine.instances) == 2
+    for engine in FakeLLMPairwiseJudgeEngine.instances:
+        assert len(engine.thread_ids) == 2
+    cache_a, cache_b = (
+        engine.cache_backend for engine in FakeLLMPairwiseJudgeEngine.instances
+    )
+    assert set(cache_a.saved_entries) == {
+        "Query: query-a LHS: left title RHS: right title",
+        "Query: query-b LHS: left title RHS: right title",
+        "Compare title text. Query: query-a left title right title",
+        "Compare title text. Query: query-b left title right title",
+    }
+    assert cache_a.save_cache_calls == 1
+    assert cache_b.save_cache_calls == 0

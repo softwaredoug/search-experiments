@@ -166,37 +166,29 @@ class PairwiseFeatureComputer:
         self.features = _normalize_features(features, corpus)
         self.no_cache = no_cache
         self.engines = []
-        shared_engines = {}
+        shared_jev_engines = {}
         for config in self.features:
             if config["is_jev"]:
                 _, separator, model_name = config["model"].partition("/")
                 engine_key = (
-                    "jev",
                     (model_name if separator else "jev-latest").lower(),
                     config["explicit_neither"],
                 )
-                if engine_key not in shared_engines:
-                    shared_engines[engine_key] = JevPairwiseJudgeEngine(
+                if engine_key not in shared_jev_engines:
+                    shared_jev_engines[engine_key] = JevPairwiseJudgeEngine(
                         model=config["model"],
                         explicit_neither=config["explicit_neither"],
                         no_cache=no_cache,
                     )
+                engine = shared_jev_engines[engine_key]
             else:
-                provider, separator, model_name = config["model"].partition("/")
-                engine_key = (
-                    "openai",
-                    (model_name if separator else provider).lower(),
-                    config["system_prompt"],
-                    config["explicit_neither"],
+                engine = LLMPairwiseJudgeEngine(
+                    model=config["model"],
+                    system_prompt=config["system_prompt"],
+                    explicit_neither=config["explicit_neither"],
+                    no_cache=no_cache,
                 )
-                if engine_key not in shared_engines:
-                    shared_engines[engine_key] = LLMPairwiseJudgeEngine(
-                        model=config["model"],
-                        system_prompt=config["system_prompt"],
-                        explicit_neither=config["explicit_neither"],
-                        no_cache=no_cache,
-                    )
-            self.engines.append(shared_engines[engine_key])
+            self.engines.append(engine)
 
     def _engine_for(self, index: int, _config: dict):
         return self.engines[index]
@@ -256,11 +248,31 @@ class PairwiseFeatureComputer:
 
     def flush_caches(self) -> None:
         flushed = set()
+        openai_caches = {}
         for engine in self.engines:
             if id(engine) in flushed:
                 continue
-            engine.flush_cache()
             flushed.add(id(engine))
+            if isinstance(engine, JevPairwiseJudgeEngine):
+                engine.flush_cache()
+            elif isinstance(engine, LLMPairwiseJudgeEngine) and not engine.no_cache:
+                cache = engine.cache_backend
+                cache_file = getattr(cache, "cache_file", None)
+                if cache_file is None:
+                    engine.flush_cache()
+                    continue
+                caches = openai_caches.setdefault(str(cache_file), [])
+                caches.append((engine, cache))
+
+        for caches in openai_caches.values():
+            if len(caches) == 1:
+                caches[0][0].flush_cache()
+                continue
+            merged_cache = {}
+            for _, cache in caches:
+                merged_cache.update(cache.cache)
+            caches[0][1].cache = merged_cache
+            caches[0][1].save_cache()
 
 
 def _sample_documents(
