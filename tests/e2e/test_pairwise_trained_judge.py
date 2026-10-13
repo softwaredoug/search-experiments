@@ -211,6 +211,8 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         assert (artifact_path / "metadata.json").exists()
         assert trained.metadata["cross_validation"]["folds"] == 3
         assert len(trained.metadata["cross_validation"]["fold_scores"]) == 3
+        assert trained.metadata["cross_validation"]["mean_precision"] == 1.0
+        assert trained.metadata["cross_validation"]["mean_prediction_coverage"] == 1.0
         assert trained.metadata["training_pair_count"] == 18
         assert trained.metadata["model"] == {
             "type": "decision_tree",

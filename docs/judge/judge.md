@@ -226,6 +226,10 @@ by query so pairs from one query cannot appear in both the fold's training and
 validation sets. The reported accuracy is pairwise accuracy on each validation
 fold. After cross-validation, the selected classifier is fit on all available
 training pairs and saved with its feature definitions in the training artifact.
+Cross-validation also reports precision, defined here as the fraction of
+non-abstained pair predictions that are correct. `mean_precision` pools those
+decisive predictions across folds, while `mean_prediction_coverage` reports the
+fraction of validation pairs on which the classifier expressed a preference.
 The supported classifiers are `decision_tree` and `gradient_boosted_tree`.
 The optional `model.params.prediction_threshold` uses the maximum class
 probability from the classifier: predictions below the threshold become

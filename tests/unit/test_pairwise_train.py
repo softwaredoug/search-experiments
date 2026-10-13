@@ -5,6 +5,7 @@ from unittest.mock import patch
 from exps.judge.pairwise_train import (
     PairwiseFeatureComputer,
     _normalize_model_config,
+    _pairwise_prediction_metrics,
     _predict_pairwise_outcomes,
     build_binary_training_data,
     query_group_folds,
@@ -103,6 +104,27 @@ def test_prediction_threshold_abstains_below_confidence_threshold():
         "rhs",
     ]
     assert _predict_pairwise_outcomes(FakeModel(), None, None) == ["lhs", "lhs", "rhs"]
+
+
+def test_pairwise_metrics_report_accuracy_and_precision_for_decided_pairs():
+    metrics = _pairwise_prediction_metrics(
+        ["lhs", "rhs", "lhs", "rhs"],
+        ["lhs", "neither", "rhs", "rhs"],
+    )
+
+    assert metrics["accuracy"] == 0.5
+    assert metrics["precision"] == pytest.approx(2 / 3)
+    assert metrics["prediction_coverage"] == 0.75
+    assert metrics["decided_pair_count"] == 3
+    assert metrics["correct_decided_pair_count"] == 2
+
+
+def test_pairwise_precision_is_undefined_when_every_prediction_abstains():
+    metrics = _pairwise_prediction_metrics(["lhs", "rhs"], ["neither", "neither"])
+
+    assert metrics["accuracy"] == 0.0
+    assert metrics["precision"] is None
+    assert metrics["prediction_coverage"] == 0.0
 
 
 def test_pairwise_trained_judge_gives_half_a_point_to_each_abstained_pair():

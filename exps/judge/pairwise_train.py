@@ -15,7 +15,6 @@ from typing import Any
 import joblib
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import GroupKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -398,6 +397,32 @@ def _predict_pairwise_outcomes(model, features, prediction_threshold: float | No
     ]
 
 
+def _pairwise_prediction_metrics(targets, predictions) -> dict[str, Any]:
+    target_values = list(targets)
+    prediction_values = list(predictions)
+    if len(target_values) != len(prediction_values):
+        raise ValueError("Pairwise targets and predictions must have equal lengths.")
+    if not target_values:
+        raise ValueError("Pairwise prediction metrics require at least one pair.")
+    decided = [
+        (target, prediction)
+        for target, prediction in zip(target_values, prediction_values)
+        if prediction in {"lhs", "rhs"}
+    ]
+    correct_decided = sum(target == prediction for target, prediction in decided)
+    return {
+        "accuracy": sum(
+            target == prediction
+            for target, prediction in zip(target_values, prediction_values)
+        )
+        / len(target_values),
+        "precision": correct_decided / len(decided) if decided else None,
+        "prediction_coverage": len(decided) / len(target_values),
+        "decided_pair_count": len(decided),
+        "correct_decided_pair_count": correct_decided,
+    }
+
+
 def train_pairwise_strategy(
     *,
     strategy_name: str,
@@ -534,7 +559,11 @@ def train_pairwise_strategy(
     )
     folds = query_group_folds(groups.tolist(), n_splits=cross_validation)
     fold_scores = []
+    fold_precisions = []
     fold_metadata = []
+    total_decided_pair_count = 0
+    total_correct_decided_pair_count = 0
+    total_validation_pair_count = 0
     for train_indices, validation_indices in folds:
         train_targets = targets.iloc[train_indices]
         if set(train_targets) != {"lhs", "rhs"}:
@@ -549,11 +578,21 @@ def train_pairwise_strategy(
             features.iloc[validation_indices],
             prediction_threshold,
         )
-        score = float(accuracy_score(targets.iloc[validation_indices], predictions))
+        metrics = _pairwise_prediction_metrics(
+            targets.iloc[validation_indices], predictions
+        )
+        score = metrics["accuracy"]
         fold_scores.append(score)
+        fold_precisions.append(metrics["precision"])
+        total_decided_pair_count += metrics["decided_pair_count"]
+        total_correct_decided_pair_count += metrics["correct_decided_pair_count"]
+        total_validation_pair_count += len(validation_indices)
         fold_metadata.append(
             {
                 "accuracy": score,
+                "precision": metrics["precision"],
+                "prediction_coverage": metrics["prediction_coverage"],
+                "decided_pair_count": metrics["decided_pair_count"],
                 "train_queries": sorted(set(groups.iloc[train_indices].tolist())),
                 "validation_queries": sorted(set(groups.iloc[validation_indices].tolist())),
                 "train_pair_count": len(train_indices),
@@ -590,6 +629,16 @@ def train_pairwise_strategy(
             "folds": cross_validation,
             "mean_accuracy": float(sum(fold_scores) / len(fold_scores)),
             "fold_scores": fold_scores,
+            # Pool decided validation pairs so abstaining folds don't skew precision.
+            "mean_precision": (
+                total_correct_decided_pair_count / total_decided_pair_count
+                if total_decided_pair_count
+                else None
+            ),
+            "fold_precisions": fold_precisions,
+            "mean_prediction_coverage": (
+                total_decided_pair_count / total_validation_pair_count
+            ),
             "folds_detail": fold_metadata,
         },
         "configuration": schema,
