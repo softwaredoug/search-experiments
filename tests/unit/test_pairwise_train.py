@@ -5,6 +5,7 @@ from unittest.mock import patch
 from exps.judge.pairwise_train import (
     PairwiseFeatureComputer,
     _normalize_model_config,
+    _new_pipeline,
     _pairwise_prediction_metrics,
     _predict_pairwise_outcomes,
     build_binary_training_data,
@@ -44,6 +45,27 @@ def test_binary_training_data_drops_grade_ties_and_targets_the_higher_grade_side
     assert features.to_dict("records") == [{"title": "lhs"}, {"title": "rhs"}]
     assert targets.tolist() == ["lhs", "rhs"]
     assert groups.tolist() == ["query-a", "query-b"]
+
+
+def test_neither_feature_output_is_retained_as_a_classifier_input():
+    comparisons = pd.DataFrame(
+        [
+            {"query": "query-a", "grade_lhs": 2, "grade_rhs": 1, "title": "neither"},
+            {"query": "query-b", "grade_lhs": 0, "grade_rhs": 1, "title": "rhs"},
+        ]
+    )
+    features, targets, _ = build_binary_training_data(
+        comparisons,
+        feature_columns=["title"],
+    )
+    model = _new_pipeline("decision_tree")
+    model.fit(features, targets)
+
+    assert features["title"].tolist() == ["neither", "rhs"]
+    assert model.named_steps["onehotencoder"].categories_[0].tolist() == [
+        "neither",
+        "rhs",
+    ]
 
 
 def test_query_group_folds_keep_each_query_entirely_in_one_validation_fold():

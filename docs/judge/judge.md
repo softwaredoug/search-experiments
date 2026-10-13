@@ -230,6 +230,11 @@ Cross-validation also reports precision, defined here as the fraction of
 non-abstained pair predictions that are correct. `mean_precision` pools those
 decisive predictions across folds, while `mean_prediction_coverage` reports the
 fraction of validation pairs on which the classifier expressed a preference.
+The same accuracy, precision, and coverage metrics are reported for each raw
+pairwise feature in `cross_validation.feature_metrics`, allowing comparison
+with the combined model. A feature's `neither` output remains a categorical
+input to the combined model; for that feature's standalone metrics, it is an
+abstention (incorrect for accuracy, excluded from precision).
 The supported classifiers are `decision_tree` and `gradient_boosted_tree`.
 The optional `model.params.prediction_threshold` uses the maximum class
 probability from the classifier: predictions below the threshold become

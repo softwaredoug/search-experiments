@@ -561,6 +561,9 @@ def train_pairwise_strategy(
     fold_scores = []
     fold_precisions = []
     fold_metadata = []
+    feature_fold_metrics: dict[str, list[dict[str, Any]]] = {
+        feature_name: [] for feature_name in feature_columns
+    }
     total_decided_pair_count = 0
     total_correct_decided_pair_count = 0
     total_validation_pair_count = 0
@@ -587,6 +590,15 @@ def train_pairwise_strategy(
         total_decided_pair_count += metrics["decided_pair_count"]
         total_correct_decided_pair_count += metrics["correct_decided_pair_count"]
         total_validation_pair_count += len(validation_indices)
+        per_feature_metrics = {}
+        for feature_name in feature_columns:
+            feature_metrics = _pairwise_prediction_metrics(
+                targets.iloc[validation_indices],
+                features.iloc[validation_indices][feature_name],
+            )
+            feature_metrics["validation_pair_count"] = len(validation_indices)
+            feature_fold_metrics[feature_name].append(feature_metrics)
+            per_feature_metrics[feature_name] = feature_metrics
         fold_metadata.append(
             {
                 "accuracy": score,
@@ -597,8 +609,31 @@ def train_pairwise_strategy(
                 "validation_queries": sorted(set(groups.iloc[validation_indices].tolist())),
                 "train_pair_count": len(train_indices),
                 "validation_pair_count": len(validation_indices),
+                "feature_metrics": per_feature_metrics,
             }
         )
+
+    cross_validation_feature_metrics = {}
+    for feature_name, fold_metrics in feature_fold_metrics.items():
+        decided_count = sum(metric["decided_pair_count"] for metric in fold_metrics)
+        correct_decided_count = sum(
+            metric["correct_decided_pair_count"] for metric in fold_metrics
+        )
+        validation_pair_count = sum(
+            metric["validation_pair_count"] for metric in fold_metrics
+        )
+        cross_validation_feature_metrics[feature_name] = {
+            "mean_accuracy": float(
+                sum(metric["accuracy"] for metric in fold_metrics) / len(fold_metrics)
+            ),
+            "fold_accuracies": [metric["accuracy"] for metric in fold_metrics],
+            "mean_precision": (
+                correct_decided_count / decided_count if decided_count else None
+            ),
+            "fold_precisions": [metric["precision"] for metric in fold_metrics],
+            "mean_prediction_coverage": decided_count / validation_pair_count,
+            "folds_detail": fold_metrics,
+        }
 
     if set(targets) != {"lhs", "rhs"}:
         raise ValueError("Pairwise training requires examples of both lhs and rhs wins.")
@@ -639,6 +674,7 @@ def train_pairwise_strategy(
             "mean_prediction_coverage": (
                 total_decided_pair_count / total_validation_pair_count
             ),
+            "feature_metrics": cross_validation_feature_metrics,
             "folds_detail": fold_metadata,
         },
         "configuration": schema,
