@@ -1,7 +1,7 @@
 strategy:
   name: wands_pairwise_trained_judge
   type: pairwise_trained_judge
-  description: WANDS pairwise relevance classifier trained on title and description judge features.
+  description: WANDS pairwise relevance classifier trained on title, description, and category hierarchy judge features.
   params:
     train:
       cross_validation: 5
@@ -37,3 +37,12 @@ strategy:
             RHS Doc:
             Description: {description_rhs}
           question: Which document is more relevant to the query?
+      - category_hierarchy:
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
+
+            LHS Product Category Hierarchy: {category hierarchy_lhs}
+
+            RHS Product Category Hierarchy: {category hierarchy_rhs}
+          question: Which product category hierarchy is more relevant to the e-commerce search query?
