@@ -7,6 +7,7 @@ import math
 import random
 import string
 import threading
+from collections.abc import Sized
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,7 @@ _FEATURE_OPTIONS = {
     "confidence_threshold",
     "explicit_neither",
     "double_check",
+    "empty_value",
 }
 _GRADE_COLUMNS = ("grade", "relevance", "rel", "label", "score")
 
@@ -78,12 +80,18 @@ def _normalize_features(features: Any, corpus: pd.DataFrame) -> list[dict[str, A
         config.setdefault("system_prompt", "You are a careful search relevance judge.")
         config.setdefault("explicit_neither", False)
         config.setdefault("double_check", True)
+        config.setdefault("empty_value", "Unknown")
         if not isinstance(config["system_prompt"], str) or not config["system_prompt"].strip():
             raise ValueError(f"Feature {name!r} system_prompt must be a non-empty string.")
         if not isinstance(config["explicit_neither"], bool):
             raise ValueError(f"Feature {name!r} explicit_neither must be a boolean.")
         if not isinstance(config["double_check"], bool):
             raise ValueError(f"Feature {name!r} double_check must be a boolean.")
+        if (
+            not isinstance(config["empty_value"], str)
+            or not config["empty_value"].strip()
+        ):
+            raise ValueError(f"Feature {name!r} empty_value must be a non-empty string.")
         threshold = config.get("confidence_threshold")
         if threshold is not None:
             if (
@@ -112,16 +120,44 @@ def _normalize_features(features: Any, corpus: pd.DataFrame) -> list[dict[str, A
             | (_template_fields(config["question"]) - (pair_fields | {"query"}))
         )
         if missing_fields:
-            raise ValueError(
+            message = (
                 f"Feature {name!r} has unsupported prompt placeholder(s): "
                 + ", ".join(missing_fields)
             )
+            bare_corpus_fields = sorted(set(missing_fields) & set(corpus.columns))
+            if bare_corpus_fields:
+                examples = ", ".join(
+                    f"{{{field}_lhs}} and {{{field}_rhs}}"
+                    for field in bare_corpus_fields
+                )
+                message += (
+                    ". In pairwise prompts, corpus columns must be suffixed with "
+                    f"'_lhs' or '_rhs' (for example, {examples})."
+                )
+            raise ValueError(message)
         config["model"] = model
         config["is_jev"] = is_jev
         config["name"] = name
         names.add(name)
         normalized.append(config)
     return normalized
+
+
+def _replace_empty_prompt_value(value: Any, empty_value: str) -> Any:
+    if isinstance(value, str) and not value.strip():
+        return empty_value
+    try:
+        is_missing = pd.isna(value)
+        if not hasattr(is_missing, "__len__") and bool(is_missing):
+            return empty_value
+    except (TypeError, ValueError):
+        pass
+    try:
+        if isinstance(value, Sized) and len(value) == 0:
+            return empty_value
+    except (TypeError, ValueError):
+        pass
+    return value
 
 
 class PairwiseFeatureComputer:
@@ -168,9 +204,20 @@ class PairwiseFeatureComputer:
         return thread_engines[index]
 
     def _judge(self, config: dict, engine, query: str, lhs, rhs) -> PairwiseJudgeResult:
-        values = {"query": query}
-        values.update({f"{key}_lhs": value for key, value in lhs.items()})
-        values.update({f"{key}_rhs": value for key, value in rhs.items()})
+        empty_value = config["empty_value"]
+        values = {"query": _replace_empty_prompt_value(query, empty_value)}
+        values.update(
+            {
+                f"{key}_lhs": _replace_empty_prompt_value(value, empty_value)
+                for key, value in lhs.items()
+            }
+        )
+        values.update(
+            {
+                f"{key}_rhs": _replace_empty_prompt_value(value, empty_value)
+                for key, value in rhs.items()
+            }
+        )
         try:
             question = config["question"].format_map(values)
             values["question"] = question

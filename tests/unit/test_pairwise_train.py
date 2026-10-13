@@ -1,6 +1,8 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
-from unittest.mock import patch
 
 from exps.judge.pairwise_train import (
     PairwiseFeatureComputer,
@@ -66,6 +68,109 @@ def test_neither_feature_output_is_retained_as_a_classifier_input():
         "neither",
         "rhs",
     ]
+
+
+def test_bare_corpus_placeholder_error_explains_pairwise_side_suffixes():
+    corpus = pd.DataFrame({"doc_id": [1], "category": ["chairs"]})
+    features = [
+        {
+            "category": {
+                "model": "jev/jev-latest",
+                "prompt": "{query} {category}",
+                "question": "Which is more relevant?",
+            }
+        }
+    ]
+
+    with pytest.raises(ValueError) as exc_info:
+        PairwiseFeatureComputer(corpus=corpus, features=features)
+
+    message = str(exc_info.value)
+    assert "unsupported prompt placeholder(s): category" in message
+    assert "corpus columns must be suffixed with '_lhs' or '_rhs'" in message
+    assert "{category_lhs} and {category_rhs}" in message
+
+
+@pytest.mark.parametrize("empty_value", [None, float("nan"), pd.NA, "", "   ", [], {}])
+def test_pairwise_feature_uses_configured_empty_value_for_empty_prompt_inputs(empty_value):
+    corpus = pd.DataFrame({"doc_id": [1], "category": ["chairs"]})
+    features = [
+        {
+            "category": {
+                "model": "gpt-5-mini",
+                "empty_value": "No Description Provided",
+                "prompt": "LHS: {category_lhs}\nRHS: {category_rhs}",
+                "question": "Which is more relevant?",
+            }
+        }
+    ]
+
+    class CapturingEngine:
+        def judge(self, *, prompt, **_kwargs):
+            self.prompt = prompt
+            return SimpleNamespace(outcome="lhs")
+
+    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
+    engine = CapturingEngine()
+    feature_computer._judge(
+        feature_computer.features[0],
+        engine,
+        "query",
+        {"category": empty_value},
+        {"category": empty_value},
+    )
+
+    assert engine.prompt == (
+        "LHS: No Description Provided\nRHS: No Description Provided"
+    )
+
+
+def test_pairwise_feature_defaults_empty_prompt_values_to_unknown():
+    corpus = pd.DataFrame({"doc_id": [1], "category": ["chairs"]})
+    features = [
+        {
+            "category": {
+                "model": "gpt-5-mini",
+                "prompt": "LHS: {category_lhs}\nRHS: {category_rhs}",
+                "question": "Which is more relevant?",
+            }
+        }
+    ]
+
+    class CapturingEngine:
+        def judge(self, *, prompt, **_kwargs):
+            self.prompt = prompt
+            return SimpleNamespace(outcome="lhs")
+
+    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
+    engine = CapturingEngine()
+    feature_computer._judge(
+        feature_computer.features[0],
+        engine,
+        "query",
+        {"category": None},
+        {"category": "  "},
+    )
+
+    assert engine.prompt == "LHS: Unknown\nRHS: Unknown"
+
+
+@pytest.mark.parametrize("empty_value", ["", "   ", None, 42])
+def test_pairwise_feature_rejects_invalid_empty_value(empty_value):
+    corpus = pd.DataFrame({"doc_id": [1], "category": ["chairs"]})
+    features = [
+        {
+            "category": {
+                "model": "gpt-5-mini",
+                "empty_value": empty_value,
+                "prompt": "{category_lhs} {category_rhs}",
+                "question": "Which is more relevant?",
+            }
+        }
+    ]
+
+    with pytest.raises(ValueError, match="empty_value must be a non-empty string"):
+        PairwiseFeatureComputer(corpus=corpus, features=features)
 
 
 def test_query_group_folds_keep_each_query_entirely_in_one_validation_fold():

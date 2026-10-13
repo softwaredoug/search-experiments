@@ -208,6 +208,7 @@ strategy:
             Title: {title_rhs}
           question: Which document is more relevant to the query?
       - description:
+          empty_value: No Description Provided
           model: gpt-5-mini
           system_prompt: You are a careful search relevance judge.
           prompt: |
@@ -246,6 +247,10 @@ Pairs whose judged grades are equal are omitted from supervised training; the
 target classes are only `lhs` and `rhs`. Feature judges may still return
 `neither`, which remains a categorical feature value. Feature prompts use
 `{query}` and corpus fields suffixed with `_lhs` or `_rhs`.
+Each feature may set `empty_value` to replace empty prompt inputs. This covers
+blank or whitespace-only strings, `None`, `NaN`/`pd.NA`, and empty containers. It
+defaults to `Unknown`; for example, `empty_value: No Description Provided`
+inserts that text wherever a feature's prompt input is empty.
 
 Pass `--workers N` to `uv run train` to compute feature values for up to `N`
 document pairs concurrently.

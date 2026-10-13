@@ -25,6 +25,7 @@ strategy:
             Title: {title_rhs}
           question: Which document is more relevant to the query?
       - description:
+          empty_value: No Description Provided
           model: jev/jev-latest
           system_prompt: You are a careful search relevance judge.
           prompt: |
