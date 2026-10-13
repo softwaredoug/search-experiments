@@ -19,7 +19,9 @@ class _FakeAutoEnricher:
         self.cached_calls = []
         self.uncached_calls = []
         self.enricher = SimpleNamespace(enrich=self._uncached_enrich)
+        self.cached_enricher = self
         self.response = None
+        self.save_cache_calls = 0
         type(self).instances.append(self)
 
     def enrich(self, prompt):
@@ -29,6 +31,9 @@ class _FakeAutoEnricher:
     def _uncached_enrich(self, prompt):
         self.uncached_calls.append(prompt)
         return self.response
+
+    def save_cache(self):
+        self.save_cache_calls += 1
 
 
 class _FakeAutoDecisionEnricher:
@@ -106,6 +111,15 @@ def test_llm_engine_explicit_neither_and_no_cache():
     assert result.outcome == "neither"
     assert fake.cached_calls == []
     assert fake.uncached_calls == ["state\n\nquestion"]
+
+
+def test_llm_engine_flushes_its_persistent_cache():
+    _FakeAutoEnricher.instances = []
+    with patch("exps.judge.engines.llm_pairwise.AutoEnricher", _FakeAutoEnricher):
+        engine = LLMPairwiseJudgeEngine(model="gpt-4.1-mini", system_prompt="Judge.")
+        engine.flush_cache()
+
+    assert _FakeAutoEnricher.instances[0].save_cache_calls == 1
 
 
 def test_llm_engine_rejects_neither_when_not_configured():

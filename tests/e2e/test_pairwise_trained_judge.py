@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import joblib
+import pytest
 
 from exps.runners.run import RunParams, run_benchmark
 from exps.runners.train import TrainParams, train_strategy
@@ -26,6 +27,9 @@ class ScriptedPairwiseFeatureEnricher:
         self.response_model = response_model
         self.prompts = []
         self.enricher = self
+        self.cached_enricher = self
+        self.cache_file = "scripted-openai-cache"
+        self.cache = {}
         type(self).instances.append(self)
 
     def enrich(self, prompt):
@@ -50,6 +54,9 @@ class ScriptedPairwiseFeatureEnricher:
         finally:
             with type(self).calls_lock:
                 type(self).active_calls -= 1
+
+    def save_cache(self):
+        pass
 
 
 class ScriptedPairwiseDecisionEnricher:
@@ -126,8 +133,19 @@ def _dataset():
     )
 
 
-def _write_config(path, *, artifact_path=None):
+def _write_config(path, *, artifact_path=None, gradient_boosted=False):
     strategy_path = "" if artifact_path is None else f"  path: {artifact_path}\n"
+    model_config = (
+        "      type: gradient_boosted_tree\n"
+        "      params:\n"
+        "        n_estimators: 5\n"
+        "        max_depth: 1\n"
+        "        prediction_threshold: 0.7\n"
+        if gradient_boosted
+        else "      type: decision_tree\n"
+        "      params:\n"
+        "        prediction_threshold: 0.7\n"
+    )
     path.write_text(
         f"""
 strategy:
@@ -138,10 +156,7 @@ strategy:
     sampling_seed: 17
     to_pointwise: copeland
     model:
-      type: decision_tree
-      params:
-        prediction_threshold: 0.7
-    features:
+{model_config}    features:
       - title:
           model: jev/jev-latest
           prompt: |
@@ -165,8 +180,28 @@ strategy:
     return path
 
 
+@pytest.mark.parametrize(
+    ("gradient_boosted", "expected_model"),
+    [
+        (
+            False,
+            {"type": "decision_tree", "params": {"prediction_threshold": 0.7}},
+        ),
+        (
+            True,
+            {
+                "type": "gradient_boosted_tree",
+                "params": {
+                    "n_estimators": 5,
+                    "max_depth": 1,
+                    "prediction_threshold": 0.7,
+                },
+            },
+        ),
+    ],
+)
 def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
-    tmp_path, monkeypatch, capsys
+    tmp_path, monkeypatch, capsys, gradient_boosted, expected_model
 ):
     from exps import paths, train_runs
     from exps.runners import run as run_module
@@ -192,7 +227,9 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         "exps.judge.engines.jev_pairwise.AutoDecisionEnricher",
         ScriptedPairwiseDecisionEnricher,
     ):
-        config_path = _write_config(tmp_path / "trained_judge.yml")
+        config_path = _write_config(
+            tmp_path / "trained_judge.yml", gradient_boosted=gradient_boosted
+        )
         trained = train_strategy(
             TrainParams(
                 strategy_path=str(config_path),
@@ -212,7 +249,9 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         assert trained.metadata["cross_validation"]["folds"] == 3
         assert len(trained.metadata["cross_validation"]["fold_scores"]) == 3
         assert trained.metadata["cross_validation"]["mean_precision"] == 1.0
-        assert trained.metadata["cross_validation"]["mean_prediction_coverage"] == 1.0
+        assert trained.metadata["cross_validation"]["mean_prediction_coverage"] > 0.5
+        if not gradient_boosted:
+            assert trained.metadata["cross_validation"]["mean_prediction_coverage"] == 1.0
         for feature_name in ("title", "description"):
             feature_metrics = trained.metadata["cross_validation"]["feature_metrics"][
                 feature_name
@@ -222,10 +261,7 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
             assert feature_metrics["mean_prediction_coverage"] == 1.0
             assert len(feature_metrics["folds_detail"]) == 3
         assert trained.metadata["training_pair_count"] == 18
-        assert trained.metadata["model"] == {
-            "type": "decision_tree",
-            "params": {"prediction_threshold": 0.7},
-        }
+        assert trained.metadata["model"] == expected_model
         assert set(trained.metadata["target_classes"]) == {"rhs", "lhs"}
         fold_details = trained.metadata["cross_validation"]["folds_detail"]
         validation_queries = []
@@ -234,10 +270,21 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
             validation_queries.extend(fold["validation_queries"])
         assert sorted(validation_queries) == [f"query-{index}" for index in range(6)]
         trained_model = joblib.load(artifact_path / "model.joblib")
-        assert trained_model.named_steps["decisiontreeclassifier"].tree_.n_node_samples[0] == 18
+        if gradient_boosted:
+            estimator = trained_model.named_steps["gradientboostingclassifier"]
+            assert estimator.n_estimators == 5
+            assert estimator.max_depth == 1
+        else:
+            assert (
+                trained_model.named_steps["decisiontreeclassifier"]
+                .tree_.n_node_samples[0]
+                == 18
+            )
 
         runtime_config = _write_config(
-            tmp_path / "trained_judge_run.yml", artifact_path=artifact_path
+            tmp_path / "trained_judge_run.yml",
+            artifact_path=artifact_path,
+            gradient_boosted=gradient_boosted,
         )
         result = run_benchmark(
             RunParams(
@@ -251,8 +298,11 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         )
 
     assert result.artifact_path == str(artifact_path)
-    assert result.summary["mean_pairwise_agreement"] == 1.0
-    assert len(ScriptedPairwiseFeatureEnricher.instances) >= 4
+    if gradient_boosted:
+        assert result.summary["mean_pairwise_agreement"] > 0.8
+    else:
+        assert result.summary["mean_pairwise_agreement"] == 1.0
+    assert len(ScriptedPairwiseFeatureEnricher.instances) == 2
     assert all(instance.prompts for instance in ScriptedPairwiseFeatureEnricher.instances)
     assert ScriptedPairwiseFeatureEnricher.max_active_calls > 1
     assert len(ScriptedPairwiseDecisionEnricher.instances) == 2

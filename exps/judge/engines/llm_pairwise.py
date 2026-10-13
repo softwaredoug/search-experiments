@@ -69,3 +69,11 @@ class LLMPairwiseJudgeEngine:
         if outcome not in allowed:
             raise ValueError(f"LLM returned an invalid pairwise outcome: {outcome!r}.")
         return PairwiseJudgeResult(outcome=outcome)
+
+    @property
+    def cache_backend(self):
+        return self.enricher.cached_enricher
+
+    def flush_cache(self) -> None:
+        if not self.no_cache:
+            self.cache_backend.save_cache()

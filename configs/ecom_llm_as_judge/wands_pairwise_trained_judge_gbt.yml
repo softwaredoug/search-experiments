@@ -1,0 +1,46 @@
+strategy:
+  name: wands_pairwise_trained_judge_gbt
+  type: pairwise_trained_judge
+  description: WANDS pairwise relevance classifier using gradient-boosted trees with Jev title, description, and category hierarchy features.
+  params:
+    train:
+      cross_validation: 5
+    sample_size: 10
+    sampling_seed: 42
+    to_pointwise: copeland
+    model:
+      type: gradient_boosted_tree
+      params:
+        n_estimators: 100
+        max_depth: 3
+        prediction_threshold: 0.3
+    features:
+      - title:
+          empty_value: No Title Provided
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
+
+            LHS Product Title: {title_lhs}
+
+            RHS Product Title: {title_rhs}
+          question: Which product title is more relevant to the e-commerce search query?
+      - description:
+          empty_value: No Description Provided
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
+
+            LHS Product Description: {description_lhs}
+
+            RHS Product Description: {description_rhs}
+          question: Which product description is more relevant to the e-commerce search query?
+      - category_hierarchy:
+          model: jev/jev-latest
+          prompt: |
+            Query: {query}
+
+            LHS Product Category Hierarchy: {category hierarchy_lhs}
+
+            RHS Product Category Hierarchy: {category hierarchy_rhs}
+          question: Which product category hierarchy is more relevant to the e-commerce search query?

@@ -1,3 +1,6 @@
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -60,7 +63,7 @@ def test_neither_feature_output_is_retained_as_a_classifier_input():
         comparisons,
         feature_columns=["title"],
     )
-    model = _new_pipeline("decision_tree")
+    model = _new_pipeline(_normalize_model_config(None))
     model.fit(features, targets)
 
     assert features["title"].tolist() == ["neither", "rhs"]
@@ -209,6 +212,57 @@ def test_model_config_normalizes_prediction_threshold():
     }
 
 
+def test_gradient_boosted_tree_model_config_uses_sklearn_defaults():
+    assert _normalize_model_config({"type": "gradient_boosted_tree"}) == {
+        "type": "gradient_boosted_tree",
+        "params": {"n_estimators": 100, "max_depth": 3},
+    }
+
+
+def test_gradient_boosted_tree_configures_estimator_and_shared_pipeline():
+    model_config = _normalize_model_config(
+        {
+            "type": "gradient_boosted_tree",
+            "params": {
+                "n_estimators": 7,
+                "max_depth": 2,
+                "prediction_threshold": 0.8,
+            },
+        }
+    )
+    model = _new_pipeline(model_config)
+    estimator = model.named_steps["gradientboostingclassifier"]
+
+    assert estimator.n_estimators == 7
+    assert estimator.max_depth == 2
+    assert estimator.random_state == 42
+    assert model_config["params"]["prediction_threshold"] == 0.8
+
+    training_features = pd.DataFrame(
+        {"signal": ["lhs", "rhs", "lhs", "rhs"]}
+    )
+    training_targets = pd.Series(["lhs", "rhs", "lhs", "rhs"])
+    model.fit(training_features, training_targets)
+    assert model.predict_proba(training_features).shape == (4, 2)
+
+
+@pytest.mark.parametrize(
+    ("params", "message"),
+    [
+        ({"n_estimators": 0}, "n_estimators must be a positive integer"),
+        ({"n_estimators": True}, "n_estimators must be a positive integer"),
+        ({"max_depth": 0}, "max_depth must be a positive integer or null"),
+        ({"max_depth": False}, "max_depth must be a positive integer or null"),
+        ({"unknown": 1}, "Unsupported gradient_boosted_tree model.params"),
+    ],
+)
+def test_gradient_boosted_tree_rejects_invalid_params(params, message):
+    with pytest.raises(ValueError, match=message):
+        _normalize_model_config(
+            {"type": "gradient_boosted_tree", "params": params}
+        )
+
+
 @pytest.mark.parametrize("threshold", [-0.1, 1.1, float("nan"), True])
 def test_model_config_rejects_invalid_prediction_threshold(threshold):
     with pytest.raises(ValueError, match="prediction_threshold"):
@@ -334,3 +388,76 @@ def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():
     assert len(FakeAutoDecisionEnricher.instances) == 1
     assert FakeAutoDecisionEnricher.instances[0].delete_cache_calls == 1
     assert FakeAutoDecisionEnricher.instances[0].save_cache_calls == 1
+
+
+def test_pairwise_feature_computer_shares_openai_engine_across_features_and_workers():
+    class FakeLLMPairwiseJudgeEngine:
+        instances = []
+
+        def __init__(self, **_kwargs):
+            self.thread_ids = set()
+            self.barrier = threading.Barrier(2)
+            self.flush_cache_calls = 0
+            type(self).instances.append(self)
+
+        def judge(self, **_kwargs):
+            self.thread_ids.add(threading.get_ident())
+            self.barrier.wait(timeout=5)
+            time.sleep(0.01)
+            return SimpleNamespace(outcome="lhs")
+
+        def flush_cache(self):
+            self.flush_cache_calls += 1
+
+    corpus = pd.DataFrame(
+        {"doc_id": [1, 2], "title": ["left title", "right title"]}
+    )
+    shared_feature_config = {
+        "model": "openai/gpt-4.1-mini",
+        "system_prompt": "Compare relevance.",
+        "question": "Which title is more relevant?",
+        "double_check": False,
+    }
+    features = [
+        {
+            "title": {
+                **shared_feature_config,
+                "prompt": "Query: {query} LHS: {title_lhs} RHS: {title_rhs}",
+            }
+        },
+        {
+            "title_detail": {
+                **shared_feature_config,
+                "prompt": "Compare title text. Query: {query} {title_lhs} {title_rhs}",
+            }
+        },
+    ]
+    FakeLLMPairwiseJudgeEngine.instances = []
+
+    with patch(
+        "exps.judge.pairwise_train.LLMPairwiseJudgeEngine",
+        FakeLLMPairwiseJudgeEngine,
+    ):
+        feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
+        assert feature_computer.engines[0] is feature_computer.engines[1]
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outputs = list(
+                executor.map(
+                    lambda query: feature_computer.compute(
+                        query,
+                        {"title": "left title"},
+                        {"title": "right title"},
+                    ),
+                    ("query-a", "query-b"),
+                )
+            )
+        feature_computer.flush_caches()
+
+    assert outputs == [
+        {"title": "lhs", "title_detail": "lhs"},
+        {"title": "lhs", "title_detail": "lhs"},
+    ]
+    assert len(FakeLLMPairwiseJudgeEngine.instances) == 1
+    assert len(FakeLLMPairwiseJudgeEngine.instances[0].thread_ids) == 2
+    assert FakeLLMPairwiseJudgeEngine.instances[0].flush_cache_calls == 1

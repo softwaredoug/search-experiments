@@ -237,6 +237,24 @@ with the combined model. A feature's `neither` output remains a categorical
 input to the combined model; for that feature's standalone metrics, it is an
 abstention (incorrect for accuracy, excluded from precision).
 The supported classifiers are `decision_tree` and `gradient_boosted_tree`.
+The gradient-boosted classifier is sklearn's `GradientBoostingClassifier`; its
+optional `model.params.n_estimators` sets the number of boosting stages (default
+`100`), and `model.params.max_depth` sets the base trees' maximum depth (default
+`3`; `null` allows unbounded depth). For example:
+
+```yaml
+model:
+  type: gradient_boosted_tree
+  params:
+    n_estimators: 100
+    max_depth: 3
+    prediction_threshold: 0.9
+```
+
+Each classifier validates its own estimator parameters. `prediction_threshold`
+is shared across classifiers and controls whether low-confidence predictions
+abstain as `neither`.
+
 The optional `model.params.prediction_threshold` uses the maximum class
 probability from the classifier: predictions below the threshold become
 `neither`. An abstention awards each document half a Copeland point and counts as

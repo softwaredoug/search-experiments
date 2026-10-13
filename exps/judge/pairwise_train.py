@@ -6,7 +6,6 @@ import json
 import math
 import random
 import string
-import threading
 from collections.abc import Sized
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -15,13 +14,12 @@ from typing import Any
 
 import joblib
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import GroupKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
+from exps.judge.classifiers import build_classifier, normalize_model_config
 from exps.judge.engines.common import PairwiseJudgeResult, grade_value
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
@@ -168,40 +166,40 @@ class PairwiseFeatureComputer:
         self.features = _normalize_features(features, corpus)
         self.no_cache = no_cache
         self.engines = []
-        self._thread_local = threading.local()
-        jev_engines = {}
+        shared_engines = {}
         for config in self.features:
             if config["is_jev"]:
                 _, separator, model_name = config["model"].partition("/")
                 engine_key = (
+                    "jev",
                     (model_name if separator else "jev-latest").lower(),
                     config["explicit_neither"],
                 )
-                if engine_key not in jev_engines:
-                    jev_engines[engine_key] = JevPairwiseJudgeEngine(
+                if engine_key not in shared_engines:
+                    shared_engines[engine_key] = JevPairwiseJudgeEngine(
                         model=config["model"],
                         explicit_neither=config["explicit_neither"],
                         no_cache=no_cache,
                     )
-                self.engines.append(jev_engines[engine_key])
             else:
-                self.engines.append(None)
+                provider, separator, model_name = config["model"].partition("/")
+                engine_key = (
+                    "openai",
+                    (model_name if separator else provider).lower(),
+                    config["system_prompt"],
+                    config["explicit_neither"],
+                )
+                if engine_key not in shared_engines:
+                    shared_engines[engine_key] = LLMPairwiseJudgeEngine(
+                        model=config["model"],
+                        system_prompt=config["system_prompt"],
+                        explicit_neither=config["explicit_neither"],
+                        no_cache=no_cache,
+                    )
+            self.engines.append(shared_engines[engine_key])
 
-    def _engine_for(self, index: int, config: dict):
-        if config["is_jev"]:
-            return self.engines[index]
-        thread_engines = getattr(self._thread_local, "engines", None)
-        if thread_engines is None:
-            thread_engines = {}
-            self._thread_local.engines = thread_engines
-        if index not in thread_engines:
-            thread_engines[index] = LLMPairwiseJudgeEngine(
-                model=config["model"],
-                system_prompt=config["system_prompt"],
-                explicit_neither=config["explicit_neither"],
-                no_cache=self.no_cache,
-            )
-        return thread_engines[index]
+    def _engine_for(self, index: int, _config: dict):
+        return self.engines[index]
 
     def _judge(self, config: dict, engine, query: str, lhs, rhs) -> PairwiseJudgeResult:
         empty_value = config["empty_value"]
@@ -259,9 +257,10 @@ class PairwiseFeatureComputer:
     def flush_caches(self) -> None:
         flushed = set()
         for engine in self.engines:
-            if isinstance(engine, JevPairwiseJudgeEngine) and id(engine) not in flushed:
-                engine.flush_cache()
-                flushed.add(id(engine))
+            if id(engine) in flushed:
+                continue
+            engine.flush_cache()
+            flushed.add(id(engine))
 
 
 def _sample_documents(
@@ -364,73 +363,15 @@ def query_group_folds(groups, *, n_splits: int):
     return list(splitter.split(indices, groups=groups))
 
 
-def _new_classifier(model_name: str):
-    if model_name == "decision_tree":
-        return DecisionTreeClassifier(random_state=42)
-    if model_name == "gradient_boosted_tree":
-        return GradientBoostingClassifier(random_state=42)
-    raise ValueError(
-        "strategy.params.model.type must be 'decision_tree' or 'gradient_boosted_tree'."
-    )
-
-
-def _new_pipeline(model_name: str):
+def _new_pipeline(model_config: dict[str, Any]):
     return make_pipeline(
         OneHotEncoder(handle_unknown="ignore", sparse_output=False),
-        _new_classifier(model_name),
+        build_classifier(model_config),
     )
 
 
 def _normalize_model_config(raw_model: Any) -> dict[str, Any]:
-    if raw_model is None:
-        raw_model = {"type": "decision_tree"}
-    if not isinstance(raw_model, dict):
-        raise ValueError("strategy.params.model must be a mapping with a 'type'.")
-    unknown = set(raw_model) - {"type", "params"}
-    if unknown:
-        raise ValueError(
-            "Unsupported strategy.params.model option(s): " + ", ".join(sorted(unknown))
-        )
-    model_type = raw_model.get("type", "decision_tree")
-    if not isinstance(model_type, str) or model_type not in {
-        "decision_tree",
-        "gradient_boosted_tree",
-    }:
-        raise ValueError(
-            "strategy.params.model.type must be 'decision_tree' or 'gradient_boosted_tree'."
-        )
-    model_params = raw_model.get("params", {})
-    if model_params is None:
-        model_params = {}
-    if not isinstance(model_params, dict):
-        raise ValueError("strategy.params.model.params must be a mapping.")
-    unknown_params = set(model_params) - {"prediction_threshold"}
-    if unknown_params:
-        raise ValueError(
-            "Unsupported strategy.params.model.params option(s): "
-            + ", ".join(sorted(unknown_params))
-        )
-    prediction_threshold = model_params.get("prediction_threshold")
-    if prediction_threshold is not None and (
-        isinstance(prediction_threshold, bool)
-        or not isinstance(prediction_threshold, (int, float))
-        or not math.isfinite(prediction_threshold)
-        or not 0 <= prediction_threshold <= 1
-    ):
-        raise ValueError(
-            "strategy.params.model.params.prediction_threshold must be between zero and one."
-        )
-    return {
-        "type": model_type,
-        "params": {
-            **model_params,
-            **(
-                {"prediction_threshold": float(prediction_threshold)}
-                if prediction_threshold is not None
-                else {}
-            ),
-        },
-    }
+    return normalize_model_config(raw_model)
 
 
 def _predict_pairwise_outcomes(model, features, prediction_threshold: float | None):
@@ -496,7 +437,6 @@ def train_pairwise_strategy(
     if params.get("to_pointwise", "copeland") != "copeland":
         raise ValueError("strategy.params.to_pointwise must be 'copeland'.")
     model_config = _normalize_model_config(params.get("model"))
-    model_name = model_config["type"]
     prediction_threshold = model_config["params"].get("prediction_threshold")
     train_config = params.get("train") or {}
     if not isinstance(train_config, dict):
@@ -621,7 +561,7 @@ def train_pairwise_strategy(
                 "Each cross-validation training fold must contain both pairwise outcomes; "
                 "use more judged queries or fewer folds."
             )
-        fold_model = _new_pipeline(model_name)
+        fold_model = _new_pipeline(model_config)
         fold_model.fit(features.iloc[train_indices], train_targets)
         predictions = _predict_pairwise_outcomes(
             fold_model,
@@ -684,7 +624,7 @@ def train_pairwise_strategy(
 
     if set(targets) != {"lhs", "rhs"}:
         raise ValueError("Pairwise training requires examples of both lhs and rhs wins.")
-    final_model = _new_pipeline(model_name)
+    final_model = _new_pipeline(model_config)
     final_model.fit(features, targets)
     joblib.dump(final_model, run_path / "model.joblib")
     schema = {
