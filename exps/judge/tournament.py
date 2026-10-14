@@ -29,21 +29,36 @@ class TournamentScheduler:
 
     def schedule(self) -> set[int]:
         """Schedule based on blitzrank rules, returning which pairs should be compared."""
-        # Get raw stats for each    for doc in G:
+        # Get raw stats for each SCC in dag, apply to each doc
         stats = {}
-        for doc_id in self.graph:
-            wins = nx.descendants(self.graph, doc_id)
-            losses = nx.ancestors(self.graph, doc_id)
+        dag = nx.condensation(self.graph)
+        for scc in dag:
+            members = dag.nodes[scc]["members"]
+            internal = len(members) - 1
 
-            stats[doc_id] = {
-                "wins": len(wins),
-                "losses": len(losses),
-                "kappa": len(wins | losses),
-                "resolved": len(wins | losses) == len(self.graph) - 1,
-            }
+            losses = internal + sum(
+                len(dag.nodes[a]["members"])
+                for a in nx.ancestors(dag, scc)
+            )
+
+            wins = internal + sum(
+                len(dag.nodes[d]["members"])
+                for d in nx.descendants(dag, scc)
+            )
+
+            kappa = losses + wins - internal
+
+            for doc_id in members:
+                stats[doc_id] = {
+                    "wins": wins,
+                    "scc_wins": wins - internal,
+                    "losses": losses,
+                    "scc_losses": losses - internal,
+                    "kappa": kappa,
+                    "resolved": kappa == len(self.graph) - 1,
+                }
 
         # Remove cycles from the graph to create a DAG
-        dag = nx.condensation(self.graph)
         members = nx.get_node_attributes(dag, "members")
 
         # Any that do not have a direct or indirect relationship
@@ -56,8 +71,8 @@ class TournamentScheduler:
         def scc_sort_key(scc):
             representative_id = min(members[scc])
             return (
-                stats[representative_id]["losses"],
-                stats[representative_id]["wins"],
+                stats[representative_id]["scc_losses"],
+                stats[representative_id]["scc_wins"],
                 representative_id,
             )
 
