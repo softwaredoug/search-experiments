@@ -11,32 +11,28 @@ strategy:
     model:
       type: decision_tree
       params:
-        prediction_threshold: 0.7
+        prediction_threshold: 0.3
     features:
       - title:
+          empty_value: No Title Provided
           model: jev/jev-latest
           prompt: |
             Query: {query}
 
-            LHS Doc:
-            Title: {title_lhs}
+            LHS Product Title: {title_lhs}
 
-            RHS Doc:
-            Title: {title_rhs}
-          question: Which document is more relevant to the query?
+            RHS Product Title: {title_rhs}
+          question: Which product title is more relevant to the e-commerce search query?
       - description:
           empty_value: No Description Provided
           model: jev/jev-latest
-          system_prompt: You are a careful search relevance judge.
           prompt: |
             Query: {query}
 
-            LHS Doc:
-            Description: {description_lhs}
+            LHS Product Description: {description_lhs}
 
-            RHS Doc:
-            Description: {description_rhs}
-          question: Which document is more relevant to the query?
+            RHS Product Description: {description_rhs}
+          question: Which product description is more relevant to the e-commerce search query?
       - category_hierarchy:
           model: jev/jev-latest
           prompt: |

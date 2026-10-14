@@ -24,6 +24,28 @@ def _fixture_data():
     return corpus, judgments
 
 
+def _multi_query_fixture_data():
+    grades = [
+        1.0, 1.0, 0.5, 0.5, 0.1, 0.1, 0.0, 0.0,
+        0.0, 0.0, 0.1, 0.1, 0.5, 0.5, 1.0, 1.0,
+    ]
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [f"d{index}" for index in range(len(grades))],
+            "title": [f"title-{index}" for index in range(len(grades))],
+            "description": [f"grade={grade}" for grade in grades],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query": ["desk"] * 8 + ["lamp"] * 8,
+            "doc_id": corpus["doc_id"],
+            "grade": grades,
+        }
+    )
+    return corpus, judgments
+
+
 def _strategy(corpus, judgments, **overrides):
     params = {
         "model": "gpt-5-mini",
@@ -44,16 +66,48 @@ def _strategy(corpus, judgments, **overrides):
     return strategy
 
 
-def test_sampling_is_deterministic_balanced_and_limited_to_available_documents():
+def test_sampling_is_deterministic_balanced_and_best_effort():
     corpus, judgments = _fixture_data()
     first = _strategy(corpus, judgments, sample_size=5)
     second = _strategy(corpus, judgments, sample_size=5)
 
     assert first._samples == second._samples
-    assert len(first._samples["desk"]) == 5
+    assert len(first._samples["desk"]) == 6
     counts = pd.Series([grade for _, grade in first._samples["desk"]]).value_counts()
     assert max(counts) - min(counts) <= 1
     assert len(_strategy(corpus, judgments, sample_size=10)._samples["desk"]) == 6
+
+
+def test_sampling_keeps_multiple_queries_separate():
+    corpus, judgments = _multi_query_fixture_data()
+    strategy = _strategy(corpus, judgments, sample_size=2)
+    expected = {
+        "desk": {
+            (0, 1.0), (1, 1.0), (2, 0.5), (3, 0.5),
+            (4, 0.1), (5, 0.1), (6, 0.0), (7, 0.0),
+        },
+        "lamp": {
+            (8, 0.0), (9, 0.0), (10, 0.1), (11, 0.1),
+            (12, 0.5), (13, 0.5), (14, 1.0), (15, 1.0),
+        },
+    }
+
+    assert set(strategy._samples) == set(expected)
+    for query, expected_samples in expected.items():
+        sampled = strategy._samples[query]
+        assert len(sampled) == 4
+        assert set(sampled) <= expected_samples
+        assert {grade for _, grade in sampled} == {0.0, 0.1, 0.5, 1.0}
+
+
+def test_sampling_supports_float_grades_between_zero_and_one():
+    corpus, judgments = _multi_query_fixture_data()
+    strategy = _strategy(corpus, judgments, sample_size=4)
+    expected_grades = {0.0, 0.1, 0.5, 1.0}
+
+    for sampled in strategy._samples.values():
+        assert len(sampled) == 4
+        assert {grade for _, grade in sampled} == expected_grades
 
 
 def test_pair_prompt_renders_query_and_both_document_sides():
@@ -138,6 +192,8 @@ def test_neither_scores_half_point_and_equal_scores_break_by_corpus_index():
 
 def test_single_document_and_unseen_query_do_not_call_the_judge():
     corpus, judgments = _fixture_data()
+    corpus = corpus.iloc[:1].reset_index(drop=True)
+    judgments = judgments.iloc[:1]
     strategy = _strategy(corpus, judgments, sample_size=1)
 
     indices, scores = strategy.search("desk", k=10)

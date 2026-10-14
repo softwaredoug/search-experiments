@@ -14,10 +14,11 @@ Typically we'd get some organic search results and evaluate them using the
 labeled results. IE compute NDCG and traditional metrics. But in this case,
 we care more about pointwise and pairwise agreement.
 
-To do this, and fit within existing APIs seamlessly, we sample 10 judged
-query-document pairs from the dataset per query. We evaluate these, labeling
-them with some score. We'll either evaluate this with pointwise agreement
-(does score == grade) or pairwise ( doc1 > doc2 in score implies doc1 > doc2 in grade).
+To do this, and fit within existing APIs seamlessly, strategies sample judged
+query-document pairs according to their configured sampling policy. We evaluate
+the selected documents, labeling them with some score. We'll either evaluate
+this with pointwise agreement (does score == grade) or pairwise (doc1 > doc2 in
+score implies doc1 > doc2 in grade).
 
 All this is handled for us in `run_strategy`
 
@@ -133,8 +134,22 @@ strategy:
     sampling_seed: 42
 ```
 
-`sample_size` is the number of documents sampled per query (1 to 10), not the
-number of comparisons. The strategy compares every unique pair from that sample.
+### Sample size
+
+`sample_size` is a per-query target from 1 to 10, not a limit on the number of
+documents or the number of comparisons. For each query, the strategy counts the
+distinct relevance grades among judged documents that match corpus documents.
+If there are `G` distinct grades, it samples up to
+`ceil(sample_size / G)` documents from each grade group, using `sampling_seed`
+for reproducible sampling. The grade count is calculated separately for each
+query.
+
+Because the quota is rounded up independently for each grade, the result may
+contain more than `sample_size` documents. For example, `sample_size: 10` with
+three grades gives a quota of four per grade, or up to 12 documents. If a grade
+group has fewer documents than its quota, all of its documents are used; the
+shortfall is not redistributed to other grades. The strategy compares every
+unique pair from the resulting sample.
 
 Optional additional config:
 
@@ -172,6 +187,41 @@ Swap LHS / RHS and if you result with a different pairwise evaluation, return "N
 `to_pointwise: copeland` converts pairwise outcomes to ranking scores. A win is
 1 point, a loss is 0 points, and a tie or `Neither` is 0.5 points for each
 document. Documents are sorted by total points, with corpus order breaking ties.
+
+## Blitzrank judge
+
+Blitzrank asks the LLM to rank a list of documents in one call. We infer a preference
+for each document pair from their relative positions in that ranking, then use those
+preferences to measure pairwise agreement. Unlike the pairwise judge, Blitzrank does
+not ask the LLM to evaluate each pair separately, so we do not need to sample pairs.
+
+Only OpenAI models are supported for blitzrank.
+
+
+```yaml
+strategy:
+  name: blitzrank_judge_relevance
+  type: blitzrank_judge
+  params:
+    model: gpt-5-mini
+    system_prompt: You are a careful search relevance judge, order the results given from best to worst
+    prompt: |
+      Rerank these search results from most to least relevant to
+      the query:
+
+      {query}
+    result_prompt: |
+      ## {title}
+
+      {description}
+    sample_size: 10
+    sampling_seed: 42
+```
+
+Above, we set the system_prompt as usual.
+
+prompt + sample_size * result_prompt for every initial search result we're evaluating for the query. With
+the usual templating rules.
 
 ## Pairwise Trained Judge
 

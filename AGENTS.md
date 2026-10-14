@@ -6,7 +6,10 @@ Start with [docs/prd.md](docs/prd.md) for project-wide requirements and the inde
 
 # Development Practices
 
-This project is a python project using uv
+This project is a python project using uv. 
+
+Some common libraries like numpy, pandas, etc are used. Try to write concise, idiomatic pandas
+or numpy code when possible. Don't do pandas noob things unless it can be avoided. Same with numpy
 
 ## Vocabulary / stuff to google
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import random
 import string
 from dataclasses import dataclass
 from itertools import combinations
@@ -12,7 +11,7 @@ from typing import Any
 import pandas as pd
 from cheat_at_search.strategy import SearchStrategy
 
-from exps.judge.engines.common import PairwiseJudgeResult, grade_value
+from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
 
@@ -195,51 +194,24 @@ class PairwiseJudgeStrategy(SearchStrategy):
     def _sample_judgments(
         self, judgments: pd.DataFrame
     ) -> dict[str, list[tuple[int, float]]]:
-        samples: dict[str, list[tuple[int, float]]] = {}
+        """Best effort get sample_size judged documents per query, stratified by grade."""
         available = judgments.dropna(subset=["query", "doc_id", self.grade_column])
-        for query, query_rows in available.groupby("query", sort=False):
-            by_grade: dict[float, list[tuple[int, float]]] = {}
-            for _, row in query_rows.iterrows():
-                index = self._doc_indices.get(row["doc_id"])
-                if index is None:
-                    continue
-                grade = grade_value(row[self.grade_column])
-                by_grade.setdefault(grade, []).append((index, grade))
-            grades = sorted(by_grade)
-            if not grades:
-                samples[str(query)] = []
-                continue
-            digest = hashlib.sha256(
-                f"{self.sampling_seed}\0{query}".encode("utf-8")
-            ).digest()
-            rng = random.Random(int.from_bytes(digest[:8], "big"))
-            for rows in by_grade.values():
-                rng.shuffle(rows)
-            target = min(self.sample_size, sum(map(len, by_grade.values())))
-            start_grade = rng.randrange(len(grades))
-            allocation_order = grades[start_grade:] + grades[:start_grade]
-            quotas = {
-                grade: min(target // len(grades), len(by_grade[grade]))
-                for grade in grades
-            }
-            remaining = target - sum(quotas.values())
-            while remaining:
-                progressed = False
-                for grade in allocation_order:
-                    if quotas[grade] < len(by_grade[grade]):
-                        quotas[grade] += 1
-                        remaining -= 1
-                        progressed = True
-                        if remaining == 0:
-                            break
-                if not progressed:
-                    break
-            selected = []
-            for grade in grades:
-                selected.extend(by_grade[grade][: quotas[grade]])
-            rng.shuffle(selected)
-            samples[str(query)] = selected
-        return samples
+        num_unique_grades = min(available[self.grade_column].nunique(), 10)
+        per_grade_sample = max(round(self.sample_size / num_unique_grades), 1)
+        # Sample up to per_grade_sample, but if fewer exist, take those
+        by_query_grade = available.groupby(['query', 'grade']).apply(
+                lambda g: g.sample(
+                    n=min(len(g), per_grade_sample),
+                    random_state=self.sampling_seed
+                ),
+                include_groups=False
+        ).droplevel(-1).reset_index()
+        by_query_grade['corpus_idx'] = by_query_grade['doc_id'].map(self._doc_indices)
+        by_query_grade.groupby('query').apply(list)
+        result = by_query_grade.groupby("query").apply(
+            lambda g: list(g[["corpus_idx", "grade"]].itertuples(index=False, name=None))
+        )
+        return result.to_dict()
 
     def _render_request(self, query: str, lhs_index: int, rhs_index: int) -> PairwiseRequest:
         lhs = self.corpus.iloc[lhs_index]
