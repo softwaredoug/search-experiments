@@ -29,43 +29,48 @@ class TournamentScheduler:
 
     def schedule(self) -> set[int]:
         """Schedule based on blitzrank rules, returning which pairs should be compared."""
+        # Get raw stats for each    for doc in G:
+        stats = {}
+        for doc_id in self.graph:
+            wins = nx.descendants(self.graph, doc_id)
+            losses = nx.ancestors(self.graph, doc_id)
+
+            stats[doc_id] = {
+                "wins": len(wins),
+                "losses": len(losses),
+                "kappa": len(wins | losses),
+                "resolved": len(wins | losses) == len(self.graph) - 1,
+            }
+
         # Remove cycles from the graph to create a DAG
         dag = nx.condensation(self.graph)
+        members = nx.get_node_attributes(dag, "members")
 
-        # Track the size of any condensed nodes that
-        # sit in a cycle
-        sizes = {
-            c: len(dag.nodes[c]["members"])
-            for c in dag
-        }
+        # Any that do not have a direct or indirect relationship
+        # to the rest of the graph
+        unresolved = [
+            scc for scc in dag
+            if any(not stats[d]["resolved"] for d in members[scc])
+        ]
 
-        stats = {}
+        def scc_sort_key(scc):
+            representative_id = min(members[scc])
+            return (
+                stats[representative_id]["losses"],
+                stats[representative_id]["wins"],
+                representative_id,
+            )
 
-        for node in dag:
-            desc = nx.descendants(dag, node)
-            anc = nx.ancestors(dag, node)
+        unresolved.sort(key=scc_sort_key)
+        tournament = []
+        for scc in unresolved[:self.n_per_round]:
+            doc = min(
+                members[scc],
+                key=lambda d: (stats[d]["kappa"], d)
+            )
+            tournament.append(doc)
 
-            # Get number of downstream / upstream nodes
-            # as wins losses, use the size of any cycles
-            wins = sum(sizes[d] for d in desc)
-            losses = sum(sizes[a] for a in anc)
-
-            # Same SCC as me
-            num_within_scc = sizes[node] - 1
-
-            for doc in dag.nodes[node]["members"]:
-                kappa = wins + losses + num_within_scc
-                stats[doc] = (wins + num_within_scc,
-                              losses + num_within_scc,
-                              kappa,
-                              doc)
-
-        def blitzrank_sort_key(item):
-            wins, losses, kappa, doc = item
-            return (losses, wins, -kappa, doc)
-
-        top_n = sorted(stats.values(), key=blitzrank_sort_key)[:self.n_per_round]
-        return {doc for _, _, _, doc in top_n}
+        return set(tournament)
 
 
 @dataclass(frozen=True)

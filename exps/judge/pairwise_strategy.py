@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import string
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from exps.judge.tournament import scheduler_from_config
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -274,19 +276,41 @@ class PairwiseJudgeStrategy(SearchStrategy):
             default_n_per_round=k,
         )
         points = {index: 0.0 for index, _ in sampled}
-        for _ in range(self._scheduler_config.max_rounds):
+        for round_no in range(self._scheduler_config.max_rounds):
             scheduled = scheduler.schedule()
+            graph = getattr(scheduler, "graph", None)
+            logger.debug(
+                "Pairwise tournament round %d/%d query=%r scheduled=%s "
+                "preference_edges=%s",
+                round_no + 1,
+                self._scheduler_config.max_rounds,
+                str(query)[:120],
+                sorted(scheduled),
+                sorted(graph.edges()) if graph is not None else None,
+            )
             for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
                 outcome = self._compare(str(query), lhs_index, rhs_index)
+                preference = None
                 if outcome == "lhs":
                     points[lhs_index] += 1.0
                     scheduler.add_preference(lhs_index, rhs_index)
+                    preference = (lhs_index, rhs_index)
                 elif outcome == "rhs":
                     points[rhs_index] += 1.0
                     scheduler.add_preference(rhs_index, lhs_index)
+                    preference = (rhs_index, lhs_index)
                 else:
                     points[lhs_index] += 0.5
                     points[rhs_index] += 0.5
+                logger.debug(
+                    "Pairwise tournament round %d pair=(%s,%s) outcome=%s "
+                    "recorded_preference=%s",
+                    round_no + 1,
+                    lhs_index,
+                    rhs_index,
+                    outcome,
+                    preference,
+                )
         ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))
         return [index for index, _ in ranked], [score for _, score in ranked]
 

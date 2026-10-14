@@ -21,15 +21,15 @@ class ContestResult(NamedTuple):
 tournament_scenarios = {
     "simple": {
         "past_contests": [ContestResult(0, 1), ContestResult(1, 2)],
-        "sample": {0, 1, 2},
-        "next_contest": {0, 1}
+        "sample": {0, 1, 2, 3, 4},
+        "next_contest": {3, 4}
     },
     "cycle": {
         "past_contests": [ContestResult(3, 0), ContestResult(3, 1), ContestResult(3, 2),
                           # These are tied:
-                          ContestResult(0, 1), ContestResult(1, 2), ContestResult(2, 0)],
+                          ContestResult(0, 1), ContestResult(1, 0)],
         "sample": {0, 1, 2, 3},
-        "next_contest": {3, 0}  # Smallest doc id on tied
+        "next_contest": {2, 0}  # Smallest doc id on tied
     },
     "no_preferences": {
         "past_contests": [],
