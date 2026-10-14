@@ -89,6 +89,32 @@ tournament_scenarios = {
         "n_per_round": 2,
         "next_contest": {0, 2}
     },
+    "scc_resolved_by_internal_and_external_relationships": {
+        "past_contests": [
+            ContestResult(2, 0), ContestResult(2, 1),
+            ContestResult(0, 1), ContestResult(1, 0),
+            ContestResult(0, 3), ContestResult(1, 3),
+        ],
+        "sample": {0, 1, 2, 3},
+        "n_per_round": 2,
+        "next_contest": set()
+    },
+    "scc_reach_counts_external_scc_sizes": {
+        "past_contests": [
+            ContestResult(0, 1), ContestResult(1, 0),
+            ContestResult(2, 0), ContestResult(2, 1),
+            ContestResult(0, 3), ContestResult(1, 3),
+        ],
+        "sample": {0, 1, 2, 3, 4},
+        "n_per_round": 3,
+        "next_contest": {0, 2, 4}
+    },
+    "n_per_round_exceeds_unresolved_scc_count": {
+        "past_contests": [ContestResult(0, 1)],
+        "sample": {0, 1, 2},
+        "n_per_round": 5,
+        "next_contest": {0, 1, 2}
+    },
 }
 
 
