@@ -21,20 +21,43 @@ class ContestResult(NamedTuple):
 tournament_scenarios = {
     "simple": {
         "past_contests": [ContestResult(0, 1), ContestResult(1, 2)],
+        "sample": {0, 1, 2},
         "next_contest": {0, 1}
     },
     "cycle": {
         "past_contests": [ContestResult(3, 0), ContestResult(3, 1), ContestResult(3, 2),
                           # These are tied:
                           ContestResult(0, 1), ContestResult(1, 2), ContestResult(2, 0)],
+        "sample": {0, 1, 2, 3},
         "next_contest": {3, 0}  # Smallest doc id on tied
+    },
+    "no_preferences": {
+        "past_contests": [],
+        "sample": {0, 1, 2, 3},
+        "next_contest": {0, 1}
+    },
+    "sparse_preferences_with_unseen_ids": {
+        "past_contests": [ContestResult(0, 1), ContestResult(1, 2)],
+        "sample": {0, 1, 2, 3, 4},
+        "next_contest": {3, 4}
+    },
+    "nonconsecutive_unseen_ids": {
+        "past_contests": [ContestResult(4, 9)],
+        "sample": {4, 6, 9, 12},
+        "next_contest": {6, 12}
+    },
+    "cycle_with_unseen_ids": {
+        "past_contests": [ContestResult(3, 0), ContestResult(3, 1), ContestResult(3, 2),
+                          ContestResult(0, 1), ContestResult(1, 2), ContestResult(2, 0)],
+        "sample": {0, 1, 2, 3, 4, 5},
+        "next_contest": {3, 4, 5}
     }
 }
 
 
 @w_scenarios(tournament_scenarios)
-def test_tournament_scheduling(past_contests, next_contest):
-    scheduler = TournamentScheduler(n_per_round=len(next_contest))
+def test_tournament_scheduling(past_contests, sample, next_contest):
+    scheduler = TournamentScheduler(all_nodes=sample, n_per_round=len(next_contest))
     for contest in past_contests:
         scheduler.add_preference(winner=contest.winner, loser=contest.loser)
     contest = scheduler.schedule()
