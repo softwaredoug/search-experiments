@@ -34,9 +34,8 @@ tournament_scenarios = {
 
 @w_scenarios(tournament_scenarios)
 def test_tournament_scheduling(past_contests, next_contest):
-    scheduler = TournamentScheduler()
+    scheduler = TournamentScheduler(n_per_round=len(next_contest))
     for contest in past_contests:
         scheduler.add_preference(winner=contest.winner, loser=contest.loser)
-    next_contest_size = len(next_contest)
-    contest = scheduler.schedule(num_nodes=next_contest_size)
+    contest = scheduler.schedule()
     assert contest == next_contest, f"Expected {next_contest}, got {contest}"

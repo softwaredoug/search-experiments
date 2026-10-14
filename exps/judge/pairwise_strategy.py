@@ -15,7 +15,7 @@ from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
 from exps.judge.sample import sample_judgments
-from exps.judge.tournament import NoOpScheduler
+from exps.judge.tournament import scheduler_from_config
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
@@ -80,6 +80,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
         confidence_threshold: float | None = None,
         explicit_neither: bool = False,
         double_check: bool = True,
+        scheduler: dict | None = None,
         workers: int = 1,
         no_cache: bool = False,
     ):
@@ -111,6 +112,8 @@ class PairwiseJudgeStrategy(SearchStrategy):
                 raise ValueError(
                     "strategy.params.confidence_threshold must be a number from 0 to 1."
                 )
+
+        scheduler_config = scheduler_from_config(scheduler)
 
         provider, separator, model_name = model.strip().partition("/")
         provider = provider.lower()
@@ -179,8 +182,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
             sample_size=self.sample_size,
             seed=self.sampling_seed,
         )
-        self._scheduler_class = NoOpScheduler
-        self._rounds = 1
+        self._scheduler_config = scheduler_config
         if is_jev:
             self.engine = JevPairwiseJudgeEngine(
                 model=self.model,
@@ -266,11 +268,15 @@ class PairwiseJudgeStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         sampled = self._samples.get(str(query), [])[:k]
-        scheduler = self._scheduler_class(sampled)
+        sampled_indices = [index for index, _ in sampled]
+        scheduler = self._scheduler_config.create(
+            sampled_indices,
+            default_n_per_round=k,
+        )
         points = {index: 0.0 for index, _ in sampled}
-        for round_no in range(self._rounds):
-            scheduled = scheduler.schedule(num_nodes=k)
-            for (lhs_index, _), (rhs_index, _) in combinations(scheduled, 2):
+        for _ in range(self._scheduler_config.max_rounds):
+            scheduled = scheduler.schedule()
+            for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
                 outcome = self._compare(str(query), lhs_index, rhs_index)
                 if outcome == "lhs":
                     points[lhs_index] += 1.0
@@ -298,6 +304,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
             "confidence_threshold": self.confidence_threshold,
             "explicit_neither": self.explicit_neither,
             "double_check": self.double_check,
+            "scheduler": self._scheduler_config.cache_config,
             "samples": self._samples,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")

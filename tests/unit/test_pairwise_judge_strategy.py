@@ -179,6 +179,39 @@ def test_pairwise_search_uses_all_pairs_and_copeland_scores():
     assert strategy.engine.judge.call_count == 3
 
 
+def test_tournament_scheduler_limits_documents_and_runs_configured_rounds():
+    corpus, judgments = _fixture_data()
+    strategy = _strategy(
+        corpus,
+        judgments,
+        sample_size=3,
+        scheduler={
+            "type": "tournament",
+            "params": {"n_per_round": 2, "max_rounds": 2},
+        },
+    )
+
+    indices, _ = strategy.search("desk", k=3)
+
+    assert len(indices) == 3
+    assert strategy.engine.judge.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("scheduler", "message"),
+    [
+        ({"type": "unknown"}, "scheduler.type"),
+        ({"type": "tournament", "params": {"n_per_round": 1}}, "at least 2"),
+        ({"type": "tournament", "params": {"max_rounds": 0}}, "positive integer"),
+        ({"type": "tournament", "params": {"extra": 1}}, "Unknown tournament"),
+    ],
+)
+def test_invalid_scheduler_configuration_fails(scheduler, message):
+    corpus, judgments = _fixture_data()
+    with pytest.raises(ValueError, match=message):
+        _strategy(corpus, judgments, scheduler=scheduler)
+
+
 def test_neither_scores_half_point_and_equal_scores_break_by_corpus_index():
     corpus, judgments = _fixture_data()
     strategy = _strategy(corpus, judgments, sample_size=3)

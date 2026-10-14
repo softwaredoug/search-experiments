@@ -169,3 +169,38 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
     assert "Compare these WANDS" not in state
     assert question == "Which document is more relevant?"
     assert set(client.choices) == {"lhs", "rhs"}
+
+
+def test_pairwise_tournament_scheduler_runs_through_benchmark(tmp_path):
+    ScriptedPairwiseEnricher.instances = []
+    config_path = tmp_path / "pairwise_tournament.yml"
+    _write_config(config_path, "gpt-5-mini")
+    config_text = config_path.read_text(encoding="utf-8").replace(
+        "    double_check: false\n",
+        "    double_check: false\n"
+        "    scheduler:\n"
+        "      type: tournament\n"
+        "      params:\n"
+        "        n_per_round: 2\n"
+        "        max_rounds: 1\n",
+    )
+    config_path.write_text(config_text, encoding="utf-8")
+
+    with (
+        patch("exps.runners.run.get_dataset", return_value=_dataset()),
+        patch(
+            "exps.judge.engines.llm_pairwise.AutoEnricher",
+            ScriptedPairwiseEnricher,
+        ),
+    ):
+        result = run_benchmark(
+            RunParams(
+                strategy_path=str(config_path),
+                dataset="doug_blog",
+                num_queries=1,
+                no_cache=True,
+            )
+        )
+
+    assert len(result.graded) == 3
+    assert len(ScriptedPairwiseEnricher.instances[0].prompts) == 1

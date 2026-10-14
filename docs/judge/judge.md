@@ -187,6 +187,41 @@ Swap LHS / RHS and if you result with a different pairwise evaluation, return "N
 1 point, a loss is 0 points, and a tie or `Neither` is 0.5 points for each
 document. Documents are sorted by total points, with corpus order breaking ties.
 
+### Pairwise schedulers
+
+The pairwise judge accepts an optional `scheduler` block. If it is omitted, the
+`noop` scheduler is used: all sampled documents are compared pairwise once. An
+explicit `type: noop` has the same behavior.
+
+The `tournament` scheduler selects up to `n_per_round` sampled documents for
+each round, compares every pair in that selection, and uses decisive outcomes
+to choose the next selection with the Blitzrank tournament ordering described
+below. The default is three documents per round for five rounds. `max_rounds`
+sets the number of selections; `n_per_round` must be at least two.
+
+```yaml
+strategy:
+  name: llm_judge_relevance_tournament
+  type: llm_pairwise_judge
+  params:
+    model: gpt-5-mini
+    prompt: |
+      Query: {query}
+      LHS: {title_lhs} — {description_lhs}
+      RHS: {title_rhs} — {description_rhs}
+    question: Which document is more relevant to the query?
+    sample_size: 10
+    scheduler:
+      type: tournament
+      params:
+        n_per_round: 3
+        max_rounds: 5
+```
+
+`scheduler.params.n_per_round` and `scheduler.params.max_rounds` are optional
+for a tournament scheduler, with defaults of `3` and `5` respectively. As with
+the default scheduler, pairwise outcomes are converted to Copeland points.
+
 ## Blitzrank judge
 
 Blitzrank asks the LLM to rank a list of documents in one call. We infer a preference
