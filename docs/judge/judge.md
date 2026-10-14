@@ -194,6 +194,23 @@ for each document pair from their relative positions in that ranking, then use t
 preferences to measure pairwise agreement. Unlike the pairwise judge, Blitzrank does
 not ask the LLM to evaluate each pair separately, so we do not need to sample pairs.
 
+Blitzrank works in multiplle rounds, requiring a tournament style scheduler where the wins 
+and losses are tracked in a directed graph. Then we choose N in each round to sort listwise 
+from the scheduler.
+
+The scheduler
+- Constructs a DAG from the graph (eliminating cycles / strongly connected components)
+- Counts losses (including transitive losses) - and accounts for the size of some SCCs
+- Counts wins (including transitive wins) - and accounts for the size of some SCCs
+- Tracks kappa (kappa = wins + losses + num_within_scc)
+
+Then chooses the next N in the contest via
+
+- Least losses
+- Least wins on tie
+- Highest kappa on tie of those two
+- Doc ID for tie of those three
+
 Only OpenAI models are supported for blitzrank.
 
 
@@ -215,12 +232,25 @@ strategy:
       {description}
     sample_size: 10
     sampling_seed: 42
+    to_pointwise: copeland
+    scheduler:
+        type: tournament
+        params:
+            n_per_round: 3
+            max_rounds: 5
 ```
 
 Above, we set the system_prompt as usual.
 
 prompt + sample_size * result_prompt for every initial search result we're evaluating for the query. With
 the usual templating rules.
+
+We run 5 rounds per query, with 3 documents per round. The scheduler will choose the next 3 documents to rank based on the previous rounds results.
+
+Since we are outputing pairwise results, `to_pointwise: copeland` is used to convert the pairwise 
+results to a pointwise score for each document.
+
+Only LLMs are supported, not Jev
 
 ## Pairwise Trained Judge
 
