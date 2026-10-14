@@ -1,6 +1,18 @@
 import networkx as nx
 
 
+class NoOpScheduler:
+    """Schedule the full population."""
+    def __init__(self, all_nodes: set[int]):
+        self.all_nodes = all_nodes
+
+    def add_preference(self, winner: int, loser: int):
+        pass
+
+    def schedule(self, num_nodes: int | None = None) -> set[int]:
+        return self.all_nodes
+
+
 class TournamentScheduler:
     """Tournament adjacency graph for Blitzrank-style pairwise comparisons."""
     def __init__(self):

@@ -15,6 +15,7 @@ from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
 from exps.judge.sample import sample_judgments
+from exps.judge.tournament import NoOpScheduler
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
@@ -178,6 +179,8 @@ class PairwiseJudgeStrategy(SearchStrategy):
             sample_size=self.sample_size,
             seed=self.sampling_seed,
         )
+        self._scheduler_class = NoOpScheduler
+        self._rounds = 1
         if is_jev:
             self.engine = JevPairwiseJudgeEngine(
                 model=self.model,
@@ -263,16 +266,21 @@ class PairwiseJudgeStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         sampled = self._samples.get(str(query), [])[:k]
+        scheduler = self._scheduler_class(sampled)
         points = {index: 0.0 for index, _ in sampled}
-        for (lhs_index, _), (rhs_index, _) in combinations(sampled, 2):
-            outcome = self._compare(str(query), lhs_index, rhs_index)
-            if outcome == "lhs":
-                points[lhs_index] += 1.0
-            elif outcome == "rhs":
-                points[rhs_index] += 1.0
-            else:
-                points[lhs_index] += 0.5
-                points[rhs_index] += 0.5
+        for round_no in range(self._rounds):
+            scheduled = scheduler.schedule(num_nodes=k)
+            for (lhs_index, _), (rhs_index, _) in combinations(scheduled, 2):
+                outcome = self._compare(str(query), lhs_index, rhs_index)
+                if outcome == "lhs":
+                    points[lhs_index] += 1.0
+                    scheduler.add_preference(lhs_index, rhs_index)
+                elif outcome == "rhs":
+                    points[rhs_index] += 1.0
+                    scheduler.add_preference(rhs_index, lhs_index)
+                else:
+                    points[lhs_index] += 0.5
+                    points[rhs_index] += 0.5
         ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))
         return [index for index, _ in ranked], [score for _, score in ranked]
 
