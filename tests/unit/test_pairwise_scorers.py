@@ -1,7 +1,8 @@
-from exps.judge.tournament import TournamentScheduler
 from typing import NamedTuple, Any, Dict, Sequence, cast
 
 import pytest
+
+from exps.judge.scorers import CopelandAllScorer, TournamentScorer
 
 
 def w_scenarios(scenarios: Dict[str, Dict[str, Any]]):
@@ -119,9 +120,37 @@ tournament_scenarios = {
 
 
 @w_scenarios(tournament_scenarios)
-def test_tournament_scheduling(past_contests, sample, n_per_round, next_contest):
-    scheduler = TournamentScheduler(all_nodes=sample, n_per_round=n_per_round)
+def test_tournament_scorer_scheduling(past_contests, sample, n_per_round, next_contest):
+    scorer = TournamentScorer(all_nodes=sample, n_per_round=n_per_round)
     for contest in past_contests:
-        scheduler.add_preference(winner=contest.winner, loser=contest.loser)
-    contest = scheduler.schedule()
-    assert contest == next_contest, f"Expected {next_contest}, got {contest}"
+        scorer.add_decision(contest.winner, contest.loser, "lhs")
+    scheduled = scorer.schedule()
+    assert scheduled == next_contest, f"Expected {next_contest}, got {scheduled}"
+
+
+def test_copeland_all_scorer_scores_decisions_and_abstentions():
+    scorer = CopelandAllScorer(all_nodes={0, 1, 2})
+    scorer.add_decision(0, 1, "lhs")
+    scorer.add_decision(0, 2, "rhs")
+    scorer.add_decision(1, 2, "neither")
+
+    assert scorer.schedule() == {0, 1, 2}
+    assert scorer.score() == ([2, 0, 1], [1.5, 1.0, 0.5])
+
+
+def test_tournament_scorer_assigns_equal_scores_within_an_scc():
+    scorer = TournamentScorer(all_nodes={0, 1, 2, 3}, n_per_round=2)
+    for lhs, rhs, outcome in (
+        (0, 1, "lhs"),
+        (1, 0, "lhs"),
+        (2, 0, "lhs"),
+        (2, 1, "lhs"),
+        (0, 3, "lhs"),
+        (1, 3, "lhs"),
+    ):
+        scorer.add_decision(lhs, rhs, outcome)
+
+    indices, scores = scorer.score()
+
+    assert indices == [2, 0, 1, 3]
+    assert scores == [3.0, 2.0, 2.0, 1.0]

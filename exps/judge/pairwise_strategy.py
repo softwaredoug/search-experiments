@@ -16,7 +16,7 @@ from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
 from exps.judge.sample import sample_judgments
-from exps.judge.tournament import scheduler_from_config
+from exps.judge.scorers import scorer_from_config
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
@@ -42,7 +42,7 @@ def _template_fields(template: str) -> set[str]:
 
 
 class PairwiseJudgeStrategy(SearchStrategy):
-    """Sample judged documents, compare them pairwise, and Copeland-rank them."""
+    """Sample judged documents, compare them pairwise, and score their ranking."""
 
     _type = "llm_pairwise_judge"
 
@@ -75,14 +75,13 @@ class PairwiseJudgeStrategy(SearchStrategy):
         model: str = "gpt-5-mini",
         prompt: str,
         question: str,
-        to_pointwise: str = "copeland",
         system_prompt: str = "You are a careful search relevance judge.",
         sample_size: int = 10,
         sampling_seed: int = 42,
         confidence_threshold: float | None = None,
         explicit_neither: bool = False,
         double_check: bool = True,
-        scheduler: dict | None = None,
+        scorer: dict | None = None,
         workers: int = 1,
         no_cache: bool = False,
     ):
@@ -93,8 +92,6 @@ class PairwiseJudgeStrategy(SearchStrategy):
             raise ValueError("strategy.params.system_prompt must be a non-empty string.")
         if not isinstance(model, str) or not model.strip():
             raise ValueError("strategy.params.model must be a non-empty string.")
-        if to_pointwise != "copeland":
-            raise ValueError("strategy.params.to_pointwise must be 'copeland'.")
         if isinstance(sample_size, bool) or not isinstance(sample_size, int):
             raise ValueError("strategy.params.sample_size must be an integer from 1 to 10.")
         if not 1 <= sample_size <= 10:
@@ -115,7 +112,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
                     "strategy.params.confidence_threshold must be a number from 0 to 1."
                 )
 
-        scheduler_config = scheduler_from_config(scheduler)
+        scorer_config = scorer_from_config(scorer)
 
         provider, separator, model_name = model.strip().partition("/")
         provider = provider.lower()
@@ -151,7 +148,6 @@ class PairwiseJudgeStrategy(SearchStrategy):
         self.prompt_template = prompt
         self.question_template = question
         self.system_prompt = system_prompt
-        self.to_pointwise = to_pointwise
         self.sample_size = sample_size
         self.sampling_seed = sampling_seed
         self.confidence_threshold = (
@@ -184,7 +180,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
             sample_size=self.sample_size,
             seed=self.sampling_seed,
         )
-        self._scheduler_config = scheduler_config
+        self._scorer_config = scorer_config
         if is_jev:
             self.engine = JevPairwiseJudgeEngine(
                 model=self.model,
@@ -271,19 +267,18 @@ class PairwiseJudgeStrategy(SearchStrategy):
     def search(self, query: str, k: int = 10):
         sampled = self._samples.get(str(query), [])[:k]
         sampled_indices = [index for index, _ in sampled]
-        scheduler = self._scheduler_config.create(
+        scorer = self._scorer_config.create(
             sampled_indices,
             default_n_per_round=k,
         )
-        points = {index: 0.0 for index, _ in sampled}
-        for round_no in range(self._scheduler_config.max_rounds):
-            scheduled = scheduler.schedule()
-            graph = getattr(scheduler, "graph", None)
+        for round_no in range(self._scorer_config.max_rounds):
+            scheduled = scorer.schedule()
+            graph = getattr(scorer, "graph", None)
             logger.debug(
-                "Pairwise tournament round %d/%d query=%r scheduled=%s "
+                "Pairwise scorer round %d/%d query=%r scheduled=%s "
                 "preference_edges=%s",
                 round_no + 1,
-                self._scheduler_config.max_rounds,
+                self._scorer_config.max_rounds,
                 str(query)[:120],
                 sorted(scheduled),
                 sorted(graph.edges()) if graph is not None else None,
@@ -292,29 +287,15 @@ class PairwiseJudgeStrategy(SearchStrategy):
                 break
             for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
                 outcome = self._compare(str(query), lhs_index, rhs_index)
-                preference = None
-                if outcome == "lhs":
-                    points[lhs_index] += 1.0
-                    scheduler.add_preference(lhs_index, rhs_index)
-                    preference = (lhs_index, rhs_index)
-                elif outcome == "rhs":
-                    points[rhs_index] += 1.0
-                    scheduler.add_preference(rhs_index, lhs_index)
-                    preference = (rhs_index, lhs_index)
-                else:
-                    points[lhs_index] += 0.5
-                    points[rhs_index] += 0.5
+                scorer.add_decision(lhs_index, rhs_index, outcome)
                 logger.debug(
-                    "Pairwise tournament round %d pair=(%s,%s) outcome=%s "
-                    "recorded_preference=%s",
+                    "Pairwise scorer round %d pair=(%s,%s) outcome=%s",
                     round_no + 1,
                     lhs_index,
                     rhs_index,
                     outcome,
-                    preference,
                 )
-        ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))
-        return [index for index, _ in ranked], [score for _, score in ranked]
+        return scorer.score()
 
     @property
     def cache_key(self) -> str:
@@ -324,13 +305,12 @@ class PairwiseJudgeStrategy(SearchStrategy):
             "prompt": self.prompt_template,
             "question": self.question_template,
             "system_prompt": self.system_prompt,
-            "to_pointwise": self.to_pointwise,
             "sample_size": self.sample_size,
             "sampling_seed": self.sampling_seed,
             "confidence_threshold": self.confidence_threshold,
             "explicit_neither": self.explicit_neither,
             "double_check": self.double_check,
-            "scheduler": self._scheduler_config.cache_config,
+            "scorer": self._scorer_config.cache_config,
             "samples": self._samples,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")

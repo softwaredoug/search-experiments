@@ -7,7 +7,7 @@ import pytest
 
 from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.pairwise_strategy import PairwiseJudgeStrategy
-from exps.judge.tournament import TournamentScheduler
+from exps.judge.scorers import TournamentScorer
 
 
 def _fixture_data():
@@ -55,7 +55,6 @@ def _strategy(corpus, judgments, **overrides):
             "RHS: {title_rhs} / {description_rhs}"
         ),
         "question": "Which document is more relevant for {query}?",
-        "to_pointwise": "copeland",
         "sample_size": 3,
         "sampling_seed": 42,
         "double_check": False,
@@ -143,7 +142,6 @@ def test_prompt_question_placeholder_and_missing_field_validation():
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
-        ({"to_pointwise": "borda"}, "to_pointwise"),
         ({"sample_size": 0}, "sample_size"),
         ({"sample_size": True}, "sample_size"),
         ({"confidence_threshold": -0.1}, "confidence_threshold"),
@@ -180,13 +178,13 @@ def test_pairwise_search_uses_all_pairs_and_copeland_scores():
     assert strategy.engine.judge.call_count == 3
 
 
-def test_tournament_scheduler_limits_documents_and_runs_configured_rounds():
+def test_tournament_scorer_limits_documents_and_runs_configured_rounds():
     corpus, judgments = _fixture_data()
     strategy = _strategy(
         corpus,
         judgments,
         sample_size=3,
-        scheduler={
+        scorer={
             "type": "tournament",
             "params": {"n_per_round": 2, "max_rounds": 2},
         },
@@ -198,25 +196,25 @@ def test_tournament_scheduler_limits_documents_and_runs_configured_rounds():
     assert strategy.engine.judge.call_count == 2
 
 
-def test_pairwise_tournament_stops_when_scheduler_returns_empty(monkeypatch):
+def test_pairwise_tournament_stops_when_scorer_returns_empty(monkeypatch):
     corpus, judgments = _fixture_data()
     strategy = _strategy(
         corpus,
         judgments,
         sample_size=3,
-        scheduler={
+        scorer={
             "type": "tournament",
             "params": {"n_per_round": 3, "max_rounds": 5},
         },
     )
-    original_schedule = TournamentScheduler.schedule
+    original_schedule = TournamentScorer.schedule
     schedule_calls = []
 
-    def count_schedule(scheduler):
+    def count_schedule(scorer):
         schedule_calls.append(None)
-        return original_schedule(scheduler)
+        return original_schedule(scorer)
 
-    monkeypatch.setattr(TournamentScheduler, "schedule", count_schedule)
+    monkeypatch.setattr(TournamentScorer, "schedule", count_schedule)
     strategy.engine.judge.return_value = PairwiseJudgeResult(outcome="lhs")
 
     strategy.search("desk", k=3)
@@ -226,18 +224,19 @@ def test_pairwise_tournament_stops_when_scheduler_returns_empty(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("scheduler", "message"),
+    ("scorer", "message"),
     [
-        ({"type": "unknown"}, "scheduler.type"),
+        ({"type": "unknown"}, "scorer.type"),
+        ({"type": "copeland_all", "params": {"extra": 1}}, "does not accept params"),
         ({"type": "tournament", "params": {"n_per_round": 1}}, "at least 2"),
         ({"type": "tournament", "params": {"max_rounds": 0}}, "positive integer"),
         ({"type": "tournament", "params": {"extra": 1}}, "Unknown tournament"),
     ],
 )
-def test_invalid_scheduler_configuration_fails(scheduler, message):
+def test_invalid_scorer_configuration_fails(scorer, message):
     corpus, judgments = _fixture_data()
     with pytest.raises(ValueError, match=message):
-        _strategy(corpus, judgments, scheduler=scheduler)
+        _strategy(corpus, judgments, scorer=scorer)
 
 
 def test_neither_scores_half_point_and_equal_scores_break_by_corpus_index():
@@ -337,6 +336,12 @@ def test_cache_key_includes_pairwise_behavior_configuration():
     defaults = _strategy(corpus, judgments)
     checked = _strategy(corpus, judgments, double_check=True)
     neither = _strategy(corpus, judgments, explicit_neither=True)
+    tournament = _strategy(
+        corpus,
+        judgments,
+        scorer={"type": "tournament", "params": {"n_per_round": 2, "max_rounds": 3}},
+    )
 
     assert defaults.cache_key != checked.cache_key
     assert defaults.cache_key != neither.cache_key
+    assert defaults.cache_key != tournament.cache_key

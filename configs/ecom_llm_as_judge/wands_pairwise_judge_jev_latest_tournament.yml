@@ -1,0 +1,28 @@
+strategy:
+  name: wands_pairwise_judge_jev_latest_tournament
+  type: llm_pairwise_judge
+  description: WANDS pairwise Jev relevance judge using tournament SCC scoring.
+  params:
+    model: jev/jev-latest
+    prompt: |
+      Query: {query}
+
+      LHS product title: {title_lhs}
+      LHS product description: {description_lhs}
+
+      RHS product title: {title_rhs}
+      RHS product description: {description_rhs}
+    question: |
+      Which product is more relevant to the query? Compare how directly each
+      product matches the requested item and shopping intent. A direct match is
+      more relevant than a related but imperfect match; an unrelated or
+      conflicting product is less relevant. Choose between LHS and RHS.
+    sample_size: 10
+    sampling_seed: 42
+    confidence_threshold: 0.7
+    explicit_neither: false
+    scorer:
+      type: tournament
+      params:
+        n_per_round: 5
+        max_rounds: 20

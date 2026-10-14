@@ -126,7 +126,6 @@ strategy:
       RHS Doc:
       Title: {title_rhs}
       Description: {description_rhs}
-    to_pointwise: copeland
     question: |
       Which document is more relevant to the query?
     sample_size: 10
@@ -181,23 +180,20 @@ double_check: true
 
 Swap LHS / RHS and if you result with a different pairwise evaluation, return "Neither" for this pair.
 
-### Conversion to pointwise
+### Pairwise scorers
 
-`to_pointwise: copeland` converts pairwise outcomes to ranking scores. A win is
-1 point, a loss is 0 points, and a tie or `Neither` is 0.5 points for each
-document. Documents are sorted by total points, with corpus order breaking ties.
+The pairwise strategy uses a scorer both to select comparisons and to convert
+their outcomes into ranking scores. If `scorer` is omitted, it defaults to
+`copeland_all`, which compares every sampled pair once and scores a win as 1, a
+loss as 0, and a tie or `neither` as 0.5 points for each document. Equal scores
+are ordered by corpus order.
 
-### Pairwise schedulers
-
-The pairwise judge accepts an optional `scheduler` block. If it is omitted, the
-`noop` scheduler is used: all sampled documents are compared pairwise once. An
-explicit `type: noop` has the same behavior.
-
-The `tournament` scheduler selects up to `n_per_round` sampled documents for
-each round, compares every pair in that selection, and uses decisive outcomes
-to choose the next selection with the Blitzrank tournament ordering described
-below. The default is three documents per round for five rounds. `max_rounds`
-sets the number of selections; `n_per_round` must be at least two.
+The `tournament` scorer records decisive pairwise outcomes as directed graph
+edges. It selects up to `n_per_round` representatives from unresolved SCCs each
+round. Once comparisons are complete, its score orders SCC tiers by external
+losses and wins; documents within the same SCC or tier receive equal scores.
+`max_rounds` caps selection rounds, and scoring stops earlier if the scorer has
+no candidates left. `n_per_round` must be at least two.
 
 ```yaml
 strategy:
@@ -211,16 +207,15 @@ strategy:
       RHS: {title_rhs} — {description_rhs}
     question: Which document is more relevant to the query?
     sample_size: 10
-    scheduler:
+    scorer:
       type: tournament
       params:
         n_per_round: 3
         max_rounds: 5
 ```
 
-`scheduler.params.n_per_round` and `scheduler.params.max_rounds` are optional
-for a tournament scheduler, with defaults of `3` and `5` respectively. As with
-the default scheduler, pairwise outcomes are converted to Copeland points.
+`scorer.params.n_per_round` and `scorer.params.max_rounds` are optional for a
+tournament scorer, with defaults of `3` and `5` respectively.
 
 ## Blitzrank judge
 
@@ -229,11 +224,10 @@ for each document pair from their relative positions in that ranking, then use t
 preferences to measure pairwise agreement. Unlike the pairwise judge, Blitzrank does
 not ask the LLM to evaluate each pair separately, so we do not need to sample pairs.
 
-Blitzrank works in multiplle rounds, requiring a tournament style scheduler where the wins 
-and losses are tracked in a directed graph. Then we choose N in each round to sort listwise 
-from the scheduler.
+Blitzrank works in multiple rounds, using a tournament scorer that tracks
+preferences in a directed graph and chooses the next listwise candidate set.
 
-The scheduler
+The scorer
 - Constructs a DAG from the graph (eliminating cycles / strongly connected components)
 - Counts losses (including transitive losses) - and accounts for the size of some SCCs
 - Counts wins (including transitive wins) - and accounts for the size of some SCCs
@@ -267,12 +261,11 @@ strategy:
       {description}
     sample_size: 10
     sampling_seed: 42
-    to_pointwise: copeland
-    scheduler:
-        type: tournament
-        params:
-            n_per_round: 3
-            max_rounds: 5
+    scorer:
+      type: tournament
+      params:
+        n_per_round: 3
+        max_rounds: 5
 ```
 
 Above, we set the system_prompt as usual.
@@ -280,10 +273,9 @@ Above, we set the system_prompt as usual.
 prompt + sample_size * result_prompt for every initial search result we're evaluating for the query. With
 the usual templating rules.
 
-We run 5 rounds per query, with 3 documents per round. The scheduler will choose the next 3 documents to rank based on the previous rounds results.
-
-Since we are outputing pairwise results, `to_pointwise: copeland` is used to convert the pairwise 
-results to a pointwise score for each document.
+We allow up to 5 rounds per query, with 3 documents per round. The tournament
+scorer chooses the next candidates from unresolved SCCs and returns SCC-tier
+ranking scores; it stops when no candidates remain or the round limit is reached.
 
 Only LLMs are supported, not Jev
 

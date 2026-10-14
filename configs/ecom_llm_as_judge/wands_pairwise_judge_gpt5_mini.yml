@@ -24,7 +24,6 @@ strategy:
       - A related but imperfect match or reasonable substitute is less relevant.
       - An unrelated product or one that conflicts with the query is least relevant.
     question: Which product is more relevant to the query? Choose neither if they are equally relevant.
-    to_pointwise: copeland
     sample_size: 10
     sampling_seed: 42
     explicit_neither: true

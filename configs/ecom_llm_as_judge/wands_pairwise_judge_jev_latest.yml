@@ -17,7 +17,6 @@ strategy:
       product matches the requested item and shopping intent. A direct match is
       more relevant than a related but imperfect match; an unrelated or
       conflicting product is less relevant. Choose between LHS and RHS.
-    to_pointwise: copeland
     sample_size: 10
     sampling_seed: 42
     confidence_threshold: 0.7

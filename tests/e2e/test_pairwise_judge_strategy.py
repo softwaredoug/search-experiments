@@ -88,7 +88,6 @@ strategy:
       LHS: {{description_lhs}}
       RHS: {{description_rhs}}
     question: Which document is more relevant?
-    to_pointwise: copeland
     sample_size: 3
     sampling_seed: 42
     double_check: false
@@ -171,14 +170,14 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
     assert set(client.choices) == {"lhs", "rhs"}
 
 
-def test_pairwise_tournament_scheduler_runs_through_benchmark(tmp_path):
+def test_pairwise_tournament_scorer_runs_through_benchmark(tmp_path):
     ScriptedPairwiseEnricher.instances = []
     config_path = tmp_path / "pairwise_tournament.yml"
     _write_config(config_path, "gpt-5-mini")
     config_text = config_path.read_text(encoding="utf-8").replace(
         "    double_check: false\n",
         "    double_check: false\n"
-        "    scheduler:\n"
+        "    scorer:\n"
         "      type: tournament\n"
         "      params:\n"
         "        n_per_round: 2\n"
