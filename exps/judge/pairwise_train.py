@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import itertools
 import json
 import math
@@ -23,6 +22,7 @@ from exps.judge.classifiers import build_classifier, normalize_model_config
 from exps.judge.engines.common import PairwiseJudgeResult, grade_value
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
+from exps.judge.sample import sample_judgments
 
 
 _FEATURE_OPTIONS = {
@@ -285,51 +285,13 @@ def _sample_documents(
         raise ValueError("Judgments must contain 'query' and 'doc_id' columns.")
     if "doc_id" not in corpus:
         raise ValueError("The corpus must contain a 'doc_id' column.")
-    doc_indices = {
-        doc_id: index
-        for index, doc_id in enumerate(corpus["doc_id"].tolist())
-        if not pd.isna(doc_id)
-    }
-    samples = {}
-    available = judgments.dropna(subset=["query", "doc_id", grade_column])
-    for query, query_rows in available.groupby("query", sort=False):
-        by_grade: dict[float, list[tuple[int, float]]] = {}
-        for _, row in query_rows.iterrows():
-            index = doc_indices.get(row["doc_id"])
-            if index is None:
-                continue
-            grade = grade_value(row[grade_column])
-            by_grade.setdefault(grade, []).append((index, grade))
-        grades = sorted(by_grade)
-        digest = hashlib.sha256(f"{seed}\0{query}".encode("utf-8")).digest()
-        rng = random.Random(int.from_bytes(digest[:8], "big"))
-        for rows in by_grade.values():
-            rng.shuffle(rows)
-        target = min(sample_size, sum(map(len, by_grade.values())))
-        start_grade = rng.randrange(len(grades)) if grades else 0
-        allocation_order = grades[start_grade:] + grades[:start_grade]
-        quotas = {
-            grade: min(target // len(grades), len(by_grade[grade]))
-            for grade in grades
-        } if grades else {}
-        remaining = target - sum(quotas.values())
-        while remaining:
-            progressed = False
-            for grade in allocation_order:
-                if quotas[grade] < len(by_grade[grade]):
-                    quotas[grade] += 1
-                    remaining -= 1
-                    progressed = True
-                    if remaining == 0:
-                        break
-            if not progressed:
-                break
-        selected = []
-        for grade in grades:
-            selected.extend(by_grade[grade][: quotas[grade]])
-        rng.shuffle(selected)
-        samples[str(query)] = selected
-    return samples
+    return sample_judgments(
+        corpus,
+        judgments,
+        grade_column=grade_column,
+        sample_size=sample_size,
+        seed=seed,
+    )
 
 
 def build_binary_training_data(

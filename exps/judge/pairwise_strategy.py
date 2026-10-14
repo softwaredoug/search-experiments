@@ -14,6 +14,7 @@ from cheat_at_search.strategy import SearchStrategy
 from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
+from exps.judge.sample import sample_judgments
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
@@ -170,12 +171,13 @@ class PairwiseJudgeStrategy(SearchStrategy):
                 + ", ".join(missing_fields)
             )
 
-        self._doc_indices = {
-            doc_id: index
-            for index, doc_id in enumerate(corpus["doc_id"].tolist())
-            if not pd.isna(doc_id)
-        }
-        self._samples = self._sample_judgments(judgments)
+        self._samples = sample_judgments(
+            corpus,
+            judgments,
+            grade_column=self.grade_column,
+            sample_size=self.sample_size,
+            seed=self.sampling_seed,
+        )
         if is_jev:
             self.engine = JevPairwiseJudgeEngine(
                 model=self.model,
@@ -190,28 +192,6 @@ class PairwiseJudgeStrategy(SearchStrategy):
                 no_cache=no_cache,
             )
         super().__init__(corpus, workers=workers)
-
-    def _sample_judgments(
-        self, judgments: pd.DataFrame
-    ) -> dict[str, list[tuple[int, float]]]:
-        """Best effort get sample_size judged documents per query, stratified by grade."""
-        available = judgments.dropna(subset=["query", "doc_id", self.grade_column])
-        num_unique_grades = min(available[self.grade_column].nunique(), 10)
-        per_grade_sample = max(round(self.sample_size / num_unique_grades), 1)
-        # Sample up to per_grade_sample, but if fewer exist, take those
-        by_query_grade = available.groupby(['query', 'grade']).apply(
-                lambda g: g.sample(
-                    n=min(len(g), per_grade_sample),
-                    random_state=self.sampling_seed
-                ),
-                include_groups=False
-        ).droplevel(-1).reset_index()
-        by_query_grade['corpus_idx'] = by_query_grade['doc_id'].map(self._doc_indices)
-        by_query_grade.groupby('query').apply(list)
-        result = by_query_grade.groupby("query").apply(
-            lambda g: list(g[["corpus_idx", "grade"]].itertuples(index=False, name=None))
-        )
-        return result.to_dict()
 
     def _render_request(self, query: str, lhs_index: int, rhs_index: int) -> PairwiseRequest:
         lhs = self.corpus.iloc[lhs_index]

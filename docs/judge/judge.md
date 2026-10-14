@@ -40,10 +40,9 @@ path while keeping judge behavior and configuration inside the strategy.
 ### Configuration
 
 The rubric keys are numeric grades supported by the dataset, and their values
-are descriptions for the judge. Sampling is deterministic and divided as
-evenly as possible across the query's available grades. `sample_size` may be
-between 1 and 10; if a query has fewer judged documents, all available
-documents are used.
+are descriptions for the judge. Sampling uses the shared deterministic,
+grade-stratified policy described in [Sample size](#sample-size). `sample_size`
+may be between 1 and 10.
 
 `question` is an explicit required instruction for selecting a rubric grade.
 Prompt and question placeholders include `{query}` and any corpus column, such
@@ -137,19 +136,19 @@ strategy:
 ### Sample size
 
 `sample_size` is a per-query target from 1 to 10, not a limit on the number of
-documents or the number of comparisons. For each query, the strategy counts the
-distinct relevance grades among judged documents that match corpus documents.
-If there are `G` distinct grades, it samples up to
-`ceil(sample_size / G)` documents from each grade group, using `sampling_seed`
-for reproducible sampling. The grade count is calculated separately for each
-query.
+documents or the number of comparisons. The shared sampler counts distinct
+numeric grades across usable judgments (capped at 10), then sets a per-grade
+quota to `max(round(sample_size / grade_count), 1)`. It samples up to that many
+documents from each query/grade group, using `sampling_seed` for reproducibility.
+This same sampling policy is used by the pointwise and pairwise-trained judges.
 
-Because the quota is rounded up independently for each grade, the result may
-contain more than `sample_size` documents. For example, `sample_size: 10` with
-three grades gives a quota of four per grade, or up to 12 documents. If a grade
-group has fewer documents than its quota, all of its documents are used; the
-shortfall is not redistributed to other grades. The strategy compares every
-unique pair from the resulting sample.
+The quota is rounded to the nearest integer, with a minimum of one, so the
+resulting sample can be smaller or larger than `sample_size`. For example,
+`sample_size: 10` with three grades gives a quota of three per grade (up to nine
+documents); `sample_size: 2` with four grades gives one per grade (up to four
+documents). If a query/grade group has fewer documents than its quota, all of
+its documents are used. The strategy compares every unique pair from the
+resulting sample.
 
 Optional additional config:
 

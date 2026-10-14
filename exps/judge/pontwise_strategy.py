@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import random
 import string
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from cheat_at_search.strategy import SearchStrategy
 from exps.judge.engines.common import grade_value, normalize_rubric, rubric_text
 from exps.judge.engines.jev_pointwise import JevJudgeEngine
 from exps.judge.engines.llm_pointwise import LLMJudgeEngine
+from exps.judge.sample import sample_judgments
 
 
 @dataclass(frozen=True)
@@ -135,12 +135,13 @@ class PointwiseJudgeStrategy(SearchStrategy):
             )
         self.engine_type = JevJudgeEngine if provider == "jev" else LLMJudgeEngine
 
-        self._doc_indices = {
-            doc_id: index
-            for index, doc_id in enumerate(corpus["doc_id"].tolist())
-            if not pd.isna(doc_id)
-        }
-        self._samples = self._sample_judgments(judgments)
+        self._samples = sample_judgments(
+            corpus,
+            judgments,
+            grade_column=self.grade_column,
+            sample_size=self.sample_size,
+            seed=self.sampling_seed,
+        )
         all_grades = {
             grade_value(value)
             for value in judgments[grade_col].dropna().unique().tolist()
@@ -158,58 +159,6 @@ class PointwiseJudgeStrategy(SearchStrategy):
                 no_cache=no_cache,
             )
         super().__init__(corpus, workers=workers)
-
-    def _sample_judgments(
-        self, judgments: pd.DataFrame
-    ) -> dict[str, list[tuple[int, float]]]:
-        samples: dict[str, list[tuple[int, float]]] = {}
-        available = judgments.dropna(subset=["query", "doc_id", self.grade_column])
-        for query, query_rows in available.groupby("query", sort=False):
-            by_grade: dict[float, list[tuple[int, float]]] = {}
-            for _, row in query_rows.iterrows():
-                index = self._doc_indices.get(row["doc_id"])
-                if index is None:
-                    continue
-                grade = grade_value(row[self.grade_column])
-                by_grade.setdefault(grade, []).append((index, grade))
-
-            grades = sorted(by_grade)
-            if not grades:
-                samples[str(query)] = []
-                continue
-            digest = hashlib.sha256(
-                f"{self.sampling_seed}\0{query}".encode("utf-8")
-            ).digest()
-            rng = random.Random(int.from_bytes(digest[:8], "big"))
-            for rows in by_grade.values():
-                rng.shuffle(rows)
-
-            target = min(self.sample_size, sum(map(len, by_grade.values())))
-            start_grade = rng.randrange(len(grades))
-            allocation_order = grades[start_grade:] + grades[:start_grade]
-            quotas = {
-                grade: min(target // len(grades), len(by_grade[grade]))
-                for grade in grades
-            }
-            remaining = target - sum(quotas.values())
-            while remaining:
-                progressed = False
-                for grade in allocation_order:
-                    if quotas[grade] < len(by_grade[grade]):
-                        quotas[grade] += 1
-                        remaining -= 1
-                        progressed = True
-                        if remaining == 0:
-                            break
-                if not progressed:
-                    break
-
-            selected = []
-            for grade in grades:
-                selected.extend(by_grade[grade][: quotas[grade]])
-            rng.shuffle(selected)
-            samples[str(query)] = selected
-        return samples
 
     def _render_request(self, query: str, index: int) -> JudgeRequest:
         row = self.corpus.iloc[index]

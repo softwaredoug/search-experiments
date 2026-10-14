@@ -108,8 +108,8 @@ strategy:
 
     assert result.strategy_name == "judge_fixture"
     assert result.graded is not None
-    assert len(result.graded) == 10
-    assert sorted(result.graded["grade"].value_counts().tolist()) == [3, 3, 4]
+    assert len(result.graded) == 9
+    assert sorted(result.graded["grade"].value_counts().tolist()) == [3, 3, 3]
     assert result.graded["agreement"].unique().tolist() == [1.0]
     assert result.graded["pairwise_agreement"].unique().tolist() == [1.0]
     assert result.summary["mean_agreement"] == 1.0
@@ -123,7 +123,7 @@ strategy:
     assert report_row["mean_pairwise_agreement"] == "1.0"
 
     judge = ScriptedJudgeEnricher.instances[0]
-    assert len(judge.prompts) == 10
+    assert len(judge.prompts) == 9
     assert all("Query: find relevant documents" in prompt for prompt in judge.prompts)
     assert all("Select the numeric grade" in prompt for prompt in judge.prompts)
     assert all("2: relevant" in prompt and "0: irrelevant" in prompt for prompt in judge.prompts)
@@ -186,12 +186,12 @@ strategy:
             )
         )
 
-    assert len(result.graded) == 10
+    assert len(result.graded) == 9
     assert result.graded["agreement"].unique().tolist() == [1.0]
     assert result.graded["pairwise_agreement"].unique().tolist() == [1.0]
     client = ScriptedJevClient.instances[0]
     assert client.model == "jev-latest"
-    assert len(client.calls) == 10
+    assert len(client.calls) == 9
     state, questions = client.calls[0]
     assert "Query: find relevant documents" in state
     assert "grade=" in state

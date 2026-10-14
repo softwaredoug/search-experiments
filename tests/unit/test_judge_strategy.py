@@ -46,13 +46,13 @@ def _strategy(corpus, judgments, **overrides):
     return strategy
 
 
-def test_sampling_is_seeded_balanced_and_limited_to_available_documents():
+def test_sampling_is_seeded_balanced_and_best_effort():
     corpus, judgments = _fixture_data()
     first = _strategy(corpus, judgments, sample_size=5)
     second = _strategy(corpus, judgments, sample_size=5)
 
     assert first._samples == second._samples
-    assert len(first._samples["desk"]) == 5
+    assert len(first._samples["desk"]) == 6
     counts = pd.Series([grade for _, grade in first._samples["desk"]]).value_counts()
     assert max(counts) - min(counts) <= 1
 
