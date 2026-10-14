@@ -288,6 +288,8 @@ class PairwiseJudgeStrategy(SearchStrategy):
                 sorted(scheduled),
                 sorted(graph.edges()) if graph is not None else None,
             )
+            if not scheduled:
+                break
             for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
                 outcome = self._compare(str(query), lhs_index, rhs_index)
                 preference = None

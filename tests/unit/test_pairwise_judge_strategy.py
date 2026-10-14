@@ -7,6 +7,7 @@ import pytest
 
 from exps.judge.engines.common import PairwiseJudgeResult
 from exps.judge.pairwise_strategy import PairwiseJudgeStrategy
+from exps.judge.tournament import TournamentScheduler
 
 
 def _fixture_data():
@@ -195,6 +196,33 @@ def test_tournament_scheduler_limits_documents_and_runs_configured_rounds():
 
     assert len(indices) == 3
     assert strategy.engine.judge.call_count == 2
+
+
+def test_pairwise_tournament_stops_when_scheduler_returns_empty(monkeypatch):
+    corpus, judgments = _fixture_data()
+    strategy = _strategy(
+        corpus,
+        judgments,
+        sample_size=3,
+        scheduler={
+            "type": "tournament",
+            "params": {"n_per_round": 3, "max_rounds": 5},
+        },
+    )
+    original_schedule = TournamentScheduler.schedule
+    schedule_calls = []
+
+    def count_schedule(scheduler):
+        schedule_calls.append(None)
+        return original_schedule(scheduler)
+
+    monkeypatch.setattr(TournamentScheduler, "schedule", count_schedule)
+    strategy.engine.judge.return_value = PairwiseJudgeResult(outcome="lhs")
+
+    strategy.search("desk", k=3)
+
+    assert len(schedule_calls) == 2
+    assert strategy.engine.judge.call_count == 3
 
 
 @pytest.mark.parametrize(
