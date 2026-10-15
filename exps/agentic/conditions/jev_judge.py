@@ -3,8 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from cheat_at_search.data_dir import key_for_provider
-from typesafe_sdk import Choice, TypeSafeClient
+from cheat_at_search.enrich import AutoDecisionEnricher
 
 from exps.agentic.conditions import judging
 from exps.agentic.conditions.base import (
@@ -71,9 +70,9 @@ def _run_jev_judge(
 ) -> list[dict]:
     if not ranked_doc_ids:
         return []
-    client = TypeSafeClient(
-        api_key=key_for_provider("typesafe"),
-        model=_jev_model_name(model),
+    enricher = AutoDecisionEnricher(
+        choices=choices,
+        model=f"jev/{_jev_model_name(model)}",
     )
     evaluations = []
     for doc_id in ranked_doc_ids:
@@ -99,22 +98,12 @@ def _run_jev_judge(
             )
             continue
         instructions = judge_prompt.format(query=query, results=result_block)
-        response = client.system_one(
+        probabilities, confidence = enricher.score(
             state=query,
-            questions={
-                "relevance": Choice(instructions=instructions, criteria=choices)
-            },
+            question=instructions,
         )
-        answers = getattr(response, "choices", None)
-        answer = answers.get("relevance") if isinstance(answers, dict) else None
-        label = getattr(answer, "choice", None)
-        confidence = getattr(answer, "confidence", None)
-        probabilities = getattr(answer, "probabilities", None)
-        probability = (
-            probabilities.get(label)
-            if isinstance(probabilities, dict) and isinstance(label, str)
-            else None
-        )
+        label = max(probabilities, key=probabilities.get) if probabilities else None
+        probability = probabilities.get(label) if label is not None else None
         accepted = (
             isinstance(label, str)
             and label in choices

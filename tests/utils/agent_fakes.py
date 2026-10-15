@@ -208,6 +208,32 @@ class FakeJevClient:
         return SimpleNamespace(choices={field: answer})
 
 
+class FakeAutoDecisionEnricher:
+    instances = []
+
+    def __init__(self, *, choices, model, **_kwargs):
+        self.choices = dict(choices)
+        self.model = model
+        provider, _, model_name = model.partition("/")
+        self.client = FakeJevClient(
+            api_key="test-key",
+            model=model_name if provider == "jev" else model,
+        )
+        type(self).instances.append(self)
+
+    def score(self, *, state, question):
+        answer = self.client.system_one(
+            state=state,
+            questions={
+                "relevance": FakeJevChoice(
+                    instructions=question,
+                    criteria=self.choices,
+                )
+            },
+        ).choices["relevance"]
+        return answer.probabilities or {}, answer.confidence
+
+
 class FakeCodegenAgent:
     script: list[dict] | None = None
 

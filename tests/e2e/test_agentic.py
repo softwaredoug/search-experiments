@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from exps.runners.run import RunParams, run_benchmark
 from tests.utils.agent_fakes import (
-    FakeJevChoice,
+    FakeAutoDecisionEnricher,
     FakeJevClient,
     FakeLLMJudgeAgent,
     FakeOpenAIAgent,
@@ -1090,11 +1090,9 @@ strategy:
 
 
 @patch("exps.agentic.agent.build_openai_agent")
-@patch("exps.agentic.conditions.jev_judge.TypeSafeClient", FakeJevClient, create=True)
-@patch("exps.agentic.conditions.jev_judge.Choice", FakeJevChoice, create=True)
 @patch(
-    "exps.agentic.conditions.jev_judge.key_for_provider",
-    lambda _provider: "test-key",
+    "exps.agentic.conditions.jev_judge.AutoDecisionEnricher",
+    FakeAutoDecisionEnricher,
     create=True,
 )
 def test_agentic_jev_judge_validator_e2e(

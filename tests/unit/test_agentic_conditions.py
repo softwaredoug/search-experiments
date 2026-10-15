@@ -10,15 +10,16 @@ from exps.agentic import conditions
 from exps.agentic.conditions.base import ConditionContext, ConditionResult
 from exps.agentic.conditions.simple import IterationsCondition
 from exps.bag_of_decisions.decision_question import DecisionQuestion
-from tests.utils.agent_fakes import FakeJevChoice, FakeJevClient
+from tests.utils.agent_fakes import (
+    FakeAutoDecisionEnricher,
+    FakeJevChoice,
+    FakeJevClient,
+)
 
 
-_patch_jev_api = patch.multiple(
-    "exps.agentic.conditions.jev_judge",
-    TypeSafeClient=FakeJevClient,
-    Choice=FakeJevChoice,
-    key_for_provider=lambda _provider: "test-key",
-    create=True,
+_patch_jev_api = patch(
+    "exps.agentic.conditions.jev_judge.AutoDecisionEnricher",
+    FakeAutoDecisionEnricher,
 )
 
 
