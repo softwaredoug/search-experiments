@@ -7,6 +7,7 @@ from typing import Any
 
 from cheat_at_search.data_dir import key_for_provider
 from typesafe_sdk import Choice, TypeSafeClient
+from exps.resource_tracking import record_model_call
 
 from exps.query_understanding.enrichers.choice_single import (
     MAX_JEV_CHOICE_COUNT,
@@ -84,6 +85,7 @@ class JevChoiceMultipleEnricher:
     def enrich(self, query: str) -> list[str]:
         if query in self._cache:
             return list(self._cache[query])
+        record_model_call()
         response = self.client.system_one(
             state=query,
             questions={

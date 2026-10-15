@@ -11,6 +11,7 @@ from exps.query_understanding.enrichers.category_values import (
     append_aliases,
     schema_values,
 )
+from exps.resource_tracking import record_model_call
 
 SYSTEM_PROMPT = (
     "You are a helpful furniture shopping agent that helps users construct search queries."
@@ -74,6 +75,7 @@ class LLMSingleEnricher:
             return list(self._cache[query])
         prompt = self.prompt_template.format(field=self.field, query=query)
         prompt = append_aliases(prompt, self.field, self.schema_aliases)
+        record_model_call()
         response = self.enricher.enrich(prompt)
         value = getattr(response, "category", None) if response is not None else None
         value = self.schema_aliases.get(value, value)

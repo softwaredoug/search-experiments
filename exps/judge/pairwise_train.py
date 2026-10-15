@@ -22,6 +22,7 @@ from exps.judge.classifiers import build_classifier, normalize_model_config
 from exps.judge.engines.common import PairwiseJudgeResult, grade_value
 from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
+from exps.resource_tracking import record_model_call
 from exps.judge.sample import sample_judgments
 
 
@@ -216,6 +217,7 @@ class PairwiseFeatureComputer:
             raise ValueError(
                 f"Could not render prompt for pairwise feature {config['name']!r}."
             ) from exc
+        record_model_call()
         if config["is_jev"]:
             result = engine.judge(state=prompt, question=question)
         else:

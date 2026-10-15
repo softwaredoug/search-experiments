@@ -170,12 +170,27 @@ def test_pairwise_search_uses_all_pairs_and_copeland_scores():
         PairwiseJudgeResult(outcome="lhs"),
     ]
 
-    indices, scores = strategy.search("desk", k=3)
+    indices, scores, resources = strategy.search("desk", k=3)
 
     sampled = [index for index, _ in strategy._samples["desk"]]
     assert indices == [sampled[1], sampled[0], sampled[2]]
     assert scores == [2.0, 1.0, 0.0]
     assert strategy.engine.judge.call_count == 3
+    assert resources == {"resource.model_calls": 3}
+
+
+def test_pairwise_double_check_counts_both_judge_invocations():
+    corpus, judgments = _fixture_data()
+    strategy = _strategy(corpus, judgments, sample_size=2, double_check=True)
+    strategy.engine.judge.side_effect = [
+        PairwiseJudgeResult(outcome="lhs"),
+        PairwiseJudgeResult(outcome="rhs"),
+    ]
+
+    _, _, resources = strategy.search("desk", k=2)
+
+    assert strategy.engine.judge.call_count == 2
+    assert resources == {"resource.model_calls": 2}
 
 
 def test_tournament_scorer_limits_documents_and_runs_configured_rounds():
@@ -190,10 +205,11 @@ def test_tournament_scorer_limits_documents_and_runs_configured_rounds():
         },
     )
 
-    indices, _ = strategy.search("desk", k=3)
+    indices, _, resources = strategy.search("desk", k=3)
 
     assert len(indices) == 3
     assert strategy.engine.judge.call_count == 2
+    assert resources == {"resource.model_calls": 2}
 
 
 def test_pairwise_tournament_stops_when_scorer_returns_empty(monkeypatch):
@@ -244,10 +260,11 @@ def test_neither_scores_half_point_and_equal_scores_break_by_corpus_index():
     strategy = _strategy(corpus, judgments, sample_size=3)
     strategy.engine.judge.return_value = PairwiseJudgeResult(outcome="neither")
 
-    indices, scores = strategy.search("desk", k=3)
+    indices, scores, resources = strategy.search("desk", k=3)
 
     assert indices == sorted(index for index, _ in strategy._samples["desk"])
     assert scores == [1.0, 1.0, 1.0]
+    assert resources == {"resource.model_calls": 3}
 
 
 def test_single_document_and_unseen_query_do_not_call_the_judge():
@@ -256,12 +273,13 @@ def test_single_document_and_unseen_query_do_not_call_the_judge():
     judgments = judgments.iloc[:1]
     strategy = _strategy(corpus, judgments, sample_size=1)
 
-    indices, scores = strategy.search("desk", k=10)
+    indices, scores, resources = strategy.search("desk", k=10)
 
     assert len(indices) == 1
     assert scores == [0.0]
     assert strategy.engine.judge.call_count == 0
-    assert strategy.search("unknown query", k=10) == ([], [])
+    assert resources == {"resource.model_calls": 0}
+    assert strategy.search("unknown query", k=10) == ([], [], {"resource.model_calls": 0})
 
 
 def test_double_check_requires_reversed_outcome_and_swaps_rendered_fields():

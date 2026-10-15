@@ -14,6 +14,7 @@ from exps.judge.engines.common import grade_value, normalize_rubric, rubric_text
 from exps.judge.engines.jev_pointwise import JevJudgeEngine
 from exps.judge.engines.llm_pointwise import LLMJudgeEngine
 from exps.judge.sample import sample_judgments
+from exps.resource_tracking import record_model_call, track_model_calls
 
 
 @dataclass(frozen=True)
@@ -197,9 +198,17 @@ class PointwiseJudgeStrategy(SearchStrategy):
 
     def search(self, query: str, k: int = 10):
         judged = self._samples.get(str(query), [])[:k]
-        scores = [self._judge(query, index) for index, _ in judged]
+        with track_model_calls() as model_calls:
+            scores = []
+            for index, _ in judged:
+                record_model_call()
+                scores.append(self._judge(query, index))
         ranked = sorted(zip(judged, scores), key=lambda item: (-item[1], item[0][0]))
-        return [item[0][0] for item in ranked], [item[1] for item in ranked]
+        return (
+            [item[0][0] for item in ranked],
+            [item[1] for item in ranked],
+            {"resource.model_calls": model_calls.calls},
+        )
 
     @property
     def cache_key(self) -> str:
@@ -213,6 +222,7 @@ class PointwiseJudgeStrategy(SearchStrategy):
             "sample_size": self.sample_size,
             "sampling_seed": self.sampling_seed,
             "samples": self._samples,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

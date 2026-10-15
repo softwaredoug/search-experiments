@@ -12,6 +12,7 @@ from exps.query_understanding.enrichers.category_values import (
     schema_values,
 )
 from exps.query_understanding.enrichers.choice_single import _choice_vocabulary
+from exps.resource_tracking import record_model_call
 
 SYSTEM_PROMPT = (
     "You are a helpful furniture shopping agent that helps users construct search queries."
@@ -85,6 +86,7 @@ class OpenAIChoiceSingleEnricher:
     def enrich(self, query: str) -> list[str]:
         if query in self._cache:
             return list(self._cache[query])
+        record_model_call()
         response = self.enricher.enrich(self._prompt(query))
         value = getattr(response, "choice", None) if response is not None else None
         value = self.schema_aliases.get(value, value)

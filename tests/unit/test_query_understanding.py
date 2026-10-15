@@ -17,6 +17,9 @@ from exps.query_understanding.enrichers.cached_choice_single_jev import (
 from exps.query_understanding.enrichers.cached_jev_choice_multiple import (
     CachedJevChoiceMultipleEnricher,
 )
+from exps.query_understanding.enrichers.choice_single_jev import (
+    JevChoiceSingleEnricher,
+)
 from exps.query_understanding import QueryUnderstandingStrategy
 from exps.query_understanding.retrieval_engines import (
     BM25HierarchyBoostedRetrievalEngine,
@@ -25,6 +28,7 @@ from exps.query_understanding.enrichers.llm_multiple import _model_name as multi
 from exps.query_understanding.enrichers.llm_single import _model_name as single_model_name
 from exps.query_understanding.strategy import MAX_CATEGORY_CARDINALITY
 from exps.runners.query_classification import _evaluate_as, _ground_truth
+from exps.resource_tracking import track_model_calls
 
 
 class FakeAutoEnricher:
@@ -104,8 +108,10 @@ def test_llm_single_enricher_builds_prompt_and_normalizes_response():
             model="gpt-5-mini",
             reasoning="medium",
         )
-        assert enricher.enrich("sofa") == ["Furniture"]
-        assert enricher.enrich("sofa") == ["Furniture"]
+        with track_model_calls() as calls:
+            assert enricher.enrich("sofa") == ["Furniture"]
+            assert enricher.enrich("sofa") == ["Furniture"]
+        assert calls.calls == 1
 
     auto_enricher = FakeAutoEnricher.instances[0]
     assert auto_enricher.system_prompt == (
@@ -114,6 +120,51 @@ def test_llm_single_enricher_builds_prompt_and_normalizes_response():
     assert len(auto_enricher.prompts) == 1
     assert "Classify sofa into category." == auto_enricher.prompts[0]
     assert "sofa" in auto_enricher.prompts[0]
+
+
+def test_jev_enricher_api_invocation_is_reported_as_search_resource():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2],
+            "title": ["desk", "lamp"],
+            "description": ["office desk", "reading lamp"],
+            "category": ["Furniture", "Lighting"],
+        }
+    )
+    FakeJevClient.instances = []
+
+    with (
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.TypeSafeClient",
+            FakeJevClient,
+        ),
+        patch(
+            "exps.query_understanding.enrichers.choice_single_jev.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+    ):
+        enricher = JevChoiceSingleEnricher(
+            field="category",
+            vocabulary=["Furniture", "Lighting"],
+            choices={"Furniture": None, "Lighting": None},
+            prompt="Classify {query}.",
+            model="jev/jev-latest",
+            reasoning=None,
+            pad_missing_choices=False,
+        )
+        strategy = QueryUnderstandingStrategy(
+            corpus,
+            categorize={"field": "category"},
+            retrieval_engine={
+                "base": "bm25_boosted",
+                "params": {"fields": ["title"]},
+            },
+            enricher=enricher,
+        )
+        _, _, resources = strategy.search("desk")
+
+    assert resources == {"resource.model_calls": 1}
+    assert len(FakeJevClient.instances[0].calls) == 1
 
 
 def test_llm_single_enricher_maps_unknown_to_empty_list():

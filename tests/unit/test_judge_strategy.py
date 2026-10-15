@@ -107,7 +107,8 @@ def test_search_sorts_sampled_documents_by_predicted_grade():
     grades = iter([0, 2, 1])
     strategy._judge = lambda _query, _index, **_kwargs: next(grades)
 
-    indices, scores = strategy.search("desk", k=3)
+    indices, scores, resources = strategy.search("desk", k=3)
 
     assert scores == [2, 1, 0]
     assert len(indices) == 3
+    assert resources == {"resource.model_calls": 3}

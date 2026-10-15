@@ -124,6 +124,7 @@ def test_pairwise_openai_strategy_runs_through_benchmark(tmp_path):
     assert result.graded["pairwise_agreement"].unique().tolist() == [1.0]
     assert result.summary["mean_agreement"] == 1.0
     assert result.summary["mean_pairwise_agreement"] == 1.0
+    assert result.summary["mean_resource.model_calls"] == 3.0
     judge = ScriptedPairwiseEnricher.instances[0]
     assert len(judge.prompts) == 3
     assert all("Query: find relevant documents" in prompt for prompt in judge.prompts)
@@ -158,6 +159,7 @@ def test_pairwise_jev_strategy_uses_choice_api_and_threshold(tmp_path):
 
     assert len(result.graded) == 3
     assert result.graded["agreement"].unique().tolist() == [1.0]
+    assert result.summary["mean_resource.model_calls"] == 3.0
     client = ScriptedPairwiseJevEnricher.instances[0]
     assert client.model == "jev/jev-latest"
     assert client.delete_cache_calls == 1

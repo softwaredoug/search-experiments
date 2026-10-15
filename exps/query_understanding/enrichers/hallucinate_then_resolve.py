@@ -9,6 +9,7 @@ import numpy as np
 from cheat_at_search.embeddings import load_model
 from cheat_at_search.enrich.enrich import AutoEnricher
 from pydantic import BaseModel, Field
+from exps.resource_tracking import record_model_call
 
 
 class HallucinatedClassifications(BaseModel):
@@ -201,6 +202,7 @@ class HallucinateThenResolveEnricher:
             return []
 
         prompt = self._prompt(query)
+        record_model_call()
         if self.use_cache:
             response = self.enricher.enrich(prompt)
         else:

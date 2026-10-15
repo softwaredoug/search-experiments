@@ -330,10 +330,11 @@ def test_pairwise_trained_judge_gives_half_a_point_to_each_abstained_pair():
     strategy.model = FakeModel()
     strategy.prediction_threshold = 0.7
 
-    indices, scores = strategy.search("query")
+    indices, scores, resources = strategy.search("query")
 
     assert indices == [0, 1]
     assert scores == [0.5, 0.5]
+    assert resources == {"resource.model_calls": 0}
 
 
 def test_pairwise_feature_computer_shares_jev_cache_and_clears_it_once():

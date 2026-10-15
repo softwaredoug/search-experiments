@@ -114,6 +114,7 @@ strategy:
     assert result.graded["pairwise_agreement"].unique().tolist() == [1.0]
     assert result.summary["mean_agreement"] == 1.0
     assert result.summary["mean_pairwise_agreement"] == 1.0
+    assert result.summary["mean_resource.model_calls"] == 9.0
 
     report_path = tmp_path / "wands_judge_summary.csv"
     _write_summary_csv(str(report_path), dataset="wands", result=result)
@@ -189,6 +190,7 @@ strategy:
     assert len(result.graded) == 9
     assert result.graded["agreement"].unique().tolist() == [1.0]
     assert result.graded["pairwise_agreement"].unique().tolist() == [1.0]
+    assert result.summary["mean_resource.model_calls"] == 9.0
     client = ScriptedJevClient.instances[0]
     assert client.model == "jev-latest"
     assert len(client.calls) == 9

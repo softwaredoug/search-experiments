@@ -12,6 +12,7 @@ from cheat_at_search.strategy import SearchStrategy
 from cheat_at_search.tokenizers import snowball_tokenizer
 from exps.query_understanding.enrichers import Enricher, make_enricher
 from exps.query_understanding.retrieval_engines import make_retrieval_engine
+from exps.resource_tracking import track_model_calls
 
 MAX_CATEGORY_CARDINALITY = 300
 VOCABULARY_LIMITED_ENGINES = {
@@ -165,23 +166,26 @@ class QueryUnderstandingStrategy(SearchStrategy):
         return self.enricher.enrich(query)
 
     def search(self, query: str, k: int = 10):
-        categories = self.enrich(query)
-        query_terms = snowball_tokenizer(query)
-        scores = np.zeros(len(self.index), dtype=float)
-        similarity = bm25_similarity(k1=self.k1, b=self.b)
-        for term in query_terms:
-            for field, weight in self.fields.items():
-                scores += (
-                    self.index[f"{field}_snowball"].array.score(
-                        term, similarity=similarity
+        with track_model_calls() as model_calls:
+            categories = self.enrich(query)
+            query_terms = snowball_tokenizer(query)
+            scores = np.zeros(len(self.index), dtype=float)
+            similarity = bm25_similarity(k1=self.k1, b=self.b)
+            for term in query_terms:
+                for field, weight in self.fields.items():
+                    scores += (
+                        self.index[f"{field}_snowball"].array.score(
+                            term, similarity=similarity
+                        )
+                        * weight
                     )
-                    * weight
-                )
 
-        scores = self.retrieval_engine.apply(scores, categories)
-
-        top_indices = np.argsort(-scores)[:k]
-        return top_indices, scores[top_indices]
+            scores = self.retrieval_engine.apply(scores, categories)
+            top_indices = np.argsort(-scores)[:k]
+            top_scores = scores[top_indices]
+        return top_indices, top_scores, {
+            "resource.model_calls": model_calls.calls
+        }
 
     @property
     def cache_key(self) -> str:
@@ -195,6 +199,7 @@ class QueryUnderstandingStrategy(SearchStrategy):
             "b": self.b,
             "top_k": getattr(self, "top_k", None),
             "enricher": self.enricher.cache_key,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

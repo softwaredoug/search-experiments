@@ -17,6 +17,7 @@ from exps.judge.engines.jev_pairwise import JevPairwiseJudgeEngine
 from exps.judge.engines.llm_pairwise import LLMPairwiseJudgeEngine
 from exps.judge.sample import sample_judgments
 from exps.judge.scorers import scorer_from_config
+from exps.resource_tracking import record_model_call, track_model_calls
 
 
 _OUTCOMES = {"lhs", "rhs", "neither"}
@@ -236,6 +237,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
 
     def _judge_once(self, query: str, lhs_index: int, rhs_index: int) -> PairwiseJudgeResult:
         request = self._render_request(query, lhs_index, rhs_index)
+        record_model_call()
         if self.is_jev:
             result = self.engine.judge(
                 state=request.prompt,
@@ -265,37 +267,39 @@ class PairwiseJudgeStrategy(SearchStrategy):
         return first if reverse[first] == swapped else "neither"
 
     def search(self, query: str, k: int = 10):
-        sampled = self._samples.get(str(query), [])[:k]
-        sampled_indices = [index for index, _ in sampled]
-        scorer = self._scorer_config.create(
-            sampled_indices,
-            default_n_per_round=k,
-        )
-        for round_no in range(self._scorer_config.max_rounds):
-            scheduled = scorer.schedule()
-            graph = getattr(scorer, "graph", None)
-            logger.debug(
-                "Pairwise scorer round %d/%d query=%r scheduled=%s "
-                "preference_edges=%s",
-                round_no + 1,
-                self._scorer_config.max_rounds,
-                str(query)[:120],
-                sorted(scheduled),
-                sorted(graph.edges()) if graph is not None else None,
+        with track_model_calls() as model_calls:
+            sampled = self._samples.get(str(query), [])[:k]
+            sampled_indices = [index for index, _ in sampled]
+            scorer = self._scorer_config.create(
+                sampled_indices,
+                default_n_per_round=k,
             )
-            if not scheduled:
-                break
-            for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
-                outcome = self._compare(str(query), lhs_index, rhs_index)
-                scorer.add_decision(lhs_index, rhs_index, outcome)
+            for round_no in range(self._scorer_config.max_rounds):
+                scheduled = scorer.schedule()
+                graph = getattr(scorer, "graph", None)
                 logger.debug(
-                    "Pairwise scorer round %d pair=(%s,%s) outcome=%s",
+                    "Pairwise scorer round %d/%d query=%r scheduled=%s "
+                    "preference_edges=%s",
                     round_no + 1,
-                    lhs_index,
-                    rhs_index,
-                    outcome,
+                    self._scorer_config.max_rounds,
+                    str(query)[:120],
+                    sorted(scheduled),
+                    sorted(graph.edges()) if graph is not None else None,
                 )
-        return scorer.score()
+                if not scheduled:
+                    break
+                for lhs_index, rhs_index in combinations(sorted(scheduled), 2):
+                    outcome = self._compare(str(query), lhs_index, rhs_index)
+                    scorer.add_decision(lhs_index, rhs_index, outcome)
+                    logger.debug(
+                        "Pairwise scorer round %d pair=(%s,%s) outcome=%s",
+                        round_no + 1,
+                        lhs_index,
+                        rhs_index,
+                        outcome,
+                    )
+            top_indices, scores = scorer.score()
+        return top_indices, scores, {"resource.model_calls": model_calls.calls}
 
     @property
     def cache_key(self) -> str:
@@ -312,6 +316,7 @@ class PairwiseJudgeStrategy(SearchStrategy):
             "double_check": self.double_check,
             "scorer": self._scorer_config.cache_config,
             "samples": self._samples,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

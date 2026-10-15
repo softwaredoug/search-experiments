@@ -298,6 +298,7 @@ def test_pairwise_trained_judge_cross_validates_fits_artifact_and_runs(
         )
 
     assert result.artifact_path == str(artifact_path)
+    assert result.summary["mean_resource.model_calls"] == 12.0
     if gradient_boosted:
         assert result.summary["mean_pairwise_agreement"] > 0.8
     else:

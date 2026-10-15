@@ -15,6 +15,7 @@ from exps.judge.pairwise_train import (
     _sample_documents,
     train_pairwise_strategy,
 )
+from exps.resource_tracking import track_model_calls
 from exps.train_runs import find_latest_train_run
 
 
@@ -146,41 +147,45 @@ class PairwiseTrainedJudgeStrategy(SearchStrategy):
         super().__init__(corpus, workers=workers)
 
     def search(self, query, k: int = 10):
-        sampled = self.samples.get(str(query), [])[:k]
-        points = {index: 0.0 for index, _ in sampled}
-        if len(sampled) < 2:
-            ranked = sorted(points.items())
-            return [index for index, _ in ranked], [score for _, score in ranked]
-        pairs = list(itertools.combinations(sampled, 2))
-        feature_rows = []
-        for (lhs_index, _), (rhs_index, _) in pairs:
-            feature_rows.append(
-                self.feature_computer.compute(
-                    str(query),
-                    self.corpus.iloc[lhs_index],
-                    self.corpus.iloc[rhs_index],
+        with track_model_calls() as model_calls:
+            sampled = self.samples.get(str(query), [])[:k]
+            points = {index: 0.0 for index, _ in sampled}
+            if len(sampled) >= 2:
+                pairs = list(itertools.combinations(sampled, 2))
+                feature_rows = []
+                for (lhs_index, _), (rhs_index, _) in pairs:
+                    feature_rows.append(
+                        self.feature_computer.compute(
+                            str(query),
+                            self.corpus.iloc[lhs_index],
+                            self.corpus.iloc[rhs_index],
+                        )
+                    )
+                predictions = _predict_pairwise_outcomes(
+                    self.model,
+                    pd.DataFrame(feature_rows, columns=self.feature_names),
+                    self.prediction_threshold,
                 )
-            )
-        predictions = _predict_pairwise_outcomes(
-            self.model,
-            pd.DataFrame(feature_rows, columns=self.feature_names),
-            self.prediction_threshold,
+                for ((lhs_index, _), (rhs_index, _)), winner in zip(pairs, predictions):
+                    if winner == "lhs":
+                        points[lhs_index] += 1.0
+                    elif winner == "rhs":
+                        points[rhs_index] += 1.0
+                    elif winner == "neither":
+                        points[lhs_index] += 0.5
+                        points[rhs_index] += 0.5
+                    else:
+                        raise ValueError(f"Pairwise model returned invalid class {winner!r}.")
+            ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))
+        return (
+            [index for index, _ in ranked],
+            [score for _, score in ranked],
+            {"resource.model_calls": model_calls.calls},
         )
-        for ((lhs_index, _), (rhs_index, _)), winner in zip(pairs, predictions):
-            if winner == "lhs":
-                points[lhs_index] += 1.0
-            elif winner == "rhs":
-                points[rhs_index] += 1.0
-            elif winner == "neither":
-                points[lhs_index] += 0.5
-                points[rhs_index] += 0.5
-            else:
-                raise ValueError(f"Pairwise model returned invalid class {winner!r}.")
-        ranked = sorted(points.items(), key=lambda item: (-item[1], item[0]))
-        return [index for index, _ in ranked], [score for _, score in ranked]
 
     @property
     def cache_key(self) -> str:
         digest = hashlib.sha256(self.model_signature.encode("utf-8"))
         digest.update(json.dumps(self.samples, sort_keys=True).encode("utf-8"))
+        digest.update(b"resource_schema=1")
         return f"{self._type}:{digest.hexdigest()}"

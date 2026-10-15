@@ -15,6 +15,7 @@ from searcharray.similarity import bm25_similarity
 from cheat_at_search.data_dir import DATA_PATH, key_for_provider
 from cheat_at_search.tokenizers import snowball_tokenizer
 from typesafe_sdk import Choice, TypeSafeClient
+from exps.resource_tracking import record_model_call
 
 from exps.query_understanding.enrichers.choice_single import (
     MAX_JEV_CHOICE_COUNT,
@@ -210,6 +211,7 @@ class JevBM25ThenSelectEnricher:
         if cache_entry_key in self._cache:
             return list(self._cache[cache_entry_key])
 
+        record_model_call()
         response = self.client.system_one(
             state=query,
             questions={

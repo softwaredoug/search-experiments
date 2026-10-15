@@ -144,6 +144,98 @@ strategy:
     assert result.metric_name == "NDCG"
     assert result.metric_series is not None
     assert len(result.metric_series) == 2
+    assert result.summary["mean_resource.model_calls"] == 0.0
+
+
+def test_query_understanding_model_calls_are_resources_and_survive_result_cache(
+    tmp_path,
+):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1, 2],
+            "title": ["desk", "lamp"],
+            "description": ["office desk", "reading lamp"],
+            "category": ["Furniture", "Lighting"],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1, 1],
+            "query": ["desk lamp", "desk lamp"],
+            "doc_id": [1, 2],
+            "grade": [2, 1],
+        }
+    )
+    dataset = SimpleNamespace(corpus=corpus, judgments=judgments)
+
+    class CachedAutoEnricher:
+        instances = []
+
+        def __init__(self, *, response_model, **_kwargs):
+            self.cached_response = response_model(category="Furniture")
+            self.calls = 0
+            self.cache_hits = 0
+            type(self).instances.append(self)
+
+        def enrich(self, _prompt):
+            self.calls += 1
+            self.cache_hits += 1
+            return self.cached_response
+
+    config_path = tmp_path / "query_understanding_cached_llm.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: query_understanding_cached_llm_fixture
+  type: query_understanding
+  params:
+    categorize:
+      field: category
+      enrichment_engine:
+        type: llm_single
+        params:
+          prompt: Classify {query} into {field}.
+    retrieval_engine:
+      base: bm25_boosted
+      params:
+        fields: [title, description]
+        boost_matches: 10
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+    )
+
+    def cache_dir(subdir: str):
+        path = tmp_path / "cache" / subdir
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    CachedAutoEnricher.instances = []
+    with (
+        patch("exps.runners.run.get_dataset", return_value=dataset),
+        patch(
+            "exps.query_understanding.enrichers.llm_single.AutoEnricher",
+            CachedAutoEnricher,
+        ),
+        patch(
+            "cheat_at_search.strategy.strategy.ensure_data_subdir",
+            side_effect=cache_dir,
+        ),
+    ):
+        first = run_benchmark(params)
+        cached = run_benchmark(params)
+
+    assert first.summary["mean_resource.model_calls"] == 1.0
+    assert cached.summary["mean_resource.model_calls"] == 1.0
+    assert sum(instance.calls for instance in CachedAutoEnricher.instances) == 1
+    assert CachedAutoEnricher.instances[0].cache_hits == 1
 
 
 def test_query_classification_backend_dummy_doug_blog(tmp_path, doug_blog_dataset):
