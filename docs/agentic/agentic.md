@@ -53,16 +53,17 @@ Everytime we start a search, we initiate "agent_state". That's like a scratchpad
 
 ## Agentic trace folders
 
-Agentic runs record tool calls and outputs under a working folder rooted at:
+Agentic runs write per-query logs under a working folder rooted at:
 
 ```
 ~/.search-experiments/agentic/<dataset>/<strategy_name>/<timestamp>
 ```
 
-Each query has its own folder and log. Logs record timed model requests and retries, tool calls,
-validator execution, and per-result Jev evaluation. Active queries emit a heartbeat every 30 seconds
-with their current phase and elapsed time, plus a worker stack event after two minutes. Request and
-result payload contents are not added to these diagnostic events.
+Each query has its own folder and log. This repo records query lifecycle events, validator
+execution, and per-result Jev evaluation. Active queries emit a heartbeat every 30 seconds with
+their current phase and elapsed time, plus a worker stack event after two minutes. The local harness
+no longer adds timed events around model requests or individual tool calls; messages from the agent
+library and tools can still flow through the query logger.
 
 ## Few shop options
 
