@@ -3,14 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${ROOT_DIR}/research/results/ecom_judge_variants.csv"
-TOOL_CALLS_CSV="${ROOT_DIR}/research/results/ecom_judge_variants_tool_calls.csv"
 PLOT_OUTPUT="${ROOT_DIR}/assets/ecom_judge_variants.png"
 PARETO_PLOT_OUTPUT="${ROOT_DIR}/assets/ecom_judge_variants_pareto.png"
 WORKERS="${WORKERS:-8}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
-# Set NO_CACHE=false to reuse strategy results; tool-call collection then falls
-# back to the most recent saved trace for each query.
+# Set NO_CACHE=false to reuse strategy results and their cached resource metrics.
 NO_CACHE="${NO_CACHE:-false}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 
@@ -26,7 +24,6 @@ DATASETS=("esci" "wands")
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT}")"
 rm -f "${RESULTS_CSV}"
-rm -f "${TOOL_CALLS_CSV}"
 
 cd "${ROOT_DIR}"
 
@@ -60,10 +57,8 @@ done
 uv run python "${ROOT_DIR}/scripts/plot_ecom_judge_variants.py" \
   --input "${RESULTS_CSV}" \
   --output "${PLOT_OUTPUT}" \
-  --tool-calls-output "${TOOL_CALLS_CSV}" \
   --pareto-output "${PARETO_PLOT_OUTPUT}"
 
 echo "Wrote ${RESULTS_CSV}"
-echo "Wrote ${TOOL_CALLS_CSV}"
 echo "Wrote ${PLOT_OUTPUT}"
 echo "Wrote ${PARETO_PLOT_OUTPUT}"

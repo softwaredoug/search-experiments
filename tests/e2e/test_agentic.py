@@ -161,7 +161,8 @@ strategy:
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
-        assert result.summary["tool_calls_mean"] >= 1.0
+        assert result.summary["mean_resource.tool_calls"] == 1.0
+        assert not any(name.startswith("tool_calls_") for name in result.summary)
         assert sum(agent.chat_calls for agent in instances) >= 1
         assert mock_load_or_create_embeddings.call_count >= 1
 
@@ -169,6 +170,80 @@ strategy:
         assert trace_base.exists()
     finally:
         _cleanup_temp_root()
+
+
+def test_agentic_resources_survive_result_cache_e2e(
+    tmp_path,
+    doug_blog_dataset,
+):
+    corpus = doug_blog_dataset.corpus
+    doc_ids = [str(doc_id) for doc_id in corpus["doc_id"].head(10).tolist()]
+    instances: list[FakeOpenAIAgent] = []
+    config_path = tmp_path / "agentic_cache.yml"
+    config_path.write_text(
+        """
+strategy:
+  name: agentic_resource_cache_fixture
+  type: agentic
+  params:
+    model: gpt-5-mini
+    search_tools:
+      - bm25
+""".lstrip(),
+        encoding="utf-8",
+    )
+    params = RunParams(
+        strategy_path=str(config_path),
+        dataset="doug_blog",
+        num_queries=1,
+        seed=123,
+        workers=1,
+        batch_size=1,
+        device="cpu",
+    )
+
+    def cache_dir(subdir: str) -> Path:
+        path = tmp_path / "cache" / subdir
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    trace_roots = [tmp_path / "traces" / f"run-{index}" for index in (1, 2)]
+
+    with (
+        patch("exps.runners.run.get_dataset", return_value=doug_blog_dataset),
+        patch(
+            "exps.runners.run.build_agentic_trace_root",
+            side_effect=trace_roots,
+        ),
+        patch(
+            "cheat_at_search.strategy.strategy.ensure_data_subdir",
+            side_effect=cache_dir,
+        ),
+        patch(
+            "exps.agentic.agent.build_openai_agent",
+            side_effect=_build_fake_agent(
+                script=[
+                    {
+                        "function_call": {
+                            "name": "search_bm25",
+                            "params": {"keywords": "salon chair", "top_k": 5},
+                        }
+                    },
+                    {"output": {"ranked_results": doc_ids}},
+                ],
+                doc_ids=doc_ids,
+                instances=instances,
+            ),
+        ),
+    ):
+        first = run_benchmark(params)
+        cached = run_benchmark(params)
+
+    assert first.summary["mean_resource.tool_calls"] == 1.0
+    assert cached.summary["mean_resource.tool_calls"] == 1.0
+    assert not any(name.startswith("tool_calls_") for name in cached.summary)
+    assert "resource.tool_calls" in cached.graded.columns
+    assert len(instances) == 1
 
 
 @patch("exps.paths.SEARCH_EXPERIMENTS_ROOT", new_callable=_temp_root)
@@ -244,7 +319,7 @@ strategy:
 
         assert result.metric_series is not None
         assert not result.metric_series.empty
-        assert result.summary["tool_calls_mean"] >= 1.0
+        assert result.summary["mean_resource.tool_calls"] >= 1.0
         assert sum(agent.chat_calls for agent in instances) >= 1
     finally:
         _cleanup_temp_root()

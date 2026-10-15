@@ -153,7 +153,7 @@ strategy:
 
     assert result.metric_series is not None
     assert not result.metric_series.empty
-    assert result.summary["tool_calls_mean"] >= 1.0
+    assert result.summary["mean_resource.tool_calls"] >= 1.0
     assert mock_embeddings.call_count == 1
     assert len(_FakeJevClient.calls) == 3
     if reranker_type == "bag_of_decisions":

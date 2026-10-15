@@ -8,8 +8,7 @@ from exps.datasets import DATASET_NAMES
 from exps.runners.run import RunParams, run_benchmark
 
 
-def _report_metric(metric_name: str, metric_series, graded=None) -> None:
-    metric_key = metric_name.lower()
+def _report_metric(metric_name: str, metric_series, summary: dict[str, float]) -> None:
     if metric_series.empty:
         print(f"No {metric_name} results to report.")
         return
@@ -18,17 +17,8 @@ def _report_metric(metric_name: str, metric_series, graded=None) -> None:
     print(metric_series.to_string())
     print("")
     print("Summary:")
-    print(f"mean_{metric_key}={metric_series.mean():.4f}")
-    print(f"median_{metric_key}={metric_series.median():.4f}")
-    if graded is not None:
-        if "agreement" in graded:
-            agreement = graded.groupby(["query", "query_id"])["agreement"].first()
-            print(f"mean_agreement={agreement.mean():.4f}")
-        if "pairwise_agreement" in graded:
-            agreement = graded.groupby(["query", "query_id"])[
-                "pairwise_agreement"
-            ].first()
-            print(f"mean_pairwise_agreement={agreement.mean():.4f}")
+    for name, value in summary.items():
+        print(f"{name}={value:.4f}")
 
 
 def _write_summary_csv(path: str, *, dataset: str, result) -> None:
@@ -52,17 +42,27 @@ def _write_summary_csv(path: str, *, dataset: str, result) -> None:
 
     file_exists = output_path.exists()
     fieldnames = None
+    existing_rows = []
     if file_exists:
-        with output_path.open("r", newline="") as handle:
+        with output_path.open("r", newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             fieldnames = reader.fieldnames
+            existing_rows = list(reader)
 
     if not fieldnames:
         fieldnames = list(row.keys())
+    else:
+        new_fields = [key for key in row if key not in fieldnames]
+        if new_fields:
+            fieldnames.extend(new_fields)
+            with output_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(existing_rows)
 
     write_header = not file_exists or output_path.stat().st_size == 0
-    with output_path.open("a", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
+    with output_path.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -203,7 +203,7 @@ def main() -> None:
     elif result.artifact_path:
         print(f"Strategy artifact: {result.artifact_path}")
         print("")
-    _report_metric(result.metric_name, result.metric_series, result.graded)
+    _report_metric(result.metric_name, result.metric_series, result.summary)
     if args.summary_csv:
         _write_summary_csv(args.summary_csv, dataset=args.dataset, result=result)
 

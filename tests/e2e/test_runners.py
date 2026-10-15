@@ -72,9 +72,8 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert result.metric_series.index.name == "query"
     assert not result.metric_series.empty
     assert "mean_" in next(iter(result.summary.keys()))
-    assert result.summary["tool_calls_mean"] == 1.0
-    assert result.summary["tool_calls_median"] == 1.0
-    assert result.summary["tool_calls_std"] == 0.0
+    assert not any(name.startswith("tool_calls_") for name in result.summary)
+    assert not any(name.endswith("_resource.tool_calls") for name in result.summary)
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):

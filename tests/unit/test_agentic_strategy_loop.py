@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from unittest.mock import patch
@@ -163,12 +162,12 @@ def test_agentic_stop_tool_calls(tmp_path):
         stop=[{"tool_calls": {"prompt": "Again", "params": {"num_calls": 2}}}],
         trace_path=tmp_path,
     )
-    strategy.search("query", k=2)
+    _, _, resources = strategy.search("query", k=2)
 
     agent_state = _FakeOpenAIAgent.last_instance.last_agent_state
     assert agent_state["num_tool_calls"] == 2
-    summary = json.loads((tmp_path / "query" / "summary.json").read_text())
-    assert summary == {"query": "query", "num_tool_calls": 2}
+    assert resources == {"resource.tool_calls": 2}
+    assert not (tmp_path / "query" / "summary.json").exists()
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent_with_results)

@@ -80,7 +80,6 @@ class AgenticSearchStrategy(SearchStrategy):
             dataset_name=self.dataset_name,
         )
         self.traces: dict[str, str] = {}
-        self.num_tool_calls: dict[str, int] = {}
         super().__init__(corpus, workers=workers)
 
     @classmethod
@@ -126,17 +125,9 @@ class AgenticSearchStrategy(SearchStrategy):
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
         self.traces[query] = str(run_result.trace_path)
-        num_tool_calls = run_result.num_tool_calls
-        self.num_tool_calls[query] = num_tool_calls
-        summary_path = query_dir / "summary.json"
-        summary_path.write_text(
-            json.dumps(
-                {"query": query, "num_tool_calls": num_tool_calls}, indent=2
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        return ranked_results, [1.0] * len(ranked_results)
+        return ranked_results, [1.0] * len(ranked_results), {
+            "resource.tool_calls": run_result.num_tool_calls
+        }
 
     def query_path(self, query: str) -> Path:
         if self.trace_path is None:
@@ -174,6 +165,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "ranked_results_min_length": AGENTIC_RANKED_RESULTS_LENGTH,
             "ranked_results_max_length": AGENTIC_RANKED_RESULTS_LENGTH,
             "embeddings_device": self.embeddings_device,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

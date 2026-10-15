@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import statistics
 from datetime import datetime
 
 import pandas as pd
@@ -9,7 +8,6 @@ from pydantic import BaseModel, ConfigDict
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
 from exps.strategy_factory import create_strategy, load_strategy
-from exps.agentic.strategy import AgenticSearchStrategy
 from exps.trace_utils import build_agentic_trace_root
 
 
@@ -137,6 +135,37 @@ def _relevant_examples(
     return examples, grade_col
 
 
+def _resource_values_by_query(graded: pd.DataFrame) -> dict[str, pd.Series]:
+    resource_columns = [
+        column for column in graded.columns if column.startswith("resource.")
+    ]
+    if not resource_columns:
+        return {}
+    query_keys = ["query", "query_id"]
+    if not set(query_keys).issubset(graded.columns):
+        raise ValueError("Resource results must include query and query_id columns.")
+
+    grouped = graded.groupby(query_keys, sort=False)
+    resources = {}
+    for column in resource_columns:
+        if grouped[column].nunique(dropna=True).gt(1).any():
+            raise ValueError(f"Resource {column!r} must have one value per query.")
+        values = grouped[column].first()
+        resources[column] = pd.to_numeric(values, errors="raise").dropna()
+    return resources
+
+
+def _resource_summary(resources: dict[str, pd.Series]) -> dict[str, float]:
+    summary = {}
+    for column, values in resources.items():
+        if values.empty:
+            continue
+        summary[f"mean_{column}"] = float(values.mean())
+        summary[f"median_{column}"] = float(values.median())
+        summary[f"std_{column}"] = float(values.std(ddof=0))
+    return summary
+
+
 def _query_results(
     *,
     strategy,
@@ -145,9 +174,13 @@ def _query_results(
     query: str,
     k: int,
 ) -> tuple[pd.DataFrame, str | None]:
-    top_k, scores = strategy.search(query, k=k)
+    top_k, scores, resources = strategy._unpack_search_result(
+        strategy.search(query, k=k)
+    )
     results = corpus.iloc[top_k].copy()
     results["score"] = scores
+    for name, value in resources.items():
+        results[name] = value
     grade_col = _grade_column(judgments)
     if grade_col and "query" in judgments.columns and "doc_id" in judgments.columns:
         match = judgments[judgments["query"] == query]
@@ -232,7 +265,11 @@ def run_benchmark(params: RunParams) -> RunResult:
         include_pairwise_agreement=True,
     )
     if trace_path is not None:
-        query_dirs = [path for path in trace_path.iterdir() if path.is_dir()]
+        query_dirs = (
+            [path for path in trace_path.iterdir() if path.is_dir()]
+            if trace_path.exists()
+            else []
+        )
         if not query_dirs:
             print(
                 "No agentic trace folders were created. If this was a cached run, "
@@ -251,18 +288,12 @@ def run_benchmark(params: RunParams) -> RunResult:
             f"Runner expected {num_queries} metric values but found {len(metric_series)}."
         )
     metric_key = metric_name.lower()
-    tool_calls = [1] * num_queries
-    if isinstance(strategy, AgenticSearchStrategy):
-        tool_calls = list(strategy.num_tool_calls.values())
-        if not tool_calls:
-            tool_calls = [0]
+    resource_values = _resource_values_by_query(graded)
     summary = {
         f"mean_{metric_key}": float(metric_series.mean()) if not metric_series.empty else 0.0,
         f"median_{metric_key}": float(metric_series.median()) if not metric_series.empty else 0.0,
-        "tool_calls_mean": float(statistics.fmean(tool_calls)),
-        "tool_calls_median": float(statistics.median(tool_calls)),
-        "tool_calls_std": float(statistics.pstdev(tool_calls)),
     }
+    summary.update(_resource_summary(resource_values))
     if not graded.empty:
         query_agreement = graded.groupby(["query", "query_id"], sort=False)
         summary["mean_agreement"] = float(

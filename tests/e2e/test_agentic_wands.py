@@ -148,6 +148,7 @@ def test_scatter_gather_wands_e2e(
     assert result.metric_series is not None
     assert not result.metric_series.empty
     assert sum(agent.chat_calls for agent in instances) >= 1
+    assert result.summary["mean_resource.tool_calls"] == 0.0
 
 
 @patch("exps.runners.run.get_dataset")
@@ -196,4 +197,5 @@ def test_scatter_gather_wands_cat_subcat_query_e2e(
 
     assert result.query_results is not None
     assert not result.query_results.empty
+    assert result.query_results["resource.tool_calls"].eq(0).all()
     assert sum(agent.chat_calls for agent in instances) >= 1

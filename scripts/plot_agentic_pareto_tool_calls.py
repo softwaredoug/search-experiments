@@ -8,10 +8,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from exps.paths import AGENTIC_TRACE_ROOT
-from exps.trace_utils import slugify
-
-
 DATASETS = ["esci", "wands"]
 GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
 PARETO_STRATEGIES = {
@@ -84,7 +80,7 @@ def _load_tool_calls(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]
         strategy = row.get("strategy_name")
         if not dataset or not strategy:
             continue
-        tool_calls = row.get("tool_calls_mean")
+        tool_calls = row.get("mean_resource.tool_calls")
         if tool_calls is None or tool_calls == "":
             continue
         key = (dataset, strategy)
@@ -97,49 +93,16 @@ def _load_tool_calls(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]
     return tool_calls
 
 
-def _latest_trace_dir(strategy_dir: Path) -> Path | None:
-    timestamp_dirs = [path for path in strategy_dir.iterdir() if path.is_dir()]
-    if not timestamp_dirs:
-        return None
-    return sorted(timestamp_dirs, key=lambda path: path.name)[-1]
-
-
-def _tool_calls_from_traces() -> dict[tuple[str, str], float]:
-    tool_calls = {}
-    if not AGENTIC_TRACE_ROOT.exists():
-        return tool_calls
-    for dataset_dir in AGENTIC_TRACE_ROOT.iterdir():
-        if not dataset_dir.is_dir():
-            continue
-        dataset = dataset_dir.name
-        for strategy_dir in dataset_dir.iterdir():
-            if not strategy_dir.is_dir():
-                continue
-            strategy = strategy_dir.name
-            latest_dir = _latest_trace_dir(strategy_dir)
-            if latest_dir is None:
-                continue
-            counts = []
-            for query_dir in latest_dir.iterdir():
-                if not query_dir.is_dir():
-                    continue
-                summary_path = query_dir / "summary.json"
-                if not summary_path.exists():
-                    continue
-                try:
-                    summary = json.loads(summary_path.read_text(encoding="utf-8"))
-                except json.JSONDecodeError:
-                    continue
-                num_calls = summary.get("num_tool_calls")
-                if isinstance(num_calls, (int, float)):
-                    counts.append(float(num_calls))
-            if counts:
-                tool_calls[(dataset, strategy)] = sum(counts) / len(counts)
-    return tool_calls
-
-
-def _pareto_front(points: list[dict[str, float | str]]) -> list[dict[str, float | str]]:
-    ordered = sorted(points, key=lambda row: (row["tool_calls_mean"], -row["mean_ndcg"]))
+def _pareto_front(
+    points: list[dict[str, float | str]],
+) -> list[dict[str, float | str]]:
+    ordered = sorted(
+        points,
+        key=lambda row: (
+            row["mean_resource.tool_calls"],
+            -row["mean_ndcg"],
+        ),
+    )
     frontier = []
     best_ndcg = -1.0
     for row in ordered:
@@ -160,7 +123,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
         return
 
     fig, ax = plt.subplots(figsize=(7.5, 5))
-    x_vals = [row["tool_calls_mean"] for row in frontier]
+    x_vals = [row["mean_resource.tool_calls"] for row in frontier]
     y_vals = [row["mean_ndcg"] for row in frontier]
     ax.scatter(x_vals, y_vals, color="#F58518", s=60, zorder=2)
 
@@ -168,7 +131,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
         label = LABEL_MAP.get(str(row["strategy"]), str(row["strategy"]))
         ax.annotate(
             label,
-            (row["tool_calls_mean"], row["mean_ndcg"]),
+            (row["mean_resource.tool_calls"], row["mean_ndcg"]),
             textcoords="offset points",
             xytext=(0, -12),
             ha="center",
@@ -176,7 +139,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
             fontsize=8,
         )
 
-    fx = [row["tool_calls_mean"] for row in frontier]
+    fx = [row["mean_resource.tool_calls"] for row in frontier]
     fy = [row["mean_ndcg"] for row in frontier]
     ax.plot(fx, fy, color="#F58518", linewidth=2, marker="o", zorder=3)
 
@@ -201,21 +164,18 @@ def main() -> None:
 
     rows = _load_rows(results_path)
     ndcg = _load_ndcg(rows)
-    tool_calls = _tool_calls_from_traces()
-    fallback_tool_calls = _load_tool_calls(rows)
+    tool_calls = _load_tool_calls(rows)
     aggregated = []
     for (dataset, strategy), mean_ndcg in ndcg.items():
-        tool_calls_mean = tool_calls.get((dataset, slugify(strategy, fallback="strategy")))
-        if tool_calls_mean is None:
-            tool_calls_mean = fallback_tool_calls.get((dataset, strategy))
-        if tool_calls_mean is None:
+        resource_mean = tool_calls.get((dataset, strategy))
+        if resource_mean is None:
             continue
         aggregated.append(
             {
                 "dataset": dataset,
                 "strategy": strategy,
                 "mean_ndcg": mean_ndcg,
-                "tool_calls_mean": tool_calls_mean,
+                "mean_resource.tool_calls": resource_mean,
             }
         )
     for dataset in DATASETS:

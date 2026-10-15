@@ -203,7 +203,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             if "prefiltered" not in tool_name:
                 raise ValueError("scatter tools must be prefiltered.")
 
-    def _select_categories(self, query: str, trace_dir: Path, logger, trace_path: Path) -> list[str]:
+    def _select_categories(self, query: str, trace_dir: Path, logger, trace_path: Path) -> tuple[list[str], int]:
         trace_dir.mkdir(parents=True, exist_ok=True)
         response = self._select_agent.run(
             query=query,
@@ -212,7 +212,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             trace_path=trace_path,
         )
         if not response.output or not getattr(response.output, "categories", None):
-            return []
+            return [], response.num_tool_calls
         categories = [
             category for category in response.output.categories if category in self._available_categories
         ]
@@ -226,7 +226,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 "scatter_gather_select_results %s",
                 {"categories": categories},
             )
-        return categories
+        return categories, response.num_tool_calls
 
     def _gather_category_results(
         self,
@@ -236,8 +236,9 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         query_dir: Path,
         logger,
         trace_path: Path,
-    ) -> dict[str, list[dict[str, str]]]:
+    ) -> tuple[dict[str, list[dict[str, str]]], int]:
         results_by_category: dict[str, list[dict[str, str]]] = {}
+        num_tool_calls = 0
         for category in categories:
             print(f"Search category: {category}")
             scatter_dir = query_dir / "scatter" / slugify(category, fallback="category")
@@ -249,6 +250,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 logger=logger,
                 trace_path=trace_path,
             )
+            num_tool_calls += response.num_tool_calls
             doc_ids = []
             if isinstance(response.output, list):
                 doc_ids = list(response.output)
@@ -281,7 +283,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 "scatter_gather_scatter_results %s",
                 {"category": category, "doc_ids": doc_ids},
             )
-        return results_by_category
+        return results_by_category, num_tool_calls
 
     def _gather_final_results(
         self,
@@ -291,7 +293,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         results_by_category: dict[str, list[dict[str, str]]],
         logger,
         trace_path: Path,
-    ) -> list[str]:
+    ) -> tuple[list[str], int]:
         formatted_results = self._format_results_by_category(results_by_category)
         gather_dir = query_dir / "gather"
         gather_dir.mkdir(parents=True, exist_ok=True)
@@ -319,7 +321,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             "scatter_gather_gather_results %s",
             {"doc_ids": ranked_results},
         )
-        return ranked_results
+        return ranked_results, gather_response.num_tool_calls
 
     def _format_results_by_category(
         self,
@@ -350,9 +352,31 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         print(query)
         with trace_logger(query_dir) as (logger, trace_path):
             select_dir = query_dir / "select"
-            categories = self._select_categories(query, select_dir, logger, trace_path)
+            categories, num_tool_calls = self._select_categories(
+                query, select_dir, logger, trace_path
+            )
             if not categories:
                 categories = self._available_categories[:3]
+            logger.info(
+                "scatter_gather_scatter_count %s",
+                {"query": query, "scatter_count": len(categories), "categories": categories},
+            )
+            results_by_category, scatter_tool_calls = self._gather_category_results(
+                query=query,
+                categories=categories,
+                query_dir=query_dir,
+                logger=logger,
+                trace_path=trace_path,
+            )
+            num_tool_calls += scatter_tool_calls
+            ranked_results, gather_tool_calls = self._gather_final_results(
+                query=query,
+                query_dir=query_dir,
+                results_by_category=results_by_category,
+                logger=logger,
+                trace_path=trace_path,
+            )
+            num_tool_calls += gather_tool_calls
             summary_path = query_dir / "summary.json"
             summary_path.write_text(
                 json.dumps(
@@ -366,28 +390,13 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 + "\n",
                 encoding="utf-8",
             )
-            logger.info(
-                "scatter_gather_scatter_count %s",
-                {"query": query, "scatter_count": len(categories), "categories": categories},
-            )
-            results_by_category = self._gather_category_results(
-                query=query,
-                categories=categories,
-                query_dir=query_dir,
-                logger=logger,
-                trace_path=trace_path,
-            )
-            ranked_results = self._gather_final_results(
-                query=query,
-                query_dir=query_dir,
-                results_by_category=results_by_category,
-                logger=logger,
-                trace_path=trace_path,
-            )
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
             print(f"{query} DONE")
-            return ranked_results[:k], [1.0] * len(ranked_results[:k])
+            ranked_results = ranked_results[:k]
+            return ranked_results, [1.0] * len(ranked_results), {
+                "resource.tool_calls": num_tool_calls
+            }
 
     def query_path(self, query: str) -> Path:
         if self.trace_path is None:
@@ -434,6 +443,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             "max_loops": self.max_loops,
             "embeddings_device": self.embeddings_device,
             "category_column": self._category_column,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()
