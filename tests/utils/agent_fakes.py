@@ -34,7 +34,7 @@ class FakeOpenAIAgent:
         self.categories: list[str] = []
         self.scripts: list[list[dict]] | None = None
 
-    def chat(self, *, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -44,12 +44,6 @@ class FakeOpenAIAgent:
         resp = type("Resp", (), {"output_parsed": output})
         self.last_inputs = copy.deepcopy(inputs)
         return resp, inputs, 0
-
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
-        resp, _, usage = self.chat(inputs=inputs, agent_state=agent_state, logger=logger)
-        if return_usage:
-            return resp.output_parsed, usage
-        return resp.output_parsed
 
     def _build_output(self):
         model = self.response_model
@@ -148,7 +142,7 @@ class FakeLLMJudgeAgent:
         if emojis is not None:
             cls.emojis = list(emojis)
 
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         emoji_index = min(self.calls, max(len(self.emojis) - 1, 0))
@@ -243,7 +237,7 @@ class FakeCodegenAgent:
         self.response_model = response_model
         self.reasoning_level = reasoning_level
 
-    def chat(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         if self.script is None:
@@ -251,17 +245,6 @@ class FakeCodegenAgent:
         output = self._run_script(inputs)
         resp = type("Resp", (), {"output_parsed": output})
         return resp, inputs, 0
-
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
-        resp, _, usage = self.chat(
-            inputs=inputs,
-            agent_state=agent_state,
-            return_usage=return_usage,
-            logger=logger,
-        )
-        if return_usage:
-            return resp.output_parsed, usage
-        return resp.output_parsed
 
     def _run_script(self, inputs):
         output = None

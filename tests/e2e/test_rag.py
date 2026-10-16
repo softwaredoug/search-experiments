@@ -11,7 +11,7 @@ class _FakeQueryAgent:
     def __init__(self, tools, model, response_model, reasoning_level, images=False):
         self.response_model = response_model
 
-    def chat(self, *, inputs=None, agent_state=None, logger=None):
+    def loop(self, *, inputs=None, agent_state=None, return_usage=False, logger=None):
         type(self).last_inputs = inputs
         response = type("Response", (), {})()
         response.output_parsed = self.response_model(query="floating bed")

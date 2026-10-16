@@ -524,7 +524,7 @@ def _make_filesystem_tools(
             },
         ]
         previous_inputs = list(inputs)
-        _, inputs, _ = agent.chat(inputs=inputs, agent_state=subagent_state, logger=logger)
+        _, inputs, _ = agent.loop(inputs=inputs, agent_state=subagent_state, logger=logger)
         results = _collect_tool_outputs(inputs[len(previous_inputs):])
         if logger is not None:
             logger.info(

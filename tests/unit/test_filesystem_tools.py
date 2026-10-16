@@ -39,7 +39,7 @@ class _SearchDirectoryAgent:
         _SEARCH_DIRECTORY_CAPTURED["model"] = model
         _SEARCH_DIRECTORY_CAPTURED["reasoning"] = reasoning_level
 
-    def chat(self, *, inputs, agent_state, logger=None):
+    def loop(self, *, inputs, agent_state, return_usage=False, logger=None):
         _SEARCH_DIRECTORY_CAPTURED["inputs"] = inputs
         _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
         inputs = list(inputs)
@@ -51,7 +51,7 @@ class _SearchDirectoryWandsAgent:
     def __init__(self, tools, model, reasoning_level, response_model=None):
         pass
 
-    def chat(self, *, inputs, agent_state, logger=None):
+    def loop(self, *, inputs, agent_state, return_usage=False, logger=None):
         _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
         return None, inputs, {}
 

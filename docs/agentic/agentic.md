@@ -39,11 +39,10 @@ This calls OpenAI with
 - the query being searched for as the user prompt. 
 - a set of simple search tools that the agent can call to gather info. In this case, BM25 and minilm embedding search. The agent can call these tools with different queries, etc to gather info. The agentic loop continues until the agent decides to stop (or max iterations is reached). Then the final ranked list of results is returned and evaluated.
 
-The standard `agentic` strategy's `AgenticSearchResults.ranked_results` response field is constrained to
-exactly 10 document IDs using Pydantic `min_length=10` and `max_length=10`. This is currently a
-fixed response-schema contract; no `num_results` validator is needed to enforce the count. The
-separate `scatter_gather_wands` strategy may use the unconstrained `SearchResults` model for its
-intermediate outputs.
+The standard `agentic` strategy uses cheat-at-search's shared `SearchResults` response model, whose
+`ranked_results` field is a list of document IDs without a length constraint. The system prompt asks
+for exactly 10 results, and the strategy returns up to the requested `k`. The
+`scatter_gather_wands` strategy uses the same model for intermediate outputs.
 
 Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness applies validators + stop conditions around that agent loop.
 

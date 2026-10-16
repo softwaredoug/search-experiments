@@ -3,24 +3,9 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from pydantic import ValidationError
 
 import exps.agentic.agent as agent_mod
 from exps.agentic.agent import trace_logger
-
-
-def test_agentic_search_results_require_exactly_ten_ids():
-    schema = agent_mod.AgenticSearchResults.model_json_schema()
-    ranked_results_schema = schema["properties"]["ranked_results"]
-
-    assert ranked_results_schema["minItems"] == 10
-    assert ranked_results_schema["maxItems"] == 10
-    assert len(agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(10)]).ranked_results) == 10
-
-    with pytest.raises(ValidationError):
-        agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(9)])
-    with pytest.raises(ValidationError):
-        agent_mod.AgenticSearchResults(ranked_results=[str(i) for i in range(11)])
 
 
 class _FakeOpenAIAgent:
@@ -37,7 +22,7 @@ class _FakeOpenAIAgent:
         _FakeOpenAIAgent.last_instance = self
         _FakeOpenAIAgent.instances.append(self)
 
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -49,7 +34,7 @@ class _FakeOpenAIAgent:
 
 
 class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1

@@ -44,7 +44,7 @@ def _run_llm_judge(
         reasoning_level=reasoning,
         process_images=images,
     )
-    response, _, _ = judge_agent.chat(
+    response, _, _ = judge_agent.loop(
         inputs=[{"role": "user", "content": prompt}],
         agent_state=None,
         logger=logger,

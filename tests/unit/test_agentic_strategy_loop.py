@@ -22,7 +22,7 @@ class _FakeOpenAIAgent:
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
 
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -37,7 +37,7 @@ class _FakeOpenAIAgent:
 
 
 class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -62,7 +62,7 @@ class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
 
 
 class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
-    def chat(self, inputs=None, agent_state=None, logger=None):
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -122,7 +122,7 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     )
     strategy.search("query", k=2)
 
-    assert strategy.agent.response_model is agent_mod.AgenticSearchResults
+    assert strategy.agent.response_model is agent_mod.SearchResults
     inputs = _FakeOpenAIAgent.last_instance.last_inputs
     reprompt_count = sum(
         1
@@ -133,22 +133,6 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     )
     assert reprompt_count == 1
     assert _FakeOpenAIAgent.last_instance.calls == 2
-
-
-@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
-@patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
-def test_agentic_cache_key_tracks_fixed_result_count(tmp_path, monkeypatch):
-    strategy = agentic_mod.AgenticSearchStrategy(
-        _sample_corpus(),
-        workers=1,
-        search_tools=[],
-        trace_path=tmp_path,
-    )
-    original_cache_key = strategy.cache_key
-
-    monkeypatch.setattr(agentic_mod, "AGENTIC_RANKED_RESULTS_LENGTH", 11)
-
-    assert strategy.cache_key != original_cache_key
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)

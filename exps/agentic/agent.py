@@ -10,7 +10,8 @@ from time import monotonic
 from typing import Any, Type
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
-from pydantic import BaseModel, Field
+from cheat_at_search.agent.search_client import SearchResults
+from pydantic import BaseModel
 
 from exps.agentic.conditions import (
     Condition,
@@ -22,9 +23,6 @@ from exps.agentic.task import build_task_tool
 from exps.agentic.tracing import query_heartbeat, set_trace_stage, trace_event
 from exps.mapping import build_doc_id_lookup
 from exps.tools import build_search_tools, normalize_search_tools_for_cache
-
-
-AGENTIC_RANKED_RESULTS_LENGTH = 10
 
 
 DEFAULT_SYSTEM_PROMPT = """
@@ -48,24 +46,6 @@ Here are some examples of products and relevant / irrelevant results
 
 
 SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
-
-
-class SearchResults(BaseModel):
-    """The state of the search agent, which can be used to inform future reasoning and tool use."""
-
-    ranked_results: list[str] = Field(
-        description="Top ranked search results (their doc_ids) when complete"
-    )
-
-
-class AgenticSearchResults(SearchResults):
-    """Standard agentic response schema with the fixed ten-result contract."""
-
-    ranked_results: list[str] = Field(
-        min_length=AGENTIC_RANKED_RESULTS_LENGTH,
-        max_length=AGENTIC_RANKED_RESULTS_LENGTH,
-        description="Exactly ten document IDs, ranked best to worst.",
-    )
 
 
 @dataclass
@@ -357,7 +337,7 @@ class Agent:
                 turn=num_loops + 1,
             )
             try:
-                resp, inputs, _ = agent.chat(
+                resp, inputs, _ = agent.loop(
                     inputs=inputs,
                     agent_state=agent_state,
                     logger=logger,

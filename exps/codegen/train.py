@@ -324,7 +324,8 @@ class Codegen:
             reasoning_level=self.train_config.reasoning,
         )
         inputs = [{"role": "system", "content": system_prompt}]
-        resp: FinalMessage | None = agent.loop(inputs=inputs)
+        response, _, _ = agent.loop(inputs=inputs)
+        resp: FinalMessage | None = response.output_parsed if response else None
         message = resp.message if resp else None
         code = self.code_path.read_text(encoding="utf-8")
         codegen_strategy = CodeGenSearchStrategy(
