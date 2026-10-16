@@ -58,6 +58,12 @@ These tools normally accept a `top_k` argument, defaulting to 5, and enforce a m
 results per call. The agentic strategy guidance may recommend a smaller value to keep results and
 descriptions manageable in the model context.
 
+### Read by ID
+
+`read` retrieves one corpus document by its stable ID and returns it in the standard document
+result format. It returns an empty list when the ID is not present. SID agents require this tool;
+include `read` in their configured `search_tools`.
+
 ### Query rewrite
 
 `query_rewrite` asks an LLM for spelling and acronym variants of the input query. It always includes

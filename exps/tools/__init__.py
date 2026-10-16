@@ -30,6 +30,7 @@ from exps.tools.guards import (
     guard_query_min_length,
 )
 from exps.tools.query_rewrite import make_query_rewrite_tool
+from exps.tools.read import make_read_tool
 from exps.tools.raw import make_get_corpus_tool
 from exps.tools.registry import TOOL_REGISTRY, tool_kind
 from exps.tools.todo import make_todo_read_tool, make_todo_write_tool
@@ -76,6 +77,7 @@ __all__ = [
     "make_get_corpus_tool",
     "make_guarded_search_tool",
     "make_query_rewrite_tool",
+    "make_read_tool",
     "make_todo_read_tool",
     "make_todo_write_tool",
     "make_wands_bm25_tool",

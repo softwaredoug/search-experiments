@@ -70,6 +70,39 @@ def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
     assert "at most 100" in properties["top_k"]["description"]
 
 
+def test_read_tool_returns_a_document_by_doc_id():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [101, 202],
+            "title": ["Red Shoes", "Blue Chair"],
+            "description": ["Running shoes.", "A desk chair."],
+        }
+    )
+    read = tools_mod.build_search_tools(corpus, ["read"])[0]
+
+    result = read("202")
+
+    assert read.__name__ == "read"
+    assert len(result) == 1
+    assert result[0]["id"] == 202
+    assert result[0]["title"] == "Blue Chair"
+    assert result[0]["description"] == "A desk chair."
+    assert read("missing") == []
+
+
+def test_read_tool_uses_index_as_fallback_document_id():
+    corpus = pd.DataFrame(
+        {"title": ["Red Shoes"], "description": ["Running shoes."]},
+        index=["shoe-doc"],
+    )
+    read = tools_mod.make_read_tool(corpus)
+
+    result = read("shoe-doc")
+
+    assert result[0]["id"] == "shoe-doc"
+    assert result[0]["description"] == "Running shoes."
+
+
 @patch("exps.tools.guards._minilm_guard_model", new=lambda *_args, **_kwargs: _FakeMinilm())
 def test_guard_disallow_similar_queries():
     agent_state = {}
