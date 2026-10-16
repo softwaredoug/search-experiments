@@ -1,5 +1,9 @@
 # Repo tests
 
+The project requires Python 3.12 or newer. Set up the development environment with
+`uv sync --extra dev`; this installs the test, lint, and plotting dependencies used
+by the local hooks and CI.
+
 Tests in this repo are organized into three groups
 
 - unit tests - run on a single module / class, with its dependencies mocked appropriately
