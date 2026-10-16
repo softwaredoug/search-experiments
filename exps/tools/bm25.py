@@ -19,8 +19,8 @@ def make_bm25_tool(
     b: float | None = None,
 ):
     def search_bm25(
-        keywords: Annotated[str, "Search query keywords."],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        keywords: Annotated[str, "Search query keywords.", "queen platform bed"],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100.", 10] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using BM25 over title/description fields.

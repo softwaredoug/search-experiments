@@ -16,7 +16,11 @@ def make_read_tool(corpus):
         lookup[key] = position
 
     def read(
-        id: Annotated[str, "Stable document ID returned by a search tool."],
+        id: Annotated[
+            str,
+            "Stable document ID returned by a search tool.",
+            "document_id_from_search",
+        ],
     ) -> list[dict[str, Any]]:
         """Read a corpus document by its stable ID."""
         position = lookup.get(str(id))

@@ -4,6 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from cheat_at_search.agent.sid_tool import format_tool_schema, tool_schema
 from cheat_at_search.agent.pydantize import make_tool_adapter
 
 from exps.strategies.bm25 import BM25Strategy
@@ -41,6 +42,26 @@ def test_bm25_tool_annotations_become_openai_parameter_descriptions():
     fielded_properties = fielded_spec["parameters"]["properties"]
     assert "optionally weighted" in fielded_properties["fields"]["description"]
     assert "BM25 k1" in fielded_properties["k1"]["description"]
+
+
+def test_sid_tool_examples_use_annotated_argument_examples():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": ["product-1"],
+            "title": ["Queen platform bed"],
+            "description": ["Example bed"],
+        }
+    )
+    tools = tools_mod.build_search_tools(corpus, ["bm25", "read"])
+
+    bm25_example = format_tool_schema(tool_schema(tools[0]))
+    read_example = format_tool_schema(tool_schema(tools[1]))
+
+    assert '"keywords": "queen platform bed"' in bm25_example
+    assert '"top_k": 10' in bm25_example
+    assert '"id": "document_id_from_search"' in read_example
+    assert "<tool_call>" in bm25_example
+    assert "</tool_call>" in read_example
 
 
 def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
