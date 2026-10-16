@@ -11,6 +11,7 @@ from typing import Any, Type
 
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.agent.search_client import SearchResults
+from cheat_at_search.agent.sid_agent import SIDAgent
 from pydantic import BaseModel
 
 from exps.agentic.conditions import (
@@ -135,7 +136,11 @@ def trace_logger(trace_dir: Path):
 def _tool_calls_from_inputs(inputs: list) -> int:
     count = 0
     for item in inputs:
-        if isinstance(item, dict) and item.get("type") == "function_call_output":
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "function_call_output" or (
+            item.get("role") == "tool" and "tool_call_id" in item
+        ):
             count += 1
     return count
 
@@ -303,13 +308,21 @@ class Agent:
             agent=agent_name,
             tool_count=len(step_tools_list),
         )
-        agent = build_openai_agent(
-            tools=step_tools_list,
-            model=f"openai/{self.model}" if "/" not in self.model else self.model,
-            response_model=self.response_model,
-            reasoning_level=self.reasoning,
-            images=self.images,
-        )
+        provider, separator, provider_model = self.model.partition("/")
+        if separator and provider == "sid":
+            agent = SIDAgent(
+                tools=step_tools_list,
+                max_turns=self.max_loops,
+                model=provider_model,
+            )
+        else:
+            agent = build_openai_agent(
+                tools=step_tools_list,
+                model=f"openai/{self.model}" if not separator else self.model,
+                response_model=self.response_model,
+                reasoning_level=self.reasoning,
+                images=self.images,
+            )
         trace_event(
             logger,
             "agentic_agent_setup_complete",

@@ -15,7 +15,7 @@ ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 CONFIGS=(
   "configs/ecom_base/bm25.yml"
   "configs/ecom_base/embedding_e5_base_v2.yml"
-  "configs/ecom_base/agentic_ecom_2tools_e5_gpt5_mini.yml"
+  "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt5_mini.yml"
   "configs/ecom_judge/agentic_ecom_fewshot_judge_jev_latest.yml"
   "configs/ecom_judge/agentic_ecom_fewshot_judge_gpt5_mini.yml"
 )

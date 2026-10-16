@@ -3,7 +3,7 @@ name = "exps"
 version = "0.1.0"
 description = "Search experiments benchmarks"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "cheat-at-search",
     "pyyaml>=6.0.2",
@@ -35,7 +35,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.uv.sources]
-cheat-at-search = { git = "https://github.com/softwaredoug/cheat-at-search.git", rev = "9575abc1070309dc3fde3dca83f2e16c62ca3880" }
+cheat-at-search = { git = "https://github.com/softwaredoug/cheat-at-search.git", rev = "3420d643ad9d05009d12376c88ebab9b17c1942a" }
 
 [dependency-groups]
 dev = [

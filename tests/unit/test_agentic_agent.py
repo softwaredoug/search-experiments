@@ -44,6 +44,27 @@ class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
         return resp, inputs, 0
 
 
+class _FakeSIDAgent:
+    instances: list["_FakeSIDAgent"] = []
+
+    def __init__(self, tools, max_turns, model):
+        self.tools = tools
+        self.max_turns = max_turns
+        self.model = model
+        self.logger = None
+        type(self).instances.append(self)
+
+    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+        self.logger = logger
+        inputs.append(
+            {"role": "tool", "tool_call_id": "call_1", "content": "search results"}
+        )
+        agent_state["trace_logger"] = logger
+        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        resp = type("Resp", (), {"output_parsed": result})
+        return resp, inputs, {"num_tool_calls": 1}
+
+
 def _build_fake_agent(*args, **kwargs):
     return _FakeOpenAIAgent(*args, **kwargs)
 
@@ -213,3 +234,36 @@ def test_agent_plan_formats_user_prompt(tmp_path):
 
     user_prompt = _FakeOpenAIAgent.instances[0].last_inputs[1]["content"]
     assert user_prompt == "plan for blue chair"
+
+
+@patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])
+def test_agent_routes_sid_models_and_counts_sid_tool_messages(tmp_path):
+    _FakeSIDAgent.instances = []
+    agent = agent_mod.Agent(
+        corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+        model="sid/sid-1",
+        search_tools=[],
+        max_loops=4,
+    )
+
+    with patch.object(agent_mod, "SIDAgent", new=_FakeSIDAgent), patch.object(
+        agent_mod,
+        "build_openai_agent",
+        side_effect=AssertionError("SID model should use SIDAgent"),
+    ):
+        with trace_logger(tmp_path) as (logger, trace_path):
+            result = agent.run(
+                query="query",
+                trace_dir=tmp_path,
+                logger=logger,
+                trace_path=trace_path,
+                k=2,
+            )
+
+    sid_agent = _FakeSIDAgent.instances[0]
+    assert sid_agent.model == "sid-1"
+    assert sid_agent.max_turns == 4
+    assert sid_agent.logger is not None
+    assert result.output == ["101", "202"]
+    assert result.num_tool_calls == 1
+    assert sid_agent.tools == []

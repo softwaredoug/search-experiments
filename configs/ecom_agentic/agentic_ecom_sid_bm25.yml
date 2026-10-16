@@ -1,0 +1,17 @@
+strategy:
+  name: agentic_ecom_sid_bm25
+  type: agentic
+  description: SID-1 agentic search using BM25 and document read tools.
+  params:
+    model: sid/sid-1
+    system_prompt: |
+      You take user search queries and use the available search tools to find products.
+
+      The corpus is furniture and homegoods products from online store Wayfair. So search
+      carefully with your tools to find relevant search products.
+
+      Consider the limitations of each tool when choosing search queries. Return the 10 most
+      relevant document IDs in ranked order.
+    search_tools:
+      - bm25:
+      - read:

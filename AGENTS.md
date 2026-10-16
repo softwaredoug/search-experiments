@@ -15,6 +15,9 @@ or numpy code when possible. Don't do pandas noob things unless it can be avoide
 
 - jev from typesafe is a new decision model thats being advertised as a replacement for LLMs at classification, we increasingly use 
   it in this repo instead of LLMs
+- SID.ai is an agentic search model, built explicitly to work well with search tools. However its not a clean drop-in
+  replacement for an OpenAI Agent. There are subtleties in using it. Read its documentation here:
+  https://platform.sid.ai/docs/build
 
 ## Testing practices
 
