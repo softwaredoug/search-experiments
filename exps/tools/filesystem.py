@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from pathlib import PurePosixPath
+from typing import Annotated
 
 import pandas as pd
 from cheat_at_search.agent.openai_agent import OpenAIAgent
@@ -357,7 +358,12 @@ def _make_filesystem_tools(
             "and gently flared arms designed for small spaces."
         )
 
-    def ls(path: str, glob: str, max_results: int = 50, agent_state=None) -> list[str] | str:
+    def ls(
+        path: Annotated[str, "Directory path to list, relative to the current filesystem root."],
+        glob: Annotated[str, "Glob pattern used to select paths, e.g. **/*.txt."],
+        max_results: Annotated[int, "Maximum number of matching paths to return; capped at 50."] = 50,
+        agent_state=None,
+    ) -> list[str] | str:
         """List files in a directory matching the glob, at most 50 results. Returns a list of paths."""
         limit = max_results
         if max_results > 50:
@@ -411,9 +417,9 @@ def _make_filesystem_tools(
         return matches
 
     def grep(
-        pattern: str,
-        glob: str,
-        num_results: int = 50,
+        pattern: Annotated[str, "Regular expression to search for in file contents."],
+        glob: Annotated[str, "Glob pattern selecting which files to search, e.g. **/*.txt."],
+        num_results: Annotated[int, "Maximum number of matching file snippets to return; capped at 50."] = 50,
         agent_state=None,
     ) -> list[dict[str, str]] | str:
         """Search for a regex pattern in files matching the glob, at most 50 results."""
@@ -452,7 +458,10 @@ def _make_filesystem_tools(
             results.append({"path": "", "snippet": f"Truncated ({extra} more)"})
         return results
 
-    def cat(path: str, agent_state=None) -> str:
+    def cat(
+        path: Annotated[str, "File path to read, relative to the current filesystem root."],
+        agent_state=None,
+    ) -> str:
         """Return the contents of a file as a string."""
         normalized_path, error = _resolve_scoped_path(path, agent_state)
         if error:
@@ -478,7 +487,11 @@ def _make_filesystem_tools(
             return f"Error! Multiple files found for path: {path}"
         return str(matches.iloc[0])
 
-    def search_directory(directory: str, prompt: str, agent_state=None) -> list[dict] | str:
+    def search_directory(
+        directory: Annotated[str, "Directory path within which the sub-agent should search."],
+        prompt: Annotated[str, "Search task for the sub-agent to complete using filesystem tools."],
+        agent_state=None,
+    ) -> list[dict] | str:
         """Delegate search within a specific directory to a sub-agent."""
         if agent_state is None:
             agent_state = {}

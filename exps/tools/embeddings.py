@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Union
+from typing import Annotated, Union
 
 import numpy as np
 
@@ -42,8 +42,8 @@ def make_embedding_tool(
         model = load_model(model_name, device=device)
 
     def search_embeddings(
-        question: str,
-        top_k: int = 5,
+        question: Annotated[str, "Natural-language search query describing the desired document."],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using embeddings over title/description.

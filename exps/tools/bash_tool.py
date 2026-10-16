@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import os
 import threading
+from typing import Annotated
 from urllib import error as urllib_error
 
 from exps.tools.bash_service import (
@@ -76,7 +77,11 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
         )
     service, service_lock = _get_service(port)
 
-    def bash(command: str, timeout: int = 30, agent_state=None) -> str:
+    def bash(
+        command: Annotated[str, "Shell command to execute inside the dataset sandbox at /corpus."],
+        timeout: Annotated[int, "Command timeout in seconds, capped by the service maximum."] = 30,
+        agent_state=None,
+    ) -> str:
         """Execute a bash command inside the sandboxed filesystem service.
 
         Commands run inside /corpus which maps to the dataset directory. There may be
@@ -101,7 +106,6 @@ def _make_bash_tool(corpus, *, dataset_name: str | None, variant: str):
             logger = agent_state.get("trace_logger")
             if logger is not None:
                 logger.info("bash_command %s", command)
-        nonlocal service
         max_timeout = int(os.getenv("EXPS_BASH_MAX_TIMEOUT", str(_DEFAULT_MAX_TIMEOUT)))
         effective_timeout = min(timeout, max_timeout)
         with service_lock:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import Annotated, Union
 
 import numpy as np
 from searcharray import SearchArray
@@ -19,8 +19,8 @@ def make_bm25_tool(
     b: float | None = None,
 ):
     def search_bm25(
-        keywords: str,
-        top_k: int = 5,
+        keywords: Annotated[str, "Search query keywords."],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using BM25 over title/description fields.
@@ -123,12 +123,17 @@ def _ensure_field_indices(corpus, field_names: list[str]) -> None:
 
 def make_fielded_bm25_tool(corpus):
     def fielded_bm25(
-        keywords: str,
-        fields: list[str],
-        operator: Literal["and", "or", "phrase"] = "or",
-        top_k: int = 5,
-        k1: float = 1.2,
-        b: float = 0.75,
+        keywords: Annotated[str, "Search query keywords."],
+        fields: Annotated[
+            list[str], 'Fields to search, optionally weighted, e.g. "title^9.3".'
+        ],
+        operator: Annotated[
+            Literal["and", "or", "phrase"],
+            "Term matching mode: all terms, any term, or the whole query phrase.",
+        ] = "or",
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        k1: Annotated[float, "BM25 k1 parameter controlling term-frequency saturation."] = 1.2,
+        b: Annotated[float, "BM25 b parameter controlling document-length normalization."] = 0.75,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using BM25 over weighted fields.

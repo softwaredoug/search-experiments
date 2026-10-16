@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, get_type_hints
 
 from exps.tools.guards import GUARDS
 from exps.tools.registry import TOOL_REGISTRY, tool_kind
@@ -104,9 +104,10 @@ def _wrap_with_columns(
         return results
 
     wrapped.__name__ = tool_fn.__name__
+    wrapped.__module__ = tool_fn.__module__
     wrapped.__doc__ = tool_fn.__doc__
-    if hasattr(tool_fn, "__signature__"):
-        wrapped.__signature__ = tool_fn.__signature__
+    wrapped.__annotations__ = get_type_hints(tool_fn, include_extras=True)
+    wrapped.__signature__ = inspect.signature(tool_fn)
     return wrapped
 
 
@@ -224,7 +225,9 @@ def make_guarded_search_tool(
         return tool_fn(*args, **kwargs)
 
     guarded.__name__ = name
+    guarded.__module__ = tool_fn.__module__
     guarded.__doc__ = tool_fn.__doc__
+    guarded.__annotations__ = get_type_hints(tool_fn, include_extras=True)
     guarded.__signature__ = tool_sig
     return guarded
 

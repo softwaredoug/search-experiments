@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
@@ -42,8 +42,10 @@ def make_query_rewrite_tool(
     )
 
     def query_rewrite(
-        query: str,
-        max_alternatives: int = max_alternatives,
+        query: Annotated[str, "Search query to rewrite with spelling or acronym variants."],
+        max_alternatives: Annotated[
+            int, "Maximum number of query variants to return, including the original query."
+        ] = max_alternatives,
         agent_state=None,
     ) -> dict[str, Any]:
         """Rewrite a query into alternate forms for lexical search."""

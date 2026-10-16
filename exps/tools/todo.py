@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Annotated
+
+
 def _todos_list(agent_state: dict | None) -> list[dict]:
     if agent_state is None:
         return []
@@ -11,7 +14,11 @@ def _todos_list(agent_state: dict | None) -> list[dict]:
 
 
 def make_todo_write_tool(*_args, **_kwargs):
-    def todo_write(todo: str, status: str, agent_state=None) -> str:
+    def todo_write(
+        todo: Annotated[str, "Todo item to add to the agent's in-memory task list."],
+        status: Annotated[str, "Todo status, such as pending, in_progress, or completed."],
+        agent_state=None,
+    ) -> str:
         """Write a todo entry to the in-memory todo list."""
         if agent_state is not None:
             logger = agent_state.get("trace_logger")

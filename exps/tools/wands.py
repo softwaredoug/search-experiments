@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Union
+from typing import Annotated, Union
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -128,9 +128,14 @@ def make_wands_bm25_tool(
     category_index = _build_category_index(corpus, category_col=category_col)
 
     def search_bm25_wands(
-        keywords: str,
-        product_categories: list[WandsProductCategory] | None = None,
-        top_k: int = 5,
+        keywords: Annotated[str, "Search query keywords."],
+        product_categories: Annotated[
+            list[WandsProductCategory] | None,
+            "Optional exact WANDS category filters; omit or use null to search all categories.",
+        ] = None,
+        top_k: Annotated[
+            int, "Maximum number of ranked results to return; at most 100."
+        ] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS with BM25 over title/description and optional category filter.
@@ -187,7 +192,10 @@ def make_top_categories_tool(corpus, *, column: str = WANDS_CATEGORY_COL):
         raise ValueError(f"Missing {column} column for category filtering.")
     categories = _available_categories(corpus, category_col=column)
 
-    def top_categories(top_k: int = 5, agent_state=None) -> list[str]:
+    def top_categories(
+        top_k: Annotated[int, "Maximum number of WANDS categories to return."] = 5,
+        agent_state=None,
+    ) -> list[str]:
         """Return the top WANDS categories in the corpus.
 
         Args:
@@ -237,9 +245,14 @@ def make_wands_embedding_tool(
         model = load_model(model_name, device=device)
 
     def search_embeddings_wands(
-        product_description: str,
-        product_categories: list[WandsProductCategory] | None = None,
-        top_k: int = 5,
+        product_description: Annotated[str, "Natural-language description of the product being searched for."],
+        product_categories: Annotated[
+            list[WandsProductCategory] | None,
+            "Optional exact WANDS category filters; omit or use null to search all categories.",
+        ] = None,
+        top_k: Annotated[
+            int, "Maximum number of ranked results to return; at most 100."
+        ] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS using embeddings with an optional category filter.
@@ -310,9 +323,9 @@ def make_wands_bm25_prefiltered_tool(
     )
 
     def search_bm25_wands_prefiltered(
-        keywords: str,
-        category: WandsProductCategory,
-        top_k: int = 5,
+        keywords: Annotated[str, "Search query keywords."],
+        category: Annotated[WandsProductCategory, "Exact WANDS category to restrict the search to."],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS BM25 within a single category.
@@ -351,9 +364,9 @@ def make_wands_embedding_prefiltered_tool(
     )
 
     def search_embeddings_wands_prefiltered(
-        product_description: str,
-        category: WandsProductCategory,
-        top_k: int = 5,
+        product_description: Annotated[str, "Natural-language description of the product being searched for."],
+        category: Annotated[WandsProductCategory, "Exact WANDS category to restrict the search to."],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS embeddings within a single category.
@@ -387,8 +400,8 @@ def make_check_features_wands_tool(corpus):
     feature_index = {name: idx for idx, name in enumerate(feature_names)}
 
     def check_features_wands(
-        doc_id: str,
-        feature_names: list[str],
+        doc_id: Annotated[str, "Stable document ID of the WANDS product to inspect."],
+        feature_names: Annotated[list[str], "Feature keys to look up, such as color, material, or dimensions."],
         agent_state=None,
     ) -> dict[str, dict[str, list[str]]]:
         """Find feature keys within a product that match feature name queries.

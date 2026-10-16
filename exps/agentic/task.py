@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from typing import Annotated, Any, Callable
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 
 
@@ -67,7 +67,10 @@ def build_task_tool(
         tool for tool in search_tools if getattr(tool, "__name__", "") != "delegate_task"
     ]
 
-    def task_tool(task: str, agent_state: dict | None = None) -> list[dict]:
+    def task_tool(
+        task: Annotated[str, "Search task to delegate to the sub-agent."],
+        agent_state: dict | None = None,
+    ) -> list[dict]:
         """Delegate a search task to a subagent and return tool results."""
         if agent_state is None:
             agent_state = {}

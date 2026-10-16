@@ -4,7 +4,7 @@ import importlib.util
 import inspect
 import re
 from pathlib import Path
-from typing import Any, Union
+from typing import Annotated, Any, Union
 
 import numpy as np
 
@@ -116,8 +116,8 @@ def make_codegen_tool(
         return value
 
     def search(
-        query: str,
-        top_k: int = 10,
+        query: Annotated[str, "Search query to rank with the generated reranker."],
+        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 10,
         agent_state=None,
         **kwargs,
     ) -> list[dict[str, Union[str, int, float]]]:

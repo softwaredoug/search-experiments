@@ -4,6 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from cheat_at_search.agent.pydantize import make_tool_adapter
 
 from exps.strategies.bm25 import BM25Strategy
 from exps import tools as tools_mod
@@ -19,6 +20,54 @@ class _FakeMinilm:
         if text == "beta":
             return np.array([0.99, 0.01])
         return np.array([0.0, 1.0])
+
+
+def test_bm25_tool_annotations_become_openai_parameter_descriptions():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["Blue chair"],
+            "description": ["A blue desk chair."],
+            "category": ["Furniture"],
+        }
+    )
+
+    _, bm25_spec, _ = make_tool_adapter(tools_mod.make_bm25_tool(corpus))
+    bm25_properties = bm25_spec["parameters"]["properties"]
+    assert bm25_properties["keywords"]["description"] == "Search query keywords."
+    assert "at most 100" in bm25_properties["top_k"]["description"]
+
+    _, fielded_spec, _ = make_tool_adapter(tools_mod.make_fielded_bm25_tool(corpus))
+    fielded_properties = fielded_spec["parameters"]["properties"]
+    assert "optionally weighted" in fielded_properties["fields"]["description"]
+    assert "BM25 k1" in fielded_properties["k1"]["description"]
+
+
+def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["Blue chair"],
+            "description": ["A blue desk chair."],
+            "category": ["Furniture"],
+        }
+    )
+    tool = tools_mod.build_search_tools(
+        corpus,
+        [
+            {
+                "bm25": {
+                    "columns": [{"source": "category"}],
+                    "guards": ["disallow_repeated_queries"],
+                }
+            }
+        ],
+    )[0]
+
+    _, tool_spec, _ = make_tool_adapter(tool)
+    properties = tool_spec["parameters"]["properties"]
+    assert properties["keywords"]["description"] == "Search query keywords."
+    assert "at most 100" in properties["top_k"]["description"]
 
 
 @patch("exps.tools.guards._minilm_guard_model", new=lambda *_args, **_kwargs: _FakeMinilm())

@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import math
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
 _QUERY_ARGUMENTS = ("query", "keywords", "question", "product_description")
 _MAX_TOP_K = 100
@@ -80,8 +80,8 @@ def make_rrf_tool(
         child_arguments.append(_query_argument(tool))
 
     def search_composite(
-        query: str,
-        top_k: int = 5,
+        query: Annotated[str, "Search query to run through the configured retrieval tools."],
+        top_k: Annotated[int, "Maximum number of fused results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict]:
         """Fuse configured search tools with RRF and optionally rerank results."""

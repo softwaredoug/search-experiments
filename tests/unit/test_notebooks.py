@@ -31,7 +31,7 @@ def _resolve_tool_name(function_name: str) -> str | None:
     if function_name in TOOL_REGISTRY:
         return function_name
     if function_name.startswith("search_"):
-        candidate = function_name[len("search_") :]
+        candidate = function_name[len("search_"):]
         if candidate in TOOL_REGISTRY:
             return candidate
     return None
@@ -101,9 +101,29 @@ def _tool_from_registry(tool_name: str) -> callable | None:
 
 
 def _format_signature(sig: inspect.Signature) -> str:
+    def _format_annotation(annotation) -> str:
+        if isinstance(annotation, str):
+            try:
+                annotation_node = ast.parse(annotation, mode="eval").body
+            except SyntaxError:
+                pass
+            else:
+                if (
+                    isinstance(annotation_node, ast.Subscript)
+                    and isinstance(annotation_node.value, ast.Name)
+                    and annotation_node.value.id == "Annotated"
+                ):
+                    annotation_node = (
+                        annotation_node.slice.elts[0]
+                        if isinstance(annotation_node.slice, ast.Tuple)
+                        else annotation_node.slice
+                    )
+                    annotation = ast.unparse(annotation_node)
+        return inspect.formatannotation(annotation)
+
     formatted_params = []
     for param in sig.parameters.values():
-        annotation = inspect.formatannotation(param.annotation)
+        annotation = _format_annotation(param.annotation)
         default = "" if param.default is inspect._empty else f"={repr(param.default)}"
         prefix = ""
         if param.kind == param.VAR_POSITIONAL:
@@ -114,7 +134,7 @@ def _format_signature(sig: inspect.Signature) -> str:
         if annotation and annotation != "_empty":
             name = f"{name}: {annotation}"
         formatted_params.append(f"{name}{default}")
-    return_annotation = inspect.formatannotation(sig.return_annotation)
+    return_annotation = _format_annotation(sig.return_annotation)
     suffix = ""
     if return_annotation and return_annotation != "_empty":
         suffix = f" -> {return_annotation}"
