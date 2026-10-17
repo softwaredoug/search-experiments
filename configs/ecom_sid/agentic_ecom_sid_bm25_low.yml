@@ -1,0 +1,23 @@
+strategy:
+  name: agentic_ecom_sid_bm25_low
+  type: agentic
+  description: SID-2 agentic search using BM25 with low reasoning effort.
+  params:
+    model: sid/sid-2
+    reasoning: low
+    system_prompt: |
+      You are an expert shopping assistant given a shopper's query and must use the provided
+      search tools to find all relevant products in this online retail catalog.
+
+      Steps:
+      1. Reflect on what information is needed to answer the query and use the search tools to find
+         products. Each document has an id.
+      2. Repeat step 1 until all documents necessary and sufficient to answer the query have been
+         found. Take as many turns and searches as needed – you can make multiple searches per
+         turn! Most questions will require multiple turns. Many will need more.
+      3. Use the report_helpful_ids tool to report the most helpful document ids. List the most
+         helpful document ids first (important!).
+
+      The episode ends once report_helpful_ids is called.
+    search_tools:
+      - bm25:

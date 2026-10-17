@@ -44,7 +44,7 @@ def test_read_mean_ndcg_averages_runs_and_ignores_other_metrics(tmp_path):
 
     assert means[("wands", "bm25")] == pytest.approx(0.3)
     assert means[("esci", "bm25")] == 0.2
-    assert means[("wands", "agentic_ecom_sid_bm25_e5_base_v2")] == 0.2
+    assert means[("wands", "agentic_ecom_sid_bm25_e5_base_v2_medium")] == 0.2
 
 
 def test_read_mean_ndcg_reports_missing_strategy_results(tmp_path):

@@ -12,8 +12,15 @@ STRATEGIES = (
     ("bm25", "BM25"),
     ("agentic_bm25_ecommerce_gpt5_mini", "GPT-5-mini · BM25"),
     ("agentic_bm25_e5_ecommerce_gpt5_mini", "GPT-5-mini · BM25 + E5"),
-    ("agentic_ecom_sid_bm25", "SID-2 · BM25"),
-    ("agentic_ecom_sid_bm25_e5_base_v2", "SID-2 · BM25 + E5"),
+    ("agentic_ecom_sid_bm25_low", "SID-2 · BM25 · low"),
+    ("agentic_ecom_sid_bm25_medium", "SID-2 · BM25 · medium"),
+    ("agentic_ecom_sid_bm25_high", "SID-2 · BM25 · high"),
+    ("agentic_ecom_sid_bm25_e5_base_v2_low", "SID-2 · BM25 + E5 · low"),
+    (
+        "agentic_ecom_sid_bm25_e5_base_v2_medium",
+        "SID-2 · BM25 + E5 · medium",
+    ),
+    ("agentic_ecom_sid_bm25_e5_base_v2_high", "SID-2 · BM25 + E5 · high"),
 )
 
 
@@ -64,9 +71,19 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     means = _read_mean_ndcg(input_path)
     labels = [label for _, label in STRATEGIES]
     positions = range(len(STRATEGIES))
-    colors = ["#4C78A8", "#F2CF5B", "#54A24B", "#E45756", "#B279A2"]
+    colors = [
+        "#4C78A8",
+        "#F2CF5B",
+        "#54A24B",
+        "#E45756",
+        "#B279A2",
+        "#FF9DA6",
+        "#9D755D",
+        "#BAB0AC",
+        "#72B7B2",
+    ]
 
-    fig, axes = plt.subplots(1, len(DATASETS), figsize=(15, 5), sharey=True)
+    fig, axes = plt.subplots(1, len(DATASETS), figsize=(19, 6), sharey=True)
     for ax, dataset in zip(axes, DATASETS):
         values = [means[(dataset, strategy)] for strategy, _ in STRATEGIES]
         bars = ax.bar(positions, values, color=colors)
@@ -82,13 +99,13 @@ def plot_results(input_path: Path, output_path: Path) -> None:
             )
         ax.set_title(dataset.upper())
         ax.set_xticks(list(positions))
-        ax.set_xticklabels(labels, rotation=25, ha="right")
+        ax.set_xticklabels(labels, rotation=35, ha="right")
         ax.set_ylim(0, 1)
         ax.grid(axis="y", linestyle="--", alpha=0.4)
         ax.set_axisbelow(True)
 
     axes[0].set_ylabel("Mean NDCG")
-    fig.suptitle("E-commerce BM25 and E5 strategy matrix")
+    fig.suptitle("E-commerce strategies by SID-2 reasoning effort")
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)

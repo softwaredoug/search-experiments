@@ -1,9 +1,10 @@
 strategy:
-  name: agentic_ecom_sid_bm25_e5_base_v2
+  name: agentic_ecom_sid_bm25_e5_base_v2_medium
   type: agentic
-  description: SID-2 agentic search using BM25 and E5-base-v2.
+  description: SID-2 agentic search using BM25 and E5-base-v2 with medium reasoning effort.
   params:
     model: sid/sid-2
+    reasoning: medium
     system_prompt: |
       You are an expert shopping assistant given a shopper's query and must use the provided
       search tools to find all relevant products in this online retail catalog.
