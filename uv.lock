@@ -426,7 +426,7 @@ wheels = [
 [[package]]
 name = "cheat-at-search"
 version = "0.1.0"
-source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=0aa58f8c61ca5c0184a29fadee1370fc22c993cf#0aa58f8c61ca5c0184a29fadee1370fc22c993cf" }
+source = { git = "https://github.com/softwaredoug/cheat-at-search.git?rev=4662ee2753460886e4265309833be03f45aa3fbf#4662ee2753460886e4265309833be03f45aa3fbf" }
 dependencies = [
     { name = "datasets" },
     { name = "huggingface-hub" },
@@ -864,7 +864,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=0aa58f8c61ca5c0184a29fadee1370fc22c993cf" },
+    { name = "cheat-at-search", git = "https://github.com/softwaredoug/cheat-at-search.git?rev=4662ee2753460886e4265309833be03f45aa3fbf" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.10.0" },

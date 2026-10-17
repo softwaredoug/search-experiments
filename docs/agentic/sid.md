@@ -61,6 +61,10 @@ strategy:
 The SID-2 agent maps these tools' document descriptions and IDs into the format
 its episode cache requires. For custom document-returning tools, return stable
 IDs and non-empty document text so SID-2 can read and report the results.
+BM25-family tools are exposed to SID-2 as `text_search`; embedding-family tools
+are exposed as `search`. If multiple tools from one family are configured, the
+first gets the canonical SID name and later tools retain their regular names so
+each exposed tool name stays unique.
 
 Both agents support the same loop/result interface, but use different SID API
 protocols and have different `read` handling. Keep each model's tool list

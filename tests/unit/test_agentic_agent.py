@@ -290,6 +290,8 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
         """Search documents for a query."""
         return original_results
 
+    search_tool.aliases = ["text_search"]
+
     with patch.object(agent_mod, "build_search_tools", return_value=[search_tool]), patch.object(
         agent_mod, "SIDAgent", new=_FakeSIDAgent
     ), patch.object(
@@ -319,7 +321,8 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
     sid_agent = _FakeSIDAgent.instances[0]
     assert sid_agent.model == "sid-2"
     assert sid_agent.max_turns == 4
-    assert [tool.__name__ for tool in sid_agent.tools] == ["search_tool"]
+    assert [tool.__name__ for tool in sid_agent.tools] == ["text_search"]
+    assert sid_agent.tools[0].aliases == ["text_search"]
     adapted_results = sid_agent.tools[0]("query")
     assert adapted_results == [
         {
@@ -334,7 +337,7 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
     ]
     tool_specs, _ = build_sid2_tool_config(sid_agent.tools)
     assert [spec["name"] for spec in tool_specs] == [
-        "search_tool",
+        "text_search",
         "read",
         "report_helpful_ids",
     ]
@@ -368,3 +371,24 @@ def test_agent_rejects_unsupported_sid_model(tmp_path):
                 validators=[],
                 logger=logger,
             )
+
+
+def test_sid2_uses_one_canonical_alias_per_search_family():
+    def bm25_first(keywords: str):
+        """Search the first BM25 index."""
+
+    def bm25_second(keywords: str):
+        """Search the second BM25 index."""
+
+    bm25_first.aliases = ["text_search"]
+    bm25_second.aliases = ["text_search"]
+    tools = agent_mod._adapt_tools_for_sid2([bm25_first, bm25_second])
+
+    assert [tool.__name__ for tool in tools] == ["text_search", "bm25_second"]
+    assert tools[0].aliases == ["text_search"]
+    assert tools[1].aliases == []
+    tool_specs, _ = build_sid2_tool_config(tools)
+    assert [spec["name"] for spec in tool_specs[:2]] == [
+        "text_search",
+        "bm25_second",
+    ]

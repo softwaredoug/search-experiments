@@ -192,12 +192,34 @@ def _adapt_tool_for_sid2(tool: callable) -> callable:
     def sid2_tool(*args, **kwargs):
         return _adapt_sid2_result(tool(*args, **kwargs))
 
+    aliases = getattr(tool, "aliases", None)
+    if aliases:
+        # This cheat-at-search revision checks __name__ when deciding whether
+        # SID-2 has searched, even though schemas and dispatch use aliases.
+        sid2_tool.__name__ = aliases[0]
     return sid2_tool
 
 
 def _adapt_tools_for_sid2(tools: list[callable]) -> list[callable]:
     """Adapt standard search documents to SID-2's cached document format."""
-    return [_adapt_tool_for_sid2(tool) for tool in tools]
+    adapted_tools = []
+    used_names = set()
+    for tool in tools:
+        adapted_tool = _adapt_tool_for_sid2(tool)
+        aliases = getattr(tool, "aliases", None)
+        names = list(aliases) if aliases else [tool.__name__]
+        if aliases and used_names.intersection(names):
+            # SID-2 exposes each alias as a separate function name, so retain
+            # the native name for later tools in the same search family.
+            adapted_tool.aliases = []
+            adapted_tool.__name__ = tool.__name__
+            names = [tool.__name__]
+        elif aliases:
+            # The pinned SIDAgent checks __name__ to recognize a search call.
+            adapted_tool.__name__ = aliases[0]
+        used_names.update(names)
+        adapted_tools.append(adapted_tool)
+    return adapted_tools
 
 
 class Agent:

@@ -87,8 +87,47 @@ def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
 
     _, tool_spec, _ = make_tool_adapter(tool)
     properties = tool_spec["parameters"]["properties"]
+    assert tool.aliases == ["text_search"]
     assert properties["keywords"]["description"] == "Search query keywords."
     assert "at most 100" in properties["top_k"]["description"]
+
+
+def test_search_tool_families_receive_sid2_aliases(monkeypatch):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["Blue chair"],
+            "description": ["A blue desk chair."],
+        }
+    )
+    text_tools = tools_mod.build_search_tools(corpus, ["bm25", "fielded_bm25"])
+    assert [tool.aliases for tool in text_tools] == [
+        ["text_search"],
+        ["text_search"],
+    ]
+
+    monkeypatch.setattr(
+        "exps.tools.embeddings.load_or_create_embeddings",
+        lambda corpus, **_kwargs: (np.ones((len(corpus), 2)), _FakeMinilm()),
+    )
+    embedding_tools = tools_mod.build_search_tools(corpus, ["minilm"])
+    assert embedding_tools[0].aliases == ["search"]
+
+    expected_aliases = {
+        "bm25": ["text_search"],
+        "fielded_bm25": ["text_search"],
+        "bm25_wands": ["text_search"],
+        "bm25_wands_prefiltered": ["text_search"],
+        "minilm": ["search"],
+        "embeddings": ["search"],
+        "e5_base_v2": ["search"],
+        "minilm_wands": ["search"],
+        "e5_base_v2_wands": ["search"],
+        "e5_base_v2_wands_prefiltered": ["search"],
+    }
+    assert {
+        name: tools_mod.TOOL_REGISTRY[name]["aliases"] for name in expected_aliases
+    } == expected_aliases
 
 
 def test_read_tool_returns_a_document_by_doc_id():

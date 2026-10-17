@@ -375,5 +375,8 @@ def build_search_tools(
                 guards=tool["guards"],
                 func_name=guard_func_name,
             )
+        aliases = entry.get("aliases")
+        if aliases:
+            tool_fn.aliases = list(aliases)
         tools.append(tool_fn)
     return tools
