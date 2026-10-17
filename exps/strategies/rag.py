@@ -85,7 +85,7 @@ class RagSearchStrategy(SearchStrategy):
             reasoning_level=self.reasoning,
             images=self.images,
         )
-        response, _, _ = agent.loop(
+        response, _ = agent.loop(
             inputs=[
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": query},

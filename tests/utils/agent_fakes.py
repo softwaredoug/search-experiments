@@ -34,7 +34,7 @@ class FakeOpenAIAgent:
         self.categories: list[str] = []
         self.scripts: list[list[dict]] | None = None
 
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -43,7 +43,7 @@ class FakeOpenAIAgent:
         output = self._run_script(inputs, script, agent_state)
         resp = type("Resp", (), {"output_parsed": output})
         self.last_inputs = copy.deepcopy(inputs)
-        return resp, inputs, 0
+        return resp, inputs
 
     def _build_output(self):
         model = self.response_model
@@ -142,7 +142,7 @@ class FakeLLMJudgeAgent:
         if emojis is not None:
             cls.emojis = list(emojis)
 
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         emoji_index = min(self.calls, max(len(self.emojis) - 1, 0))
@@ -158,7 +158,7 @@ class FakeLLMJudgeAgent:
             ]
         )
         resp = type("Resp", (), {"output_parsed": result})
-        return resp, inputs, 0
+        return resp, inputs
 
 
 class FakeJevChoice:
@@ -237,14 +237,14 @@ class FakeCodegenAgent:
         self.response_model = response_model
         self.reasoning_level = reasoning_level
 
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         if self.script is None:
             raise ValueError("FakeCodegenAgent.script must be set for scripted tool calls.")
         output = self._run_script(inputs)
         resp = type("Resp", (), {"output_parsed": output})
-        return resp, inputs, 0
+        return resp, inputs
 
     def _run_script(self, inputs):
         output = None

@@ -100,7 +100,7 @@ def build_task_tool(
             ]
             previous_inputs = list(inputs)
             logger = agent_state.get("trace_logger")
-            _, inputs, _ = agent.loop(inputs=inputs, agent_state=agent_state, logger=logger)
+            _, inputs = agent.loop(inputs=inputs, agent_state=agent_state, logger=logger)
             new_items = inputs[len(previous_inputs):]
             _log_subagent_outputs(agent_state, new_items)
             results = _collect_tool_outputs(new_items)

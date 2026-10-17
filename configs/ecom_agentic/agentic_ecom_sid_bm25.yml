@@ -1,7 +1,7 @@
 strategy:
   name: agentic_ecom_sid_bm25
   type: agentic
-  description: SID-1 agentic search using BM25 and document read tools.
+  description: SID-1 agentic search using BM25 and an explicit document read tool.
   params:
     model: sid/sid-1
     system_prompt: |

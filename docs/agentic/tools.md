@@ -61,8 +61,9 @@ descriptions manageable in the model context.
 ### Read by ID
 
 `read` retrieves one corpus document by its stable ID and returns it in the standard document
-result format. It returns an empty list when the ID is not present. SID agents require this tool;
-include `read` in their configured `search_tools`.
+result format. It returns an empty list when the ID is not present. SID-1 (`sid/sid-1`) requires
+this tool to be configured explicitly. SID-2 (`sid/sid-2`) adds its own cache-backed `read`; do not
+include the corpus `read` tool in SID-2's configured `search_tools`. See the [SID guide](sid.md).
 
 ### Query rewrite
 

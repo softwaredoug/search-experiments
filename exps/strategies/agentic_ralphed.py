@@ -104,7 +104,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             print(f"ROUND {tries}")
             valid = False
             while not valid:
-                response, inputs, _ = agent.loop(inputs=inputs, agent_state=agent_state)
+                response, inputs = agent.loop(inputs=inputs, agent_state=agent_state)
                 resp = response.output_parsed
                 valid = validator(resp, inputs)
                 if not valid:

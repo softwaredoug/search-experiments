@@ -4,7 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
-from cheat_at_search.agent.sid_tool import format_tool_schema, tool_schema
+from cheat_at_search.agent.sid_legacy_tool import format_tool_schema, tool_schema
 from cheat_at_search.agent.pydantize import make_tool_adapter
 
 from exps.strategies.bm25 import BM25Strategy

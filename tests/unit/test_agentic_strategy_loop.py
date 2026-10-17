@@ -22,7 +22,7 @@ class _FakeOpenAIAgent:
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
 
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -33,11 +33,11 @@ class _FakeOpenAIAgent:
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
-        return resp, inputs, 0
+        return resp, inputs
 
 
 class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -58,11 +58,11 @@ class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
-        return resp, inputs, 0
+        return resp, inputs
 
 
 class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
-    def loop(self, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
         self.calls += 1
@@ -76,7 +76,7 @@ class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
-        return resp, inputs, 0
+        return resp, inputs
 
 
 _MAIN_AGENT: dict[str, _FakeOpenAIAgent | None] = {"instance": None}

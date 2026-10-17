@@ -39,21 +39,21 @@ class _SearchDirectoryAgent:
         _SEARCH_DIRECTORY_CAPTURED["model"] = model
         _SEARCH_DIRECTORY_CAPTURED["reasoning"] = reasoning_level
 
-    def loop(self, *, inputs, agent_state, return_usage=False, logger=None):
+    def loop(self, *, inputs, agent_state, logger=None):
         _SEARCH_DIRECTORY_CAPTURED["inputs"] = inputs
         _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
         inputs = list(inputs)
         inputs.append({"type": "function_call_output", "output": '[{"path": "/red-shoes-101.txt"}]'})
-        return None, inputs, {}
+        return None, inputs
 
 
 class _SearchDirectoryWandsAgent:
     def __init__(self, tools, model, reasoning_level, response_model=None):
         pass
 
-    def loop(self, *, inputs, agent_state, return_usage=False, logger=None):
+    def loop(self, *, inputs, agent_state, logger=None):
         _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
-        return None, inputs, {}
+        return None, inputs
 
 
 def test_filesystem_columns_added_once():

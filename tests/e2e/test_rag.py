@@ -11,11 +11,11 @@ class _FakeQueryAgent:
     def __init__(self, tools, model, response_model, reasoning_level, images=False):
         self.response_model = response_model
 
-    def loop(self, *, inputs=None, agent_state=None, return_usage=False, logger=None):
+    def loop(self, *, inputs=None, agent_state=None, logger=None):
         type(self).last_inputs = inputs
         response = type("Response", (), {})()
         response.output_parsed = self.response_model(query="floating bed")
-        return response, inputs, 0
+        return response, inputs
 
 
 def test_rag_benchmark_rewrites_query_then_searches(tmp_path, fake_wands_dataset):

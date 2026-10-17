@@ -5,6 +5,7 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from time import monotonic
 from typing import Any, Type
@@ -12,6 +13,7 @@ from typing import Any, Type
 from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.agent.search_client import SearchResults
 from cheat_at_search.agent.sid_agent import SIDAgent
+from cheat_at_search.agent.sid_legacy_agent import SIDLegacyAgent
 from pydantic import BaseModel
 
 from exps.agentic.conditions import (
@@ -162,6 +164,42 @@ def build_openai_agent(
     )
 
 
+def _adapt_sid2_result(result):
+    """Give SID-2 the string IDs and content field its document cache requires."""
+    if not isinstance(result, list):
+        return result
+    adapted = []
+    for item in result:
+        if not isinstance(item, dict):
+            adapted.append(item)
+            continue
+        document = dict(item)
+        if document.get("id") is not None:
+            document["id"] = str(document["id"])
+        content = document.get("content")
+        if not isinstance(content, str) or not content:
+            content = document.get("description")
+        if not isinstance(content, str) or not content:
+            content = document.get("title")
+        if isinstance(content, str) and content:
+            document["content"] = content
+        adapted.append(document)
+    return adapted
+
+
+def _adapt_tool_for_sid2(tool: callable) -> callable:
+    @wraps(tool)
+    def sid2_tool(*args, **kwargs):
+        return _adapt_sid2_result(tool(*args, **kwargs))
+
+    return sid2_tool
+
+
+def _adapt_tools_for_sid2(tools: list[callable]) -> list[callable]:
+    """Adapt standard search documents to SID-2's cached document format."""
+    return [_adapt_tool_for_sid2(tool) for tool in tools]
+
+
 class Agent:
     def __init__(
         self,
@@ -310,7 +348,18 @@ class Agent:
         )
         provider, separator, provider_model = self.model.partition("/")
         if separator and provider == "sid":
-            agent = SIDAgent(
+            sid_agents = {
+                "sid-1": SIDLegacyAgent,
+                "sid-2": SIDAgent,
+            }
+            sid_agent_class = sid_agents.get(provider_model)
+            if sid_agent_class is None:
+                raise ValueError(
+                    f"Unsupported SID model {provider_model!r}; expected 'sid-1' or 'sid-2'."
+                )
+            if provider_model == "sid-2":
+                step_tools_list = _adapt_tools_for_sid2(step_tools_list)
+            agent = sid_agent_class(
                 tools=step_tools_list,
                 max_turns=self.max_loops,
                 model=provider_model,
@@ -350,7 +399,7 @@ class Agent:
                 turn=num_loops + 1,
             )
             try:
-                resp, inputs, _ = agent.loop(
+                resp, inputs = agent.loop(
                     inputs=inputs,
                     agent_state=agent_state,
                     logger=logger,
