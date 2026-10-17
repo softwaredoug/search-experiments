@@ -5,7 +5,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${ROOT_DIR}/research/results/ecom_sid_matrix.csv"
 PLOT_OUTPUT="${ROOT_DIR}/assets/ecom_sid_matrix.png"
 WORKERS="${WORKERS:-8}"
-SID_WORKERS="${SID_WORKERS:-1}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
 NO_CACHE="${NO_CACHE:-false}"
@@ -19,10 +18,6 @@ CONFIGS=(
   "configs/ecom_sid/agentic_ecom_sid_bm25.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2.yml"
 )
-SID_CONFIGS=(
-  "configs/ecom_sid/agentic_ecom_sid_bm25.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2.yml"
-)
 DATASETS=("wands" "esci")
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT}")"
@@ -33,20 +28,13 @@ cd "${ROOT_DIR}"
 for dataset in "${DATASETS[@]}"; do
   for config in "${CONFIGS[@]}"; do
     strategy="${ROOT_DIR}/${config}"
-    workers="${WORKERS}"
-    for sid_config in "${SID_CONFIGS[@]}"; do
-      if [[ "${config}" == "${sid_config}" ]]; then
-        workers="${SID_WORKERS}"
-        break
-      fi
-    done
 
-    echo "Running ${config} on ${dataset} with ${workers} worker(s)"
+    echo "Running ${config} on ${dataset} with ${WORKERS} worker(s)"
     run_args=(
       uv run run
       --strategy "${strategy}"
       --dataset "${dataset}"
-      --workers "${workers}"
+      --workers "${WORKERS}"
       --seed "${SEED}"
       --summary-csv "${RESULTS_CSV}"
     )
