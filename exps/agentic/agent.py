@@ -379,13 +379,20 @@ class Agent:
                 raise ValueError(
                     f"Unsupported SID model {provider_model!r}; expected 'sid-1' or 'sid-2'."
                 )
+            sid_agent_params = {
+                "tools": step_tools_list,
+                "max_turns": self.max_loops,
+                "model": provider_model,
+            }
             if provider_model == "sid-2":
+                if self.reasoning not in {"low", "medium", "high"}:
+                    raise ValueError(
+                        "SID-2 reasoning must be one of 'low', 'medium', or 'high'."
+                    )
                 step_tools_list = _adapt_tools_for_sid2(step_tools_list)
-            agent = sid_agent_class(
-                tools=step_tools_list,
-                max_turns=self.max_loops,
-                model=provider_model,
-            )
+                sid_agent_params["tools"] = step_tools_list
+                sid_agent_params["reasoning_effort"] = self.reasoning
+            agent = sid_agent_class(**sid_agent_params)
         else:
             agent = build_openai_agent(
                 tools=step_tools_list,

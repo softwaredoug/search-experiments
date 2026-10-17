@@ -49,10 +49,11 @@ class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
 class _FakeSIDAgent:
     instances: list["_FakeSIDAgent"] = []
 
-    def __init__(self, tools, max_turns, model):
+    def __init__(self, tools, max_turns, model, reasoning_effort="low"):
         self.tools = tools
         self.max_turns = max_turns
         self.model = model
+        self.reasoning_effort = reasoning_effort
         self.logger = None
         type(self).instances.append(self)
 
@@ -306,6 +307,7 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
         agent = agent_mod.Agent(
             corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
             model="sid/sid-2",
+            reasoning="high",
             search_tools=["bm25"],
             max_loops=4,
         )
@@ -321,6 +323,7 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
     sid_agent = _FakeSIDAgent.instances[0]
     assert sid_agent.model == "sid-2"
     assert sid_agent.max_turns == 4
+    assert sid_agent.reasoning_effort == "high"
     assert [tool.__name__ for tool in sid_agent.tools] == ["text_search"]
     assert sid_agent.tools[0].aliases == ["text_search"]
     adapted_results = sid_agent.tools[0]("query")
@@ -344,6 +347,37 @@ def test_agent_routes_sid2_and_adapts_search_documents(tmp_path):
     assert "query" in tool_specs[0]["parameters"]["properties"]
     assert result.output == ["101", "202"]
     assert result.num_tool_calls == 1
+
+
+def test_agent_rejects_unsupported_sid2_reasoning_effort(tmp_path):
+    agent = agent_mod.Agent(
+        corpus=pd.DataFrame({"doc_id": [101, 202, 303]}),
+        model="sid/sid-2",
+        reasoning="xhigh",
+        search_tools=["bm25"],
+    )
+
+    with patch.object(agent_mod, "build_search_tools", return_value=[]), patch.object(
+        agent_mod, "SIDAgent", new=_FakeSIDAgent
+    ):
+        with trace_logger(tmp_path) as (logger, _):
+            with pytest.raises(ValueError, match="SID-2 reasoning must be one of"):
+                agent._run_plan_agent(
+                    agent_name="default",
+                    step_index=1,
+                    query="query",
+                    system_prompt="system",
+                    user_prompt="query",
+                    tools=[],
+                    inputs=[
+                        {"role": "system", "content": "system"},
+                        {"role": "user", "content": "query"},
+                    ],
+                    agent_state={},
+                    stops=[],
+                    validators=[],
+                    logger=logger,
+                )
 
 
 def test_agent_rejects_unsupported_sid_model(tmp_path):
