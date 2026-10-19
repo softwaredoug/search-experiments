@@ -9,6 +9,8 @@ WORKERS="${WORKERS:-8}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
 NO_CACHE="${NO_CACHE:-false}"
+# Set true to rerun only SID variants and bypass their result cache.
+RERUN_SID_VARIANTS="${RERUN_SID_VARIANTS:-false}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 WANDS_NUM_QUERIES="${WANDS_NUM_QUERIES:-}"
 
@@ -18,6 +20,8 @@ CONFIGS=(
   "configs/ecom_agentic/agentic_ecom_2tools_gpt5.yml"
   "configs/ecom_agentic/agentic_ecom_bm25_gpt5_mini.yml"
   "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt5_mini.yml"
+)
+SID_CONFIGS=(
   "configs/ecom_sid/agentic_ecom_sid_bm25_low.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_medium.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_high.yml"
@@ -25,12 +29,49 @@ CONFIGS=(
   "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_medium.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_high.yml"
 )
+CONFIGS+=("${SID_CONFIGS[@]}")
 DATASETS=("wands" "esci")
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT}")"
-rm -f "${RESULTS_CSV}"
-
 cd "${ROOT_DIR}"
+
+if [[ "${RERUN_SID_VARIANTS}" == "true" ]]; then
+  if [[ ! -f "${RESULTS_CSV}" ]]; then
+    echo "Cannot rerun SID variants without existing matrix results: ${RESULTS_CSV}" >&2
+    exit 1
+  fi
+  uv run python - "${RESULTS_CSV}" <<'PY'
+import csv
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+with path.open(encoding="utf-8", newline="") as handle:
+    reader = csv.DictReader(handle)
+    if not reader.fieldnames or "strategy_name" not in reader.fieldnames:
+        raise SystemExit(f"Invalid matrix results CSV: {path}")
+    fieldnames = reader.fieldnames
+    rows = [
+        row
+        for row in reader
+        if not row["strategy_name"].startswith("agentic_ecom_sid_")
+    ]
+
+if not rows:
+    raise SystemExit(
+        "No non-SID matrix rows found; run the full matrix once before "
+        "setting RERUN_SID_VARIANTS=true."
+    )
+
+with path.open("w", encoding="utf-8", newline="") as handle:
+    writer = csv.DictWriter(handle, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+PY
+  CONFIGS=("${SID_CONFIGS[@]}")
+else
+  rm -f "${RESULTS_CSV}"
+fi
 
 for dataset in "${DATASETS[@]}"; do
   for config in "${CONFIGS[@]}"; do
@@ -45,7 +86,7 @@ for dataset in "${DATASETS[@]}"; do
       --seed "${SEED}"
       --summary-csv "${RESULTS_CSV}"
     )
-    if [[ "${NO_CACHE}" == "true" ]]; then
+    if [[ "${NO_CACHE}" == "true" || "${RERUN_SID_VARIANTS}" == "true" ]]; then
       run_args+=(--no-cache)
     fi
     if [[ -n "${DEVICE}" ]]; then
