@@ -9,6 +9,7 @@ from cheat_at_search.agent.openai_agent import OpenAIAgent
 
 from exps.agentic.agent import DEFAULT_SYSTEM_PROMPT, SearchResults
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.resource_tracking import resources_from_agent_state
 from exps.tools import (
     make_bm25_tool,
     make_embedding_tool,
@@ -57,6 +58,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             "skills": self.skills,
             "tools": ["minilm", "bm25"],
             "guards": [],
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()
@@ -133,7 +135,11 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
         ranked_results = [r.doc_id for r in resp.ranked_results][:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
-        return ranked_results, [1.0] * len(ranked_results)
+        return (
+            ranked_results,
+            [1.0] * len(ranked_results),
+            resources_from_agent_state(agent_state),
+        )
 
 
 def _grade_to_emoji(grade):

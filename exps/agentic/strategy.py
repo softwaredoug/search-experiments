@@ -124,9 +124,7 @@ class AgenticSearchStrategy(SearchStrategy):
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
         self.traces[query] = str(run_result.trace_path)
-        return ranked_results, [1.0] * len(ranked_results), {
-            "resource.tool_calls": run_result.num_tool_calls
-        }
+        return ranked_results, [1.0] * len(ranked_results), run_result.resources
 
     def query_path(self, query: str) -> Path:
         if self.trace_path is None:
@@ -163,7 +161,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "max_loops": self.max_loops,
             "ranked_results_model": f"{SearchResults.__module__}.{SearchResults.__qualname__}",
             "embeddings_device": self.embeddings_device,
-            "resource_schema": 1,
+            "resource_schema": 2,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

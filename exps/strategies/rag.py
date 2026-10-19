@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from cheat_at_search.strategy import SearchStrategy
 from exps.agentic.agent import build_openai_agent
 from exps.mapping import build_doc_id_lookup
+from exps.resource_tracking import resources_from_agent_state
 from exps.tools import build_search_tools, normalize_search_tools
 
 
@@ -77,7 +78,9 @@ class RagSearchStrategy(SearchStrategy):
             system_prompt=system_prompt,
         )[0]
 
-    def _generate_query(self, query: str) -> str:
+    def _generate_query(self, query: str, agent_state: dict | None = None) -> str:
+        if agent_state is None:
+            agent_state = {}
         agent = build_openai_agent(
             tools=[],
             model=f"openai/{self.model}" if "/" not in self.model else self.model,
@@ -90,7 +93,7 @@ class RagSearchStrategy(SearchStrategy):
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": query},
             ],
-            agent_state={},
+            agent_state=agent_state,
         )
         parsed = response.output_parsed
         generated_query = parsed.query if isinstance(parsed, SearchQuery) else ""
@@ -100,7 +103,8 @@ class RagSearchStrategy(SearchStrategy):
         return generated_query
 
     def search(self, query: str, k: int = 10):
-        generated_query = self._generate_query(query)
+        agent_state = {}
+        generated_query = self._generate_query(query, agent_state=agent_state)
         parameters = inspect.signature(self._tool).parameters
         query_name = next(
             (name for name in ("query", "keywords", "question") if name in parameters),
@@ -109,7 +113,10 @@ class RagSearchStrategy(SearchStrategy):
         if query_name is None:
             raise ValueError("RAG search tool must accept a query argument.")
         limit_name = "limit" if "limit" in parameters else "top_k"
-        results = self._tool(**{query_name: generated_query, limit_name: k}, agent_state={})
+        results = self._tool(
+            **{query_name: generated_query, limit_name: k},
+            agent_state=agent_state,
+        )
         if isinstance(results, str):
             raise ValueError(f"RAG search tool failed: {results}")
         if not isinstance(results, list):
@@ -126,7 +133,7 @@ class RagSearchStrategy(SearchStrategy):
         ]
         indices = [index for index, _ in mapped_results]
         scores = [float(result.get("score", 1.0)) for _, result in mapped_results]
-        return indices, scores
+        return indices, scores, resources_from_agent_state(agent_state)
 
     @property
     def cache_key(self) -> str:
@@ -138,6 +145,7 @@ class RagSearchStrategy(SearchStrategy):
             "system_prompt": self.system_prompt,
             "search_tools": normalize_search_tools(self.search_tools),
             "embeddings_device": self.embeddings_device,
+            "resource_schema": 1,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

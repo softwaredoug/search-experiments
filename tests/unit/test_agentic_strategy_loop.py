@@ -28,6 +28,12 @@ class _FakeOpenAIAgent:
         self.calls += 1
         if agent_state is not None:
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
+            agent_state["resource.input_tokens"] = (
+                agent_state.get("resource.input_tokens", 0) + 11
+            )
+            agent_state["resource.output_tokens"] = (
+                agent_state.get("resource.output_tokens", 0) + 4
+            )
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         result = self.response_model(ranked_results=list(self.result_ids))
         resp = type("Resp", (), {"output_parsed": result})
@@ -41,6 +47,13 @@ class _FakeJudgeOpenAIAgent(_FakeOpenAIAgent):
         if inputs is None:
             inputs = []
         self.calls += 1
+        if agent_state is not None:
+            agent_state["resource.input_tokens"] = (
+                agent_state.get("resource.input_tokens", 0) + 5
+            )
+            agent_state["resource.output_tokens"] = (
+                agent_state.get("resource.output_tokens", 0) + 3
+            )
         result = conditions_mod.LLMJudgeResponse(
             graded_results=[
                 conditions_mod.GradedSearchResult(
@@ -150,7 +163,11 @@ def test_agentic_stop_tool_calls(tmp_path):
 
     agent_state = _FakeOpenAIAgent.last_instance.last_agent_state
     assert agent_state["num_tool_calls"] == 2
-    assert resources == {"resource.tool_calls": 2}
+    assert resources == {
+        "resource.input_tokens": 22,
+        "resource.output_tokens": 8,
+        "resource.tool_calls": 2,
+    }
     assert not (tmp_path / "query" / "summary.json").exists()
 
 
@@ -213,7 +230,7 @@ def test_llm_judge_validator_appends_prompt(tmp_path):
         max_loops=2,
         trace_path=tmp_path,
     )
-    strategy.search("query", k=2)
+    _, _, resources = strategy.search("query", k=2)
 
     inputs = _MAIN_AGENT["instance"].last_inputs
     prompt_count = sum(
@@ -224,6 +241,8 @@ def test_llm_judge_validator_appends_prompt(tmp_path):
         and "LLM evaluations" in str(item.get("content"))
     )
     assert prompt_count == 1
+    assert resources["resource.input_tokens"] == 27
+    assert resources["resource.output_tokens"] == 11
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)

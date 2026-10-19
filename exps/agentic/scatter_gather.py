@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from exps.agentic.agent import Agent, SearchResults, SUBAGENT_SYSTEM_PROMPT, trace_logger
 from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
 from exps.paths import slugify
+from exps.resource_tracking import resources_from_agent_state
 from exps.tools import normalize_search_tools_for_cache
 from exps.tools.wands import WANDS_CATEGORY_COL
 
@@ -203,13 +204,21 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             if "prefiltered" not in tool_name:
                 raise ValueError("scatter tools must be prefiltered.")
 
-    def _select_categories(self, query: str, trace_dir: Path, logger, trace_path: Path) -> tuple[list[str], int]:
+    def _select_categories(
+        self,
+        query: str,
+        trace_dir: Path,
+        logger,
+        trace_path: Path,
+        agent_state: dict,
+    ) -> tuple[list[str], int]:
         trace_dir.mkdir(parents=True, exist_ok=True)
         response = self._select_agent.run(
             query=query,
             trace_dir=trace_dir,
             logger=logger,
             trace_path=trace_path,
+            agent_state=agent_state,
         )
         if not response.output or not getattr(response.output, "categories", None):
             return [], response.num_tool_calls
@@ -236,6 +245,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         query_dir: Path,
         logger,
         trace_path: Path,
+        agent_state: dict,
     ) -> tuple[dict[str, list[dict[str, str]]], int]:
         results_by_category: dict[str, list[dict[str, str]]] = {}
         num_tool_calls = 0
@@ -249,6 +259,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 format_params={"category": category, "query": query},
                 logger=logger,
                 trace_path=trace_path,
+                agent_state=agent_state,
             )
             num_tool_calls += response.num_tool_calls
             doc_ids = []
@@ -293,6 +304,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         results_by_category: dict[str, list[dict[str, str]]],
         logger,
         trace_path: Path,
+        agent_state: dict,
     ) -> tuple[list[str], int]:
         formatted_results = self._format_results_by_category(results_by_category)
         gather_dir = query_dir / "gather"
@@ -306,6 +318,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             },
             logger=logger,
             trace_path=trace_path,
+            agent_state=agent_state,
         )
         ranked_results: list[str] = []
         if isinstance(gather_response.output, list):
@@ -350,10 +363,11 @@ class ScatterGatherWandsStrategy(SearchStrategy):
     def search(self, query: str, k: int = 10):
         query_dir = self.query_path(query)
         print(query)
+        agent_state = {}
         with trace_logger(query_dir) as (logger, trace_path):
             select_dir = query_dir / "select"
             categories, num_tool_calls = self._select_categories(
-                query, select_dir, logger, trace_path
+                query, select_dir, logger, trace_path, agent_state
             )
             if not categories:
                 categories = self._available_categories[:3]
@@ -367,6 +381,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 query_dir=query_dir,
                 logger=logger,
                 trace_path=trace_path,
+                agent_state=agent_state,
             )
             num_tool_calls += scatter_tool_calls
             ranked_results, gather_tool_calls = self._gather_final_results(
@@ -375,6 +390,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 results_by_category=results_by_category,
                 logger=logger,
                 trace_path=trace_path,
+                agent_state=agent_state,
             )
             num_tool_calls += gather_tool_calls
             summary_path = query_dir / "summary.json"
@@ -394,9 +410,11 @@ class ScatterGatherWandsStrategy(SearchStrategy):
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
             print(f"{query} DONE")
             ranked_results = ranked_results[:k]
-            return ranked_results, [1.0] * len(ranked_results), {
-                "resource.tool_calls": num_tool_calls
-            }
+            return (
+                ranked_results,
+                [1.0] * len(ranked_results),
+                resources_from_agent_state(agent_state, tool_calls=num_tool_calls),
+            )
 
     def query_path(self, query: str) -> Path:
         if self.trace_path is None:
@@ -443,7 +461,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             "max_loops": self.max_loops,
             "embeddings_device": self.embeddings_device,
             "category_column": self._category_column,
-            "resource_schema": 1,
+            "resource_schema": 2,
         }
         serialized = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.md5(serialized).hexdigest()

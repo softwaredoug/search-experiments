@@ -127,12 +127,19 @@ def test_summary_output_includes_generic_resource_statistics(capsys):
             "mean_resource.tool_calls": 2.0,
             "median_resource.tool_calls": 2.0,
             "std_resource.tool_calls": 1.0,
+            "mean_resource.input_tokens": 12.0,
         },
     )
 
     output = capsys.readouterr().out
-    assert "Summary:" in output
-    assert "mean_resource.tool_calls=2.0000" in output
-    assert "median_resource.tool_calls=2.0000" in output
-    assert "std_resource.tool_calls=1.0000" in output
-    assert "mean_agreement=0.8000" in output
+    assert "# Summary" in output
+    assert "Retrieval Metrics:" in output
+    assert "mean_ndcg: 0.4000" in output
+    assert "mean_agreement: 0.8000" in output
+    assert "# Resources" in output
+    assert "mean_tool_calls: 2.0000" in output
+    assert "median_tool_calls: 2.0000" in output
+    assert "std_tool_calls: 1.0000" in output
+    assert "mean_input_tokens: 12.0000" in output
+    assert "resource.tool_calls" not in output
+    assert "resource.input_tokens" not in output

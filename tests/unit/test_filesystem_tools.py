@@ -42,6 +42,12 @@ class _SearchDirectoryAgent:
     def loop(self, *, inputs, agent_state, logger=None):
         _SEARCH_DIRECTORY_CAPTURED["inputs"] = inputs
         _SEARCH_DIRECTORY_CAPTURED["agent_state"] = agent_state
+        agent_state["resource.input_tokens"] = (
+            agent_state.get("resource.input_tokens", 0) + 6
+        )
+        agent_state["resource.output_tokens"] = (
+            agent_state.get("resource.output_tokens", 0) + 2
+        )
         inputs = list(inputs)
         inputs.append({"type": "function_call_output", "output": '[{"path": "/red-shoes-101.txt"}]'})
         return None, inputs
@@ -379,6 +385,8 @@ def test_search_directory_overwrites_filesystem_root_for_subagent():
     assert _SEARCH_DIRECTORY_CAPTURED["agent_state"]["filesystem_root"] == "/"
     assert _SEARCH_DIRECTORY_CAPTURED["agent_state"]["logging_prefix"] == "root.sd"
     assert _SEARCH_DIRECTORY_CAPTURED["agent_state"] is not parent_state
+    assert parent_state["resource.input_tokens"] == 6
+    assert parent_state["resource.output_tokens"] == 2
     assert _SEARCH_DIRECTORY_CAPTURED["inputs"][0]["content"] == "Search inside /"
     assert "search_directory" not in _SEARCH_DIRECTORY_CAPTURED["tools"]
 

@@ -508,6 +508,11 @@ def _make_filesystem_tools(
         subagent_state[FILESYSTEM_ROOT_KEY] = scoped_directory
         subagent_state[SEARCH_DIRECTORY_DEPTH_KEY] = depth
         subagent_state["logging_prefix"] = _combine_logging_prefix(agent_state, "sd")
+        initial_resources = {
+            key: value
+            for key, value in subagent_state.items()
+            if key.startswith("resource.")
+        }
         logger = agent_state.get("trace_logger")
         if logger is not None:
             logger.info(
@@ -538,6 +543,11 @@ def _make_filesystem_tools(
         ]
         previous_inputs = list(inputs)
         _, inputs = agent.loop(inputs=inputs, agent_state=subagent_state, logger=logger)
+        for key, value in subagent_state.items():
+            if key.startswith("resource."):
+                agent_state[key] = agent_state.get(key, 0) + (
+                    value - initial_resources.get(key, 0)
+                )
         results = _collect_tool_outputs(inputs[len(previous_inputs):])
         if logger is not None:
             logger.info(

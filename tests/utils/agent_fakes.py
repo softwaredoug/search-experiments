@@ -39,6 +39,13 @@ class FakeOpenAIAgent:
             inputs = []
         self.calls += 1
         self.chat_calls += 1
+        if agent_state is not None:
+            agent_state["resource.input_tokens"] = (
+                agent_state.get("resource.input_tokens", 0) + 1
+            )
+            agent_state["resource.output_tokens"] = (
+                agent_state.get("resource.output_tokens", 0) + 2
+            )
         script = self._next_script()
         output = self._run_script(inputs, script, agent_state)
         resp = type("Resp", (), {"output_parsed": output})

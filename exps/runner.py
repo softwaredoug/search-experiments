@@ -16,9 +16,24 @@ def _report_metric(metric_name: str, metric_series, summary: dict[str, float]) -
     print(f"Per-query {metric_name}:")
     print(metric_series.to_string())
     print("")
-    print("Summary:")
+    print("# Summary")
+    print("Retrieval Metrics:")
     for name, value in summary.items():
-        print(f"{name}={value:.4f}")
+        if not name.startswith("mean_resource.") and not name.startswith(
+            "median_resource."
+        ) and not name.startswith("std_resource."):
+            print(f"{name}: {value:.4f}")
+
+    resource_metrics = [
+        (name.replace("_resource.", "_", 1), value)
+        for name, value in summary.items()
+        if name.startswith(("mean_resource.", "median_resource.", "std_resource."))
+    ]
+    if resource_metrics:
+        print("")
+        print("# Resources")
+        for name, value in resource_metrics:
+            print(f"{name}: {value:.4f}")
 
 
 def _write_summary_csv(path: str, *, dataset: str, result) -> None:

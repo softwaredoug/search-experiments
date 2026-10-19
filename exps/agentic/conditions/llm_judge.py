@@ -29,6 +29,7 @@ def _run_llm_judge(
     reasoning: str,
     judge_prompt: str,
     logger,
+    agent_state: dict | None = None,
     images: bool = False,
 ) -> list[GradedSearchResult]:
     results_block = judging._render_results_for_judge(
@@ -46,7 +47,7 @@ def _run_llm_judge(
     )
     response, _ = judge_agent.loop(
         inputs=[{"role": "user", "content": prompt}],
-        agent_state=None,
+        agent_state=agent_state if agent_state is not None else {},
         logger=logger,
     )
     parsed = getattr(response, "output_parsed", None)
@@ -95,6 +96,7 @@ class LLMJudgeRelevance(BaseCondition):
             reasoning=str(params["reasoning"]),
             judge_prompt=str(params["judge_prompt"]),
             logger=context.logger,
+            agent_state=context.agent_state,
             images=context.images,
         )
         if _is_passing(grades):

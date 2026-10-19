@@ -13,6 +13,8 @@ class _FakeQueryAgent:
 
     def loop(self, *, inputs=None, agent_state=None, logger=None):
         type(self).last_inputs = inputs
+        agent_state["resource.input_tokens"] = 8
+        agent_state["resource.output_tokens"] = 3
         response = type("Response", (), {})()
         response.output_parsed = self.response_model(query="floating bed")
         return response, inputs
@@ -49,6 +51,8 @@ strategy:
 
     assert result.strategy_name == "rag_fixture"
     assert result.summary["mean_ndcg"] > 0
+    assert result.summary["mean_resource.input_tokens"] == 8
+    assert result.summary["mean_resource.output_tokens"] == 3
     assert result.graded.iloc[0]["doc_id"] == 1
     assert _FakeQueryAgent.last_inputs[-1] == {
         "role": "user",

@@ -149,6 +149,12 @@ def test_scatter_gather_wands_e2e(
     assert not result.metric_series.empty
     assert sum(agent.chat_calls for agent in instances) >= 1
     assert result.summary["mean_resource.tool_calls"] == 0.0
+    assert result.summary["mean_resource.input_tokens"] == sum(
+        agent.chat_calls for agent in instances
+    )
+    assert result.summary["mean_resource.output_tokens"] == 2 * sum(
+        agent.chat_calls for agent in instances
+    )
 
 
 @patch("exps.runners.run.get_dataset")

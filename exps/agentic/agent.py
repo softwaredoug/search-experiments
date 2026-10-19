@@ -26,6 +26,7 @@ from exps.agentic.task import build_task_tool
 from exps.agentic.tracing import query_heartbeat, set_trace_stage, trace_event
 from exps.mapping import build_doc_id_lookup
 from exps.tools import build_search_tools, normalize_search_tools_for_cache
+from exps.resource_tracking import resources_from_agent_state
 
 
 DEFAULT_SYSTEM_PROMPT = """
@@ -57,6 +58,7 @@ class AgentResponse:
     output: BaseModel | list[str] | None
     trace_path: Path
     num_tool_calls: int
+    resources: dict[str, int | float]
 
 
 def _extract_delegate_task(tool_config: list | None) -> tuple[list, bool]:
@@ -604,9 +606,12 @@ class Agent:
         trace_path: Path,
         k: int = 10,
         format_params: dict[str, Any] | None = None,
+        agent_state: dict | None = None,
     ) -> AgentResponse:
         inputs = [{"role": "system", "content": self.system_prompt}]
-        agent_state = {"num_tool_calls": 0}
+        if agent_state is None:
+            agent_state = {}
+        agent_state["num_tool_calls"] = 0
         stops = normalize_conditions(self.stop, kind="stop")
         validators = normalize_conditions(self.validators, kind="validator")
         format_payload = {"query": query}
@@ -654,4 +659,7 @@ class Agent:
             output=output,
             trace_path=trace_path,
             num_tool_calls=num_tool_calls,
+            resources=resources_from_agent_state(
+                agent_state, tool_calls=num_tool_calls
+            ),
         )
