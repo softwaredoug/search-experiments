@@ -1,4 +1,5 @@
 import csv
+import sys
 
 import pytest
 
@@ -7,8 +8,7 @@ from scripts.plot_ecom_sid_matrix import (
     _pareto_front,
     _read_mean_ndcg,
     _read_mean_tool_calls,
-    plot_pareto_results,
-    plot_results,
+    main,
 )
 
 
@@ -134,7 +134,9 @@ def test_pareto_front_uses_higher_quality_and_lower_resource_cost():
     assert [point["strategy"] for point in _pareto_front(points)] == ["a", "c"]
 
 
-def test_plot_results_writes_an_image(tmp_path):
+def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
+    tmp_path, monkeypatch
+):
     summary_path = tmp_path / "summary.csv"
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
@@ -159,13 +161,25 @@ def test_plot_results_writes_an_image(tmp_path):
                         "mean_resource.tool_calls": 2,
                     }
                 )
-    output_path = tmp_path / "plots" / "sid_matrix.png"
-    pareto_output_path = tmp_path / "plots" / "sid_matrix_pareto.png"
+    output_prefix = tmp_path / "plots" / "sid_matrix"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "plot_ecom_sid_matrix.py",
+            "--input",
+            str(summary_path),
+            "--output-prefix",
+            str(output_prefix),
+        ],
+    )
 
-    plot_results(summary_path, output_path)
-    plot_pareto_results(summary_path, pareto_output_path)
+    main()
 
-    assert output_path.is_file()
-    assert output_path.stat().st_size > 0
-    assert pareto_output_path.is_file()
-    assert pareto_output_path.stat().st_size > 0
+    output_paths = [
+        tmp_path / "plots" / "sid_matrix_wands.png",
+        tmp_path / "plots" / "sid_matrix_esci.png",
+        tmp_path / "plots" / "sid_matrix_pareto_wands.png",
+        tmp_path / "plots" / "sid_matrix_pareto_esci.png",
+    ]
+    assert all(path.is_file() and path.stat().st_size > 0 for path in output_paths)

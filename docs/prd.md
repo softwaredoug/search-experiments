@@ -260,6 +260,11 @@ Graphs are intended to be some kind of line graph. And we should generate a coup
 - Pareto graph: x-axis would be retrieval, y-axis would be resources - whatever is relevant to the experiments
   being run
 
+#### Retrieval graph
+
+A retrieval graph should be a single graph, X-axis being variants, Y-axis being retrieval metric (ie NDCG) and
+if multiple datasets are present, each dataset should get its own graph.
+
 Graphs should add points and labels for each variant to name each one.
 
 

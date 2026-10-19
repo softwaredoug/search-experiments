@@ -3,8 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${ROOT_DIR}/research/results/ecom_sid_matrix.csv"
-PLOT_OUTPUT="${ROOT_DIR}/assets/ecom_sid_matrix.png"
-PARETO_OUTPUT="${ROOT_DIR}/assets/ecom_sid_matrix_pareto.png"
+PLOT_OUTPUT_PREFIX="${ROOT_DIR}/assets/ecom_sid_matrix"
 WORKERS="${WORKERS:-8}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
@@ -32,7 +31,7 @@ SID_CONFIGS=(
 CONFIGS+=("${SID_CONFIGS[@]}")
 DATASETS=("wands" "esci")
 
-mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT}")"
+mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT_PREFIX}")"
 cd "${ROOT_DIR}"
 
 if [[ "${RERUN_SID_VARIANTS}" == "true" ]]; then
@@ -104,9 +103,10 @@ done
 
 uv run python "${ROOT_DIR}/scripts/plot_ecom_sid_matrix.py" \
   --input "${RESULTS_CSV}" \
-  --output "${PLOT_OUTPUT}" \
-  --pareto-output "${PARETO_OUTPUT}"
+  --output-prefix "${PLOT_OUTPUT_PREFIX}"
 
 echo "Wrote ${RESULTS_CSV}"
-echo "Wrote ${PLOT_OUTPUT}"
-echo "Wrote ${PARETO_OUTPUT}"
+for dataset in "${DATASETS[@]}"; do
+  echo "Wrote ${PLOT_OUTPUT_PREFIX}_${dataset}.png"
+  echo "Wrote ${PLOT_OUTPUT_PREFIX}_pareto_${dataset}.png"
+done
