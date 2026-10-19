@@ -64,7 +64,7 @@ def test_agentic_composite_rrf_e2e(tmp_path, doug_blog_dataset, reranker_type):
                 {
                     "function_call": {
                         "name": "search_composite",
-                        "params": {"query": "salon chair", "top_k": 5},
+                        "params": {"query": "salon chair", "limit": 5},
                     }
                 },
                 {"output": {"ranked_results": doc_ids}},

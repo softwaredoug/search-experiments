@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Annotated, Any
 
 _QUERY_ARGUMENTS = ("query", "keywords", "question", "product_description")
-_MAX_TOP_K = 100
+_MAX_LIMIT = 100
 
 
 def _query_argument(tool: Callable) -> str:
@@ -23,7 +23,7 @@ def _query_argument(tool: Callable) -> str:
     unsupported_required = [
         parameter.name
         for parameter in signature.parameters.values()
-        if parameter.name not in {query_name, "top_k", "agent_state"}
+        if parameter.name not in {query_name, "limit", "top_k", "agent_state"}
         and parameter.default is inspect.Parameter.empty
         and parameter.kind
         not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
@@ -35,6 +35,15 @@ def _query_argument(tool: Callable) -> str:
             f"arguments: {names}."
         )
     return query_name
+
+
+def _limit_argument(tool: Callable) -> str | None:
+    parameters = inspect.signature(tool).parameters
+    if "limit" in parameters:
+        return "limit"
+    if "top_k" in parameters:
+        return "top_k"
+    return None
 
 
 def make_rrf_tool(
@@ -77,29 +86,30 @@ def make_rrf_tool(
     for tool in search_tools:
         if not callable(tool):
             raise ValueError("RRF search_tools entries must be callable.")
-        child_arguments.append(_query_argument(tool))
+        child_arguments.append((_query_argument(tool), _limit_argument(tool)))
 
     def search_composite(
         query: Annotated[str, "Search query to run through the configured retrieval tools."],
-        top_k: Annotated[int, "Maximum number of fused results to return; at most 100."] = 5,
+        limit: Annotated[int, "Maximum number of fused results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict]:
         """Fuse configured search tools with RRF and optionally rerank results."""
-        if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 0:
-            raise ValueError("top_k must be a non-negative integer.")
-        if top_k > _MAX_TOP_K:
-            return "Error! top_k must be <= 100."
-        if top_k == 0:
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+            raise ValueError("limit must be a non-negative integer.")
+        if limit > _MAX_LIMIT:
+            return "Error! limit must be <= 100."
+        if limit == 0:
             return []
-        retrieval_top_k = max(top_k, reranker.k) if reranker is not None else top_k
+        retrieval_limit = max(limit, reranker.k) if reranker is not None else limit
 
         fused_by_id: dict[str, dict[str, Any]] = {}
-        for tool, query_name, weight in zip(search_tools, child_arguments, parsed_weights):
+        for tool, (query_name, limit_name), weight in zip(search_tools, child_arguments, parsed_weights):
             child_kwargs = {
                 query_name: query,
-                "top_k": retrieval_top_k,
                 "agent_state": agent_state,
             }
+            if limit_name is not None:
+                child_kwargs[limit_name] = retrieval_limit
             signature = inspect.signature(tool)
             child_kwargs = {
                 name: value
@@ -144,6 +154,6 @@ def make_rrf_tool(
                 candidates=ranked_results,
                 agent_state=agent_state,
             )
-        return ranked_results[:top_k]
+        return ranked_results[:limit]
 
     return search_composite

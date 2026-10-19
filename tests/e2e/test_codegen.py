@@ -73,7 +73,7 @@ def _fielded_bm25_patch() -> Edit:
         action="replace",
         text=(
             "def reranker(query, top_k, fielded_bm25, **kwargs):\n"
-            "    docs = fielded_bm25(query, fields=['title^99.0'], operator='or', top_k=top_k)\n"
+            "    docs = fielded_bm25(query, fields=['title^99.0'], operator='or', limit=top_k)\n"
             "    return [str(doc['id']) for doc in docs]\n"
         ),
         intention="Boost title weight",
@@ -88,7 +88,7 @@ def _description_only_patch() -> Edit:
         action="replace",
         text=(
             "def reranker(query, top_k, fielded_bm25, **kwargs):\n"
-            "    docs = fielded_bm25(query, fields=['description^99.0'], operator='or', top_k=top_k)\n"
+            "    docs = fielded_bm25(query, fields=['description^99.0'], operator='or', limit=top_k)\n"
             "    return [str(doc['id']) for doc in docs]\n"
         ),
         intention="Only search descriptions",
@@ -103,7 +103,7 @@ def _bm25_patch() -> Edit:
         action="replace",
         text=(
             "def reranker(query, top_k, bm25, **kwargs):\n"
-            "    docs = bm25(query, top_k=top_k)\n"
+            "    docs = bm25(query, limit=top_k)\n"
             "    return [str(doc['id']) for doc in docs]\n"
         ),
         intention="Use bm25",
@@ -118,7 +118,7 @@ def _fielded_bm25_minilm_patch() -> Edit:
         action="replace",
         text=(
             "def reranker(query, top_k, fielded_bm25, minilm, **kwargs):\n"
-            "    docs = fielded_bm25(query, fields=['title^99.0'], operator='or', top_k=top_k)\n"
+            "    docs = fielded_bm25(query, fields=['title^99.0'], operator='or', limit=top_k)\n"
             "    return [str(doc['id']) for doc in docs]\n"
         ),
         intention="Boost title weight",
@@ -535,7 +535,7 @@ strategy:
         import numpy as np
 
         def rerank_doug_blog(query, bm25, **kwargs):
-            docs = bm25(query, top_k=5)
+            docs = bm25(query, limit=5)
             return [doc["id"] for doc in docs]
       edit:
         guards:
@@ -832,7 +832,7 @@ strategy:
         - bm25
       start_code: |
         def rerank_doug_blog(query, bm25, **kwargs):
-            docs = bm25(query, top_k=5)
+            docs = bm25(query, limit=5)
             return [doc["id"] for doc in docs]
       edit:
         guards:

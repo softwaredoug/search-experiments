@@ -117,13 +117,13 @@ def make_codegen_tool(
 
     def search(
         query: Annotated[str, "Search query to rank with the generated reranker."],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 10,
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 10,
         agent_state=None,
         **kwargs,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search the corpus, return top results."""
-        if top_k > 100:
-            return "Error! top_k must be <= 100."
+        if limit > 100:
+            return "Error! limit must be <= 100."
         reranker_results = reranker_fn(query=query, **dependency_map, **kwargs)
         results = []
         for rank, item in enumerate(reranker_results or []):
@@ -149,7 +149,7 @@ def make_codegen_tool(
             for field in return_fields:
                 entry[field] = _to_builtin(row.get(field))
             results.append(entry)
-            if len(results) >= top_k:
+            if len(results) >= limit:
                 break
         return results
 

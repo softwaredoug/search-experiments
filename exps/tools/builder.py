@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from functools import wraps
 from pathlib import Path
 from typing import Any, Optional, Union, get_type_hints
 
@@ -111,6 +112,29 @@ def _wrap_with_columns(
     return wrapped
 
 
+def _wrap_legacy_search_arguments(tool_fn: callable) -> callable:
+    """Accept pre-rename keyword arguments without exposing them in the schema."""
+    signature = inspect.signature(tool_fn)
+    parameters = signature.parameters
+    accepts_query = "query" in parameters
+    accepts_limit = "limit" in parameters
+
+    @wraps(tool_fn)
+    def compatible(*args, **kwargs):
+        if accepts_query:
+            for legacy_name in ("keywords", "question", "product_description"):
+                if legacy_name in kwargs:
+                    legacy_query = kwargs.pop(legacy_name)
+                    kwargs.setdefault("query", legacy_query)
+        if accepts_limit and "top_k" in kwargs:
+            legacy_limit = kwargs.pop("top_k")
+            kwargs.setdefault("limit", legacy_limit)
+        return tool_fn(*args, **kwargs)
+
+    compatible.__signature__ = signature
+    return compatible
+
+
 def normalize_search_tools(tool_config: list) -> list[dict[str, Any]]:
     normalized = []
     for item in tool_config:
@@ -204,14 +228,17 @@ def make_guarded_search_tool(
         bound_args = tool_sig.bind_partial(*args, **kwargs)
         bound_args.apply_defaults()
         query = _extract_query_arg(bound_args)
-        top_k = bound_args.arguments.get("top_k")
+        limit = bound_args.arguments.get("limit")
+        if limit is None:
+            # Keep non-search helpers and legacy custom tools that still use top_k.
+            limit = bound_args.arguments.get("top_k")
         agent_state = bound_args.arguments.get("agent_state")
-        if isinstance(top_k, int) and top_k > 100:
-            return "Error! top_k must be <= 100."
+        if isinstance(limit, int) and limit > 100:
+            return "Error! limit must be <= 100."
         params = {
             "tool_name": name,
             "query": query,
-            "top_k": top_k,
+            "limit": limit,
         }
         for guard in guards:
             guard_name = guard["name"]
@@ -375,6 +402,7 @@ def build_search_tools(
                 guards=tool["guards"],
                 func_name=guard_func_name,
             )
+        tool_fn = _wrap_legacy_search_arguments(tool_fn)
         aliases = entry.get("aliases")
         if aliases:
             tool_fn.aliases = list(aliases)

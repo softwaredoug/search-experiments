@@ -128,12 +128,12 @@ def make_wands_bm25_tool(
     category_index = _build_category_index(corpus, category_col=category_col)
 
     def search_bm25_wands(
-        keywords: Annotated[str, "Search query keywords."],
+        query: Annotated[str, "Search query keywords."],
         product_categories: Annotated[
             list[WandsProductCategory] | None,
             "Optional exact WANDS category filters; omit or use null to search all categories.",
         ] = None,
-        top_k: Annotated[
+        limit: Annotated[
             int, "Maximum number of ranked results to return; at most 100."
         ] = 5,
         agent_state=None,
@@ -141,23 +141,23 @@ def make_wands_bm25_tool(
         """Search WANDS with BM25 over title/description and optional category filter.
 
         Args:
-            keywords: The search query string.
+            query: The search query string.
             product_categories: Optional category filters. Categorization may be imperfect;
                 consider searching both with and without categories.
-            top_k: The number of top results to return (max 100).
+            limit: The number of top results to return (max 100).
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
-        if top_k > 100:
-            return "Error! top_k must be <= 100."
+        if limit > 100:
+            return "Error! limit must be <= 100."
         if agent_state is not None:
             logger = agent_state.get("trace_logger")
             if logger is not None:
                 logger.info(
                     "wands_bm25 %s",
-                    {"keywords": keywords, "categories": product_categories},
+                    {"query": query, "categories": product_categories},
                 )
         indices = _category_indices(category_index, product_categories)
         if indices is None:
@@ -168,13 +168,13 @@ def make_wands_bm25_tool(
             working_corpus = corpus.iloc[indices]
 
         bm25_scores = np.zeros(len(working_corpus))
-        for term in snowball_tokenizer(keywords):
+        for term in snowball_tokenizer(query):
             bm25_scores += working_corpus["title_snowball"].array.score(term) * title_boost
             bm25_scores += (
                 working_corpus["description_snowball"].array.score(term) * description_boost
             )
 
-        top_k_indices = np.argsort(bm25_scores)[-top_k:][::-1]
+        top_k_indices = np.argsort(bm25_scores)[-limit:][::-1]
         bm25_scores = bm25_scores[top_k_indices]
         top_rows = working_corpus.iloc[top_k_indices].copy()
         top_rows.loc[:, "score"] = bm25_scores
@@ -245,12 +245,12 @@ def make_wands_embedding_tool(
         model = load_model(model_name, device=device)
 
     def search_embeddings_wands(
-        product_description: Annotated[str, "Natural-language description of the product being searched for."],
+        query: Annotated[str, "Natural-language search query describing the desired product."],
         product_categories: Annotated[
             list[WandsProductCategory] | None,
             "Optional exact WANDS category filters; omit or use null to search all categories.",
         ] = None,
-        top_k: Annotated[
+        limit: Annotated[
             int, "Maximum number of ranked results to return; at most 100."
         ] = 5,
         agent_state=None,
@@ -258,24 +258,24 @@ def make_wands_embedding_tool(
         """Search WANDS using embeddings with an optional category filter.
 
         Args:
-            product_description: The product being looked for.
+            query: The product being looked for.
             product_categories: Optional category filters.
-            top_k: The number of top results to return (max 100).
+            limit: The number of top results to return (max 100).
 
         This is an embedding search over concatenated title + description.
         """
-        if top_k > 100:
-            raise ValueError("top_k must be <= 100")
+        if limit > 100:
+            raise ValueError("limit must be <= 100")
         if agent_state is not None:
             logger = agent_state.get("trace_logger")
             if logger is not None:
                 logger.info(
                     "wands_embeddings %s",
-                    {"query": product_description, "categories": product_categories},
+                    {"query": query, "categories": product_categories},
                 )
         if query_prefix:
-            question = f"{query_prefix}{product_description}"
-        query_embedded = model.encode(question)
+            query = f"{query_prefix}{query}"
+        query_embedded = model.encode(query)
         query_embedded = np.asarray(query_embedded)
 
         indices = _category_indices(category_index, product_categories)
@@ -291,7 +291,7 @@ def make_wands_embedding_tool(
             source_indices = indices
 
         similarity_scores = np.dot(working_embeddings, query_embedded)
-        top_k_indices = np.argsort(similarity_scores)[-top_k:][::-1]
+        top_k_indices = np.argsort(similarity_scores)[-limit:][::-1]
         similarity_scores = similarity_scores[top_k_indices]
         if source_indices is not None:
             top_doc_indices = source_indices[top_k_indices]
@@ -323,22 +323,22 @@ def make_wands_bm25_prefiltered_tool(
     )
 
     def search_bm25_wands_prefiltered(
-        keywords: Annotated[str, "Search query keywords."],
+        query: Annotated[str, "Search query keywords."],
         category: Annotated[WandsProductCategory, "Exact WANDS category to restrict the search to."],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS BM25 within a single category.
 
         Args:
-            keywords: The search query string.
+            query: The search query string.
             category: The category to filter by.
-            top_k: The number of top results to return (max 100).
+            limit: The number of top results to return (max 100).
         """
         return base_tool(
-            keywords,
+            query,
             product_categories=[category],
-            top_k=top_k,
+            limit=limit,
             agent_state=agent_state,
         )
 
@@ -364,22 +364,22 @@ def make_wands_embedding_prefiltered_tool(
     )
 
     def search_embeddings_wands_prefiltered(
-        product_description: Annotated[str, "Natural-language description of the product being searched for."],
+        query: Annotated[str, "Natural-language search query describing the desired product."],
         category: Annotated[WandsProductCategory, "Exact WANDS category to restrict the search to."],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search WANDS embeddings within a single category.
 
         Args:
-            product_description: The product being looked for.
+            query: The product being looked for.
             category: The category to filter by.
-            top_k: The number of top results to return (max 100).
+            limit: The number of top results to return (max 100).
         """
         return base_tool(
-            product_description,
+            query,
             product_categories=[category],
-            top_k=top_k,
+            limit=limit,
             agent_state=agent_state,
         )
 

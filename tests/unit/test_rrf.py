@@ -7,21 +7,21 @@ def test_rrf_fuses_weighted_rankings_and_deduplicates_documents():
     calls = []
     agent_state = {"run": "current"}
 
-    def lexical(keywords, top_k=5, agent_state=None):
-        calls.append(("lexical", keywords, top_k, agent_state))
+    def lexical(query, limit=5, agent_state=None):
+        calls.append(("lexical", query, limit, agent_state))
         return [
             {"id": "a", "title": "A from lexical", "score": 100.0},
             {"id": "b", "title": "B from lexical", "score": 50.0},
             {"id": "c", "title": "C from lexical", "score": 10.0},
-        ][:top_k]
+        ][:limit]
 
-    def semantic(question, top_k=5, agent_state=None):
-        calls.append(("semantic", question, top_k, agent_state))
+    def semantic(query, limit=5, agent_state=None):
+        calls.append(("semantic", query, limit, agent_state))
         return [
             {"id": "b", "title": "B from semantic", "score": 0.9},
             {"id": "d", "title": "D from semantic", "score": 0.8},
             {"id": "a", "title": "A from semantic", "score": 0.7},
-        ][:top_k]
+        ][:limit]
 
     search = make_rrf_tool(
         search_tools=[lexical, semantic],
@@ -29,7 +29,7 @@ def test_rrf_fuses_weighted_rankings_and_deduplicates_documents():
         rank_constant=60,
     )
 
-    results = search("desk chair", top_k=4, agent_state=agent_state)
+    results = search("desk chair", limit=4, agent_state=agent_state)
 
     assert [result["id"] for result in results] == ["a", "b", "c", "d"]
     assert [result["score"] for result in results] == pytest.approx(
@@ -44,10 +44,10 @@ def test_rrf_fuses_weighted_rankings_and_deduplicates_documents():
 
 
 def test_rrf_requires_one_weight_per_search_tool():
-    def first(query, top_k=5, agent_state=None):
+    def first(query, limit=5, agent_state=None):
         return []
 
-    def second(query, top_k=5, agent_state=None):
+    def second(query, limit=5, agent_state=None):
         return []
 
     with pytest.raises(ValueError, match="weights"):
@@ -57,13 +57,13 @@ def test_rrf_requires_one_weight_per_search_tool():
 def test_rrf_fuses_reranker_candidate_depth_before_reranking():
     arm_calls = []
 
-    def first(query, top_k=5, agent_state=None):
-        arm_calls.append(("first", top_k))
-        return [{"id": doc_id, "score": 1.0} for doc_id in ["a", "b", "c"][:top_k]]
+    def first(query, limit=5, agent_state=None):
+        arm_calls.append(("first", limit))
+        return [{"id": doc_id, "score": 1.0} for doc_id in ["a", "b", "c"][:limit]]
 
-    def second(query, top_k=5, agent_state=None):
-        arm_calls.append(("second", top_k))
-        return [{"id": doc_id, "score": 1.0} for doc_id in ["b", "c", "a"][:top_k]]
+    def second(query, limit=5, agent_state=None):
+        arm_calls.append(("second", limit))
+        return [{"id": doc_id, "score": 1.0} for doc_id in ["b", "c", "a"][:limit]]
 
     class ReverseReranker:
         k = 3
@@ -79,7 +79,22 @@ def test_rrf_fuses_reranker_candidate_depth_before_reranking():
         reranker=ReverseReranker(),
     )
 
-    results = search("desk", top_k=1)
+    results = search("desk", limit=1)
 
     assert arm_calls == [("first", 3), ("second", 3)]
     assert [candidate["id"] for candidate in results] == ["c"]
+
+
+def test_rrf_keeps_support_for_legacy_top_k_children():
+    calls = []
+
+    def legacy_child(query, top_k=5, agent_state=None):
+        calls.append((query, top_k))
+        return [{"id": "a"}][:top_k]
+
+    search = make_rrf_tool(search_tools=[legacy_child])
+
+    results = search("chair", limit=2)
+
+    assert results[0]["id"] == "a"
+    assert calls == [("chair", 2)]

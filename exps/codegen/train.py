@@ -409,7 +409,7 @@ def _start_code(
     if "fielded_bm25" in primary_tool_name:
         call = (
             f"    docs = {primary_tool_name}"
-            f"(query, fields=['title^9.3', 'description^4.1'], operator='or', top_k=top_k)\n"
+            f"(query, fields=['title^9.3', 'description^4.1'], operator='or', limit=top_k)\n"
         )
     elif primary_tool_name == "get_corpus":
         call = (
@@ -417,7 +417,7 @@ def _start_code(
             "    docs = corpus.head(top_k).to_dict('records')\n"
         )
     else:
-        call = f"    docs = {primary_tool_name}(query, top_k=top_k)\n"
+        call = f"    docs = {primary_tool_name}(query, limit=top_k)\n"
     return (
         f"def {rerank_name}({signature}):\n"
         f"{call}"

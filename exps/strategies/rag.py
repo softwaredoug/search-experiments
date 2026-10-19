@@ -108,9 +108,8 @@ class RagSearchStrategy(SearchStrategy):
         )
         if query_name is None:
             raise ValueError("RAG search tool must accept a query argument.")
-        results = self._tool(
-            **{query_name: generated_query}, top_k=k, agent_state={}
-        )
+        limit_name = "limit" if "limit" in parameters else "top_k"
+        results = self._tool(**{query_name: generated_query, limit_name: k}, agent_state={})
         if isinstance(results, str):
             raise ValueError(f"RAG search tool failed: {results}")
         if not isinstance(results, list):

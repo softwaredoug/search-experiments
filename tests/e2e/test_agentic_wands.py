@@ -68,7 +68,7 @@ def test_agentic_wands_bm25_e5_few_shot_delegate_e2e(
         {
             "function_call": {
                 "name": "search_bm25_wands",
-                "params": {"keywords": "floating bed", "top_k": 5},
+                "params": {"query": "floating bed", "limit": 5},
             }
         },
         {"output": {"ranked_results": doc_ids}},

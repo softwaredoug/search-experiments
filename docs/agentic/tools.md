@@ -54,7 +54,7 @@ Some tools accept `columns` configuration to append corpus fields to each return
 - `embeddings`: alias for the default embedding search (`minilm`).
 - `e5_base_v2`: E5-base-v2 embedding search with `query: ` and `passage: ` prefixes.
 
-These tools normally accept a `top_k` argument, defaulting to 5, and enforce a maximum of 100
+Search tools normally accept a `limit` argument, defaulting to 5, and enforce a maximum of 100
 results per call. The agentic strategy guidance may recommend a smaller value to keep results and
 descriptions manageable in the model context.
 

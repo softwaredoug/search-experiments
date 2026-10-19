@@ -42,26 +42,26 @@ def make_embedding_tool(
         model = load_model(model_name, device=device)
 
     def search_embeddings(
-        question: Annotated[str, "Natural-language search query describing the desired document."],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        query: Annotated[str, "Natural-language search query describing the desired document."],
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using embeddings over title/description.
 
         Args:
-            question: The search query string - natural language query
-            top_k: The number of top results to return (max 100).
+            query: The search query string - natural language query
+            limit: The number of top results to return (max 100).
 
         This is an embedding search over concatenated title + description.
         """
-        if top_k > 100:
-            raise ValueError("top_k must be <= 100")
+        if limit > 100:
+            raise ValueError("limit must be <= 100")
         if query_prefix:
-            question = f"{query_prefix}{question}"
-        query_embedded = model.encode(question)
+            query = f"{query_prefix}{query}"
+        query_embedded = model.encode(query)
         similarity_scores = np.dot(embeddings, query_embedded)
 
-        top_k_indices = np.argsort(similarity_scores)[-top_k:][::-1]
+        top_k_indices = np.argsort(similarity_scores)[-limit:][::-1]
         similarity_scores = similarity_scores[top_k_indices]
         top_rows = corpus.iloc[top_k_indices].copy()
         top_rows.loc[:, "score"] = similarity_scores

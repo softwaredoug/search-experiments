@@ -119,7 +119,7 @@ def test_agentic_hello_world_e2e(
             {
                 "function_call": {
                     "name": "search_embeddings",
-                    "params": {"question": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -226,7 +226,7 @@ strategy:
                     {
                         "function_call": {
                             "name": "search_bm25",
-                            "params": {"keywords": "salon chair", "top_k": 5},
+                            "params": {"query": "salon chair", "limit": 5},
                         }
                     },
                     {"output": {"ranked_results": doc_ids}},
@@ -265,7 +265,7 @@ def test_agentic_guarded_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -705,7 +705,7 @@ def test_agentic_few_shot_happy_path_e2e(tmp_path, doug_blog_dataset):
         {
             "function_call": {
                 "name": "search_bm25",
-                "params": {"keywords": "salon chair", "top_k": 5},
+                "params": {"query": "salon chair", "limit": 5},
             }
         },
         {"output": {"ranked_results": doc_ids}},
@@ -795,7 +795,7 @@ def test_agentic_validator_tool_calls_e2e(tmp_path, doug_blog_dataset):
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -804,7 +804,7 @@ def test_agentic_validator_tool_calls_e2e(tmp_path, doug_blog_dataset):
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -813,7 +813,7 @@ def test_agentic_validator_tool_calls_e2e(tmp_path, doug_blog_dataset):
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -940,7 +940,7 @@ def test_agentic_stop_tool_calls_appends_prompt_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -949,7 +949,7 @@ def test_agentic_stop_tool_calls_appends_prompt_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1016,7 +1016,7 @@ def test_agentic_llm_judge_validator_e2e(tmp_path, doug_blog_dataset):
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1025,7 +1025,7 @@ def test_agentic_llm_judge_validator_e2e(tmp_path, doug_blog_dataset):
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1116,7 +1116,7 @@ def test_agentic_jev_judge_validator_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1125,7 +1125,7 @@ def test_agentic_jev_judge_validator_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1258,7 +1258,7 @@ def test_agentic_jev_bag_of_decisions_judge_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": query, "top_k": 5},
+                    "params": {"query": query, "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1267,7 +1267,7 @@ def test_agentic_jev_bag_of_decisions_judge_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": query, "top_k": 5},
+                    "params": {"query": query, "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1379,7 +1379,7 @@ def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1388,7 +1388,7 @@ def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1397,7 +1397,7 @@ def test_agentic_llm_judge_with_stop_tool_calls_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1483,7 +1483,7 @@ def test_agentic_llm_judge_max_runs_allows_stop_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1492,7 +1492,7 @@ def test_agentic_llm_judge_max_runs_allows_stop_e2e(tmp_path, doug_blog_dataset)
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": "salon chair", "top_k": 5},
+                    "params": {"query": "salon chair", "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1598,8 +1598,8 @@ def test_agentic_oracle_validator_max_runs_e2e(
     )
     mock_get_dataset.return_value = SimpleNamespace(corpus=corpus, judgments=judgments)
 
-    def search_bm25(*, keywords, top_k=5, agent_state=None):
-        return corpus.head(top_k).to_dict("records")
+    def search_bm25(*, query, limit=5, agent_state=None):
+        return corpus.head(limit).to_dict("records")
 
     mock_build_search_tools.return_value = [search_bm25]
     query = "test query"
@@ -1609,7 +1609,7 @@ def test_agentic_oracle_validator_max_runs_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": query, "top_k": 5},
+                    "params": {"query": query, "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1618,7 +1618,7 @@ def test_agentic_oracle_validator_max_runs_e2e(
             {
                 "function_call": {
                     "name": "search_bm25",
-                    "params": {"keywords": query, "top_k": 5},
+                    "params": {"query": query, "limit": 5},
                 }
             },
             {"output": {"ranked_results": doc_ids}},
@@ -1687,7 +1687,7 @@ def rerank_doug_blog(query, fielded_bm25, **kwargs):
         query,
         fields=['title^9.3', 'description^4.1'],
         operator='or',
-        top_k=5,
+        limit=5,
     )
     return [doc['id'] for doc in docs]
 """.lstrip(),
@@ -1734,7 +1734,7 @@ def test_agentic_codegen_tool_return_fields_validation_e2e(tmp_path):
     reranker_path.write_text(
         """
 def rerank_doug_blog(query, bm25, **kwargs):
-    docs = bm25(query, top_k=5)
+    docs = bm25(query, limit=5)
     return [doc['id'] for doc in docs]
 """.lstrip(),
         encoding="utf-8",
@@ -1782,7 +1782,7 @@ def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
         {
             "function_call": {
                 "name": "search",
-                "params": {"query": "salon chair", "top_k": 10},
+                "params": {"query": "salon chair", "limit": 10},
             }
         },
         {"output": {"ranked_results": doc_ids}},
@@ -1794,10 +1794,10 @@ def test_agentic_codegen_tool_e2e(tmp_path, doug_blog_dataset):
         """
 def rerank_wands(query, fielded_bm25, **kwargs):
     docs = fielded_bm25(
-        keywords=query,
+        query=query,
         fields=['title^9.3', 'description^4.1'],
         operator='or',
-        top_k=10,
+        limit=10,
     )
     return [doc['id'] for doc in docs]
 """.lstrip(),
@@ -1857,7 +1857,7 @@ def test_agentic_codegen_fixture_nonzero_e2e(
         {
             "function_call": {
                 "name": "search",
-                "params": {"query": "salon chair", "top_k": 5},
+                "params": {"query": "salon chair", "limit": 5},
             }
         },
         {"output": {"ranked_results": doc_ids}},

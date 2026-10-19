@@ -45,7 +45,7 @@ For each dataset query:
 
 1. The query is sent to the LLM with `system_prompt`.
 2. The LLM returns a structured `{query: "..."}` response.
-3. The generated query is passed to the configured tool with `top_k=k`.
+3. The generated query is passed to the configured tool with `limit=k`.
 4. Tool result IDs are mapped back to corpus rows.
 5. The rows and retrieval scores are evaluated by the standard runner.
 

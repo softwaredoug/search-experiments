@@ -19,27 +19,27 @@ def make_bm25_tool(
     b: float | None = None,
 ):
     def search_bm25(
-        keywords: Annotated[str, "Search query keywords.", "queen platform bed"],
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100.", 10] = 5,
+        query: Annotated[str, "Search query keywords.", "queen platform bed"],
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100.", 10] = 5,
         agent_state=None,
     ) -> list[dict[str, Union[str, int, float]]]:
         """Search a corpus using BM25 over title/description fields.
 
         Args:
-            keywords: The search query string.
-            top_k: The number of top results to return (max 100).
+            query: The search query string.
+            limit: The number of top results to return (max 100).
 
         Returns:
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
-        if top_k > 100:
-            raise ValueError("top_k must be <= 100")
+        if limit > 100:
+            raise ValueError("limit must be <= 100")
         bm25_scores = np.zeros(len(corpus))
         similarity = None
         if k1 is not None or b is not None:
             similarity = bm25_similarity(k1=k1 or 1.2, b=b or 0.75)
-        for term in snowball_tokenizer(keywords):
+        for term in snowball_tokenizer(query):
             if similarity is None:
                 bm25_scores += corpus["title_snowball"].array.score(term) * title_boost
                 bm25_scores += (
@@ -57,7 +57,7 @@ def make_bm25_tool(
                     * description_boost
                 )
 
-        top_k_indices = np.argsort(bm25_scores)[-top_k:][::-1]
+        top_k_indices = np.argsort(bm25_scores)[-limit:][::-1]
         bm25_scores = bm25_scores[top_k_indices]
         top_rows = corpus.iloc[top_k_indices].copy()
         top_rows.loc[:, "score"] = bm25_scores
@@ -123,7 +123,7 @@ def _ensure_field_indices(corpus, field_names: list[str]) -> None:
 
 def make_fielded_bm25_tool(corpus):
     def fielded_bm25(
-        keywords: Annotated[str, "Search query keywords."],
+        query: Annotated[str, "Search query keywords."],
         fields: Annotated[
             list[str], 'Fields to search, optionally weighted, e.g. "title^9.3".'
         ],
@@ -131,7 +131,7 @@ def make_fielded_bm25_tool(corpus):
             Literal["and", "or", "phrase"],
             "Term matching mode: all terms, any term, or the whole query phrase.",
         ] = "or",
-        top_k: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
+        limit: Annotated[int, "Maximum number of ranked results to return; at most 100."] = 5,
         k1: Annotated[float, "BM25 k1 parameter controlling term-frequency saturation."] = 1.2,
         b: Annotated[float, "BM25 b parameter controlling document-length normalization."] = 0.75,
         agent_state=None,
@@ -139,12 +139,12 @@ def make_fielded_bm25_tool(corpus):
         """Search a corpus using BM25 over weighted fields.
 
         Args:
-            keywords: The search query string.
+            query: The search query string.
             fields: Weighted fields to search, e.g. ["title^9.3", "description^4.1"].
             operator: How to combine search terms: and/or/phrase. AND requires every
                 term to appear in at least one field. PHRASE treats the entire query
                 as a phrase and scores the token list as a single term.
-            top_k: The number of top results to return (max 100).
+            limit: The number of top results to return (max 100).
             k1: BM25 k1 parameter.
             b: BM25 b parameter.
 
@@ -152,14 +152,14 @@ def make_fielded_bm25_tool(corpus):
             Search results as a list of dictionaries with 'id', 'title',
             'description', and 'score' keys.
         """
-        if top_k > 100:
-            raise ValueError("top_k must be <= 100")
+        if limit > 100:
+            raise ValueError("limit must be <= 100")
         if not isinstance(fields, list):
             raise ValueError("fields must be a list of weighted field strings.")
         parsed_fields = _parse_weighted_fields(fields)
         _ensure_field_indices(corpus, [field for field, _ in parsed_fields])
 
-        query_tokens = snowball_tokenizer(keywords)
+        query_tokens = snowball_tokenizer(query)
         scores = np.zeros(len(corpus))
         similarity = bm25_similarity(k1=k1, b=b)
         require_mask = None
@@ -192,7 +192,7 @@ def make_fielded_bm25_tool(corpus):
             elif operator != "or":
                 raise ValueError("operator must be 'and', 'or', or 'phrase'")
 
-        top_k_indices = np.argsort(scores)[-top_k:][::-1]
+        top_k_indices = np.argsort(scores)[-limit:][::-1]
         scores = scores[top_k_indices]
         top_rows = corpus.iloc[top_k_indices].copy()
         top_rows.loc[:, "score"] = scores

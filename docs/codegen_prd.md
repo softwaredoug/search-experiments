@@ -81,7 +81,7 @@ def reranker(query, top_k, fielded_bm25, **kwargs):
         query,
         fields=['title^9.3', 'description^4.1'],
         operator='or',
-        top_k=top_k,
+        limit=top_k,
     )
     return [doc['id'] for doc in docs]
 ```
@@ -164,7 +164,7 @@ def reranker(query, top_k, fielded_bm25):
         query,
         fields=['title^9.3', 'description^4.1'],
         operator='or',
-        top_k=top_k,
+        limit=top_k,
     )
     return [doc['id'] for doc in docs]
 """
@@ -403,10 +403,10 @@ strategy:
       start_code: |
         def rerank(query, fielded_bm25, **kwargs):
             docs = fielded_bm25(
-                keywords=query,
+                query=query,
                 fields=['title^9.3', 'description^4.1'],
                 operator='and',
-                top_k=10,
+                limit=10,
             )
             return [doc['id'] for doc in docs]
 ```

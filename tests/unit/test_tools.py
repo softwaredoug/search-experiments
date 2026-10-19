@@ -4,8 +4,11 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from searcharray import SearchArray
 from cheat_at_search.agent.sid_legacy_tool import format_tool_schema, tool_schema
 from cheat_at_search.agent.pydantize import make_tool_adapter
+from cheat_at_search.agent.sid_tools import build_sid2_tool_config
+from cheat_at_search.tokenizers import snowball_tokenizer
 
 from exps.strategies.bm25 import BM25Strategy
 from exps import tools as tools_mod
@@ -35,8 +38,10 @@ def test_bm25_tool_annotations_become_openai_parameter_descriptions():
 
     _, bm25_spec, _ = make_tool_adapter(tools_mod.make_bm25_tool(corpus))
     bm25_properties = bm25_spec["parameters"]["properties"]
-    assert bm25_properties["keywords"]["description"] == "Search query keywords."
-    assert "at most 100" in bm25_properties["top_k"]["description"]
+    assert bm25_properties["query"]["description"] == "Search query keywords."
+    assert "at most 100" in bm25_properties["limit"]["description"]
+    assert "keywords" not in bm25_properties
+    assert "top_k" not in bm25_properties
 
     _, fielded_spec, _ = make_tool_adapter(tools_mod.make_fielded_bm25_tool(corpus))
     fielded_properties = fielded_spec["parameters"]["properties"]
@@ -57,8 +62,8 @@ def test_sid_tool_examples_use_annotated_argument_examples():
     bm25_example = format_tool_schema(tool_schema(tools[0]))
     read_example = format_tool_schema(tool_schema(tools[1]))
 
-    assert '"keywords": "queen platform bed"' in bm25_example
-    assert '"top_k": 10' in bm25_example
+    assert '"query": "queen platform bed"' in bm25_example
+    assert '"limit": 10' in bm25_example
     assert '"id": "document_id_from_search"' in read_example
     assert "<tool_call>" in bm25_example
     assert "</tool_call>" in read_example
@@ -72,6 +77,10 @@ def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
             "description": ["A blue desk chair."],
             "category": ["Furniture"],
         }
+    )
+    corpus["title_snowball"] = SearchArray.index(corpus["title"], snowball_tokenizer)
+    corpus["description_snowball"] = SearchArray.index(
+        corpus["description"], snowball_tokenizer
     )
     tool = tools_mod.build_search_tools(
         corpus,
@@ -88,8 +97,13 @@ def test_search_tool_wrappers_preserve_annotated_parameter_descriptions():
     _, tool_spec, _ = make_tool_adapter(tool)
     properties = tool_spec["parameters"]["properties"]
     assert tool.aliases == ["text_search"]
-    assert properties["keywords"]["description"] == "Search query keywords."
-    assert "at most 100" in properties["top_k"]["description"]
+    assert properties["query"]["description"] == "Search query keywords."
+    assert "at most 100" in properties["limit"]["description"]
+    assert "keywords" not in properties
+    assert "top_k" not in properties
+
+    # Old generated callers remain executable, while the exposed schema stays canonical.
+    assert tool(keywords="blue chair", top_k=1)[0]["id"] == 1
 
 
 def test_search_tool_families_receive_sid2_aliases(monkeypatch):
@@ -105,6 +119,15 @@ def test_search_tool_families_receive_sid2_aliases(monkeypatch):
         ["text_search"],
         ["text_search"],
     ]
+    sid_specs, sid_examples = build_sid2_tool_config([text_tools[0]])
+    sid_properties = sid_specs[0]["parameters"]["properties"]
+    assert sid_specs[0]["name"] == "text_search"
+    assert "query" in sid_properties and "limit" in sid_properties
+    assert "keywords" not in sid_properties and "top_k" not in sid_properties
+    assert sid_examples[0]["arguments"] == {
+        "query": "queen platform bed",
+        "limit": 10,
+    }
 
     monkeypatch.setattr(
         "exps.tools.embeddings.load_or_create_embeddings",
@@ -112,6 +135,18 @@ def test_search_tool_families_receive_sid2_aliases(monkeypatch):
     )
     embedding_tools = tools_mod.build_search_tools(corpus, ["minilm"])
     assert embedding_tools[0].aliases == ["search"]
+    _, embedding_spec, _ = make_tool_adapter(embedding_tools[0])
+    embedding_properties = embedding_spec["parameters"]["properties"]
+    assert "query" in embedding_properties
+    assert "limit" in embedding_properties
+    assert "question" not in embedding_properties
+    assert "top_k" not in embedding_properties
+    assert embedding_tools[0](question="alpha", top_k=1)[0]["id"] == 1
+    sid_specs, _ = build_sid2_tool_config([embedding_tools[0]])
+    sid_properties = sid_specs[0]["parameters"]["properties"]
+    assert sid_specs[0]["name"] == "search"
+    assert "query" in sid_properties and "limit" in sid_properties
+    assert "question" not in sid_properties and "top_k" not in sid_properties
 
     expected_aliases = {
         "bm25": ["text_search"],
@@ -171,12 +206,12 @@ def test_guard_disallow_similar_queries():
     assert err is None
 
 
-def test_guarded_tool_limits_top_k():
-    def _tool(query: str, top_k: int, agent_state=None):
-        return [{"id": 1, "title": query, "description": "", "score": float(top_k)}]
+def test_guarded_tool_limits_result_limit():
+    def _tool(query: str, limit: int, agent_state=None):
+        return [{"id": 1, "title": query, "description": "", "score": float(limit)}]
 
     guarded = tools_mod.make_guarded_search_tool(_tool)
-    err = guarded("chair", top_k=101)
+    err = guarded("chair", limit=101)
     assert isinstance(err, str)
 
 
@@ -231,8 +266,11 @@ def rerank_wands(query, **kwargs):
     assert len(tools) == 1
     tool = tools[0]
     assert tool.__name__ == "search"
+    _, tool_spec, _ = make_tool_adapter(tool)
+    assert "limit" in tool_spec["parameters"]["properties"]
+    assert "top_k" not in tool_spec["parameters"]["properties"]
 
-    results = tool("chair", top_k=2)
+    results = tool("chair", limit=2)
     assert isinstance(results, list)
     assert len(results) == 2
     assert results[0]["id"] == 102
@@ -301,10 +339,10 @@ def test_fielded_bm25_matches_bm25_strategy():
 
     indices, scores = strategy.search(query, k=3)
     tool_results = tool(
-        keywords=query,
+        query=query,
         fields=["title^9.3", "description^4.1"],
         operator="or",
-        top_k=3,
+        limit=3,
         k1=1.2,
         b=0.75,
     )
@@ -325,9 +363,9 @@ def test_fielded_bm25_returns_image_url():
         }
     )
     results = tools_mod.make_fielded_bm25_tool(corpus)(
-        keywords="blue chair",
+        query="blue chair",
         fields=["title", "description"],
-        top_k=1,
+        limit=1,
     )
     assert results[0]["image_url"] == "https://example.test/chair.jpg"
 
@@ -346,10 +384,10 @@ def test_fielded_bm25_phrase_operator():
     )
     tool = tools_mod.make_fielded_bm25_tool(corpus)
     results = tool(
-        keywords="blue chair",
+        query="blue chair",
         fields=["title^9.3", "description^4.1"],
         operator="phrase",
-        top_k=3,
+        limit=3,
     )
     assert isinstance(results, list)
     assert len(results) == 3
@@ -365,10 +403,10 @@ def test_fielded_bm25_accepts_structured_fields():
     )
     tool = tools_mod.make_fielded_bm25_tool(corpus)
     results = tool(
-        keywords="blue chair",
+        query="blue chair",
         fields=[{"field": "title", "weight": 9.3}, {"description": 4.1}],
         operator="or",
-        top_k=2,
+        limit=2,
     )
     assert isinstance(results, list)
     assert len(results) == 2
@@ -384,13 +422,41 @@ def test_fielded_bm25_accepts_unweighted_fields():
     )
     tool = tools_mod.make_fielded_bm25_tool(corpus)
     results = tool(
-        keywords="blue chair",
+        query="blue chair",
         fields=["title"],
         operator="or",
-        top_k=2,
+        limit=2,
     )
     assert isinstance(results, list)
     assert len(results) == 2
+
+
+@patch("exps.tools.wands.load_or_create_embeddings")
+@patch("exps.tools.wands.load_model")
+def test_wands_embedding_tool_accepts_query_without_prefix(
+    mock_load_model,
+    mock_load_or_create_embeddings,
+):
+    corpus = pd.DataFrame(
+        {
+            "doc_id": [1],
+            "title": ["Blue chair"],
+            "description": ["A blue desk chair."],
+            "category": ["Furniture"],
+        }
+    )
+    model = _FakeMinilm()
+    mock_load_or_create_embeddings.return_value = (
+        np.array([[0.0, 1.0]]),
+        model,
+    )
+    mock_load_model.return_value = model
+
+    tool = tools_mod.make_wands_embedding_tool(corpus)
+    results = tool(query="blue chair", limit=1)
+
+    assert len(results) == 1
+    assert results[0]["id"] == 1
 
 
 def test_codegen_tool_missing_dependencies_raises(tmp_path):
