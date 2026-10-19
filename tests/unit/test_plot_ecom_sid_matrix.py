@@ -9,12 +9,12 @@ from scripts.plot_ecom_sid_matrix import (
     STRATEGIES,
     _pareto_front,
     _read_mean_ndcg,
-    _read_mean_tool_calls,
+    _read_mean_output_tokens,
     main,
 )
 
 
-def test_matrix_includes_full_gpt5_and_gpt5_mini_tool_variants():
+def test_matrix_includes_full_gpt5_and_gpt5_mini_variants():
     strategy_labels = dict(STRATEGIES)
 
     assert strategy_labels["agentic_bm25_ecommerce"] == "GPT-5 · BM25"
@@ -98,7 +98,7 @@ def test_read_mean_ndcg_reports_missing_strategy_results(tmp_path):
         _read_mean_ndcg(summary_path)
 
 
-def test_read_mean_tool_calls_ignores_missing_resource_values(tmp_path):
+def test_read_mean_output_tokens_ignores_missing_resource_values(tmp_path):
     summary_path = tmp_path / "summary.csv"
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
@@ -107,7 +107,7 @@ def test_read_mean_tool_calls_ignores_missing_resource_values(tmp_path):
                 "dataset",
                 "strategy_name",
                 "metric_name",
-                "mean_resource.tool_calls",
+                "mean_resource.output_tokens",
             ],
         )
         writer.writeheader()
@@ -116,7 +116,7 @@ def test_read_mean_tool_calls_ignores_missing_resource_values(tmp_path):
                 "dataset": "wands",
                 "strategy_name": "bm25",
                 "metric_name": "NDCG",
-                "mean_resource.tool_calls": "",
+                "mean_resource.output_tokens": "",
             }
         )
         writer.writerow(
@@ -124,22 +124,22 @@ def test_read_mean_tool_calls_ignores_missing_resource_values(tmp_path):
                 "dataset": "wands",
                 "strategy_name": "agentic_ecom_sid_bm25_medium",
                 "metric_name": "NDCG",
-                "mean_resource.tool_calls": "2",
+                "mean_resource.output_tokens": "256",
             }
         )
 
-    assert _read_mean_tool_calls(summary_path) == {
-        ("wands", "agentic_ecom_sid_bm25_medium"): 2.0
+    assert _read_mean_output_tokens(summary_path) == {
+        ("wands", "agentic_ecom_sid_bm25_medium"): 256.0
     }
 
 
-def test_pareto_front_uses_higher_quality_and_lower_resource_cost():
+def test_pareto_front_uses_higher_quality_and_lower_output_tokens():
     points = [
-        {"strategy": "a", "mean_ndcg": 0.5, "mean_resource.tool_calls": 1.0},
-        {"strategy": "b", "mean_ndcg": 0.6, "mean_resource.tool_calls": 3.0},
-        {"strategy": "c", "mean_ndcg": 0.7, "mean_resource.tool_calls": 2.0},
-        {"strategy": "d", "mean_ndcg": 0.4, "mean_resource.tool_calls": 4.0},
-        {"strategy": "e", "mean_ndcg": 0.5, "mean_resource.tool_calls": 2.0},
+        {"strategy": "a", "mean_ndcg": 0.5, "mean_resource.output_tokens": 100.0},
+        {"strategy": "b", "mean_ndcg": 0.6, "mean_resource.output_tokens": 300.0},
+        {"strategy": "c", "mean_ndcg": 0.7, "mean_resource.output_tokens": 200.0},
+        {"strategy": "d", "mean_ndcg": 0.4, "mean_resource.output_tokens": 400.0},
+        {"strategy": "e", "mean_ndcg": 0.5, "mean_resource.output_tokens": 200.0},
     ]
 
     assert [point["strategy"] for point in _pareto_front(points)] == ["a", "c"]
@@ -157,7 +157,7 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                 "strategy_name",
                 "metric_name",
                 "mean_ndcg",
-                "mean_resource.tool_calls",
+                "mean_resource.output_tokens",
             ],
         )
         writer.writeheader()
@@ -169,7 +169,7 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                         "strategy_name": strategy,
                         "metric_name": "NDCG",
                         "mean_ndcg": 0.3,
-                        "mean_resource.tool_calls": 2,
+                        "mean_resource.output_tokens": 200,
                     }
                 )
     output_prefix = tmp_path / "plots" / "sid_matrix"
@@ -194,3 +194,40 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
         tmp_path / "plots" / "sid_matrix_pareto_esci.png",
     ]
     assert all(path.is_file() and path.stat().st_size > 0 for path in output_paths)
+
+
+def test_main_accepts_separate_pareto_input(tmp_path, monkeypatch):
+    retrieval_input = tmp_path / "full.csv"
+    pareto_input = tmp_path / "spotcheck.csv"
+    output_prefix = tmp_path / "plots" / "sid_matrix"
+    seen = []
+    monkeypatch.setattr(
+        "scripts.plot_ecom_sid_matrix.plot_results",
+        lambda path, _output, dataset: seen.append(("retrieval", path, dataset)),
+    )
+    monkeypatch.setattr(
+        "scripts.plot_ecom_sid_matrix.plot_pareto_results",
+        lambda path, _output, dataset: seen.append(("pareto", path, dataset)),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "plot_ecom_sid_matrix.py",
+            "--input",
+            str(retrieval_input),
+            "--pareto-input",
+            str(pareto_input),
+            "--output-prefix",
+            str(output_prefix),
+        ],
+    )
+
+    main()
+
+    assert seen == [
+        ("retrieval", retrieval_input, "wands"),
+        ("pareto", pareto_input, "wands"),
+        ("retrieval", retrieval_input, "esci"),
+        ("pareto", pareto_input, "esci"),
+    ]

@@ -80,30 +80,35 @@ def _read_mean_ndcg(
     return means
 
 
-def _read_mean_tool_calls(path: Path) -> dict[tuple[str, str], float]:
+def _read_mean_output_tokens(path: Path) -> dict[tuple[str, str], float]:
     totals: dict[tuple[str, str], list[float]] = defaultdict(list)
     strategy_names = {name for name, _ in STRATEGIES}
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        required = {"dataset", "strategy_name", "metric_name", "mean_resource.tool_calls"}
+        required = {
+            "dataset",
+            "strategy_name",
+            "metric_name",
+            "mean_resource.output_tokens",
+        }
         if not reader.fieldnames or not required.issubset(reader.fieldnames):
             raise ValueError(f"{path} must contain {', '.join(sorted(required))} columns.")
         for row in reader:
             dataset = row["dataset"]
             strategy = row["strategy_name"]
-            calls = row["mean_resource.tool_calls"]
+            output_tokens = row["mean_resource.output_tokens"]
             if (
                 dataset not in DATASETS
                 or strategy not in strategy_names
                 or row["metric_name"].lower() != "ndcg"
-                or not calls
+                or not output_tokens
             ):
                 continue
             try:
-                totals[(dataset, strategy)].append(float(calls))
+                totals[(dataset, strategy)].append(float(output_tokens))
             except (TypeError, ValueError) as exc:
                 raise ValueError(
-                    f"Invalid mean_resource.tool_calls for dataset={dataset!r}, "
+                    f"Invalid mean_resource.output_tokens for dataset={dataset!r}, "
                     f"strategy={strategy!r}."
                 ) from exc
 
@@ -117,24 +122,26 @@ def _read_mean_tool_calls(path: Path) -> dict[tuple[str, str], float]:
 def _pareto_front(
     points: list[dict[str, float | str]],
 ) -> list[dict[str, float | str]]:
-    """Return points not dominated on retrieval (higher) and tool calls (lower)."""
+    """Return points not dominated on retrieval (higher) and output tokens (lower)."""
     frontier = []
     for point in points:
         ndcg = float(point["mean_ndcg"])
-        calls = float(point["mean_resource.tool_calls"])
+        output_tokens = float(point["mean_resource.output_tokens"])
         dominated = any(
             float(other["mean_ndcg"]) >= ndcg
-            and float(other["mean_resource.tool_calls"]) <= calls
+            and float(other["mean_resource.output_tokens"]) <= output_tokens
             and (
                 float(other["mean_ndcg"]) > ndcg
-                or float(other["mean_resource.tool_calls"]) < calls
+                or float(other["mean_resource.output_tokens"]) < output_tokens
             )
             for other in points
             if other is not point
         )
         if not dominated:
             frontier.append(point)
-    return sorted(frontier, key=lambda point: float(point["mean_resource.tool_calls"]))
+    return sorted(
+        frontier, key=lambda point: float(point["mean_resource.output_tokens"])
+    )
 
 
 def _avoid_label_overlaps(annotations, ax, fig) -> None:
@@ -216,7 +223,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
     import matplotlib.pyplot as plt
 
     means = _read_mean_ndcg(input_path, allow_missing=True)
-    tool_calls = _read_mean_tool_calls(input_path)
+    output_tokens = _read_mean_output_tokens(input_path)
     if dataset not in DATASETS:
         raise ValueError(f"Unsupported dataset {dataset!r}; expected one of {DATASETS}.")
     labels = dict(STRATEGIES)
@@ -234,10 +241,10 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
             "strategy": strategy,
             "label": labels[strategy],
             "mean_ndcg": means[(dataset, strategy)],
-            "mean_resource.tool_calls": tool_calls[(dataset, strategy)],
+            "mean_resource.output_tokens": output_tokens[(dataset, strategy)],
         }
         for strategy, _ in PARETO_STRATEGIES
-        if (dataset, strategy) in tool_calls and (dataset, strategy) in means
+        if (dataset, strategy) in output_tokens and (dataset, strategy) in means
     ]
     frontier = _pareto_front(points)
     frontier_names = {str(point["strategy"]) for point in frontier}
@@ -245,10 +252,10 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
     annotations = []
     for point in points:
         ndcg = float(point["mean_ndcg"])
-        calls = float(point["mean_resource.tool_calls"])
+        tokens = float(point["mean_resource.output_tokens"])
         is_frontier = str(point["strategy"]) in frontier_names
         ax.scatter(
-            calls,
+            tokens,
             ndcg,
             color="#F58518" if is_frontier else "#9E9E9E",
             s=55,
@@ -257,7 +264,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         annotations.append(
             ax.annotate(
                 pareto_labels[str(point["strategy"])],
-                (calls, ndcg),
+                (tokens, ndcg),
                 textcoords="offset points",
                 xytext=(5, 5),
                 ha="left",
@@ -266,7 +273,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         )
     if frontier:
         ax.plot(
-            [float(point["mean_resource.tool_calls"]) for point in frontier],
+            [float(point["mean_resource.output_tokens"]) for point in frontier],
             [float(point["mean_ndcg"]) for point in frontier],
             color="#F58518",
             linewidth=2,
@@ -274,28 +281,23 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
             zorder=4,
         )
     if not points:
-        raise ValueError(f"No NDCG and tool-call results found for dataset={dataset!r}.")
+        raise ValueError(
+            f"No NDCG and output-token results found for dataset={dataset!r}."
+        )
     ax.set_title(dataset.upper())
-    ax.set_xlabel("Mean Tool Calls per Query (lower is better)")
+    ax.set_xlabel("Mean Reasoning + Output Tokens per Query (lower is better)")
     ax.set_ylabel("Mean NDCG (higher is better)")
     ax.grid(linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
-    fig.suptitle("GPT-5-mini and SID-2 tool-call Pareto frontier")
-    missing = [
+    fig.suptitle("GPT-5-mini and SID-2 reasoning + output token Pareto frontier")
+    excluded = [
         labels[strategy]
         for strategy, _ in STRATEGIES
-        if (dataset, strategy) not in means
-    ]
-    omitted = [
-        labels[strategy]
-        for strategy, _ in STRATEGIES
-        if (dataset, strategy) in means and (dataset, strategy) not in tool_calls
+        if (dataset, strategy) not in means or (dataset, strategy) not in output_tokens
     ]
     notes = []
-    if omitted:
-        notes.append(f"No tool-call data: {', '.join(omitted)}")
-    if missing:
-        notes.append(f"Missing results: {', '.join(missing)}")
+    if excluded:
+        notes.append(f"Excluded from token Pareto: {', '.join(excluded)}")
     if notes:
         fig.text(0.5, 0.01, "; ".join(notes), ha="center", fontsize=8)
     fig.tight_layout(rect=(0, 0.05 if notes else 0, 1, 0.96))
@@ -307,11 +309,19 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Plot e-commerce SID matrix retrieval quality and tool-call Pareto."
+        description=(
+            "Plot e-commerce SID matrix retrieval quality and output-token Pareto."
+        )
     )
     parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument(
+        "--pareto-input",
+        type=Path,
+        help="Optional CSV containing the metrics used for Pareto plots.",
+    )
     parser.add_argument("--output-prefix", type=Path, required=True)
     args = parser.parse_args()
+    pareto_input = args.pareto_input or args.input
     prefix = args.output_prefix
     if prefix.suffix:
         prefix = prefix.with_suffix("")
@@ -319,7 +329,7 @@ def main() -> None:
         retrieval_output = prefix.parent / f"{prefix.name}_{dataset}.png"
         pareto_output = prefix.parent / f"{prefix.name}_pareto_{dataset}.png"
         plot_results(args.input, retrieval_output, dataset)
-        plot_pareto_results(args.input, pareto_output, dataset)
+        plot_pareto_results(pareto_input, pareto_output, dataset)
         print(f"Wrote {retrieval_output}")
         print(f"Wrote {pareto_output}")
 

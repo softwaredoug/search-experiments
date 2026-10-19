@@ -23,10 +23,11 @@ E5 reaches the highest score overall (0.4537).
 
 ![WANDS retrieval quality by variant](../../assets/ecom_sid_matrix_wands.png)
 
-The Pareto graphs compare GPT-5-mini and SID-2; the full GPT-5 variants are
-omitted.
+The Pareto graphs compare GPT-5-mini and SID-2 by mean generated tokens. Full
+GPT-5 retrieval metrics remain in the chart and table below, but are omitted from
+the token Pareto comparison.
 
-![WANDS retrieval and tool-call Pareto graph](../../assets/ecom_sid_matrix_pareto_wands.png)
+![WANDS retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_wands.png)
 
 | Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query |
 | --- | ---: | ---: | ---: | ---: |
@@ -52,7 +53,7 @@ NDCG increases from 0.5992 to 0.6120, and mean calls increase from 2.217 to
 
 ![ESCI retrieval quality by variant](../../assets/ecom_sid_matrix_esci.png)
 
-![ESCI retrieval and tool-call Pareto graph](../../assets/ecom_sid_matrix_pareto_esci.png)
+![ESCI retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_esci.png)
 
 | Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query |
 | --- | ---: | ---: | ---: | ---: |
@@ -74,10 +75,14 @@ increasing from 1.311 to 2.131. Medium and high reasoning do not improve on the
 low-reasoning scores.
 
 `—` means the run did not report tool-call resource statistics. NDCG values are
-rounded to four decimal places; tool-call statistics are rounded to three.
-Tool calls are the available resource measure here; the CSV does not report
-dollar cost, token usage, or latency. It records one summary row per dataset and
-variant, with each row's run commit SHA.
+rounded to four decimal places; tool-call statistics are rounded to three. The
+token Pareto graphs use a 10-query spot check in
+[`ecom_sid_matrix_token_spotcheck.csv`](../results/ecom_sid_matrix_token_spotcheck.csv).
+Their x-axis is mean `output_tokens` per query, which includes reasoning tokens.
+The retrieval tables and charts use the full-run results in
+[`ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv). The historical GPT-5
+rows retain their retrieval metrics but do not have spot-check token data, so
+they are excluded from the token Pareto graphs.
 
 ## Configuration and reproduction
 
@@ -90,28 +95,36 @@ and [`configs/ecom_agentic/`](../../configs/ecom_agentic/).
 
 The machine-readable results are in
 [`research/results/ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv).
-The runner uses eight workers by default, seed 42, all WANDS queries, and a
-1,000-query ESCI sample. To regenerate the four graphs from the existing CSV
+The runner uses eight workers by default and seed 42. To regenerate retrieval
+charts from the full-run CSV and Pareto charts from the token spot-check CSV
 without running models:
 
 ```bash
 uv run python scripts/plot_ecom_sid_matrix.py \
   --input research/results/ecom_sid_matrix.csv \
+  --pareto-input research/results/ecom_sid_matrix_token_spotcheck.csv \
   --output-prefix assets/ecom_sid_matrix
 ```
 
-To refresh just the SID results, preserving non-SID rows and bypassing the SID
-result cache:
+To refresh GPT-5-mini and SID results, preserving BM25 and full GPT-5 rows while
+bypassing the refreshed strategies' result caches, use the following spot-check
+settings:
 
 ```bash
+ESCI_NUM_QUERIES=10 WANDS_NUM_QUERIES=10 \
+RESULTS_CSV=research/results/ecom_sid_matrix_token_spotcheck.csv \
+PLOT_OUTPUT_PREFIX=/tmp/ecom_sid_matrix_token_spotcheck \
 RERUN_SID_VARIANTS=true ./scripts/run_ecom_sid_matrix.sh
 ```
 
-The runner writes the refreshed CSV and regenerates all four graphs. Running the
-full matrix also runs the GPT-5 and GPT-5-mini variants. Set
-`RERUN_SID_VARIANTS=false` in the script before that run and remove any later
-local override of the flag. `NO_CACHE=true` bypasses the result cache for all
-selected variants and can incur new OpenAI API usage.
+This produces the 10-query token CSV without changing the full-run result CSV.
+Then rerun the plotting command above to write the retrieval charts and the
+token Pareto charts to the report assets. The runner's matrix configurations are
+BM25, GPT-5-mini, and SID; it does not rerun full GPT-5. Existing full GPT-5
+result rows are preserved for the retrieval chart and table. Setting
+`RERUN_SID_VARIANTS=false` runs BM25, GPT-5-mini, and SID variants. `NO_CACHE=true`
+bypasses result caches for all selected variants and can incur new model API
+usage.
 
 ## Related search learning material
 
