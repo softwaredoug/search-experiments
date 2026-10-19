@@ -285,5 +285,13 @@ def test_empty_generated_decisions_leave_retrieval_scores_unchanged():
 )
 def test_invalid_configuration_is_rejected(section, updates, error):
     overrides = {f"{section}_overrides": updates}
-    with pytest.raises(ValueError, match=error):
+    with (
+        patch("exps.bag_of_decisions.decision_generator.AutoEnricher"),
+        patch(
+            "exps.bag_of_decisions.decision_reranker.key_for_provider",
+            return_value="typesafe-test-key",
+        ),
+        patch("exps.bag_of_decisions.decision_reranker.TypeSafeClient"),
+        pytest.raises(ValueError, match=error),
+    ):
         BagOfDecisionsStrategy.build(_params(**overrides), corpus=_corpus())

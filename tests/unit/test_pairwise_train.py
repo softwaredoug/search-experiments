@@ -113,7 +113,8 @@ def test_pairwise_feature_uses_configured_empty_value_for_empty_prompt_inputs(em
             self.prompt = prompt
             return SimpleNamespace(outcome="lhs")
 
-    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
+    with patch("exps.judge.pairwise_train.LLMPairwiseJudgeEngine"):
+        feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
     engine = CapturingEngine()
     feature_computer._judge(
         feature_computer.features[0],
@@ -145,7 +146,8 @@ def test_pairwise_feature_defaults_empty_prompt_values_to_unknown():
             self.prompt = prompt
             return SimpleNamespace(outcome="lhs")
 
-    feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
+    with patch("exps.judge.pairwise_train.LLMPairwiseJudgeEngine"):
+        feature_computer = PairwiseFeatureComputer(corpus=corpus, features=features)
     engine = CapturingEngine()
     feature_computer._judge(
         feature_computer.features[0],
