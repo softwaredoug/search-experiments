@@ -257,7 +257,7 @@ used in e-commerce). This script outputs, for each variant config yml a CSV with
 Graphs are intended to be some kind of line graph. And we should generate a couple types of graphs
 
 - Retrieval: on LHS the worst variants, on RHS the best variants. Primarilly of NDCG unless otherwise requested
-- Pareto graph: x-axis would be retrieval, y-axis would be resources - whatever is relevant to the experiments
+- Pareto graph: x-axis would be resources, y-axis would be retrieval - whatever is relevant to the experiments
   being run
 
 #### Retrieval graph

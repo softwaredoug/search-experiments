@@ -125,7 +125,7 @@ def _pareto_front(
         )
         if not dominated:
             frontier.append(point)
-    return sorted(frontier, key=lambda point: float(point["mean_ndcg"]))
+    return sorted(frontier, key=lambda point: float(point["mean_resource.tool_calls"]))
 
 
 def _avoid_label_overlaps(annotations, ax, fig) -> None:
@@ -239,8 +239,8 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         calls = float(point["mean_resource.tool_calls"])
         is_frontier = str(point["strategy"]) in frontier_names
         ax.scatter(
-            ndcg,
             calls,
+            ndcg,
             color="#F58518" if is_frontier else "#9E9E9E",
             s=55,
             zorder=3 if is_frontier else 2,
@@ -248,7 +248,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         annotations.append(
             ax.annotate(
                 pareto_labels[str(point["strategy"])],
-                (ndcg, calls),
+                (calls, ndcg),
                 textcoords="offset points",
                 xytext=(5, 5),
                 ha="left",
@@ -257,8 +257,8 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         )
     if frontier:
         ax.plot(
-            [float(point["mean_ndcg"]) for point in frontier],
             [float(point["mean_resource.tool_calls"]) for point in frontier],
+            [float(point["mean_ndcg"]) for point in frontier],
             color="#F58518",
             linewidth=2,
             marker="o",
@@ -267,8 +267,8 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
     if not points:
         raise ValueError(f"No NDCG and tool-call results found for dataset={dataset!r}.")
     ax.set_title(dataset.upper())
-    ax.set_xlabel("Mean NDCG (higher is better)")
-    ax.set_ylabel("Mean Tool Calls per Query (lower is better)")
+    ax.set_xlabel("Mean Tool Calls per Query (lower is better)")
+    ax.set_ylabel("Mean NDCG (higher is better)")
     ax.grid(linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
     fig.suptitle("E-commerce tool-call Pareto frontier")
