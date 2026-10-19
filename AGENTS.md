@@ -18,6 +18,10 @@ or numpy code when possible. Don't do pandas noob things unless it can be avoide
 - SID.ai is an agentic search model, built explicitly to work well with search tools. However its not a clean drop-in
   replacement for an OpenAI Agent. There are subtleties in using it. Read its documentation here:
   https://platform.sid.ai/docs/build
+  (SID-2 is the latest version, in research preview, here https://platform.sid.ai/docs/research-preview/sid-2) 
+
+  SID-1 is considered legacy, SID-2 is the current version and what we mean when we say "SID"
+
 
 ## Testing practices
 
