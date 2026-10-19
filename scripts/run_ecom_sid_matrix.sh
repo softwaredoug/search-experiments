@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/research/results/ecom_sid_matrix.csv}"
 PLOT_OUTPUT_PREFIX="${PLOT_OUTPUT_PREFIX:-${ROOT_DIR}/assets/ecom_sid_matrix}"
 WORKERS="${WORKERS:-8}"
+GPT5_WORKERS="${GPT5_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
 NO_CACHE="${NO_CACHE:-false}"
@@ -87,13 +88,17 @@ fi
 for dataset in "${DATASETS[@]}"; do
   for config in "${CONFIGS[@]}"; do
     strategy="${ROOT_DIR}/${config}"
+    workers="${WORKERS}"
+    if [[ "${config}" == *gpt5* ]]; then
+      workers="${GPT5_WORKERS}"
+    fi
 
-    echo "Running ${config} on ${dataset} with ${WORKERS} worker(s)"
+    echo "Running ${config} on ${dataset} with ${workers} worker(s)"
     run_args=(
       uv run run
       --strategy "${strategy}"
       --dataset "${dataset}"
-      --workers "${WORKERS}"
+      --workers "${workers}"
       --seed "${SEED}"
       --summary-csv "${RESULTS_CSV}"
     )
