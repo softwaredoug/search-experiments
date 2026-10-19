@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${ROOT_DIR}/research/results/ecom_sid_matrix.csv"
 PLOT_OUTPUT="${ROOT_DIR}/assets/ecom_sid_matrix.png"
+PARETO_OUTPUT="${ROOT_DIR}/assets/ecom_sid_matrix_pareto.png"
 WORKERS="${WORKERS:-8}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
@@ -13,6 +14,8 @@ WANDS_NUM_QUERIES="${WANDS_NUM_QUERIES:-}"
 
 CONFIGS=(
   "configs/ecom_base/bm25.yml"
+  "configs/agentic_ecom_bm25_gpt5.yml"
+  "configs/ecom_agentic/agentic_ecom_2tools_gpt5.yml"
   "configs/ecom_agentic/agentic_ecom_bm25_gpt5_mini.yml"
   "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt5_mini.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_low.yml"
@@ -60,7 +63,9 @@ done
 
 uv run python "${ROOT_DIR}/scripts/plot_ecom_sid_matrix.py" \
   --input "${RESULTS_CSV}" \
-  --output "${PLOT_OUTPUT}"
+  --output "${PLOT_OUTPUT}" \
+  --pareto-output "${PARETO_OUTPUT}"
 
 echo "Wrote ${RESULTS_CSV}"
 echo "Wrote ${PLOT_OUTPUT}"
+echo "Wrote ${PARETO_OUTPUT}"
