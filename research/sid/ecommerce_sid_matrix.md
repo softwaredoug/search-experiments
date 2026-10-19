@@ -21,6 +21,9 @@ E5 reaches the highest score overall (0.4537).
 
 ![WANDS retrieval quality by variant](../../assets/ecom_sid_matrix_wands.png)
 
+The Pareto graphs compare GPT-5-mini and SID-2; the full GPT-5 variants are
+omitted.
+
 ![WANDS retrieval and tool-call Pareto graph](../../assets/ecom_sid_matrix_pareto_wands.png)
 
 | Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query |

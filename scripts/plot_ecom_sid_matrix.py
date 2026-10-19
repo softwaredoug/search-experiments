@@ -24,6 +24,15 @@ STRATEGIES = (
     ),
     ("agentic_ecom_sid_bm25_e5_base_v2_high", "SID-2 · BM25 + E5 · high"),
 )
+GPT5_STRATEGIES = frozenset(
+    {
+        "agentic_bm25_ecommerce",
+        "agentic_bm25_e5_ecommerce_gpt5",
+    }
+)
+PARETO_STRATEGIES = tuple(
+    strategy for strategy in STRATEGIES if strategy[0] not in GPT5_STRATEGIES
+)
 
 
 def _read_mean_ndcg(
@@ -227,7 +236,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
             "mean_ndcg": means[(dataset, strategy)],
             "mean_resource.tool_calls": tool_calls[(dataset, strategy)],
         }
-        for strategy, _ in STRATEGIES
+        for strategy, _ in PARETO_STRATEGIES
         if (dataset, strategy) in tool_calls and (dataset, strategy) in means
     ]
     frontier = _pareto_front(points)
@@ -271,7 +280,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
     ax.set_ylabel("Mean NDCG (higher is better)")
     ax.grid(linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
-    fig.suptitle("E-commerce tool-call Pareto frontier")
+    fig.suptitle("GPT-5-mini and SID-2 tool-call Pareto frontier")
     missing = [
         labels[strategy]
         for strategy, _ in STRATEGIES

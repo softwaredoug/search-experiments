@@ -4,6 +4,8 @@ import sys
 import pytest
 
 from scripts.plot_ecom_sid_matrix import (
+    GPT5_STRATEGIES,
+    PARETO_STRATEGIES,
     STRATEGIES,
     _pareto_front,
     _read_mean_ndcg,
@@ -22,6 +24,15 @@ def test_matrix_includes_full_gpt5_and_gpt5_mini_tool_variants():
         strategy_labels["agentic_bm25_e5_ecommerce_gpt5_mini"]
         == "GPT-5-mini · BM25 + E5"
     )
+
+
+def test_pareto_peers_exclude_full_gpt5_but_keep_gpt5_mini_and_sid():
+    pareto_strategy_names = {strategy for strategy, _ in PARETO_STRATEGIES}
+
+    assert GPT5_STRATEGIES.isdisjoint(pareto_strategy_names)
+    assert "agentic_bm25_ecommerce_gpt5_mini" in pareto_strategy_names
+    assert "agentic_bm25_e5_ecommerce_gpt5_mini" in pareto_strategy_names
+    assert "agentic_ecom_sid_bm25_low" in pareto_strategy_names
 
 
 def test_read_mean_ndcg_averages_runs_and_ignores_other_metrics(tmp_path):
