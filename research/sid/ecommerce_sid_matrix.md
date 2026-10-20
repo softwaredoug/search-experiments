@@ -11,11 +11,11 @@ agents using low, medium, or high reasoning. The agent variants use BM25 alone
 or BM25 with E5-base-v2. Results cover all 480 WANDS queries and a 1,000-query
 ESCI sample, with seed 42.
 
-SID-2's best WANDS result is BM25 with high reasoning (mean NDCG 0.6156), close
-to GPT-5 with BM25 (0.6214). The SID-2 high-reasoning run used 8.719 mean tool
-calls per query versus 6.365 for GPT-5. On ESCI, the best SID-2 result is BM25
-with E5 and low reasoning (0.4253 NDCG, 2.131 tool calls); GPT-5 with BM25 and
-E5 reaches the highest score overall (0.4537).
+In the latest full retrieval run, SID-2's best WANDS result is BM25 with E5 and
+medium reasoning (mean NDCG 0.6151, 3.735 tool calls per query), close to GPT-5
+with BM25 (0.6214). On ESCI, SID-2's best result is BM25 with E5 and low
+reasoning (0.4274 NDCG, 2.133 tool calls); GPT-5 with BM25 and E5 reaches the
+highest score overall (0.4537).
 
 ## Results
 
@@ -23,31 +23,31 @@ E5 reaches the highest score overall (0.4537).
 
 ![WANDS retrieval quality by variant](../../assets/ecom_sid_matrix_wands.png)
 
-The Pareto graphs compare GPT-5-mini and SID-2 by mean generated tokens. Full
-GPT-5 retrieval metrics remain in the chart and table below, but are omitted from
-the token Pareto comparison.
+The Pareto graph compares GPT-5-mini and SID-2 by mean output tokens per query.
+Full GPT-5 retrieval metrics remain in the chart and table below, but are omitted
+from the token Pareto comparison because those historical runs did not report
+token usage.
 
 ![WANDS retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_wands.png)
 
-| Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query |
-| --- | ---: | ---: | ---: | ---: |
-| BM25 | 0.5408 | 0.4746 | — | — |
-| GPT-5-mini · BM25 | 0.5878 | 0.5609 | 1.144 | 1.000 |
-| SID-2 · BM25 · low | 0.5932 | 0.5609 | 1.371 | 1.000 |
-| SID-2 · BM25 + E5 · low | 0.5992 | 0.5794 | 2.217 | 2.000 |
-| SID-2 · BM25 · medium | 0.6064 | 0.5609 | 3.577 | 3.000 |
-| GPT-5-mini · BM25 + E5 | 0.6068 | 0.5790 | 1.808 | 2.000 |
-| SID-2 · BM25 + E5 · medium | 0.6075 | 0.5912 | 3.808 | 4.000 |
-| SID-2 · BM25 + E5 · high | 0.6120 | 0.5888 | 8.671 | 6.000 |
-| GPT-5 · BM25 + E5 | 0.6152 | 0.6178 | 5.044 | 4.000 |
-| SID-2 · BM25 · high | 0.6156 | 0.5825 | 8.719 | 6.000 |
-| GPT-5 · BM25 | 0.6214 | 0.6368 | 6.365 | 6.000 |
+| Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query | Mean output tokens/query |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BM25 | 0.5408 | 0.4746 | — | — | — |
+| GPT-5-mini · BM25 | 0.5839 | 0.5609 | 1.252 | 1.000 | 1161.5 |
+| SID-2 · BM25 + E5 · low | 0.5964 | 0.5745 | 2.233 | 2.000 | 596.3 |
+| SID-2 · BM25 · low | 0.5967 | 0.5609 | 1.373 | 1.000 | 517.3 |
+| GPT-5-mini · BM25 + E5 | 0.5980 | 0.5609 | 1.702 | 2.000 | 1256.5 |
+| SID-2 · BM25 · medium | 0.6110 | 0.5935 | 3.648 | 3.000 | 639.3 |
+| SID-2 · BM25 + E5 · high | 0.6113 | 0.6119 | 8.419 | 6.000 | 1618.9 |
+| SID-2 · BM25 · high | 0.6116 | 0.6027 | 8.679 | 7.000 | 1526.9 |
+| SID-2 · BM25 + E5 · medium | 0.6151 | 0.5875 | 3.735 | 4.000 | 720.0 |
+| GPT-5 · BM25 + E5 | 0.6152 | 0.6178 | 5.044 | 4.000 | — |
+| GPT-5 · BM25 | 0.6214 | 0.6368 | 6.365 | 6.000 | — |
 
-As SID-2 reasoning increases, mean NDCG rises for both WANDS tool sets, while
-mean tool calls also increase. BM25-only improves from 0.5932 at low to 0.6156
-at high reasoning; mean tool calls increase from 1.371 to 8.719. With E5,
-NDCG increases from 0.5992 to 0.6120, and mean calls increase from 2.217 to
-8.671.
+For SID-2 on WANDS, BM25-only NDCG rises from 0.5967 at low to 0.6116 at high
+reasoning, while mean calls rise from 1.373 to 8.679. With E5, medium reasoning
+has the highest SID-2 NDCG (0.6151); mean calls range from 2.233 at low to 8.419
+at high reasoning.
 
 ### ESCI
 
@@ -55,34 +55,32 @@ NDCG increases from 0.5992 to 0.6120, and mean calls increase from 2.217 to
 
 ![ESCI retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_esci.png)
 
-| Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query |
-| --- | ---: | ---: | ---: | ---: |
-| BM25 | 0.2895 | 0.1707 | — | — |
-| SID-2 · BM25 · high | 0.4025 | 0.3434 | 8.030 | 6.000 |
-| SID-2 · BM25 · medium | 0.4026 | 0.3611 | 3.580 | 3.000 |
-| GPT-5-mini · BM25 | 0.4035 | 0.3570 | 1.339 | 1.000 |
-| SID-2 · BM25 · low | 0.4087 | 0.3864 | 1.311 | 1.000 |
-| SID-2 · BM25 + E5 · medium | 0.4167 | 0.3905 | 3.862 | 4.000 |
-| SID-2 · BM25 + E5 · high | 0.4169 | 0.3841 | 7.887 | 6.000 |
-| GPT-5-mini · BM25 + E5 | 0.4191 | 0.3959 | 1.888 | 2.000 |
-| SID-2 · BM25 + E5 · low | 0.4253 | 0.4152 | 2.131 | 2.000 |
-| GPT-5 · BM25 | 0.4471 | 0.4440 | 7.041 | 7.000 |
-| GPT-5 · BM25 + E5 | 0.4537 | 0.4417 | 5.441 | 4.000 |
+| Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query | Mean output tokens/query |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BM25 | 0.2895 | 0.1707 | — | — | — |
+| GPT-5-mini · BM25 | 0.3963 | 0.3414 | 1.503 | 1.000 | 1995.5 |
+| SID-2 · BM25 · medium | 0.4010 | 0.3696 | 3.660 | 3.000 | 649.0 |
+| SID-2 · BM25 · high | 0.4038 | 0.3691 | 7.932 | 6.000 | 1527.9 |
+| SID-2 · BM25 · low | 0.4099 | 0.3955 | 1.304 | 1.000 | 453.4 |
+| SID-2 · BM25 + E5 · medium | 0.4197 | 0.3920 | 3.838 | 4.000 | 704.0 |
+| SID-2 · BM25 + E5 · high | 0.4236 | 0.4097 | 8.010 | 6.000 | 1648.8 |
+| GPT-5-mini · BM25 + E5 | 0.4237 | 0.4097 | 2.051 | 2.000 | 2364.8 |
+| SID-2 · BM25 + E5 · low | 0.4274 | 0.4220 | 2.133 | 2.000 | 510.8 |
+| GPT-5 · BM25 | 0.4471 | 0.4440 | 7.041 | 7.000 | — |
+| GPT-5 · BM25 + E5 | 0.4537 | 0.4417 | 5.441 | 4.000 | — |
 
 For SID-2 on ESCI, low reasoning has the highest NDCG for both tool sets. Adding
-E5 raises the low-reasoning score from 0.4087 to 0.4253, with mean tool calls
-increasing from 1.311 to 2.131. Medium and high reasoning do not improve on the
+E5 raises the low-reasoning score from 0.4099 to 0.4274, with mean tool calls
+increasing from 1.304 to 2.133. Medium and high reasoning do not improve on the
 low-reasoning scores.
 
-`—` means the run did not report tool-call resource statistics. NDCG values are
-rounded to four decimal places; tool-call statistics are rounded to three. The
-token Pareto graphs use a 10-query spot check in
-[`ecom_sid_matrix_token_spotcheck.csv`](../results/ecom_sid_matrix_token_spotcheck.csv).
-Their x-axis is mean `output_tokens` per query, which includes reasoning tokens.
-The retrieval tables and charts use the full-run results in
-[`ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv). The historical GPT-5
-rows retain their retrieval metrics but do not have spot-check token data, so
-they are excluded from the token Pareto graphs.
+`—` means the run did not report that resource statistic. NDCG values are
+rounded to four decimal places; tool-call statistics to three; and output-token
+means to one decimal. The retrieval tables, retrieval charts, and token Pareto
+charts use the latest full-run results in
+[`ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv). Pareto x-values are mean
+`output_tokens` per query, which includes reasoning tokens. Historical GPT-5
+rows lack token statistics and are excluded from the token Pareto charts.
 
 ## Configuration and reproduction
 
@@ -95,36 +93,26 @@ and [`configs/ecom_agentic/`](../../configs/ecom_agentic/).
 
 The machine-readable results are in
 [`research/results/ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv).
-The runner uses eight workers by default and seed 42. To regenerate retrieval
-charts from the full-run CSV and Pareto charts from the token spot-check CSV
-without running models:
+The runner uses eight workers by default and seed 42. To regenerate the
+retrieval and output-token Pareto charts from the full-run CSV without running
+models:
 
 ```bash
 uv run python scripts/plot_ecom_sid_matrix.py \
   --input research/results/ecom_sid_matrix.csv \
-  --pareto-input research/results/ecom_sid_matrix_token_spotcheck.csv \
   --output-prefix assets/ecom_sid_matrix
 ```
 
-To refresh GPT-5-mini and SID results, preserving BM25 and full GPT-5 rows while
-bypassing the refreshed strategies' result caches, use the following spot-check
-settings:
+To refresh GPT-5-mini and SID results, preserving BM25 and full GPT-5 rows, run:
 
 ```bash
-ESCI_NUM_QUERIES=10 WANDS_NUM_QUERIES=10 \
-RESULTS_CSV=research/results/ecom_sid_matrix_token_spotcheck.csv \
-PLOT_OUTPUT_PREFIX=/tmp/ecom_sid_matrix_token_spotcheck \
 RERUN_SID_VARIANTS=true ./scripts/run_ecom_sid_matrix.sh
 ```
 
-This produces the 10-query token CSV without changing the full-run result CSV.
-Then rerun the plotting command above to write the retrieval charts and the
-token Pareto charts to the report assets. The runner's matrix configurations are
-BM25, GPT-5-mini, and SID; it does not rerun full GPT-5. Existing full GPT-5
-result rows are preserved for the retrieval chart and table. Setting
-`RERUN_SID_VARIANTS=false` runs BM25, GPT-5-mini, and SID variants. `NO_CACHE=true`
-bypasses result caches for all selected variants and can incur new model API
-usage.
+This bypasses result caches for the refreshed strategies. The runner's matrix
+configurations include BM25, GPT-5-mini, and SID; it does not rerun full GPT-5.
+Existing BM25 and full GPT-5 rows are preserved. `NO_CACHE=true` bypasses result
+caches for all selected variants and can incur new model API usage.
 
 ## Related search learning material
 
