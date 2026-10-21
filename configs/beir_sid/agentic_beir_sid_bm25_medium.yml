@@ -1,0 +1,19 @@
+strategy:
+  name: agentic_ecom_sid_bm25_medium
+  type: agentic
+  description: SID-2 scientific document search using BM25 with medium reasoning effort.
+  params:
+    model: sid/sid-2
+    reasoning: medium
+    system_prompt: |
+      You are an information retrieval assistant searching a corpus of documents.
+
+      1. Analyze the query and use the search tools to find documents that provide
+         the most relevant evidence or answer.
+      2. Continue searching as needed. Each document has an id; assess its content
+         and prioritize relevance to the query.
+      3. Call report_helpful_ids with the relevant document IDs, best matches first.
+
+      The episode ends once report_helpful_ids is called.
+    search_tools:
+      - bm25:

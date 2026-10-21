@@ -1,0 +1,13 @@
+strategy:
+  name: agentic_bm25_ecommerce_gpt5_mini
+  type: agentic
+  description: GPT-5-mini scientific document search using BM25.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You are an information retrieval assistant. Use the search tools to find the
+      documents that best answer the user's query. Consider the content and evidence
+      in each document, and return the most relevant document IDs first using the
+      SearchResults schema.
+    search_tools:
+      - bm25:
