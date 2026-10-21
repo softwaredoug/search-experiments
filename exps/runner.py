@@ -22,7 +22,12 @@ def _report_metric(metric_name: str, metric_series, summary: dict[str, float]) -
         if not name.startswith("mean_resource.") and not name.startswith(
             "median_resource."
         ) and not name.startswith("std_resource."):
-            print(f"{name}: {value:.4f}")
+            label = (
+                "mean_max_ndcg (judged ceiling)"
+                if name == "mean_max_ndcg"
+                else name
+            )
+            print(f"{label}: {value:.4f}")
 
     resource_metrics = [
         (name.replace("_resource.", "_", 1), value)

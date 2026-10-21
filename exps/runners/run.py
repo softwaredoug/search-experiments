@@ -166,6 +166,23 @@ def _resource_summary(resources: dict[str, pd.Series]) -> dict[str, float]:
     return summary
 
 
+def _mean_max_ndcg(graded: pd.DataFrame) -> float:
+    if graded.empty:
+        return 0.0
+    if "max_ndcg" not in graded.columns:
+        raise ValueError(
+            "Search results are missing max_ndcg; update cheat-at-search."
+        )
+    query_keys = [column for column in ("query", "query_id") if column in graded]
+    if not query_keys:
+        raise ValueError("Search results must include query identifiers for max_ndcg.")
+    grouped = graded.groupby(query_keys, sort=False)["max_ndcg"]
+    if grouped.nunique(dropna=True).gt(1).any():
+        raise ValueError("max_ndcg must have one value per query.")
+    values = pd.to_numeric(grouped.first(), errors="raise").dropna()
+    return float(values.mean()) if not values.empty else 0.0
+
+
 def _query_results(
     *,
     strategy,
@@ -292,6 +309,7 @@ def run_benchmark(params: RunParams) -> RunResult:
     summary = {
         f"mean_{metric_key}": float(metric_series.mean()) if not metric_series.empty else 0.0,
         f"median_{metric_key}": float(metric_series.median()) if not metric_series.empty else 0.0,
+        "mean_max_ndcg": _mean_max_ndcg(graded),
     }
     summary.update(_resource_summary(resource_values))
     if not graded.empty:

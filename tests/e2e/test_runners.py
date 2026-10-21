@@ -71,6 +71,8 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert isinstance(result.metric_series, pd.Series)
     assert result.metric_series.index.name == "query"
     assert not result.metric_series.empty
+    assert "mean_max_ndcg" in result.summary
+    assert result.summary["mean_max_ndcg"] >= result.summary["mean_ndcg"]
     assert "mean_" in next(iter(result.summary.keys()))
     assert not any(name.startswith("tool_calls_") for name in result.summary)
     assert not any(name.endswith("_resource.tool_calls") for name in result.summary)
