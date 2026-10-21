@@ -14,6 +14,8 @@ STRATEGIES = (
     ("agentic_bm25_e5_ecommerce_gpt5", "GPT-5 · BM25 + E5"),
     ("agentic_bm25_ecommerce_gpt5_mini", "GPT-5-mini · BM25"),
     ("agentic_bm25_e5_ecommerce_gpt5_mini", "GPT-5-mini · BM25 + E5"),
+    ("agentic_bm25_ecommerce_gpt6_luna", "GPT-6 Luna · BM25"),
+    ("agentic_bm25_e5_ecommerce_gpt6_luna", "GPT-6 Luna · BM25 + E5"),
     ("agentic_ecom_sid_bm25_low", "SID-2 · BM25 · low"),
     ("agentic_ecom_sid_bm25_medium", "SID-2 · BM25 · medium"),
     ("agentic_ecom_sid_bm25_high", "SID-2 · BM25 · high"),
@@ -33,6 +35,23 @@ GPT5_STRATEGIES = frozenset(
 PARETO_STRATEGIES = tuple(
     strategy for strategy in STRATEGIES if strategy[0] not in GPT5_STRATEGIES
 )
+TOKEN_PRICES_PER_MILLION = {
+    "gpt-5-mini": {"input": 0.25, "cached_input": 0.025, "output": 2.0},
+    "gpt-6-luna": {"input": 0.1, "cached_input": 0.01, "output": 0.5},
+    "sid-2": {"input": 0.25, "cached_input": 0.025, "output": 1.0},
+}
+TOKEN_PRICING_MODELS = {
+    "agentic_bm25_ecommerce_gpt5_mini": "gpt-5-mini",
+    "agentic_bm25_e5_ecommerce_gpt5_mini": "gpt-5-mini",
+    "agentic_bm25_ecommerce_gpt6_luna": "gpt-6-luna",
+    "agentic_bm25_e5_ecommerce_gpt6_luna": "gpt-6-luna",
+    "agentic_ecom_sid_bm25_low": "sid-2",
+    "agentic_ecom_sid_bm25_medium": "sid-2",
+    "agentic_ecom_sid_bm25_high": "sid-2",
+    "agentic_ecom_sid_bm25_e5_base_v2_low": "sid-2",
+    "agentic_ecom_sid_bm25_e5_base_v2_medium": "sid-2",
+    "agentic_ecom_sid_bm25_e5_base_v2_high": "sid-2",
+}
 
 
 def _read_mean_ndcg(
@@ -119,20 +138,81 @@ def _read_mean_output_tokens(path: Path) -> dict[tuple[str, str], float]:
     }
 
 
+def _read_mean_token_cost_usd(path: Path) -> dict[tuple[str, str], float]:
+    totals: dict[tuple[str, str], list[float]] = defaultdict(list)
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        required = {
+            "dataset",
+            "strategy_name",
+            "metric_name",
+            "mean_resource.input_tokens",
+            "mean_resource.output_tokens",
+        }
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise ValueError(f"{path} must contain {', '.join(sorted(required))} columns.")
+        has_cached_tokens = "mean_resource.cached_input_tokens" in reader.fieldnames
+        for row in reader:
+            dataset = row["dataset"]
+            strategy = row["strategy_name"]
+            model = TOKEN_PRICING_MODELS.get(strategy)
+            input_tokens = row["mean_resource.input_tokens"]
+            output_tokens = row["mean_resource.output_tokens"]
+            if (
+                dataset not in DATASETS
+                or row["metric_name"].lower() != "ndcg"
+                or model is None
+                or not input_tokens
+                or not output_tokens
+            ):
+                continue
+            try:
+                input_count = float(input_tokens)
+                output_count = float(output_tokens)
+                cached_count = (
+                    float(row["mean_resource.cached_input_tokens"] or 0)
+                    if has_cached_tokens
+                    else 0.0
+                )
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid token usage for dataset={dataset!r}, strategy={strategy!r}."
+                ) from exc
+            if input_count < 0 or output_count < 0 or cached_count < 0:
+                raise ValueError(
+                    f"Negative token usage for dataset={dataset!r}, strategy={strategy!r}."
+                )
+            cached_count = min(cached_count, input_count)
+            prices = TOKEN_PRICES_PER_MILLION[model]
+            cost = (
+                (input_count - cached_count) * prices["input"]
+                + cached_count * prices["cached_input"]
+                + output_count * prices["output"]
+            ) / 1_000_000
+            totals[(dataset, strategy)].append(cost)
+
+    return {
+        key: sum(values) / len(values)
+        for key, values in totals.items()
+        if values
+    }
+
+
 def _pareto_front(
     points: list[dict[str, float | str]],
+    resource_key: str = "mean_resource.output_tokens",
 ) -> list[dict[str, float | str]]:
-    """Return points not dominated on retrieval (higher) and output tokens (lower)."""
+    """Return points not dominated on retrieval (higher) and resource cost (lower)."""
     frontier = []
     for point in points:
         ndcg = float(point["mean_ndcg"])
-        output_tokens = float(point["mean_resource.output_tokens"])
+        resource_cost = float(point[resource_key])
         dominated = any(
             float(other["mean_ndcg"]) >= ndcg
-            and float(other["mean_resource.output_tokens"]) <= output_tokens
+            and float(other[resource_key]) <= resource_cost
             and (
                 float(other["mean_ndcg"]) > ndcg
-                or float(other["mean_resource.output_tokens"]) < output_tokens
+                or float(other[resource_key]) < resource_cost
             )
             for other in points
             if other is not point
@@ -140,7 +220,7 @@ def _pareto_front(
         if not dominated:
             frontier.append(point)
     return sorted(
-        frontier, key=lambda point: float(point["mean_resource.output_tokens"])
+        frontier, key=lambda point: float(point[resource_key])
     )
 
 
@@ -219,14 +299,20 @@ def plot_results(input_path: Path, output_path: Path, dataset: str) -> None:
     plt.close(fig)
 
 
-def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> None:
+def _plot_pareto_points(
+    points: list[dict[str, float | str]],
+    output_path: Path,
+    dataset: str,
+    *,
+    resource_key: str,
+    resource_label: str,
+    title: str,
+    excluded: list[str],
+) -> None:
     import matplotlib.pyplot as plt
 
-    means = _read_mean_ndcg(input_path, allow_missing=True)
-    output_tokens = _read_mean_output_tokens(input_path)
-    if dataset not in DATASETS:
-        raise ValueError(f"Unsupported dataset {dataset!r}; expected one of {DATASETS}.")
-    labels = dict(STRATEGIES)
+    if not points:
+        raise ValueError(f"No NDCG and {resource_label} results found for {dataset!r}.")
     pareto_labels = {
         strategy: (
             label.replace("GPT-5-mini", "GPT-5m")
@@ -236,26 +322,16 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         )
         for strategy, label in STRATEGIES
     }
-    points = [
-        {
-            "strategy": strategy,
-            "label": labels[strategy],
-            "mean_ndcg": means[(dataset, strategy)],
-            "mean_resource.output_tokens": output_tokens[(dataset, strategy)],
-        }
-        for strategy, _ in PARETO_STRATEGIES
-        if (dataset, strategy) in output_tokens and (dataset, strategy) in means
-    ]
-    frontier = _pareto_front(points)
+    frontier = _pareto_front(points, resource_key)
     frontier_names = {str(point["strategy"]) for point in frontier}
     fig, ax = plt.subplots(figsize=(10, 6))
     annotations = []
     for point in points:
         ndcg = float(point["mean_ndcg"])
-        tokens = float(point["mean_resource.output_tokens"])
+        resource_value = float(point[resource_key])
         is_frontier = str(point["strategy"]) in frontier_names
         ax.scatter(
-            tokens,
+            resource_value,
             ndcg,
             color="#F58518" if is_frontier else "#9E9E9E",
             s=55,
@@ -264,7 +340,7 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         annotations.append(
             ax.annotate(
                 pareto_labels[str(point["strategy"])],
-                (tokens, ndcg),
+                (resource_value, ndcg),
                 textcoords="offset points",
                 xytext=(5, 5),
                 ha="left",
@@ -273,31 +349,20 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
         )
     if frontier:
         ax.plot(
-            [float(point["mean_resource.output_tokens"]) for point in frontier],
+            [float(point[resource_key]) for point in frontier],
             [float(point["mean_ndcg"]) for point in frontier],
             color="#F58518",
             linewidth=2,
             marker="o",
             zorder=4,
         )
-    if not points:
-        raise ValueError(
-            f"No NDCG and output-token results found for dataset={dataset!r}."
-        )
     ax.set_title(dataset.upper())
-    ax.set_xlabel("Mean Reasoning + Output Tokens per Query (lower is better)")
+    ax.set_xlabel(resource_label)
     ax.set_ylabel("Mean NDCG (higher is better)")
     ax.grid(linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
-    fig.suptitle("GPT-5-mini and SID-2 reasoning + output token Pareto frontier")
-    excluded = [
-        labels[strategy]
-        for strategy, _ in STRATEGIES
-        if (dataset, strategy) not in means or (dataset, strategy) not in output_tokens
-    ]
-    notes = []
-    if excluded:
-        notes.append(f"Excluded from token Pareto: {', '.join(excluded)}")
+    fig.suptitle(title)
+    notes = [f"Excluded: {', '.join(excluded)}"] if excluded else []
     if notes:
         fig.text(0.5, 0.01, "; ".join(notes), ha="center", fontsize=8)
     fig.tight_layout(rect=(0, 0.05 if notes else 0, 1, 0.96))
@@ -307,10 +372,71 @@ def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> No
     plt.close(fig)
 
 
+def _build_pareto_points(
+    input_path: Path,
+    dataset: str,
+    resource_values: dict[tuple[str, str], float],
+    resource_key: str,
+) -> tuple[list[dict[str, float | str]], list[str]]:
+    means = _read_mean_ndcg(input_path, allow_missing=True)
+    labels = dict(STRATEGIES)
+    if dataset not in DATASETS:
+        raise ValueError(f"Unsupported dataset {dataset!r}; expected one of {DATASETS}.")
+    points = [
+        {
+            "strategy": strategy,
+            "label": labels[strategy],
+            "mean_ndcg": means[(dataset, strategy)],
+            resource_key: resource_values[(dataset, strategy)],
+        }
+        for strategy, _ in PARETO_STRATEGIES
+        if (dataset, strategy) in resource_values and (dataset, strategy) in means
+    ]
+    excluded = [
+        labels[strategy]
+        for strategy, _ in STRATEGIES
+        if (dataset, strategy) not in means or (dataset, strategy) not in resource_values
+    ]
+    return points, excluded
+
+
+def plot_pareto_results(input_path: Path, output_path: Path, dataset: str) -> None:
+    output_tokens = _read_mean_output_tokens(input_path)
+    points, excluded = _build_pareto_points(
+        input_path, dataset, output_tokens, "mean_resource.output_tokens"
+    )
+    _plot_pareto_points(
+        points,
+        output_path,
+        dataset,
+        resource_key="mean_resource.output_tokens",
+        resource_label="Mean Reasoning + Output Tokens per Query (lower is better)",
+        title="GPT-5-mini, GPT-6 Luna, and SID-2 output-token Pareto frontier",
+        excluded=excluded,
+    )
+
+
+def plot_cost_pareto_results(input_path: Path, output_path: Path, dataset: str) -> None:
+    token_cost_usd = _read_mean_token_cost_usd(input_path)
+    points, excluded = _build_pareto_points(
+        input_path, dataset, token_cost_usd, "mean_token_cost_usd"
+    )
+    _plot_pareto_points(
+        points,
+        output_path,
+        dataset,
+        resource_key="mean_token_cost_usd",
+        resource_label="Estimated API Token Cost per Query (USD; lower is better)",
+        title="GPT-5-mini, GPT-6 Luna, and SID-2 estimated token-cost Pareto frontier",
+        excluded=excluded,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Plot e-commerce SID matrix retrieval quality and output-token Pareto."
+            "Plot e-commerce SID matrix retrieval quality, output-token Pareto, "
+            "and estimated token-cost Pareto."
         )
     )
     parser.add_argument("--input", type=Path, required=True)
@@ -328,10 +454,13 @@ def main() -> None:
     for dataset in DATASETS:
         retrieval_output = prefix.parent / f"{prefix.name}_{dataset}.png"
         pareto_output = prefix.parent / f"{prefix.name}_pareto_{dataset}.png"
+        cost_pareto_output = prefix.parent / f"{prefix.name}_cost_pareto_{dataset}.png"
         plot_results(args.input, retrieval_output, dataset)
         plot_pareto_results(pareto_input, pareto_output, dataset)
+        plot_cost_pareto_results(pareto_input, cost_pareto_output, dataset)
         print(f"Wrote {retrieval_output}")
         print(f"Wrote {pareto_output}")
+        print(f"Wrote {cost_pareto_output}")
 
 
 if __name__ == "__main__":

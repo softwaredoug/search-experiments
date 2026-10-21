@@ -9,7 +9,7 @@ GPT5_WORKERS="${GPT5_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
 NO_CACHE="${NO_CACHE:-false}"
-# Set true to rerun GPT-5-mini and SID variants and bypass their result cache.
+# Set true to rerun GPT-5-mini, GPT-6 Luna, and SID variants, bypassing result caches.
 RERUN_SID_VARIANTS="${RERUN_SID_VARIANTS:-false}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 WANDS_NUM_QUERIES="${WANDS_NUM_QUERIES:-}"
@@ -21,6 +21,10 @@ GPT5_MINI_CONFIGS=(
   "configs/ecom_agentic/agentic_ecom_bm25_gpt5_mini.yml"
   "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt5_mini.yml"
 )
+GPT6_LUNA_CONFIGS=(
+  "configs/ecom_agentic/agentic_ecom_bm25_gpt6_luna.yml"
+  "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt6_luna.yml"
+)
 SID_CONFIGS=(
   "configs/ecom_sid/agentic_ecom_sid_bm25_low.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_medium.yml"
@@ -29,7 +33,12 @@ SID_CONFIGS=(
   "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_medium.yml"
   "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_high.yml"
 )
-CONFIGS=("${BASELINE_CONFIGS[@]}" "${GPT5_MINI_CONFIGS[@]}" "${SID_CONFIGS[@]}")
+CONFIGS=(
+  "${BASELINE_CONFIGS[@]}"
+  "${GPT5_MINI_CONFIGS[@]}"
+  "${GPT6_LUNA_CONFIGS[@]}"
+  "${SID_CONFIGS[@]}"
+)
 DATASETS=("wands" "esci")
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT_PREFIX}")"
@@ -51,6 +60,8 @@ full_gpt5 = {
 refresh_strategies = {
     "agentic_bm25_ecommerce_gpt5_mini",
     "agentic_bm25_e5_ecommerce_gpt5_mini",
+    "agentic_bm25_ecommerce_gpt6_luna",
+    "agentic_bm25_e5_ecommerce_gpt6_luna",
     "agentic_ecom_sid_bm25_low",
     "agentic_ecom_sid_bm25_medium",
     "agentic_ecom_sid_bm25_high",
@@ -80,7 +91,11 @@ PY
 
 if [[ "${RERUN_SID_VARIANTS}" == "true" ]]; then
   filter_existing_results rerun
-  CONFIGS=("${GPT5_MINI_CONFIGS[@]}" "${SID_CONFIGS[@]}")
+  CONFIGS=(
+    "${GPT5_MINI_CONFIGS[@]}"
+    "${GPT6_LUNA_CONFIGS[@]}"
+    "${SID_CONFIGS[@]}"
+  )
 else
   filter_existing_results full
 fi
@@ -89,7 +104,7 @@ for dataset in "${DATASETS[@]}"; do
   for config in "${CONFIGS[@]}"; do
     strategy="${ROOT_DIR}/${config}"
     workers="${WORKERS}"
-    if [[ "${config}" == *gpt5* ]]; then
+    if [[ "${config}" == *gpt5* || "${config}" == *gpt6* ]]; then
       workers="${GPT5_WORKERS}"
     fi
 
@@ -126,4 +141,5 @@ echo "Wrote ${RESULTS_CSV}"
 for dataset in "${DATASETS[@]}"; do
   echo "Wrote ${PLOT_OUTPUT_PREFIX}_${dataset}.png"
   echo "Wrote ${PLOT_OUTPUT_PREFIX}_pareto_${dataset}.png"
+  echo "Wrote ${PLOT_OUTPUT_PREFIX}_cost_pareto_${dataset}.png"
 done

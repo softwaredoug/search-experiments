@@ -6,16 +6,16 @@
  
 ## Summary
 
-This experiment compares BM25, GPT-5 and GPT-5-mini search agents, and SID-2
-agents using low, medium, or high reasoning. The agent variants use BM25 alone
-or BM25 with E5-base-v2. Results cover all 480 WANDS queries and a 1,000-query
-ESCI sample, with seed 42.
+This experiment compares BM25, GPT-5, GPT-5-mini, and GPT-6 Luna search agents,
+and SID-2 agents using low, medium, or high reasoning. Agent variants use BM25
+alone or BM25 with E5-base-v2. Results cover all 480 WANDS queries and a
+1,000-query ESCI sample, with seed 42.
 
-In the latest full retrieval run, SID-2's best WANDS result is BM25 with E5 and
-medium reasoning (mean NDCG 0.6151, 3.735 tool calls per query), close to GPT-5
-with BM25 (0.6214). On ESCI, SID-2's best result is BM25 with E5 and low
-reasoning (0.4274 NDCG, 2.133 tool calls); GPT-5 with BM25 and E5 reaches the
-highest score overall (0.4537).
+In the latest full retrieval run, GPT-6 Luna with BM25 has the highest WANDS
+NDCG (0.6244), ahead of GPT-5 with BM25 (0.6214). GPT-6 Luna with BM25+E5 has
+the highest ESCI NDCG (0.4605), ahead of GPT-5 with BM25+E5 (0.4537). SID-2's
+best results are 0.6151 on WANDS (BM25+E5, medium reasoning) and 0.4274 on ESCI
+(BM25+E5, low reasoning).
 
 ## Results
 
@@ -23,12 +23,14 @@ highest score overall (0.4537).
 
 ![WANDS retrieval quality by variant](../../assets/ecom_sid_matrix_wands.png)
 
-The Pareto graph compares GPT-5-mini and SID-2 by mean output tokens per query.
-Full GPT-5 retrieval metrics remain in the chart and table below, but are omitted
-from the token Pareto comparison because those historical runs did not report
-token usage.
+The Pareto graph compares GPT-5-mini, GPT-6 Luna, and SID-2 by mean output tokens
+per query. Full GPT-5 retrieval metrics remain in the chart and table below, but
+are omitted from token Pareto comparisons because those historical runs did not
+report token usage.
 
 ![WANDS retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_wands.png)
+
+![WANDS retrieval and estimated token-cost Pareto graph](../../assets/ecom_sid_matrix_cost_pareto_wands.png)
 
 | Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query | Mean output tokens/query |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -42,7 +44,9 @@ token usage.
 | SID-2 · BM25 · high | 0.6116 | 0.6027 | 8.679 | 7.000 | 1526.9 |
 | SID-2 · BM25 + E5 · medium | 0.6151 | 0.5875 | 3.735 | 4.000 | 720.0 |
 | GPT-5 · BM25 + E5 | 0.6152 | 0.6178 | 5.044 | 4.000 | — |
+| GPT-6 Luna · BM25 + E5 | 0.6158 | 0.6120 | 3.358 | 3.000 | 462.2 |
 | GPT-5 · BM25 | 0.6214 | 0.6368 | 6.365 | 6.000 | — |
+| GPT-6 Luna · BM25 | 0.6244 | 0.6264 | 2.025 | 2.000 | 350.7 |
 
 For SID-2 on WANDS, BM25-only NDCG rises from 0.5967 at low to 0.6116 at high
 reasoning, while mean calls rise from 1.373 to 8.679. With E5, medium reasoning
@@ -54,6 +58,8 @@ at high reasoning.
 ![ESCI retrieval quality by variant](../../assets/ecom_sid_matrix_esci.png)
 
 ![ESCI retrieval and reasoning/output-token Pareto graph](../../assets/ecom_sid_matrix_pareto_esci.png)
+
+![ESCI retrieval and estimated token-cost Pareto graph](../../assets/ecom_sid_matrix_cost_pareto_esci.png)
 
 | Variant | Mean NDCG | Median NDCG | Mean tool calls/query | Median tool calls/query | Mean output tokens/query |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -67,20 +73,34 @@ at high reasoning.
 | GPT-5-mini · BM25 + E5 | 0.4237 | 0.4097 | 2.051 | 2.000 | 2364.8 |
 | SID-2 · BM25 + E5 · low | 0.4274 | 0.4220 | 2.133 | 2.000 | 510.8 |
 | GPT-5 · BM25 | 0.4471 | 0.4440 | 7.041 | 7.000 | — |
+| GPT-6 Luna · BM25 | 0.4498 | 0.4279 | 2.313 | 2.000 | 474.0 |
 | GPT-5 · BM25 + E5 | 0.4537 | 0.4417 | 5.441 | 4.000 | — |
+| GPT-6 Luna · BM25 + E5 | 0.4605 | 0.4531 | 3.891 | 4.000 | 629.6 |
 
 For SID-2 on ESCI, low reasoning has the highest NDCG for both tool sets. Adding
 E5 raises the low-reasoning score from 0.4099 to 0.4274, with mean tool calls
 increasing from 1.304 to 2.133. Medium and high reasoning do not improve on the
-low-reasoning scores.
+low-reasoning scores. GPT-6 Luna reaches 0.4498 with BM25 and 0.4605 with
+BM25+E5, the highest ESCI result in this run.
 
 `—` means the run did not report that resource statistic. NDCG values are
 rounded to four decimal places; tool-call statistics to three; and output-token
 means to one decimal. The retrieval tables, retrieval charts, and token Pareto
 charts use the latest full-run results in
 [`ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv). Pareto x-values are mean
-`output_tokens` per query, which includes reasoning tokens. Historical GPT-5
-rows lack token statistics and are excluded from the token Pareto charts.
+`output_tokens` per query, which includes reasoning tokens. Full GPT-5 rows lack
+token statistics and are excluded from the token Pareto charts.
+
+The cost Pareto charts estimate model token charges per query from mean input and
+output token usage. SID-2 is priced at $0.25/M uncached input tokens, $0.025/M
+cached input tokens, and $1.00/M output tokens. GPT-5-mini uses $0.25/M input,
+$0.025/M cached input, and $2.00/M output tokens. GPT-6 Luna uses $0.10/M input,
+$0.01/M cached input, and $0.50/M output tokens ([OpenAI API
+pricing](https://developers.openai.com/api/docs/pricing/)). The results CSV does
+not include cached-input token counts, so the estimate prices all input tokens
+at the uncached rate; actual token charges may be lower when input caching
+applies. Estimates exclude any non-token charges. Historical GPT-5 runs are
+omitted because they lack token-usage data.
 
 ## Configuration and reproduction
 
@@ -89,13 +109,14 @@ The six SID configurations use `sid/sid-2` with reasoning effort `low`,
 [`configs/ecom_sid/`](../../configs/ecom_sid/). Baselines are configured in
 [`configs/ecom_base/`](../../configs/ecom_base/),
 [`configs/agentic_ecom_bm25_gpt5.yml`](../../configs/agentic_ecom_bm25_gpt5.yml),
-and [`configs/ecom_agentic/`](../../configs/ecom_agentic/).
+and [`configs/ecom_agentic/`](../../configs/ecom_agentic/), including the
+GPT-5-mini and GPT-6 Luna BM25/BM25+E5 matrix variants.
 
 The machine-readable results are in
 [`research/results/ecom_sid_matrix.csv`](../results/ecom_sid_matrix.csv).
 The runner uses eight workers by default and seed 42. To regenerate the
-retrieval and output-token Pareto charts from the full-run CSV without running
-models:
+retrieval, output-token Pareto, and estimated token-cost Pareto charts from the
+full-run CSV without running models:
 
 ```bash
 uv run python scripts/plot_ecom_sid_matrix.py \
@@ -103,16 +124,17 @@ uv run python scripts/plot_ecom_sid_matrix.py \
   --output-prefix assets/ecom_sid_matrix
 ```
 
-To refresh GPT-5-mini and SID results, preserving BM25 and full GPT-5 rows, run:
+To refresh GPT-5-mini, GPT-6 Luna, and SID results, preserving BM25 and full GPT-5
+rows, run:
 
 ```bash
 RERUN_SID_VARIANTS=true ./scripts/run_ecom_sid_matrix.sh
 ```
 
-This bypasses result caches for the refreshed strategies. The runner's matrix
-configurations include BM25, GPT-5-mini, and SID; it does not rerun full GPT-5.
-Existing BM25 and full GPT-5 rows are preserved. `NO_CACHE=true` bypasses result
-caches for all selected variants and can incur new model API usage.
+This bypasses result caches for the refreshed strategies. The default runner also
+selects GPT-6 Luna for both tool sets on every invocation. It preserves the
+historical full GPT-5 rows instead of rerunning them. `NO_CACHE=true` bypasses
+result caches for all selected variants and can incur new model API usage.
 
 ## Related search learning material
 
