@@ -10,6 +10,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+try:
+    from ._plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+
 
 BASELINES = ["bm25", "bm25_strong_title", "embedding_e5"]
 DATASETS = ["esci", "wands"]
@@ -87,7 +92,12 @@ def _ordered_rows(rows: list[dict[str, str]]):
     return baseline_rows + agentic_rows
 
 
-def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -> None:
+def _plot_dataset(
+    rows: list[dict[str, str]],
+    dataset: str,
+    output_path: Path,
+    max_ndcg: float | None = None,
+) -> None:
     ordered = _ordered_rows([row for row in rows if row["dataset"] == dataset])
     strategies = [row["strategy"] for row in ordered]
     means = [row["mean"] for row in ordered]
@@ -111,7 +121,10 @@ def _plot_dataset(rows: list[dict[str, str]], dataset: str, output_path: Path) -
     ax.set_xticks(range(len(strategies)))
     ax.set_xticklabels(strategies, rotation=30, ha="right")
     y_min = 0.2 if dataset == "wands" else 0
-    ax.set_ylim(y_min, max(means) * 1.1 if means else 1)
+    if max_ndcg is not None:
+        add_mean_max_ndcg_line(ax, max_ndcg)
+        ax.legend(loc="best", fontsize=8)
+    ax.set_ylim(y_min, max(max(means) * 1.1 if means else 1, (max_ndcg or 0) * 1.05))
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
@@ -137,6 +150,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rows = [row for row in _load_results(results_path) if _include_in_ndcg_plot(row)]
+    max_ndcg_by_dataset = mean_max_ndcg_by_dataset(rows)
     aggregated = _aggregate(rows)
     for dataset, mean_ndcg in GPT5_HARDCODED_NDCG.items():
         if any(
@@ -155,7 +169,7 @@ def main() -> None:
     suffix = _slugify(args.name)
     for dataset in DATASETS:
         output_path = output_dir / f"{dataset}_{suffix}.png"
-        _plot_dataset(aggregated, dataset, output_path)
+        _plot_dataset(aggregated, dataset, output_path, max_ndcg_by_dataset.get(dataset))
 
 
 if __name__ == "__main__":

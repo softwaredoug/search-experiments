@@ -6,6 +6,11 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from ._plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+
 DATASETS = ("wands", "esci")
 STRATEGIES = (
     ("bm25", "BM25"),
@@ -67,6 +72,7 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     import matplotlib.pyplot as plt
 
     means = _read_mean_ndcg(input_path)
+    max_ndcg_by_dataset = read_mean_max_ndcg(input_path)
     labels = [label for _, label in STRATEGIES]
     positions = list(range(len(STRATEGIES)))
     colors = {"wands": "#4C78A8", "esci": "#F58518"}
@@ -93,6 +99,8 @@ def plot_results(input_path: Path, output_path: Path) -> None:
                 fontsize=9,
                 color=colors[dataset],
             )
+        if dataset in max_ndcg_by_dataset:
+            add_mean_max_ndcg_line(axis, max_ndcg_by_dataset[dataset])
 
     axis.set_xticks(positions)
     axis.set_xticklabels(labels)
@@ -101,7 +109,7 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     axis.set_title("Bag of Decisions reranker beats just Jev reranker")
     axis.grid(axis="y", linestyle="--", alpha=0.4)
     axis.set_axisbelow(True)
-    axis.legend(title="Dataset")
+    axis.legend(title="Dataset / judged ceiling")
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)

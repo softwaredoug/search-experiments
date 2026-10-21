@@ -5,6 +5,11 @@ import argparse
 import csv
 from pathlib import Path
 
+try:
+    from ._plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+
 EXPECTED_STRATEGIES = {
     "ecom_qu_category_bm25_filtered_llm_single",
     "ecom_qu_category_hierarchy_bm25_filtered_llm_single",
@@ -124,6 +129,7 @@ def _plot_ndcg(rows: list[dict[str, str]], output_path: Path) -> None:
 
     labels = [_short_label(row["strategy_name"]) for row in rows]
     ndcgs = [float(row["mean_ndcg"] or 0) for row in rows]
+    max_ndcg = mean_max_ndcg_by_dataset(rows).get("wands")
     x_values = range(len(rows))
 
     fig, ax = plt.subplots(figsize=(15, 7))
@@ -139,7 +145,10 @@ def _plot_ndcg(rows: list[dict[str, str]], output_path: Path) -> None:
         )
     ax.set_title("WANDS Query Understanding Retrieval")
     ax.set_ylabel("Mean NDCG")
-    ax.set_ylim(min(ndcgs) - 0.05, max(ndcgs) + 0.05)
+    if max_ndcg is not None:
+        add_mean_max_ndcg_line(ax, max_ndcg)
+        ax.legend(loc="best", fontsize=8)
+    ax.set_ylim(min(ndcgs) - 0.05, max(max(ndcgs), max_ndcg or 0) + 0.05)
     ax.set_xticks(list(x_values))
     ax.set_xticklabels(labels, fontsize=8)
     ax.grid(axis="y", linestyle="--", alpha=0.4)

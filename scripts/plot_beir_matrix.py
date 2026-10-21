@@ -6,6 +6,11 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from ._plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+
 
 DATASETS = ("scifact", "trec_covid")
 STRATEGIES = (
@@ -143,6 +148,7 @@ def plot_results(input_path: Path, output_path: Path, dataset: str) -> None:
     import matplotlib.pyplot as plt
 
     means = _read_metric(input_path, "mean_ndcg")
+    max_ndcg_by_dataset = read_mean_max_ndcg(input_path)
     labels = dict(STRATEGIES)
     ordered = sorted(
         (
@@ -180,6 +186,9 @@ def plot_results(input_path: Path, output_path: Path, dataset: str) -> None:
     )
     ax.set_ylim(0, 1)
     ax.set_ylabel("Mean NDCG")
+    if dataset in max_ndcg_by_dataset:
+        add_mean_max_ndcg_line(ax, max_ndcg_by_dataset[dataset])
+        ax.legend(loc="best", fontsize=8)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
     fig.suptitle("BEIR retrieval quality by model, tools, and SID reasoning effort")

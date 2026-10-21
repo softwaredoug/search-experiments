@@ -12,7 +12,9 @@ from scripts.plot_ecom_sid_matrix import (
     _read_mean_output_tokens,
     _read_mean_token_cost_usd,
     main,
+    plot_results,
 )
+from scripts._plot_helpers import read_mean_max_ndcg
 
 
 def test_matrix_includes_all_model_variants():
@@ -104,6 +106,80 @@ def test_read_mean_ndcg_reports_missing_strategy_results(tmp_path):
 
     with pytest.raises(ValueError, match="No mean NDCG results found"):
         _read_mean_ndcg(summary_path)
+
+
+def test_read_mean_max_ndcg_averages_dataset_ceiling_and_ignores_other_metrics(tmp_path):
+    summary_path = tmp_path / "summary.csv"
+    with summary_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_max_ndcg"],
+        )
+        writer.writeheader()
+        writer.writerows(
+            [
+                {
+                    "dataset": "wands",
+                    "strategy_name": "bm25",
+                    "metric_name": "NDCG",
+                    "mean_max_ndcg": 0.72,
+                },
+                {
+                    "dataset": "wands",
+                    "strategy_name": "agentic_ecom_sid_bm25_low",
+                    "metric_name": "NDCG",
+                    "mean_max_ndcg": 0.76,
+                },
+                {
+                    "dataset": "wands",
+                    "strategy_name": "bm25",
+                    "metric_name": "MRR",
+                    "mean_max_ndcg": 1.0,
+                },
+            ]
+        )
+
+    assert read_mean_max_ndcg(summary_path) == {"wands": pytest.approx(0.74)}
+
+
+def test_retrieval_plot_draws_dotted_mean_max_ndcg_reference(tmp_path, monkeypatch):
+    import matplotlib.axes
+
+    summary_path = tmp_path / "summary.csv"
+    with summary_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "dataset",
+                "strategy_name",
+                "metric_name",
+                "mean_ndcg",
+                "mean_max_ndcg",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "dataset": "wands",
+                "strategy_name": "bm25",
+                "metric_name": "NDCG",
+                "mean_ndcg": 0.54,
+                "mean_max_ndcg": 0.78,
+            }
+        )
+
+    reference_lines = []
+    original_axhline = matplotlib.axes.Axes.axhline
+
+    def record_axhline(axis, y=0, *args, **kwargs):
+        line = original_axhline(axis, y, *args, **kwargs)
+        reference_lines.append((line.get_ydata()[0], line.get_linestyle()))
+        return line
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "axhline", record_axhline)
+    plot_results(summary_path, tmp_path / "sid_matrix_wands.png", "wands")
+
+    assert reference_lines == [(0.78, ":")]
 
 
 def test_read_mean_output_tokens_ignores_missing_resource_values(tmp_path):
@@ -268,6 +344,7 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                 "strategy_name",
                 "metric_name",
                 "mean_ndcg",
+                "mean_max_ndcg",
                 "mean_resource.input_tokens",
                 "mean_resource.output_tokens",
             ],
@@ -281,6 +358,7 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                         "strategy_name": strategy,
                         "metric_name": "NDCG",
                         "mean_ndcg": 0.3,
+                        "mean_max_ndcg": 0.75,
                         "mean_resource.input_tokens": 100,
                         "mean_resource.output_tokens": 200,
                     }
