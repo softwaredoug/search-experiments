@@ -1,7 +1,23 @@
 from typing_extensions import Literal
 
-DATASET_NAMES = ("esci", "minimarco", "msmarco", "wands", "doug_blog")
-DatasetName = Literal["esci", "minimarco", "msmarco", "wands", "doug_blog"]
+DATASET_NAMES = (
+    "esci",
+    "minimarco",
+    "msmarco",
+    "wands",
+    "doug_blog",
+    "scifact",
+    "trec_covid",
+)
+DatasetName = Literal[
+    "esci",
+    "minimarco",
+    "msmarco",
+    "wands",
+    "doug_blog",
+    "scifact",
+    "trec_covid",
+]
 
 
 def get_dataset(name: DatasetName, workers: int = 1, ensure_snowball: bool = True):
@@ -18,6 +34,10 @@ def get_dataset(name: DatasetName, workers: int = 1, ensure_snowball: bool = Tru
             from cheat_at_search import wands_data as dataset
         elif name == "doug_blog":
             from cheat_at_search import doug_blog_data as dataset
+        elif name == "scifact":
+            from cheat_at_search import scifact_data as dataset
+        elif name == "trec_covid":
+            from cheat_at_search import trec_covid_data as dataset
         else:
             raise KeyError(name)
     except KeyError as exc:
