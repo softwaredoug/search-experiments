@@ -1,0 +1,9 @@
+strategy:
+  name: bm25
+  type: bm25
+  description: BM25 e-commerce retrieval baseline for the GPT-6 Luna study.
+  params:
+    k1: 1.2
+    b: 0.75
+    title_boost: 9.3
+    description_boost: 4.1
