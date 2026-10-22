@@ -7,12 +7,12 @@ RESULTS_CSV="${ROOT_DIR}/research/results/ecom_mincalls_stats.csv"
 mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 CONFIGS=(
-  "configs/ecom_mincalls/agentic_ecom_2tools_4calls_repeat_gpt5_mini.yml"
-  "configs/ecom_mincalls/agentic_ecom_2tools_4calls_sim0p9_gpt5_mini.yml"
-  "configs/ecom_mincalls/agentic_ecom_2tools_6calls_repeat_gpt5_mini.yml"
-  "configs/ecom_mincalls/agentic_ecom_2tools_6calls_sim0p9_gpt5_mini.yml"
-  "configs/ecom_mincalls/agentic_ecom_2tools_8calls_repeat_gpt5_mini.yml"
-  "configs/ecom_mincalls/agentic_ecom_2tools_8calls_sim0p9_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_4calls_repeat_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_4calls_sim0p9_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_6calls_repeat_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_6calls_sim0p9_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_8calls_repeat_gpt5_mini.yml"
+  "configs/agentic/ecom_mincalls/agentic_ecom_2tools_8calls_sim0p9_gpt5_mini.yml"
 )
 
 DATASETS=(

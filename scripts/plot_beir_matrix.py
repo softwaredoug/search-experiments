@@ -13,38 +13,74 @@ except ImportError:  # Script execution from the scripts directory.
 
 
 DATASETS = ("scifact", "trec_covid")
-STRATEGIES = (
+SCIFACT_STRATEGIES = (
     ("bm25", "BM25"),
-    ("agentic_bm25_ecommerce_gpt5_mini", "GPT-5-mini · BM25"),
-    ("agentic_bm25_e5_ecommerce_gpt5_mini", "GPT-5-mini · BM25 + E5"),
-    ("agentic_bm25_ecommerce_gpt6_luna", "GPT-6 Luna · BM25"),
-    ("agentic_bm25_e5_ecommerce_gpt6_luna", "GPT-6 Luna · BM25 + E5"),
-    ("agentic_ecom_sid_bm25_low", "SID-2 · BM25 · low"),
-    ("agentic_ecom_sid_bm25_medium", "SID-2 · BM25 · medium"),
-    ("agentic_ecom_sid_bm25_high", "SID-2 · BM25 · high"),
-    ("agentic_ecom_sid_bm25_e5_base_v2_low", "SID-2 · BM25 + E5 · low"),
+    ("agentic_scifact_gpt6_luna_bm25", "GPT-6 Luna · BM25"),
+    ("agentic_scifact_gpt6_luna_bm25_e5", "GPT-6 Luna · BM25 + E5"),
+    ("agentic_scifact_sid_bm25_low", "SID-2 · BM25 · low"),
+    ("agentic_scifact_sid_bm25_medium", "SID-2 · BM25 · medium"),
+    ("agentic_scifact_sid_bm25_high", "SID-2 · BM25 · high"),
+    ("agentic_scifact_sid_bm25_e5_low", "SID-2 · BM25 + E5 · low"),
+    ("agentic_scifact_sid_bm25_e5_medium", "SID-2 · BM25 + E5 · medium"),
+    ("agentic_scifact_sid_bm25_e5_high", "SID-2 · BM25 + E5 · high"),
+)
+TREC_COVID_STRATEGIES = (
+    ("bm25", "BM25"),
+    ("agentic_bm25_ecommerce_gpt6_luna", "GPT-6 Luna · generic · BM25"),
     (
-        "agentic_ecom_sid_bm25_e5_base_v2_medium",
+        "agentic_bm25_e5_ecommerce_gpt6_luna",
+        "GPT-6 Luna · generic · BM25 + E5",
+    ),
+    (
+        "agentic_trec_covid_gpt6_luna_bm25",
+        "GPT-6 Luna · TREC-COVID tuned · BM25",
+    ),
+    (
+        "agentic_trec_covid_gpt6_luna_bm25_e5",
+        "GPT-6 Luna · TREC-COVID tuned · BM25 + E5",
+    ),
+    ("agentic_trec_covid_sid_bm25_low", "SID-2 · BM25 · low"),
+    ("agentic_trec_covid_sid_bm25_medium", "SID-2 · BM25 · medium"),
+    ("agentic_trec_covid_sid_bm25_high", "SID-2 · BM25 · high"),
+    ("agentic_trec_covid_sid_bm25_e5_low", "SID-2 · BM25 + E5 · low"),
+    (
+        "agentic_trec_covid_sid_bm25_e5_medium",
         "SID-2 · BM25 + E5 · medium",
     ),
-    ("agentic_ecom_sid_bm25_e5_base_v2_high", "SID-2 · BM25 + E5 · high"),
+    ("agentic_trec_covid_sid_bm25_e5_high", "SID-2 · BM25 + E5 · high"),
 )
+DATASET_STRATEGIES = {
+    "scifact": SCIFACT_STRATEGIES,
+    "trec_covid": TREC_COVID_STRATEGIES,
+}
+STRATEGY_LABELS = {
+    strategy: label
+    for strategies in DATASET_STRATEGIES.values()
+    for strategy, label in strategies
+}
 MODEL_PRICES = {
-    "gpt-5-mini": {"input": 0.25, "cached_input": 0.025, "output": 2.0},
     "gpt-6-luna": {"input": 0.1, "cached_input": 0.01, "output": 0.5},
     "sid-2": {"input": 0.25, "cached_input": 0.025, "output": 1.0},
 }
 STRATEGY_MODELS = {
-    "agentic_bm25_ecommerce_gpt5_mini": "gpt-5-mini",
-    "agentic_bm25_e5_ecommerce_gpt5_mini": "gpt-5-mini",
+    "agentic_scifact_gpt6_luna_bm25": "gpt-6-luna",
+    "agentic_scifact_gpt6_luna_bm25_e5": "gpt-6-luna",
+    "agentic_scifact_sid_bm25_low": "sid-2",
+    "agentic_scifact_sid_bm25_medium": "sid-2",
+    "agentic_scifact_sid_bm25_high": "sid-2",
+    "agentic_scifact_sid_bm25_e5_low": "sid-2",
+    "agentic_scifact_sid_bm25_e5_medium": "sid-2",
+    "agentic_scifact_sid_bm25_e5_high": "sid-2",
+    "agentic_trec_covid_gpt6_luna_bm25": "gpt-6-luna",
+    "agentic_trec_covid_gpt6_luna_bm25_e5": "gpt-6-luna",
+    "agentic_trec_covid_sid_bm25_low": "sid-2",
+    "agentic_trec_covid_sid_bm25_medium": "sid-2",
+    "agentic_trec_covid_sid_bm25_high": "sid-2",
+    "agentic_trec_covid_sid_bm25_e5_low": "sid-2",
+    "agentic_trec_covid_sid_bm25_e5_medium": "sid-2",
+    "agentic_trec_covid_sid_bm25_e5_high": "sid-2",
     "agentic_bm25_ecommerce_gpt6_luna": "gpt-6-luna",
     "agentic_bm25_e5_ecommerce_gpt6_luna": "gpt-6-luna",
-    "agentic_ecom_sid_bm25_low": "sid-2",
-    "agentic_ecom_sid_bm25_medium": "sid-2",
-    "agentic_ecom_sid_bm25_high": "sid-2",
-    "agentic_ecom_sid_bm25_e5_base_v2_low": "sid-2",
-    "agentic_ecom_sid_bm25_e5_base_v2_medium": "sid-2",
-    "agentic_ecom_sid_bm25_e5_base_v2_high": "sid-2",
 }
 
 
@@ -55,7 +91,7 @@ def _read_metric(
     model_cost: bool = False,
 ) -> dict[tuple[str, str], float]:
     totals: dict[tuple[str, str], list[float]] = defaultdict(list)
-    strategy_names = {name for name, _ in STRATEGIES}
+    strategy_names = set(STRATEGY_LABELS)
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required = {"dataset", "strategy_name", "metric_name", column}
@@ -70,6 +106,7 @@ def _read_metric(
             if (
                 dataset not in DATASETS
                 or strategy not in strategy_names
+                or strategy not in {name for name, _ in DATASET_STRATEGIES[dataset]}
                 or row["metric_name"].lower() != "ndcg"
             ):
                 continue
@@ -149,11 +186,12 @@ def plot_results(input_path: Path, output_path: Path, dataset: str) -> None:
 
     means = _read_metric(input_path, "mean_ndcg")
     max_ndcg_by_dataset = read_mean_max_ndcg(input_path)
-    labels = dict(STRATEGIES)
+    strategies = DATASET_STRATEGIES[dataset]
+    labels = dict(strategies)
     ordered = sorted(
         (
             (strategy, means[(dataset, strategy)])
-            for strategy, _ in STRATEGIES
+            for strategy, _ in strategies
             if (dataset, strategy) in means
         ),
         key=lambda item: item[1],
@@ -213,22 +251,23 @@ def plot_pareto_results(
         resource_values = _read_metric(
             input_path, "mean_resource.output_tokens", model_cost=True
         )
-        title = "GPT-5-mini, GPT-6 Luna, and SID-2 estimated token-cost Pareto frontier"
+        title = "GPT-6 Luna and SID-2 estimated token-cost Pareto frontier"
     else:
         resource_key = "mean_resource.output_tokens"
         resource_label = "Mean reasoning + output tokens per query (lower is better)"
         resource_values = _read_metric(input_path, resource_key)
-        title = "GPT-5-mini, GPT-6 Luna, and SID-2 output-token Pareto frontier"
+        title = "GPT-6 Luna and SID-2 output-token Pareto frontier"
 
     means = _read_metric(input_path, "mean_ndcg")
-    labels = dict(STRATEGIES)
+    strategies = DATASET_STRATEGIES[dataset]
+    labels = dict(strategies)
     points = [
         {
             "strategy": strategy,
             "mean_ndcg": means[(dataset, strategy)],
             resource_key: value,
         }
-        for strategy, _ in STRATEGIES
+        for strategy, _ in strategies
         if strategy in STRATEGY_MODELS
         and (dataset, strategy) in means
         and (dataset, strategy) in resource_values
@@ -254,7 +293,6 @@ def plot_pareto_results(
         )
         label = (
             labels[strategy]
-            .replace("GPT-5-mini", "GPT-5m")
             .replace("SID-2 · ", "SID ")
             .replace(" · ", " ")
             .replace("BM25 + E5", "BM25+E5")

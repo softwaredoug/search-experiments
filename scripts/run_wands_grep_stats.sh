@@ -9,10 +9,10 @@ mkdir -p "$(dirname "${RESULTS_CSV}")"
 CONFIGS=(
   "configs/ecom_base/bm25.yml"
   "configs/ecom_base/embedding_e5_base_v2.yml"
-  "configs/wands_grep/agentic_wands_fs_tools.yml"
-  "configs/wands_grep/agentic_wands_bash.yml"
-  "configs/wands_grep/agentic_wands_bash_delegate.yml"
-  "configs/wands_grep/agentic_wands_bash_delegate_todos.yml"
+  "configs/agentic/wands_grep/agentic_wands_fs_tools.yml"
+  "configs/agentic/wands_grep/agentic_wands_bash.yml"
+  "configs/agentic/wands_grep/agentic_wands_bash_delegate.yml"
+  "configs/agentic/wands_grep/agentic_wands_bash_delegate_todos.yml"
 )
 
 for config in "${CONFIGS[@]}"; do

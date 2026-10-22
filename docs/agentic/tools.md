@@ -177,7 +177,7 @@ When enabled, a candidate's tool result includes fields such as:
 Only candidates within the configured reranker `k` receive these fields; when no
 questions are generated, their three lists are empty.
 An e-commerce composite example with decision exposure enabled is available at
-[`configs/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml`](../../configs/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml).
+[`configs/agentic/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml`](../../configs/agentic/ecom_comp/agentic_ecom_composite_rrf_bag_of_decisions_exposed_gpt5_mini.yml).
 
 The LLM generator accepts `model`, `system_prompt`, `prompt`, and optional
 `reasoning`, `temperature`, `verbosity`, and `no_cache` settings. Its prompt may

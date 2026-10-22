@@ -22,16 +22,16 @@ GPT5_MINI_CONFIGS=(
   "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt5_mini.yml"
 )
 GPT6_LUNA_CONFIGS=(
-  "configs/ecom_agentic/agentic_ecom_bm25_gpt6_luna.yml"
-  "configs/ecom_agentic/agentic_ecom_2tools_e5_gpt6_luna.yml"
+  "configs/agentic/ecom_agentic/agentic_ecom_bm25_gpt6_luna.yml"
+  "configs/agentic/ecom_agentic/agentic_ecom_2tools_e5_gpt6_luna.yml"
 )
 SID_CONFIGS=(
-  "configs/ecom_sid/agentic_ecom_sid_bm25_low.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_medium.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_high.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_low.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_medium.yml"
-  "configs/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_high.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_low.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_medium.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_high.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_low.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_medium.yml"
+  "configs/agentic/ecom_sid/agentic_ecom_sid_bm25_e5_base_v2_high.yml"
 )
 CONFIGS=(
   "${BASELINE_CONFIGS[@]}"

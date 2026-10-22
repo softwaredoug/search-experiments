@@ -8,94 +8,54 @@ WORKERS="${WORKERS:-8}"
 MODEL_WORKERS="${MODEL_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
 SEED="${SEED:-42}"
+# Set NO_CACHE=false to reuse strategy results; the summary CSV is still rebuilt.
 NO_CACHE="${NO_CACHE:-false}"
-RERUN_BEIR_MATRIX="${RERUN_BEIR_MATRIX:-false}"
 SCIFACT_NUM_QUERIES="${SCIFACT_NUM_QUERIES:-}"
 TREC_COVID_NUM_QUERIES="${TREC_COVID_NUM_QUERIES:-}"
 
 BASELINE_CONFIGS=(
   "configs/ecom_base/bm25.yml"
 )
-GPT5_MINI_CONFIGS=(
-  "configs/beir_sid/agentic_beir_bm25_gpt5_mini.yml"
-  "configs/beir_sid/agentic_beir_bm25_e5_gpt5_mini.yml"
+SCIFACT_CONFIGS=(
+  "configs/ecom_base/bm25.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_gpt6_luna_bm25.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_gpt6_luna_bm25_e5.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_low.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_medium.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_high.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_e5_low.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_e5_medium.yml"
+  "configs/agentic/scifact_agentic/agentic_scifact_sid_bm25_e5_high.yml"
 )
-GPT6_LUNA_CONFIGS=(
-  "configs/beir_sid/agentic_beir_bm25_gpt6_luna.yml"
-  "configs/beir_sid/agentic_beir_bm25_e5_gpt6_luna.yml"
-)
-SID_CONFIGS=(
-  "configs/beir_sid/agentic_beir_sid_bm25_low.yml"
-  "configs/beir_sid/agentic_beir_sid_bm25_medium.yml"
-  "configs/beir_sid/agentic_beir_sid_bm25_high.yml"
-  "configs/beir_sid/agentic_beir_sid_bm25_e5_low.yml"
-  "configs/beir_sid/agentic_beir_sid_bm25_e5_medium.yml"
-  "configs/beir_sid/agentic_beir_sid_bm25_e5_high.yml"
-)
-CONFIGS=(
+TREC_COVID_CONFIGS=(
   "${BASELINE_CONFIGS[@]}"
-  "${GPT5_MINI_CONFIGS[@]}"
-  "${GPT6_LUNA_CONFIGS[@]}"
-  "${SID_CONFIGS[@]}"
+  "configs/agentic/beir_sid/agentic_beir_bm25_gpt6_luna.yml"
+  "configs/agentic/beir_sid/agentic_beir_bm25_e5_gpt6_luna.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_gpt6_luna_bm25.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_gpt6_luna_bm25_e5.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_low.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_medium.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_high.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_e5_low.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_e5_medium.yml"
+  "configs/agentic/trec_covid_agentic/agentic_trec_covid_sid_bm25_e5_high.yml"
 )
 DATASETS=("scifact" "trec_covid")
-STRATEGY_NAMES=(
-  "bm25"
-  "agentic_bm25_ecommerce_gpt5_mini"
-  "agentic_bm25_e5_ecommerce_gpt5_mini"
-  "agentic_bm25_ecommerce_gpt6_luna"
-  "agentic_bm25_e5_ecommerce_gpt6_luna"
-  "agentic_ecom_sid_bm25_low"
-  "agentic_ecom_sid_bm25_medium"
-  "agentic_ecom_sid_bm25_high"
-  "agentic_ecom_sid_bm25_e5_base_v2_low"
-  "agentic_ecom_sid_bm25_e5_base_v2_medium"
-  "agentic_ecom_sid_bm25_e5_base_v2_high"
-)
 
 mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT_PREFIX}")"
+: > "${RESULTS_CSV}"
 cd "${ROOT_DIR}"
 
-filter_existing_results() {
-  uv run python - "${RESULTS_CSV}" "${DATASETS[@]}" -- "${STRATEGY_NAMES[@]}" <<'PY'
-import csv
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-separator = sys.argv.index("--")
-datasets = set(sys.argv[2:separator])
-strategies = set(sys.argv[separator + 1 :])
-if not path.exists():
-    raise SystemExit(0)
-
-with path.open(encoding="utf-8", newline="") as handle:
-    reader = csv.DictReader(handle)
-    if not reader.fieldnames or not {"dataset", "strategy_name"}.issubset(
-        reader.fieldnames
-    ):
-        raise SystemExit(f"Invalid BEIR matrix results CSV: {path}")
-    fieldnames = reader.fieldnames
-    rows = [
-        row
-        for row in reader
-        if not (row["dataset"] in datasets and row["strategy_name"] in strategies)
-    ]
-
-with path.open("w", encoding="utf-8", newline="") as handle:
-    writer = csv.DictWriter(handle, fieldnames=fieldnames)
-    writer.writeheader()
-    writer.writerows(rows)
-PY
-}
-
-filter_existing_results
-
 for dataset in "${DATASETS[@]}"; do
-  for config in "${CONFIGS[@]}"; do
+  if [[ "${dataset}" == "scifact" ]]; then
+    dataset_configs=("${SCIFACT_CONFIGS[@]}")
+  else
+    dataset_configs=("${TREC_COVID_CONFIGS[@]}")
+  fi
+  for config in "${dataset_configs[@]}"; do
     strategy="${ROOT_DIR}/${config}"
     workers="${WORKERS}"
-    if [[ "${config}" == *gpt5* || "${config}" == *gpt6* ]]; then
+    if [[ "${config}" == *gpt6* ]]; then
       workers="${MODEL_WORKERS}"
     fi
 
@@ -108,7 +68,7 @@ for dataset in "${DATASETS[@]}"; do
       --seed "${SEED}"
       --summary-csv "${RESULTS_CSV}"
     )
-    if [[ "${NO_CACHE}" == "true" || "${RERUN_BEIR_MATRIX}" == "true" ]]; then
+    if [[ "${NO_CACHE}" == "true" ]]; then
       run_args+=(--no-cache)
     fi
     if [[ -n "${DEVICE}" ]]; then

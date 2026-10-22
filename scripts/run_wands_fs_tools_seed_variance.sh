@@ -9,7 +9,7 @@ rm -f "${RESULTS_CSV}"
 
 for seed in {42..49}; do
   uv run run \
-    --strategy "${ROOT_DIR}/configs/wands_grep/agentic_wands_fs_tools.yml" \
+    --strategy "${ROOT_DIR}/configs/agentic/wands_grep/agentic_wands_fs_tools.yml" \
     --dataset "wands" \
     --seed "${seed}" \
     --workers 16 \

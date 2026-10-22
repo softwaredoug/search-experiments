@@ -1,18 +1,20 @@
 import csv
 import sys
 
-from scripts.plot_beir_matrix import DATASETS, STRATEGIES, main
+from scripts.plot_beir_matrix import DATASET_STRATEGIES, DATASETS, main
 
 
-def test_matrix_includes_requested_models_and_sid_reasoning_levels():
-    labels = [label for _, label in STRATEGIES]
+def test_matrix_includes_baseline_gpt6_luna_and_sid_only():
+    labels = {
+        label
+        for strategies in DATASET_STRATEGIES.values()
+        for _, label in strategies
+    }
 
     assert "BM25" in labels
-    assert "GPT-5-mini · BM25" in labels
-    assert "GPT-5-mini · BM25 + E5" in labels
     assert "GPT-6 Luna · BM25" in labels
     assert "GPT-6 Luna · BM25 + E5" in labels
-    assert not any(label.startswith("GPT-5 · ") for label in labels)
+    assert not any("GPT-5" in label for label in labels)
     assert {"SID-2 · BM25 · low", "SID-2 · BM25 · medium", "SID-2 · BM25 · high"}.issubset(
         labels
     )
@@ -21,6 +23,26 @@ def test_matrix_includes_requested_models_and_sid_reasoning_levels():
         "SID-2 · BM25 + E5 · medium",
         "SID-2 · BM25 + E5 · high",
     }.issubset(labels)
+
+
+def test_matrix_uses_scifact_specific_configs_only_for_scifact():
+    scifact_names = {name for name, _ in DATASET_STRATEGIES["scifact"]}
+    trec_covid_names = {name for name, _ in DATASET_STRATEGIES["trec_covid"]}
+
+    assert "agentic_scifact_gpt6_luna_bm25" in scifact_names
+    assert "agentic_scifact_sid_bm25_e5_medium" in scifact_names
+    assert "agentic_scifact_gpt5_mini_bm25" not in scifact_names
+    assert "agentic_bm25_ecommerce_gpt6_luna" not in scifact_names
+    assert "agentic_bm25_e5_ecommerce_gpt6_luna" not in scifact_names
+    assert "agentic_bm25_ecommerce_gpt6_luna" in trec_covid_names
+    assert "agentic_bm25_e5_ecommerce_gpt6_luna" in trec_covid_names
+    assert "agentic_trec_covid_gpt6_luna_bm25" in trec_covid_names
+    assert "agentic_trec_covid_sid_bm25_e5_medium" in trec_covid_names
+    assert "agentic_scifact_gpt6_luna_bm25" not in trec_covid_names
+
+    trec_covid_labels = {label for _, label in DATASET_STRATEGIES["trec_covid"]}
+    assert "GPT-6 Luna · generic · BM25" in trec_covid_labels
+    assert "GPT-6 Luna · TREC-COVID tuned · BM25" in trec_covid_labels
 
 
 def test_main_writes_quality_and_pareto_plots(tmp_path, monkeypatch):
@@ -39,7 +61,7 @@ def test_main_writes_quality_and_pareto_plots(tmp_path, monkeypatch):
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for dataset in DATASETS:
-            for index, (strategy, _) in enumerate(STRATEGIES):
+            for index, (strategy, _) in enumerate(DATASET_STRATEGIES[dataset]):
                 writer.writerow(
                     {
                         "dataset": dataset,

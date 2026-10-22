@@ -17,9 +17,12 @@ NOTEBOOK_CONFIG_PAIRS = [
     ("notebooks/bm25_ms_marco.ipynb", "configs/ecom_base/bm25.yml"),
     (
         "notebooks/agentic_ecom_2tools_wands.ipynb",
-        "configs/ecom_agentic/agentic_ecom_2tools_gpt5_mini.yml",
+        "configs/agentic/ecom_agentic/agentic_ecom_2tools_gpt5_mini.yml",
     ),
-    ("notebooks/agentic_msmarco_minimarco.ipynb", "configs/agentic_msmarco.yml"),
+    (
+        "notebooks/agentic_msmarco_minimarco.ipynb",
+        "configs/agentic/msmarco/agentic_msmarco.yml",
+    ),
 ]
 
 

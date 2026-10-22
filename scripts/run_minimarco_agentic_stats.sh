@@ -7,9 +7,9 @@ RESULTS_CSV="${ROOT_DIR}/research/results/minimarco_agentic_stats.csv"
 mkdir -p "$(dirname "${RESULTS_CSV}")"
 
 CONFIGS=(
-  "configs/msmarco/agentic_msmarco_e5_gpt5_mini.yml"
-  "configs/msmarco/agentic_msmarco_bm25_gpt5_mini.yml"
-  "configs/msmarco/agentic_msmarco_bm25_e5_gpt5_mini.yml"
+  "configs/agentic/msmarco/agentic_msmarco_e5_gpt5_mini.yml"
+  "configs/agentic/msmarco/agentic_msmarco_bm25_gpt5_mini.yml"
+  "configs/agentic/msmarco/agentic_msmarco_bm25_e5_gpt5_mini.yml"
   "configs/msmarco/bm25_msmarco.yml"
   "configs/msmarco/embedding_e5_msmarco.yml"
 )

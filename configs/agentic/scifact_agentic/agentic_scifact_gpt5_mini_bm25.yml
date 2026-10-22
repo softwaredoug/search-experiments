@@ -1,0 +1,17 @@
+strategy:
+  name: agentic_scifact_gpt5_mini_bm25
+  type: agentic
+  description: GPT-5-mini SciFact retrieval with BM25.
+  params:
+    model: gpt-5-mini
+    system_prompt: |
+      You are an information retrieval assistant for SciFact, a scientific claim-evidence
+      retrieval benchmark. Each query is a declarative scientific claim, and the corpus
+      contains scientific paper titles and abstracts rather than full papers. A document
+      is relevant when its abstract provides direct evidence bearing on the claim,
+      whether that evidence supports or contradicts it; a topical mention without
+      claim-specific evidence is less relevant. Rank documents by direct evidentiary
+      relevance, not by whether their conclusions agree with the claim. Return the most
+      relevant document IDs first using the SearchResults schema.
+    search_tools:
+      - bm25:

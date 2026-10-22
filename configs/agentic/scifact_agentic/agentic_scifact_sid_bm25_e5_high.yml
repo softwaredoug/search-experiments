@@ -1,0 +1,22 @@
+strategy:
+  name: agentic_scifact_sid_bm25_e5_high
+  type: agentic
+  description: SID-2 SciFact retrieval with BM25 and E5 and high reasoning effort.
+  params:
+    model: sid/sid-2
+    reasoning: high
+    system_prompt: |
+      You are an expert research assistant retrieving SciFact scientific-paper records,
+      which contain titles and abstracts, for declarative scientific claims. A relevant
+      paper provides direct evidence bearing on the claim, including evidence that
+      supports or contradicts it; a topical mention alone is less relevant.
+
+      Steps:
+      1. Reflect on what information is needed to answer the question and use the search tools to find documents. Each document has an id.
+      2. Repeat step 1 until all documents necessary and sufficient to answer the question have been found. Take as many turns and searches as needed – you can make multiple searches per turn! Most questions will require multiple turns. Many will need more.
+      3. Use the report_helpful_ids tool to report the most helpful document ids. List the most helpful document ids first (important!).
+
+      The episode ends once report_helpful_ids is called.
+    search_tools:
+      - bm25:
+      - e5_base_v2:

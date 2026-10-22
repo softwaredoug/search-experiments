@@ -106,10 +106,10 @@ omitted because they lack token-usage data.
 
 The six SID configurations use `sid/sid-2` with reasoning effort `low`,
 `medium`, or `high`, and either BM25 or BM25 plus E5-base-v2:
-[`configs/ecom_sid/`](../../configs/ecom_sid/). Baselines are configured in
+[`configs/agentic/ecom_sid/`](../../configs/agentic/ecom_sid/). Baselines are configured in
 [`configs/ecom_base/`](../../configs/ecom_base/),
-[`configs/agentic_ecom_bm25_gpt5.yml`](../../configs/agentic_ecom_bm25_gpt5.yml),
-and [`configs/ecom_agentic/`](../../configs/ecom_agentic/), including the
+[`configs/agentic/agentic_ecom_bm25_gpt5.yml`](../../configs/agentic/agentic_ecom_bm25_gpt5.yml),
+and [`configs/agentic/ecom_agentic/`](../../configs/agentic/ecom_agentic/), including the
 GPT-5-mini and GPT-6 Luna BM25/BM25+E5 matrix variants.
 
 The machine-readable results are in
