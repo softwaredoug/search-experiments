@@ -18,6 +18,8 @@ CONFIGS=(
   "configs/agentic/gpt-6-luna-study/agentic_gpt5_mini_bm25_e5.yml"
   "configs/agentic/gpt-6-luna-study/agentic_gpt6_luna_bm25.yml"
   "configs/agentic/gpt-6-luna-study/agentic_gpt6_luna_bm25_e5.yml"
+  "configs/agentic/gpt-6-luna-study/agentic_gpt5_mini_bm25_e5_shopper_prompt.yml"
+  "configs/agentic/gpt-6-luna-study/agentic_gpt6_luna_bm25_e5_shopper_prompt.yml"
 )
 DATASETS=("wands" "esci")
 

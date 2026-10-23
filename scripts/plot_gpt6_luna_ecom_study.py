@@ -19,12 +19,22 @@ STRATEGIES = (
     ("agentic_gpt5_mini_bm25_e5", "GPT-5-mini · BM25 + E5"),
     ("agentic_gpt6_luna_bm25", "GPT-6 Luna · BM25"),
     ("agentic_gpt6_luna_bm25_e5", "GPT-6 Luna · BM25 + E5"),
+    (
+        "agentic_gpt5_mini_bm25_e5_shopper_prompt",
+        "GPT-5-mini · BM25 + E5 · shopper prompt",
+    ),
+    (
+        "agentic_gpt6_luna_bm25_e5_shopper_prompt",
+        "GPT-6 Luna · BM25 + E5 · shopper prompt",
+    ),
 )
 MODEL_BY_STRATEGY = {
     "agentic_gpt5_mini_bm25": "gpt-5-mini",
     "agentic_gpt5_mini_bm25_e5": "gpt-5-mini",
     "agentic_gpt6_luna_bm25": "gpt-6-luna",
     "agentic_gpt6_luna_bm25_e5": "gpt-6-luna",
+    "agentic_gpt5_mini_bm25_e5_shopper_prompt": "gpt-5-mini",
+    "agentic_gpt6_luna_bm25_e5_shopper_prompt": "gpt-6-luna",
 }
 TOKEN_PRICES_PER_MILLION = {
     "gpt-5-mini": {"input": 0.25, "cached_input": 0.025, "output": 2.0},
@@ -231,7 +241,10 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
         )
         annotations.append(
             ax.annotate(
-                label.replace("GPT-5-mini", "GPT-5m").replace(" · ", " "),
+                label.replace("GPT-5-mini", "GPT-5m")
+                .replace(" · shopper prompt", " shopper")
+                .replace(" · ", " ")
+                .replace("BM25 + E5", "BM25+E5"),
                 (cost, ndcg),
                 textcoords="offset points",
                 xytext=(5, 5),
@@ -249,9 +262,6 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
             zorder=4,
         )
 
-    ceiling = read_mean_max_ndcg(input_path)
-    if dataset in ceiling:
-        add_mean_max_ndcg_line(ax, ceiling[dataset])
     ax.set_title(dataset.upper())
     ax.set_xlabel("Estimated model token cost per query (USD; lower is better)")
     ax.set_ylabel("Mean NDCG@10 (higher is better)")
