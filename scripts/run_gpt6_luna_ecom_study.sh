@@ -7,10 +7,20 @@ PLOT_OUTPUT_PREFIX="${PLOT_OUTPUT_PREFIX:-${ROOT_DIR}/assets/gpt6_luna_ecom_stud
 WORKERS="${WORKERS:-8}"
 MODEL_WORKERS="${MODEL_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
-SEED="${SEED:-42}"
-NO_CACHE="${NO_CACHE:-false}"
+# Bypass result-cache reads so each seed makes fresh searches; results remain cached per seed.
+NO_CACHE="${NO_CACHE:-true}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 WANDS_NUM_QUERIES="${WANDS_NUM_QUERIES:-}"
+read -r -a SEEDS <<< "${RUN_SEEDS:-43 44 45}"
+if [[ "${#SEEDS[@]}" -ne 3 ]]; then
+  echo "RUN_SEEDS must contain exactly three distinct seeds." >&2
+  exit 2
+fi
+if [[ "${SEEDS[0]}" == "${SEEDS[1]}" || "${SEEDS[0]}" == "${SEEDS[2]}" || \
+  "${SEEDS[1]}" == "${SEEDS[2]}" ]]; then
+  echo "RUN_SEEDS must contain exactly three distinct seeds." >&2
+  exit 2
+fi
 
 CONFIGS=(
   "configs/agentic/gpt-6-luna-study/bm25.yml"
@@ -34,28 +44,30 @@ for dataset in "${DATASETS[@]}"; do
       workers="${MODEL_WORKERS}"
     fi
 
-    echo "Running ${config} on ${dataset} with ${workers} worker(s)"
-    run_args=(
-      uv run run
-      --strategy "${ROOT_DIR}/${config}"
-      --dataset "${dataset}"
-      --workers "${workers}"
-      --seed "${SEED}"
-      --summary-csv "${RESULTS_CSV}"
-    )
-    if [[ "${NO_CACHE}" == "true" ]]; then
-      run_args+=(--no-cache)
-    fi
-    if [[ -n "${DEVICE}" ]]; then
-      run_args+=(--device "${DEVICE}")
-    fi
-    if [[ "${dataset}" == "esci" ]]; then
-      run_args+=(--num-queries "${ESCI_NUM_QUERIES}")
-    elif [[ "${dataset}" == "wands" && -n "${WANDS_NUM_QUERIES}" ]]; then
-      run_args+=(--num-queries "${WANDS_NUM_QUERIES}")
-    fi
+    for seed in "${SEEDS[@]}"; do
+      echo "Running ${config} on ${dataset} with seed ${seed} and ${workers} worker(s)"
+      run_args=(
+        uv run run
+        --strategy "${ROOT_DIR}/${config}"
+        --dataset "${dataset}"
+        --workers "${workers}"
+        --seed "${seed}"
+        --summary-csv "${RESULTS_CSV}"
+      )
+      if [[ "${NO_CACHE}" == "true" ]]; then
+        run_args+=(--no-cache)
+      fi
+      if [[ -n "${DEVICE}" ]]; then
+        run_args+=(--device "${DEVICE}")
+      fi
+      if [[ "${dataset}" == "esci" ]]; then
+        run_args+=(--num-queries "${ESCI_NUM_QUERIES}")
+      elif [[ "${dataset}" == "wands" && -n "${WANDS_NUM_QUERIES}" ]]; then
+        run_args+=(--num-queries "${WANDS_NUM_QUERIES}")
+      fi
 
-    "${run_args[@]}"
+      "${run_args[@]}"
+    done
   done
 done
 

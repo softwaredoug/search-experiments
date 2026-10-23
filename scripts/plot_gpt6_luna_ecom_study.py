@@ -43,7 +43,7 @@ TOKEN_PRICES_PER_MILLION = {
 MODEL_COLORS = {"gpt-5-mini": "#4C78A8", "gpt-6-luna": "#F58518"}
 
 
-def _read_mean_ndcg(path: Path) -> dict[tuple[str, str], float]:
+def _read_ndcg_runs(path: Path) -> dict[tuple[str, str], list[float]]:
     totals: dict[tuple[str, str], list[float]] = defaultdict(list)
     strategy_names = {strategy for strategy, _ in STRATEGIES}
     with path.open(encoding="utf-8", newline="") as handle:
@@ -68,10 +68,18 @@ def _read_mean_ndcg(path: Path) -> dict[tuple[str, str], float]:
                     f"Invalid mean_ndcg for dataset={dataset!r}, strategy={strategy!r}."
                 ) from exc
 
-    return {key: sum(values) / len(values) for key, values in totals.items()}
+    return dict(totals)
 
 
-def _read_mean_token_cost_usd(path: Path) -> dict[tuple[str, str], float]:
+def _read_mean_ndcg(path: Path) -> dict[tuple[str, str], float]:
+    return {
+        key: sum(values) / len(values)
+        for key, values in _read_ndcg_runs(path).items()
+        if values
+    }
+
+
+def _read_token_cost_runs_usd(path: Path) -> dict[tuple[str, str], list[float]]:
     totals: dict[tuple[str, str], list[float]] = defaultdict(list)
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -124,7 +132,15 @@ def _read_mean_token_cost_usd(path: Path) -> dict[tuple[str, str], float]:
             ) / 1_000_000
             totals[(dataset, strategy)].append(cost_usd)
 
-    return {key: sum(values) / len(values) for key, values in totals.items()}
+    return dict(totals)
+
+
+def _read_mean_token_cost_usd(path: Path) -> dict[tuple[str, str], float]:
+    return {
+        key: sum(values) / len(values)
+        for key, values in _read_token_cost_runs_usd(path).items()
+        if values
+    }
 
 
 def _pareto_front(points: list[dict[str, float | str]]) -> list[dict[str, float | str]]:
@@ -151,7 +167,10 @@ def _pareto_front(points: list[dict[str, float | str]]) -> list[dict[str, float 
 def plot_retrieval(input_path: Path, output_path: Path, dataset: str) -> None:
     import matplotlib.pyplot as plt
 
-    means = _read_mean_ndcg(input_path)
+    run_values = _read_ndcg_runs(input_path)
+    means = {
+        key: sum(values) / len(values) for key, values in run_values.items() if values
+    }
     labels = dict(STRATEGIES)
     ordered = sorted(
         (
@@ -167,7 +186,30 @@ def plot_retrieval(input_path: Path, output_path: Path, dataset: str) -> None:
     positions = list(range(len(ordered)))
     values = [value for _, value in ordered]
     fig, ax = plt.subplots(figsize=(11, 6))
-    ax.plot(positions, values, color="#4C78A8", marker="o", linewidth=2)
+    ax.plot(
+        positions,
+        values,
+        color="#4C78A8",
+        marker="D",
+        linewidth=2,
+        label="Mean across runs",
+        zorder=3,
+    )
+    for position, (strategy, _) in enumerate(ordered):
+        runs = run_values[(dataset, strategy)]
+        offsets = [
+            (index - (len(runs) - 1) / 2) * 0.08 for index in range(len(runs))
+        ]
+        ax.scatter(
+            [position + offset for offset in offsets],
+            runs,
+            color="#666666",
+            marker="x",
+            s=42,
+            alpha=0.75,
+            label="Individual runs" if position == 0 else None,
+            zorder=2,
+        )
     for position, value in zip(positions, values):
         ax.annotate(
             f"{value:.3f}",
@@ -188,7 +230,7 @@ def plot_retrieval(input_path: Path, output_path: Path, dataset: str) -> None:
     ceiling = read_mean_max_ndcg(input_path)
     if dataset in ceiling:
         add_mean_max_ndcg_line(ax, ceiling[dataset])
-        ax.legend(loc="best", fontsize=8)
+    ax.legend(loc="best", fontsize=8)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
     fig.suptitle("E-commerce retrieval quality: BM25, GPT-5-mini, and GPT-6 Luna")
@@ -201,19 +243,34 @@ def plot_retrieval(input_path: Path, output_path: Path, dataset: str) -> None:
 def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
     import matplotlib.pyplot as plt
 
-    means = _read_mean_ndcg(input_path)
-    costs = _read_mean_token_cost_usd(input_path)
+    ndcg_runs = _read_ndcg_runs(input_path)
+    cost_runs = _read_token_cost_runs_usd(input_path)
     labels = dict(STRATEGIES)
     strategies = [strategy for strategy, _ in STRATEGIES if strategy in MODEL_BY_STRATEGY]
-    points = [
-        {
-            "strategy": strategy,
-            "mean_ndcg": means[(dataset, strategy)],
-            "mean_token_cost_usd": costs[(dataset, strategy)],
-        }
-        for strategy in strategies
-        if (dataset, strategy) in means and (dataset, strategy) in costs
-    ]
+    run_points: list[tuple[str, str, float, float]] = []
+    points: list[dict[str, float | str]] = []
+    for strategy in strategies:
+        key = (dataset, strategy)
+        ndcgs = ndcg_runs.get(key, [])
+        costs = cost_runs.get(key, [])
+        if not ndcgs or not costs:
+            continue
+        if len(ndcgs) != len(costs):
+            raise ValueError(
+                f"Mismatched NDCG and cost run counts for {dataset}/{strategy}: "
+                f"{len(ndcgs)} vs {len(costs)}."
+            )
+        run_points.extend(
+            (strategy, MODEL_BY_STRATEGY[strategy], ndcg, cost)
+            for ndcg, cost in zip(ndcgs, costs)
+        )
+        points.append(
+            {
+                "strategy": strategy,
+                "mean_ndcg": sum(ndcgs) / len(ndcgs),
+                "mean_token_cost_usd": sum(costs) / len(costs),
+            }
+        )
     if not points:
         raise ValueError(f"No token-cost and NDCG results found for dataset={dataset!r}.")
 
@@ -221,11 +278,24 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
     frontier_names = {str(point["strategy"]) for point in frontier}
     fig, ax = plt.subplots(figsize=(10, 6))
     annotations = []
-    for point in points:
+    for run_index, (strategy, model, ndcg, cost) in enumerate(run_points):
+        marker = "s" if "_e5" in strategy else "o"
+        ax.scatter(
+            cost,
+            ndcg,
+            color=MODEL_COLORS[model],
+            marker=marker,
+            s=42,
+            alpha=0.35,
+            linewidths=0.7,
+            label="Individual runs" if run_index == 0 else None,
+            zorder=2,
+        )
+
+    for point_index, point in enumerate(points):
         strategy = str(point["strategy"])
         model = MODEL_BY_STRATEGY[strategy]
         label = labels[strategy]
-        marker = "s" if "_e5" in strategy else "o"
         is_frontier = strategy in frontier_names
         cost = float(point["mean_token_cost_usd"])
         ndcg = float(point["mean_ndcg"])
@@ -233,15 +303,17 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
             cost,
             ndcg,
             color=MODEL_COLORS[model],
-            marker=marker,
-            s=65,
-            edgecolors="#222222" if is_frontier else "none",
-            linewidths=0.8,
-            zorder=3 if is_frontier else 2,
+            marker="*",
+            s=125,
+            edgecolors="#222222",
+            linewidths=0.9,
+            label="Variant means" if point_index == 0 else None,
+            zorder=4 if is_frontier else 3,
         )
         annotations.append(
             ax.annotate(
-                label.replace("GPT-5-mini", "GPT-5m")
+                "Mean "
+                + label.replace("GPT-5-mini", "GPT-5m")
                 .replace(" · shopper prompt", " shopper")
                 .replace(" · ", " ")
                 .replace("BM25 + E5", "BM25+E5"),
@@ -259,6 +331,7 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
             color="#F58518",
             linewidth=2,
             marker="o",
+            label="Mean Pareto frontier",
             zorder=4,
         )
 
@@ -268,6 +341,7 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
     ax.grid(linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
     fig.suptitle("GPT-5-mini and GPT-6 Luna e-commerce cost Pareto")
+    ax.legend(loc="best", fontsize=8)
     rates = (
         "GPT-6 Luna: $0.10/M input, $0.01/M cached input, $0.50/M output; "
         "GPT-5-mini: $0.25/M input, $0.025/M cached input, $2.00/M output"
