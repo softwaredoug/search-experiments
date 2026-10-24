@@ -33,6 +33,16 @@ Then stoppers are checked. If any stopper succeeds, the loop ends. If not, the f
 
 The loop also stops after a maximum number of iterations (`max_loops`, default 10) to avoid infinite retries.
 
+The optional `valid_doc_ids` validator checks that every returned `doc_ids_ranked` entry exists in
+the active corpus and that IDs are unique. If it finds invalid or repeated IDs, it sends them back
+to the agent for correction. It is not enabled automatically. Configure it when desired:
+
+```yaml
+    validators:
+      - valid_doc_ids:
+          prompt: "Use distinct document IDs exactly as returned by the search tools."
+```
+
 ### LLM judge validator
 
 Validators can use an LLM judge to provide emoji-based feedback. Example:

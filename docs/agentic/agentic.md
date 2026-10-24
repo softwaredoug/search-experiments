@@ -41,9 +41,11 @@ This calls OpenAI with
 
 The shared cheat-at-search `SearchResults` response model has an unbounded `doc_ids_ranked` list.
 The standard `agentic` strategy wraps it in a request-specific schema that requires exactly the
-requested number of IDs (up to the corpus size), then verifies that each ID maps to a corpus
-document. `scatter_gather_wands` uses the shared schema for intermediate outputs and truncates its
-final ranking to `k`.
+requested number of IDs (up to the corpus size). The optional `valid_doc_ids` validator checks that
+each ID maps to the corpus and asks the agent to correct unknown or duplicate IDs. Without that
+validator, IDs that do not map to the corpus are dropped from the returned ranking.
+`scatter_gather_wands` uses the shared schema for intermediate outputs and truncates its final
+ranking to `k`.
 
 Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness applies validators + stop conditions around that agent loop.
 

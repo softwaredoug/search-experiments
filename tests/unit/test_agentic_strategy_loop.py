@@ -198,6 +198,9 @@ def test_agentic_strategy_retries_invalid_document_ids(tmp_path):
         workers=1,
         model="gpt-5-mini",
         search_tools=["bm25"],
+        validators=[
+            {"valid_doc_ids": {"prompt": "Use only valid document IDs."}}
+        ],
         trace_path=tmp_path,
     )
 
@@ -211,6 +214,24 @@ def test_agentic_strategy_retries_invalid_document_ids(tmp_path):
         for item in _InvalidIdsThenValidAgent.last_instance.last_inputs
         if isinstance(item, dict)
     )
+
+
+@patch.object(agent_mod, "build_openai_agent", _build_invalid_ids_then_valid_agent)
+@patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
+def test_agentic_strategy_does_not_enable_valid_doc_ids_automatically(tmp_path):
+    strategy = agentic_mod.AgenticSearchStrategy(
+        _sample_corpus(),
+        workers=1,
+        model="gpt-5-mini",
+        search_tools=["bm25"],
+        trace_path=tmp_path,
+    )
+
+    ranked_results, _scores, _resources = strategy.search("query", k=2)
+
+    assert strategy.validators == []
+    assert ranked_results == [0]
+    assert _InvalidIdsThenValidAgent.last_instance.calls == 1
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
