@@ -839,6 +839,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "cheat-at-search" },
+    { name = "pyarrow" },
     { name = "pyyaml" },
     { name = "sid-sdk" },
     { name = "typesafe-sdk" },
@@ -869,6 +870,7 @@ requires-dist = [
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=9.3.0" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.10.0" },
+    { name = "pyarrow", specifier = ">=21.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },

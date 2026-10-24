@@ -7,6 +7,7 @@ import pytest
 
 from exps.runner import (
     _report_metric,
+    _write_full_results_parquet,
     _write_per_query_csv,
     _write_summary_csv,
     main,
@@ -218,11 +219,52 @@ def test_per_query_csv_collapses_document_rows_and_appends_run_metadata(tmp_path
     assert rows[2]["seed"] == "44"
 
 
+def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
+    path = tmp_path / "full_results.parquet"
+    graded = _per_query_graded_results().assign(
+        score=[0.9, 0.8, 0.7],
+        grade=[4, 2, 1],
+        title=["Blue chair A", "Blue chair B", "Wood table"],
+        description=["First", "Second", "Third"],
+    )
+    graded = pd.concat(
+        [graded, graded.iloc[[0]].assign(rank=11)], ignore_index=True
+    )
+    result = SimpleNamespace(
+        strategy_name="agentic_gpt6_luna_bm25",
+        strategy_params={"model": "gpt-6-luna"},
+        metric_name="NDCG_M",
+        graded=graded,
+    )
+
+    _write_full_results_parquet(
+        str(path),
+        dataset="wands",
+        seed=43,
+        run_id="run-a",
+        commit_sha="abc123",
+        result=result,
+    )
+
+    rows = pd.read_parquet(path)
+    assert len(rows) == 3
+    assert rows["query_id"].tolist() == [11, 11, 12]
+    assert rows["rank"].tolist() == [1, 2, 1]
+    assert rows["title"].tolist() == ["Blue chair A", "Blue chair B", "Wood table"]
+    assert rows["grade"].tolist() == [4, 2, 1]
+    assert rows["dataset"].tolist() == ["wands"] * 3
+    assert rows["seed"].tolist() == [43] * 3
+    assert rows["run_id"].tolist() == ["run-a"] * 3
+    assert rows["commit_sha"].tolist() == ["abc123"] * 3
+    assert rows["strategy_params"].tolist() == ['{"model": "gpt-6-luna"}'] * 3
+
+
 def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
     tmp_path, monkeypatch
 ):
     summary_path = tmp_path / "summary.csv"
     per_query_path = tmp_path / "per_query.csv"
+    full_results_path = tmp_path / "full_results.parquet"
     result = SimpleNamespace(
         strategy_name="agentic_gpt6_luna_bm25",
         strategy_params={"model": "gpt-6-luna"},
@@ -250,6 +292,8 @@ def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
             str(summary_path),
             "--per-query-csv",
             str(per_query_path),
+            "--full-results-parquet",
+            str(full_results_path),
         ],
     )
 
@@ -259,10 +303,32 @@ def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
         summary_row = next(csv.DictReader(handle))
     with per_query_path.open(newline="", encoding="utf-8") as handle:
         per_query_row = next(csv.DictReader(handle))
+    full_results = pd.read_parquet(full_results_path)
 
     assert summary_row["run_id"] == per_query_row["run_id"]
     assert summary_row["seed"] == per_query_row["seed"] == "43"
     assert per_query_row["ndcg_m"] == "0.8"
+    assert full_results["run_id"].unique().tolist() == [summary_row["run_id"]]
+    assert full_results["seed"].unique().tolist() == [43]
+
+
+def test_run_cli_rejects_full_results_for_single_query(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run",
+            "--strategy",
+            "unused.yml",
+            "--query",
+            "blue chair",
+            "--full-results-parquet",
+            "full_results.parquet",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        main()
 
 
 def test_summary_output_includes_generic_resource_statistics(capsys):

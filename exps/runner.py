@@ -172,6 +172,40 @@ def _write_per_query_csv(
     _append_csv_rows(path, rows)
 
 
+def _write_full_results_parquet(
+    path: str,
+    *,
+    dataset: str,
+    seed: int,
+    run_id: str,
+    commit_sha: str,
+    result,
+) -> None:
+    graded = result.graded
+    if graded is None or graded.empty:
+        raise ValueError("Full-results Parquet output requires graded benchmark results.")
+    required_columns = {"query_id", "query", "doc_id", "rank"}
+    missing_columns = required_columns.difference(graded.columns)
+    if missing_columns:
+        raise ValueError(
+            "Full results are missing required columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    output = graded.loc[graded["rank"] <= 10].copy()
+    output["dataset"] = dataset
+    output["run_id"] = run_id
+    output["commit_sha"] = commit_sha
+    output["seed"] = seed
+    output["strategy_name"] = result.strategy_name
+    output["strategy_params"] = json.dumps(result.strategy_params, sort_keys=True)
+    output["metric_name"] = result.metric_name or ""
+
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output.to_parquet(output_path, index=False, compression="zstd")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run experiment strategies.")
     parser.add_argument(
@@ -244,11 +278,19 @@ def main() -> None:
         "--per-query-csv",
         help="Write one row per query with NDCG, relevance, and resource metrics (appends if exists).",
     )
+    parser.add_argument(
+        "--full-results-parquet",
+        help="Write all ranked document results (up to rank 10 per query) to Parquet.",
+    )
     args = parser.parse_args()
 
     if args.query:
         if args.per_query_csv:
             parser.error("--per-query-csv is only available for full benchmark runs.")
+        if args.full_results_parquet:
+            parser.error(
+                "--full-results-parquet is only available for full benchmark runs."
+            )
         params = RunParams(
             strategy_path=args.strategy,
             dataset=args.dataset,
@@ -334,6 +376,16 @@ def main() -> None:
             commit_sha=commit_sha,
             result=result,
         )
+    if args.full_results_parquet:
+        _write_full_results_parquet(
+            args.full_results_parquet,
+            dataset=args.dataset,
+            seed=args.seed,
+            run_id=run_id,
+            commit_sha=commit_sha,
+            result=result,
+        )
+        print(f"Full results Parquet: {args.full_results_parquet}")
 
 
 if __name__ == "__main__":
