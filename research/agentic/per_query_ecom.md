@@ -378,3 +378,140 @@ Mean `NDCG_M` across agentic runs: **0.049**; mean `NDCG_G`: **0.061**; BM25 `ND
 | 8 | 1 | 983 | jovanny tumbler | 8 | 0 | 11965 | ambesonne green leaf 2 panel curtain set , watercolor style olive branch mediterranean tree , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , avocado green |
 | 9 | 1 | 988 | ethan 4 piece bathroom accessory set | 9 | 0 | 11947 | ambesonne asian curtains , oriental antique pattern foliage inspirations geometrical design , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , yellow purple |
 | 10 | 1 | 990 | ethan 3 piece bathroom accessory set | 10 | 0 | 11964 | ambesonne moroccan 2 panel curtain set , circles pattern inspired floral arrangements geometric rectangles , lightweight window treatment living room bedroom decor , 56 '' x 95 '' , aqua orange ruby |
+
+## Often poor across agentic variants
+
+This broader group misses the strict all-18-run cutoff in some seeds/configurations, but each query has a three-seed mean `NDCG_M < 0.30` in five of the six agentic configurations. Thus the cutoff is met by 83% of configurations. “Only variant above” gives the sixth configuration’s three-seed mean.
+
+| Query ID | Query | Mean NDCG_M | Mean NDCG_G | Configs below .30 | Runs below .30 | Only variant above .30 | BM25 NDCG_M |
+|---:|---|---:|---:|---:|---:|---|---:|
+| 443 | patio design | 0.196 | 0.196 | 5/6 | 13/18 | gpt5 mini bm25 e5 shopper prompt (0.483) | 0.410 |
+| 95 | entertainment stand end table | 0.209 | 0.209 | 5/6 | 12/18 | gpt5 mini bm25 e5 shopper prompt (0.333) | 0.333 |
+| 452 | day bed indian | 0.237 | 0.710 | 5/6 | 14/18 | gpt6 luna bm25 (0.306) | 0.171 |
+| 292 | decorative white pillow | 0.249 | 0.249 | 5/6 | 16/18 | gpt5 mini bm25 (0.315) | 0.306 |
+| 21 | living curtains pearl | 0.250 | 0.445 | 5/6 | 15/18 | gpt5 mini bm25 e5 shopper prompt (0.307) | 0.209 |
+| 451 | aiden black velvet bed | 0.263 | 0.788 | 5/6 | 14/18 | gpt6 luna bm25 e5 shopper prompt (0.303) | 0.206 |
+| 409 | teal chair | 0.268 | 0.268 | 5/6 | 15/18 | gpt5 mini bm25 (0.333) | 0.045 |
+| 136 | black fluffy stool | 0.285 | 0.856 | 5/6 | 12/18 | gpt5 mini bm25 e5 (0.312) | 0.135 |
+
+The `NDCG_G` column helps interpret cases where the absolute `NDCG_M` is low but the agent performs better relative to the judged-result ideal. Detailed results below use the same representative `agentic_gpt6_luna_bm25` seed-43 run as the consistently-poor section.
+
+### 443 — patio design
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 2 | 206 | guitta patio chair | 1 | NA | 7620 | ebern designs 3pcs rattan patio conversation set outdoor furniture set w/ table cushion |
+| 2 | 2 | 252 | jibe outdoor patio sectional with cushions | 2 | NA | 14542 | merlyn 6- piece outdoor garden patio furniture |
+| 3 | 2 | 386 | dinja patio sectional with cushions | 3 | NA | 42450 | 4 pieces patio furniture set outdoor garden patio conversation sets poolside lawn chairs with glass coffee table porch furniture |
+| 4 | 2 | 507 | ainsley patio 3 piece bistro set | 4 | NA | 19372 | 3 piece rocking patio furniture set |
+| 5 | 2 | 1200 | breccan patio furniture on clearance 7 piece rattan sectional seating group with cushions | 5 | NA | 42242 | 3 piece patio bistro set outdoor furniture modern rattan wicker chairs |
+| 6 | 2 | 1201 | troy patio furniture 5 piece rattan sectional seating group with cushions | 6 | NA | 37711 | outdoor rattan patio furniture set |
+| 7 | 2 | 1208 | halla patio furniture on clearance 7 piece rattan sectional seating group with cushions | 7 | NA | 25317 | 7 piece outdoor patio furniture set |
+| 8 | 2 | 1210 | patio furniture 9 pieces rattan wicker sectional seating group with cushions | 8 | NA | 24040 | patio gazebo |
+| 9 | 2 | 1232 | 4-piece patio conversation sets | 9 | NA | 14668 | yoshida modern outdoor patio chair |
+| 10 | 2 | 1249 | obannon 4 piece patio sectional seating group with cushions | 10 | NA | 24444 | decorative battery-powered patio wall thermometer |
+
+### 95 — entertainment stand end table
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 2 | 78 | mcnett tv stand for tvs up to 55 '' | 1 | NA | 35727 | japha tv stand |
+| 2 | 2 | 370 | wilfredo tv stand for tvs up to 75 '' | 2 | NA | 35726 | japera tv stand |
+| 3 | 2 | 707 | orton solid wood tv stand for tvs up to 65 '' | 3 | NA | 35725 | zeph tv stand |
+| 4 | 2 | 5048 | ballou tv stand for tvs up to 70 '' | 4 | NA | 35729 | merujhan tv stand |
+| 5 | 2 | 5958 | voorhees tv stand for tvs up to 50 '' | 5 | NA | 35728 | melik tv stand |
+| 6 | 2 | 6449 | mesa solid wood tv stand for tvs up to 65 '' | 6 | NA | 22682 | tv stand |
+| 7 | 2 | 7516 | althea tv stand for tvs up to 88 '' | 7 | NA | 15568 | eckhardt tv stand |
+| 8 | 2 | 7868 | mendosa tv stand for tvs up to 65 '' | 8 | NA | 15567 | hsieh tv stand |
+| 9 | 2 | 8332 | chantrell solid wood tv stand for tvs up to 78 '' | 9 | 1 | 40693 | heartwell tv stand entertainment center for tvs up to 48 '' |
+| 10 | 2 | 10354 | raney tv stand for tvs up to 50 '' | 10 | NA | 10783 | wachusett tv stand |
+
+### 452 — day bed indian
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 1 | 480 | esther full daybed | 1 | 1 | 19823 | india twin daybed with trundle |
+| 2 | 1 | 724 | daybed with trundle | 2 | 1 | 14390 | rel day bed |
+| 3 | 1 | 842 | pattonsburg daybed with trundle | 3 | 1 | 19826 | redus daybed with trundle |
+| 4 | 1 | 1153 | sanderling daybed w/ trundle | 4 | 1 | 19827 | redus daybed |
+| 5 | 1 | 1567 | schwenksville twin solid wood daybed | 5 | 1 | 6856 | hollandsworth queen day bed with trundle |
+| 6 | 1 | 1746 | barium twin metal daybed | 6 | 1 | 19824 | earnest daybed |
+| 7 | 1 | 1752 | daybed with trundle | 7 | NA | 41698 | philomena daybed |
+| 8 | 1 | 2097 | elrod daybed with trundle | 8 | 1 | 41745 | kyng daybed |
+| 9 | 1 | 2515 | denine daybed | 9 | 1 | 25831 | danbury daybed |
+| 10 | 1 | 2805 | adalea daybed | 10 | 1 | 19825 | geralynn daybed |
+
+### 292 — decorative white pillow
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 2 | 2897 | daria square pillow insert | 1 | 1 | 21561 | adelina white european pillow cover |
+| 2 | 2 | 2899 | mairead soft throw pillow insert | 2 | 1 | 3634 | astoria pineapple decorative cotton lumbar pillow |
+| 3 | 2 | 4177 | allyson decorative cotton lumbar pillow | 3 | 1 | 28463 | halesowen decorative shaggy throw pillow |
+| 4 | 2 | 7002 | swampscott faux lumbar pillow | 4 | 1 | 28464 | hatherleigh decorative shaggy throw pillow |
+| 5 | 2 | 9536 | cogdill grateful thankful blessed indoor/outdoor lumbar pillow | 5 | NA | 31401 | theriault solid cotton throw pillow |
+| 6 | 2 | 9541 | garrity unwin outdoor rectangular pillow cover & insert | 6 | 2 | 23741 | kingsburg decorative cotton throw pillow |
+| 7 | 2 | 14929 | otto cotton euro pillow | 7 | NA | 36158 | jaynia throw pillow |
+| 8 | 2 | 18509 | seales rectangular pillow cover and insert | 8 | NA | 3627 | gunhild linen throw pillow |
+| 9 | 2 | 20709 | gustin 18 '' throw pillow | 9 | NA | 39917 | bradford cotton throw pillow |
+| 10 | 2 | 21029 | anchors away decorative accent cotton throw pillow | 10 | NA | 22785 | indigo ikat throw pillow |
+
+### 21 — living curtains pearl
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 2 | 27990 | hexa hidden geometric room darkening tab top curtain panels | 1 | 1 | 12084 | pearls room darkening rod pocket curtain panels |
+| 2 | 1 | 103 | leach solid max blackout thermal grommet curtain panels | 2 | 1 | 12086 | pearls geometric room darkening rod pocket curtain panels |
+| 3 | 1 | 466 | avedon solid color blackout thermal rod pocket single curtain panel | 3 | 1 | 12085 | pearls abstract room darkening rod pocket curtain panels |
+| 4 | 1 | 581 | schwerin geometric sheer grommet curtain panels | — | — | — | — |
+| 5 | 1 | 1483 | goldsboro geometric room darkening thermal pinch pleat single curtain panel | — | — | — | — |
+| 6 | 1 | 2552 | beauvale damask blackout rod pocket single curtain panel | — | — | — | — |
+| 7 | 1 | 2670 | ardmore solid blackout single curtain panel | — | — | — | — |
+| 8 | 1 | 3454 | gargi solid sheer grommet single curtain panel | — | — | — | — |
+| 9 | 1 | 3682 | plant city geometric semi-sheer grommet curtain panels | — | — | — | — |
+| 10 | 1 | 4498 | betria solid color room darkening rod pocket curtain panels | — | — | — | — |
+
+### 451 — aiden black velvet bed
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 1 | 1100 | pineview upholstered standard bed | 1 | 1 | 1103 | aiden upholstered standard bed |
+| 2 | 1 | 1103 | aiden upholstered standard bed | 2 | NA | 6950 | tufted upholstered standard bed |
+| 3 | 1 | 1445 | deyan tufted upholstered platform bed | 3 | 1 | 33364 | goodrich velvet upholstered standard bed |
+| 4 | 1 | 1892 | amherst upholstered platform bed | 4 | 1 | 26789 | aeliana velvet upholstered platform bed |
+| 5 | 1 | 4734 | castilla tufted upholstered low profile standard bed | 5 | 1 | 26790 | amaia velvet upholstered platform bed |
+| 6 | 1 | 4736 | vogt upholstered platform bed | 6 | 1 | 26791 | wulff velvet upholstered platform bed |
+| 7 | 1 | 4737 | janiya tufted upholstered low profile platform bed | 7 | 1 | 33295 | soper pu velvet queen upholstered platform bed |
+| 8 | 1 | 4738 | janiya tufted platform bed | 8 | 1 | 4924 | brunet velvet queen upholstered standard bed |
+| 9 | 1 | 4793 | maryanne tufted upholstered low profile platform bed | 9 | 0 | 1975 | black bed frame |
+| 10 | 1 | 4800 | baylum tufted upholstered low profile platform bed | 10 | 1 | 34348 | metal bed frame twin size , black |
+
+### 409 — teal chair
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 2 | 356 | chiang 37.5 '' wide velvet armchair | 1 | 1 | 30382 | accent chair living room/bed room , modern leisure chair teal |
+| 2 | 2 | 1490 | olander 34.5 '' wide polyester armchair | 2 | 1 | 21405 | office chair , velvet desk chair with gold metal legs , adjustable computer chair for home office conference study room , teal |
+| 3 | 2 | 1510 | wellersburg 30.06 '' wide manual club recliner | 3 | 1 | 26050 | mcfarren tufted arm chair in charcoal/teal |
+| 4 | 2 | 1850 | newry armchair | 4 | 1 | 26049 | mcfarren tufted side chair in charcoal/teal |
+| 5 | 2 | 2801 | aldridge 26.7 '' wide armchair | — | — | — | — |
+| 6 | 2 | 3611 | decker 42 '' wide tufted papasan chair | — | — | — | — |
+| 7 | 2 | 4742 | twining 29 '' wide velvet wingback chair | — | — | — | — |
+| 8 | 2 | 4743 | lauretta 27.5 '' wide velvet wingback chair | — | — | — | — |
+| 9 | 2 | 8956 | gabilan upholstered parsons chair | — | — | — | — |
+| 10 | 2 | 14625 | yorba 31.5 '' wide tufted velvet armchair | — | — | — | — |
+
+### 136 — black fluffy stool
+
+| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
+|---:|---:|---|---|---:|---:|---|---|
+| 1 | 1 | 858 | aubrianna bar & counter stool | 1 | 1 | 23032 | accent stool |
+| 2 | 1 | 956 | altamirano solid wood 24 '' counter stool | 2 | 1 | 35256 | ortegon mane attraction faux accent stool |
+| 3 | 1 | 1006 | deedee stool | 3 | 1 | 4900 | brumiss faux accent stool |
+| 4 | 1 | 1015 | kaisa stool | 4 | 1 | 37648 | casias small accent stool |
+| 5 | 1 | 1017 | damario stool | 5 | 1 | 19649 | adjustable bar stool in black |
+| 6 | 1 | 1366 | cyril 26 '' swivel bar stool counter stool | — | — | — | — |
+| 7 | 1 | 1432 | alin swivel bar & counter stool | — | — | — | — |
+| 8 | 1 | 1433 | ayanna bar & counter stool | — | — | — | — |
+| 9 | 1 | 1573 | adelaida swivel bar & counter stool | — | — | — | — |
+| 10 | 1 | 1608 | stool | — | — | — | — |
