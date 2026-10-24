@@ -30,7 +30,7 @@ class _FakeOpenAIAgent:
             inputs = []
         self.calls += 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        result = agent_mod.SearchResults(doc_ids_ranked=["101", "202", "303"])
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = copy.deepcopy(inputs)
         return resp, inputs
@@ -41,7 +41,7 @@ class _FakeOpenAIAgentNoTools(_FakeOpenAIAgent):
         if inputs is None:
             inputs = []
         self.calls += 1
-        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        result = agent_mod.SearchResults(doc_ids_ranked=["101", "202", "303"])
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = copy.deepcopy(inputs)
         return resp, inputs
@@ -64,7 +64,7 @@ class _FakeSIDAgent:
             {"role": "tool", "tool_call_id": "call_1", "content": "search results"}
         )
         agent_state["trace_logger"] = logger
-        result = agent_mod.SearchResults(ranked_results=["101", "202", "303"])
+        result = agent_mod.SearchResults(doc_ids_ranked=["101", "202", "303"])
         resp = type("Resp", (), {"output_parsed": result})
         return resp, inputs
 
@@ -79,13 +79,13 @@ def _build_fake_agent_no_tools(*args, **kwargs):
 
 def test_search_results_model_requires_exact_requested_length():
     model = agent_mod.search_results_model_for_k(10)
-    ranked_results_schema = model.model_json_schema()["properties"]["ranked_results"]
+    ranked_results_schema = model.model_json_schema()["properties"]["doc_ids_ranked"]
 
     assert ranked_results_schema["minItems"] == 10
     assert ranked_results_schema["maxItems"] == 10
-    assert len(model(ranked_results=[str(i) for i in range(10)]).ranked_results) == 10
+    assert len(model(doc_ids_ranked=[str(i) for i in range(10)]).doc_ids_ranked) == 10
     with pytest.raises(ValidationError):
-        model(ranked_results=[str(i) for i in range(9)])
+        model(doc_ids_ranked=[str(i) for i in range(9)])
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])

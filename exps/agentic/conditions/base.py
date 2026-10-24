@@ -88,5 +88,5 @@ class BaseCondition(ABC):
 
 def ranked_doc_ids(response: Any) -> list[str]:
     parsed = getattr(response, "output_parsed", None) if response else None
-    ranked = getattr(parsed, "ranked_results", None) if parsed else None
+    ranked = getattr(parsed, "doc_ids_ranked", None) if parsed else None
     return list(ranked or [])

@@ -11,6 +11,7 @@ from exps.agentic.conditions.simple import (
     IterationsCondition,
     ToolCallsCondition,
 )
+from exps.agentic.conditions.valid_doc_ids import ValidDocIdsValidator
 
 
 _FACTORIES: dict[str, type[BaseCondition]] = {
@@ -20,6 +21,7 @@ _FACTORIES: dict[str, type[BaseCondition]] = {
     "jev_judge_relevance": JevJudgeRelevance,
     "jev_bag_of_decisions_judge": JevBagOfDecisionsJudge,
     "oracle": OracleValidator,
+    "valid_doc_ids": ValidDocIdsValidator,
 }
 
 
@@ -49,6 +51,8 @@ def _condition_params(
     prompt = outer_params.get("prompt")
     if not prompt and name == "oracle":
         prompt = "Please return more relevant results."
+    if not prompt and name == "valid_doc_ids":
+        prompt = "Some returned document IDs are invalid. Correct the result list."
     prompt = _require_prompt(prompt, kind=kind)
     outer_params.pop("prompt", None)
     params = outer_params.get("params")

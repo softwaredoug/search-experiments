@@ -132,7 +132,7 @@ class AgenticSearchStrategyRalphed(SearchStrategy):
             if tries > 3:
                 break
 
-        ranked_results = [r.doc_id for r in resp.ranked_results][:k]
+        ranked_results = [r.doc_id for r in resp.doc_ids_ranked][:k]
         if self._lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
         return (
@@ -157,7 +157,7 @@ def _grades(query: str, search_results: SearchResults):
 
     query_judgments = labeled_query_products[labeled_query_products["query"] == query]
     results = []
-    ranked_results = search_results.ranked_results or []
+    ranked_results = search_results.doc_ids_ranked or []
     for doc_id in ranked_results:
         try:
             doc_id = int(doc_id)

@@ -39,10 +39,11 @@ This calls OpenAI with
 - the query being searched for as the user prompt. 
 - a set of simple search tools that the agent can call to gather info. In this case, BM25 and minilm embedding search. The agent can call these tools with different queries, etc to gather info. The agentic loop continues until the agent decides to stop (or max iterations is reached). Then the final ranked list of results is returned and evaluated.
 
-The standard `agentic` strategy uses cheat-at-search's shared `SearchResults` response model, whose
-`ranked_results` field is a list of document IDs without a length constraint. The system prompt asks
-for exactly 10 results, and the strategy returns up to the requested `k`. The
-`scatter_gather_wands` strategy uses the same model for intermediate outputs.
+The shared cheat-at-search `SearchResults` response model has an unbounded `doc_ids_ranked` list.
+The standard `agentic` strategy wraps it in a request-specific schema that requires exactly the
+requested number of IDs (up to the corpus size), then verifies that each ID maps to a corpus
+document. `scatter_gather_wands` uses the shared schema for intermediate outputs and truncates its
+final ranking to `k`.
 
 Implementation note: agentic strategies now use `OpenAIAgent` from cheat-at-search for the tool-calling loop. The harness applies validators + stop conditions around that agent loop.
 

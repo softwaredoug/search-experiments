@@ -59,12 +59,12 @@ class FakeOpenAIAgent:
         fields = getattr(model, "model_fields", None)
         if fields and "categories" in fields:
             return model(categories=list(self.categories))
-        if fields and "ranked_results" in fields:
-            return model(ranked_results=list(self.doc_ids))
+        if fields and "doc_ids_ranked" in fields:
+            return model(doc_ids_ranked=list(self.doc_ids))
         try:
             return model()
         except TypeError:
-            return SearchResults(ranked_results=list(self.doc_ids))
+            return SearchResults(doc_ids_ranked=list(self.doc_ids))
 
     def _next_script(self) -> list[dict]:
         if self.scripts is None:
@@ -125,6 +125,9 @@ class FakeOpenAIAgent:
         if isinstance(output, self.response_model):
             return output
         if isinstance(output, dict):
+            if "ranked_results" in output and "doc_ids_ranked" not in output:
+                output = dict(output)
+                output["doc_ids_ranked"] = output.pop("ranked_results")
             try:
                 return self.response_model(**output)
             except Exception:

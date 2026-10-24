@@ -54,9 +54,43 @@ def _normalize(params: dict | None = None, *, kind: str = "validator"):
 def _ranked_response(doc_ids: list[str] | None = None):
     return SimpleNamespace(
         output_parsed=SimpleNamespace(
-            ranked_results=["101", "202", "303"] if doc_ids is None else doc_ids
+            doc_ids_ranked=["101", "202", "303"] if doc_ids is None else doc_ids
         )
     )
+
+
+def test_valid_doc_ids_validator_rejects_unknown_and_duplicate_ids():
+    validator = conditions.normalize_conditions(
+        [{"valid_doc_ids": {"prompt": "Return corpus document IDs only."}}],
+        kind="validator",
+    )[0]
+    context = ConditionContext(
+        num_loops=1,
+        tool_calls=0,
+        response=_ranked_response(["101", "missing-id", "101"]),
+        lookup={"101": 0, "202": 1},
+    )
+
+    result = validator.evaluate(context)
+
+    assert not result.satisfied
+    assert "missing-id" in result.feedback
+    assert "Repeated document IDs" in result.feedback
+
+
+def test_valid_doc_ids_validator_accepts_known_unique_ids():
+    validator = conditions.normalize_conditions(
+        [{"valid_doc_ids": {"prompt": "Return corpus document IDs only."}}],
+        kind="validator",
+    )[0]
+    context = ConditionContext(
+        num_loops=1,
+        tool_calls=0,
+        response=_ranked_response(["101", "202"]),
+        lookup={"101": 0, "202": 1},
+    )
+
+    assert validator.evaluate(context).satisfied
 
 
 def _evaluate(outcomes, *, params: dict | None = None, runs: int = 0, doc_ids=None):

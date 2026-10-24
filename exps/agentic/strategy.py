@@ -54,7 +54,28 @@ class AgenticSearchStrategy(SearchStrategy):
             raise ValueError("plan requires agents configuration.")
         self.subagent_system_prompt = subagent_system_prompt
         self.stop = stop
-        self.validators = validators
+        self.validators = list(validators or [])
+        has_valid_doc_ids = any(
+            condition == "valid_doc_ids"
+            or (
+                isinstance(condition, dict)
+                and len(condition) == 1
+                and "valid_doc_ids" in condition
+            )
+            for condition in self.validators
+        )
+        if not has_valid_doc_ids:
+            self.validators.insert(
+                0,
+                {
+                    "valid_doc_ids": {
+                        "prompt": (
+                            "Only return distinct document IDs exactly as returned "
+                            "by the search tools."
+                        )
+                    }
+                },
+            )
         self.max_loops = max_loops if max_loops is not None else self._default_max_loops
         self.model = model
         self.reasoning = reasoning
@@ -73,7 +94,7 @@ class AgenticSearchStrategy(SearchStrategy):
             agents=agents,
             plan=plan,
             stop=stop,
-            validators=validators,
+            validators=self.validators,
             max_loops=self.max_loops,
             response_model=SearchResults,
             embeddings_device=embeddings_device,
@@ -123,13 +144,30 @@ class AgenticSearchStrategy(SearchStrategy):
                 k=requested_k,
                 response_model=search_results_model_for_k(requested_k),
             )
-        ranked_results = run_result.output if isinstance(run_result.output, list) else []
+        raw_doc_ids = (
+            run_result.output if isinstance(run_result.output, list) else []
+        )
+        ranked_results = raw_doc_ids
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
         if len(ranked_results) != requested_k:
+            invalid_ids = [
+                str(doc_id)
+                for doc_id in raw_doc_ids
+                if self.agent.lookup and str(doc_id) not in self.agent.lookup
+            ]
+            duplicate_ids = sorted(
+                {
+                    str(doc_id)
+                    for doc_id in raw_doc_ids
+                    if raw_doc_ids.count(doc_id) > 1
+                }
+            )
             raise ValueError(
-                f"Agent returned {len(ranked_results)} valid result IDs for query "
-                f"{query!r}; expected exactly {requested_k}."
+                f"Agent returned {len(raw_doc_ids)} IDs for query {query!r}, but "
+                f"only {len(ranked_results)} mapped to corpus documents; expected "
+                f"exactly {requested_k}. Invalid IDs: {invalid_ids[:5]!r}; "
+                f"duplicate IDs: {duplicate_ids[:5]!r}."
             )
         self.traces[query] = str(run_result.trace_path)
         return ranked_results, [1.0] * len(ranked_results), run_result.resources

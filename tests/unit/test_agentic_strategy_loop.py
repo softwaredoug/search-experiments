@@ -24,7 +24,7 @@ class _FakeOpenAIAgent:
 
     def _ranked_results_for_schema(self):
         ranked_schema = self.response_model.model_json_schema()["properties"][
-            "ranked_results"
+            "doc_ids_ranked"
         ]
         max_length = ranked_schema.get("maxItems")
         ranked_results = list(self.result_ids)
@@ -44,7 +44,7 @@ class _FakeOpenAIAgent:
             )
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         result = self.response_model(
-            ranked_results=self._ranked_results_for_schema()
+            doc_ids_ranked=self._ranked_results_for_schema()
         )
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
@@ -94,12 +94,33 @@ class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         if self.calls == 1:
             result = self.response_model(
-                ranked_results=self._ranked_results_for_schema()
+                doc_ids_ranked=self._ranked_results_for_schema()
             )
         else:
             result = self.response_model(
-                ranked_results=self._ranked_results_for_schema()
+                doc_ids_ranked=self._ranked_results_for_schema()
             )
+        resp = type("Resp", (), {"output_parsed": result})
+        self.last_inputs = inputs
+        self.last_agent_state = agent_state
+        return resp, inputs
+
+
+class _InvalidIdsThenValidAgent(_FakeOpenAIAgent):
+    last_instance = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self).last_instance = self
+
+    def loop(self, inputs=None, agent_state=None, logger=None):
+        if inputs is None:
+            inputs = []
+        self.calls += 1
+        doc_ids = (
+            ["not-a-corpus-id", "101"] if self.calls == 1 else ["101", "202"]
+        )
+        result = self.response_model(doc_ids_ranked=doc_ids)
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -124,6 +145,10 @@ def _build_fake_agent(*args, **kwargs):
 
 def _build_fake_agent_with_results(*args, **kwargs):
     return _FakeOpenAIAgentWithResults(*args, **kwargs)
+
+
+def _build_invalid_ids_then_valid_agent(*args, **kwargs):
+    return _InvalidIdsThenValidAgent(*args, **kwargs)
 
 
 def _sample_corpus():
@@ -151,8 +176,8 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
 
     assert strategy.agent.response_model is agent_mod.SearchResults
     schema = _FakeOpenAIAgent.last_instance.response_model.model_json_schema()
-    assert schema["properties"]["ranked_results"]["minItems"] == 2
-    assert schema["properties"]["ranked_results"]["maxItems"] == 2
+    assert schema["properties"]["doc_ids_ranked"]["minItems"] == 2
+    assert schema["properties"]["doc_ids_ranked"]["maxItems"] == 2
     inputs = _FakeOpenAIAgent.last_instance.last_inputs
     reprompt_count = sum(
         1
@@ -163,6 +188,29 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     )
     assert reprompt_count == 1
     assert _FakeOpenAIAgent.last_instance.calls == 2
+
+
+@patch.object(agent_mod, "build_openai_agent", _build_invalid_ids_then_valid_agent)
+@patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
+def test_agentic_strategy_retries_invalid_document_ids(tmp_path):
+    strategy = agentic_mod.AgenticSearchStrategy(
+        _sample_corpus(),
+        workers=1,
+        model="gpt-5-mini",
+        search_tools=["bm25"],
+        trace_path=tmp_path,
+    )
+
+    ranked_results, scores, _resources = strategy.search("query", k=2)
+
+    assert ranked_results == [0, 1]
+    assert scores == [1.0, 1.0]
+    assert _InvalidIdsThenValidAgent.last_instance.calls == 2
+    assert any(
+        "not-a-corpus-id" in item.get("content", "")
+        for item in _InvalidIdsThenValidAgent.last_instance.last_inputs
+        if isinstance(item, dict)
+    )
 
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)

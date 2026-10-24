@@ -60,12 +60,12 @@ def search_results_model_for_k(k: int) -> Type[BaseModel]:
     return create_model(
         f"SearchResultsForK{k}",
         __base__=SearchResults,
-        ranked_results=(
+        doc_ids_ranked=(
             list[str],
             Field(
                 min_length=k,
                 max_length=k,
-                description=SearchResults.model_fields["ranked_results"].description,
+                description=SearchResults.model_fields["doc_ids_ranked"].description,
             ),
         ),
     )
@@ -666,8 +666,8 @@ class Agent:
                 ),
             )
         logger.info("agentic_output %s", resp.output_parsed if resp else None)
-        if resp and hasattr(resp.output_parsed, "ranked_results"):
-            ranked_results = resp.output_parsed.ranked_results or []
+        if resp and hasattr(resp.output_parsed, "doc_ids_ranked"):
+            ranked_results = resp.output_parsed.doc_ids_ranked or []
             logger.info(
                 "agentic_complete %s",
                 {"query": query, "results": len(ranked_results)},
@@ -681,8 +681,8 @@ class Agent:
         )
         num_tool_calls = int(agent_state.get("num_tool_calls", 0))
         output = resp.output_parsed if resp else None
-        if output and hasattr(output, "ranked_results"):
-            output = list(output.ranked_results or [])[:k]
+        if output and hasattr(output, "doc_ids_ranked"):
+            output = list(output.doc_ids_ranked or [])[:k]
         return AgentResponse(
             output=output,
             trace_path=trace_path,
