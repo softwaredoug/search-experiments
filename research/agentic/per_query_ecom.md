@@ -4,7 +4,7 @@
 
 ## Scope and selection
 
-This analysis uses the four WANDS full-results Parquet exports for `agentic_gpt6_luna_bm25_e5` from run batch `20261024T210030Z_34814`, seeds 43, 44, 45, and 46. Each run covers the same 480 queries. A query is selected when its `NDCG_G` is below 0.25 in all four seeds. The `drudge report` query (ID 366) also scores zero in all four runs, but is excluded because its judged ideal DCG (`idcg_g`) is zero. The overall table reports all four seed scores and their mean. Per-query rankings show the ideal positive-grade WANDS judgments beside the seed-43 agentic results. Ideal results are ordered by grade descending, then document ID ascending, up to 10; they are not padded with grade-0 documents. `NA` means the agentic result has no WANDS judgment; grade 0 is reserved for documents explicitly judged irrelevant.
+This analysis uses the four WANDS full-results Parquet exports for `agentic_gpt6_luna_bm25_e5` from run batch `20261024T210030Z_34814`, seeds 43, 44, 45, and 46. Each run covers the same 480 queries. A query is selected when its `NDCG_G` is below 0.25 in all four seeds. The `drudge report` query (ID 366) also scores zero in all four runs, but is excluded because its judged ideal DCG (`idcg_g`) is zero. The overall table reports all four seed scores and their mean. Per-query rankings show the ideal positive-grade WANDS judgments beside the seed-43 agentic results. Product images are 72×72-pixel lazy-loaded thumbnails. Ideal results are ordered by grade descending, then document ID ascending, up to 10; they are not padded with grade-0 documents. `NA` means the agentic result has no WANDS judgment; grade 0 is reserved for documents explicitly judged irrelevant.
 
 ## Selected queries
 
@@ -44,457 +44,457 @@ This analysis uses the four WANDS full-results Parquet exports for `agentic_gpt6
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 5204 | barrett multicolor area rug | 1 | NA | 21693 | multi area rug |
-| 2 | 1 | 9137 | geometric purple area rug | 2 | NA | 31608 | attles solid kids navy area rug |
-| 3 | 1 | 9138 | delcastillo geometric purple area rug | 3 | 0 | 34915 | star wars empire 40th anniversary reversible comforter set |
-| 4 | 1 | 9140 | oloughlin geometric purple area rug | 4 | 0 | 34916 | star wars rule the galaxy rectangular pillow cover & insert |
-| 5 | 1 | 9150 | rodrigue geometric purple area rug | 5 | 0 | 32602 | popular characters star wars classic wall decal |
-| 6 | 1 | 12098 | green/red/gray area rug | 6 | 0 | 9601 | star wars nursery wall decal |
-| 7 | 1 | 22768 | corina soccer time area rug | 7 | 0 | 32606 | star wars iconic watercolor peel and stick wall decal |
-| — | — | — | — | 8 | 0 | 3275 | stormtrooper star wars standup |
-| — | — | — | — | 9 | 0 | 617 | star wars stormtrooper cardboard standup |
-| — | — | — | — | 10 | 0 | 618 | star wars r2d2 and c3po cardboard standup |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 5204 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5204.png" width="72" height="72" loading="lazy" alt="WANDS document 5204 thumbnail"> | barrett multicolor area rug | 1 | NA | 21693 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21693.png" width="72" height="72" loading="lazy" alt="WANDS document 21693 thumbnail"> | multi area rug |
+| 2 | 1 | 9137 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9137.png" width="72" height="72" loading="lazy" alt="WANDS document 9137 thumbnail"> | geometric purple area rug | 2 | NA | 31608 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31608.png" width="72" height="72" loading="lazy" alt="WANDS document 31608 thumbnail"> | attles solid kids navy area rug |
+| 3 | 1 | 9138 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9138.png" width="72" height="72" loading="lazy" alt="WANDS document 9138 thumbnail"> | delcastillo geometric purple area rug | 3 | 0 | 34915 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34915.png" width="72" height="72" loading="lazy" alt="WANDS document 34915 thumbnail"> | star wars empire 40th anniversary reversible comforter set |
+| 4 | 1 | 9140 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9140.png" width="72" height="72" loading="lazy" alt="WANDS document 9140 thumbnail"> | oloughlin geometric purple area rug | 4 | 0 | 34916 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34916.png" width="72" height="72" loading="lazy" alt="WANDS document 34916 thumbnail"> | star wars rule the galaxy rectangular pillow cover & insert |
+| 5 | 1 | 9150 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9150.png" width="72" height="72" loading="lazy" alt="WANDS document 9150 thumbnail"> | rodrigue geometric purple area rug | 5 | 0 | 32602 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32602.png" width="72" height="72" loading="lazy" alt="WANDS document 32602 thumbnail"> | popular characters star wars classic wall decal |
+| 6 | 1 | 12098 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12098.png" width="72" height="72" loading="lazy" alt="WANDS document 12098 thumbnail"> | green/red/gray area rug | 6 | 0 | 9601 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9601.png" width="72" height="72" loading="lazy" alt="WANDS document 9601 thumbnail"> | star wars nursery wall decal |
+| 7 | 1 | 22768 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22768.png" width="72" height="72" loading="lazy" alt="WANDS document 22768 thumbnail"> | corina soccer time area rug | 7 | 0 | 32606 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32606.png" width="72" height="72" loading="lazy" alt="WANDS document 32606 thumbnail"> | star wars iconic watercolor peel and stick wall decal |
+| — | — | — | — | — | 8 | 0 | 3275 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3275.png" width="72" height="72" loading="lazy" alt="WANDS document 3275 thumbnail"> | stormtrooper star wars standup |
+| — | — | — | — | — | 9 | 0 | 617 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/617.png" width="72" height="72" loading="lazy" alt="WANDS document 617 thumbnail"> | star wars stormtrooper cardboard standup |
+| — | — | — | — | — | 10 | 0 | 618 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/618.png" width="72" height="72" loading="lazy" alt="WANDS document 618 thumbnail"> | star wars r2d2 and c3po cardboard standup |
 
 ### 207 — dull bed with shirt head board
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 779 | chavis slat headboard | 1 | NA | 17765 | full/double upholstered low profile sleigh bed |
-| 2 | 1 | 907 | gadji full/queen open-frame headboard | 2 | NA | 22063 | vita full upholstered low profile standard bed |
-| 3 | 1 | 1898 | hayman king bookcase headboard | 3 | NA | 17766 | full/double low profile sleigh bed |
-| 4 | 1 | 3526 | graham panel headboard | 4 | NA | 33525 | brancaccio full low profile sleigh bed |
-| 5 | 1 | 4342 | jayson double panel metal slat headboard | 5 | NA | 34833 | upholstered low profile platform bed |
-| 6 | 1 | 4343 | aldo upholstered wingback headboard | 6 | NA | 37191 | topmax upholstered platform bed frame with nailhead trim headboard and wood slats , full size , dark grey |
-| 7 | 1 | 4351 | eva-mae upholstered panel headboard | 7 | NA | 29042 | 17 stories full size bed frame with headboard |
-| 8 | 1 | 5953 | idylberry upholstered panel headboard | 8 | NA | 42936 | rick upholstered low profile platform bed |
-| 9 | 1 | 8351 | bridget upholstered panel headboard | 9 | NA | 42945 | alleene upholstered low profile platform bed |
-| 10 | 1 | 11813 | cartoon queen upholstered panel headboard | 10 | NA | 17710 | beckville upholstered low profile standard bed |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 779 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/779.png" width="72" height="72" loading="lazy" alt="WANDS document 779 thumbnail"> | chavis slat headboard | 1 | NA | 17765 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17765.png" width="72" height="72" loading="lazy" alt="WANDS document 17765 thumbnail"> | full/double upholstered low profile sleigh bed |
+| 2 | 1 | 907 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/907.png" width="72" height="72" loading="lazy" alt="WANDS document 907 thumbnail"> | gadji full/queen open-frame headboard | 2 | NA | 22063 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22063.png" width="72" height="72" loading="lazy" alt="WANDS document 22063 thumbnail"> | vita full upholstered low profile standard bed |
+| 3 | 1 | 1898 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1898.png" width="72" height="72" loading="lazy" alt="WANDS document 1898 thumbnail"> | hayman king bookcase headboard | 3 | NA | 17766 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17766.png" width="72" height="72" loading="lazy" alt="WANDS document 17766 thumbnail"> | full/double low profile sleigh bed |
+| 4 | 1 | 3526 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3526.png" width="72" height="72" loading="lazy" alt="WANDS document 3526 thumbnail"> | graham panel headboard | 4 | NA | 33525 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33525.png" width="72" height="72" loading="lazy" alt="WANDS document 33525 thumbnail"> | brancaccio full low profile sleigh bed |
+| 5 | 1 | 4342 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4342.png" width="72" height="72" loading="lazy" alt="WANDS document 4342 thumbnail"> | jayson double panel metal slat headboard | 5 | NA | 34833 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34833.png" width="72" height="72" loading="lazy" alt="WANDS document 34833 thumbnail"> | upholstered low profile platform bed |
+| 6 | 1 | 4343 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4343.png" width="72" height="72" loading="lazy" alt="WANDS document 4343 thumbnail"> | aldo upholstered wingback headboard | 6 | NA | 37191 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/37191.png" width="72" height="72" loading="lazy" alt="WANDS document 37191 thumbnail"> | topmax upholstered platform bed frame with nailhead trim headboard and wood slats , full size , dark grey |
+| 7 | 1 | 4351 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4351.png" width="72" height="72" loading="lazy" alt="WANDS document 4351 thumbnail"> | eva-mae upholstered panel headboard | 7 | NA | 29042 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29042.png" width="72" height="72" loading="lazy" alt="WANDS document 29042 thumbnail"> | 17 stories full size bed frame with headboard |
+| 8 | 1 | 5953 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5953.png" width="72" height="72" loading="lazy" alt="WANDS document 5953 thumbnail"> | idylberry upholstered panel headboard | 8 | NA | 42936 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42936.png" width="72" height="72" loading="lazy" alt="WANDS document 42936 thumbnail"> | rick upholstered low profile platform bed |
+| 9 | 1 | 8351 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8351.png" width="72" height="72" loading="lazy" alt="WANDS document 8351 thumbnail"> | bridget upholstered panel headboard | 9 | NA | 42945 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42945.png" width="72" height="72" loading="lazy" alt="WANDS document 42945 thumbnail"> | alleene upholstered low profile platform bed |
+| 10 | 1 | 11813 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11813.png" width="72" height="72" loading="lazy" alt="WANDS document 11813 thumbnail"> | cartoon queen upholstered panel headboard | 10 | NA | 17710 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17710.png" width="72" height="72" loading="lazy" alt="WANDS document 17710 thumbnail"> | beckville upholstered low profile standard bed |
 
 ### 304 — merlyn 6
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 4797 | wolak 6 drawer double dresser | 1 | NA | 35606 | merlyn 6 piece sofa seating group with cushions |
-| 2 | 1 | 8531 | open console with 6 drawers | 2 | NA | 14542 | merlyn 6- piece outdoor garden patio furniture |
-| 3 | 1 | 8817 | jehova 6 drawer chest | 3 | NA | 30335 | merlyn 6-piece outdoor garden patio furniture |
-| 4 | 1 | 9877 | chon 6 drawer chest | 4 | NA | 35589 | merlyn 6 piece sectional seating group with cushions |
-| 5 | 1 | 10039 | patino 6 drawer storage chest | 5 | NA | 35590 | merlyn 6 piece rattan sectional seating group with cushions |
-| 6 | 1 | 10746 | loree 6 drawer double dresser | 6 | NA | 35566 | merlyn 6 piece rattan sofa seating group with cushions |
-| 7 | 1 | 11433 | 6 piece free form etagere plant stand set | 7 | NA | 35591 | merlyn 7 piece sofa seating group with cushions |
-| 8 | 1 | 12649 | shell 6 3/4 '' h x 96 '' w x 5 1/2 '' d crown molding | 8 | NA | 35605 | merlyn 5 piece sofa seating group with cushions |
-| 9 | 1 | 12802 | biarritz series 3 '' x 6 '' ceramic brick look subway tile | 9 | NA | 35587 | merlyn 4 piece seating group with cushions |
-| 10 | 1 | 15270 | aderyn outdoor 6 piece sofa seating group with cushions | 10 | NA | 35592 | merlyn outdoor ottoman with cushion |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 4797 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4797.png" width="72" height="72" loading="lazy" alt="WANDS document 4797 thumbnail"> | wolak 6 drawer double dresser | 1 | NA | 35606 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35606.png" width="72" height="72" loading="lazy" alt="WANDS document 35606 thumbnail"> | merlyn 6 piece sofa seating group with cushions |
+| 2 | 1 | 8531 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8531.png" width="72" height="72" loading="lazy" alt="WANDS document 8531 thumbnail"> | open console with 6 drawers | 2 | NA | 14542 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14542.png" width="72" height="72" loading="lazy" alt="WANDS document 14542 thumbnail"> | merlyn 6- piece outdoor garden patio furniture |
+| 3 | 1 | 8817 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8817.png" width="72" height="72" loading="lazy" alt="WANDS document 8817 thumbnail"> | jehova 6 drawer chest | 3 | NA | 30335 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30335.png" width="72" height="72" loading="lazy" alt="WANDS document 30335 thumbnail"> | merlyn 6-piece outdoor garden patio furniture |
+| 4 | 1 | 9877 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9877.png" width="72" height="72" loading="lazy" alt="WANDS document 9877 thumbnail"> | chon 6 drawer chest | 4 | NA | 35589 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35589.png" width="72" height="72" loading="lazy" alt="WANDS document 35589 thumbnail"> | merlyn 6 piece sectional seating group with cushions |
+| 5 | 1 | 10039 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10039.png" width="72" height="72" loading="lazy" alt="WANDS document 10039 thumbnail"> | patino 6 drawer storage chest | 5 | NA | 35590 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35590.png" width="72" height="72" loading="lazy" alt="WANDS document 35590 thumbnail"> | merlyn 6 piece rattan sectional seating group with cushions |
+| 6 | 1 | 10746 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10746.png" width="72" height="72" loading="lazy" alt="WANDS document 10746 thumbnail"> | loree 6 drawer double dresser | 6 | NA | 35566 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35566.png" width="72" height="72" loading="lazy" alt="WANDS document 35566 thumbnail"> | merlyn 6 piece rattan sofa seating group with cushions |
+| 7 | 1 | 11433 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11433.png" width="72" height="72" loading="lazy" alt="WANDS document 11433 thumbnail"> | 6 piece free form etagere plant stand set | 7 | NA | 35591 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35591.png" width="72" height="72" loading="lazy" alt="WANDS document 35591 thumbnail"> | merlyn 7 piece sofa seating group with cushions |
+| 8 | 1 | 12649 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12649.png" width="72" height="72" loading="lazy" alt="WANDS document 12649 thumbnail"> | shell 6 3/4 '' h x 96 '' w x 5 1/2 '' d crown molding | 8 | NA | 35605 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35605.png" width="72" height="72" loading="lazy" alt="WANDS document 35605 thumbnail"> | merlyn 5 piece sofa seating group with cushions |
+| 9 | 1 | 12802 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12802.png" width="72" height="72" loading="lazy" alt="WANDS document 12802 thumbnail"> | biarritz series 3 '' x 6 '' ceramic brick look subway tile | 9 | NA | 35587 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35587.png" width="72" height="72" loading="lazy" alt="WANDS document 35587 thumbnail"> | merlyn 4 piece seating group with cushions |
+| 10 | 1 | 15270 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15270.png" width="72" height="72" loading="lazy" alt="WANDS document 15270 thumbnail"> | aderyn outdoor 6 piece sofa seating group with cushions | 10 | NA | 35592 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35592.png" width="72" height="72" loading="lazy" alt="WANDS document 35592 thumbnail"> | merlyn outdoor ottoman with cushion |
 
 ### 348 — one alium way
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 4288 | brightech skylite led torchiere floor lamp – bright , high lumen uplight for reading in living rooms & offices - 3 way dimmable to 30 % brightness - tall standing pole light - black | 1 | NA | 34939 | halvorson wood wall shelf |
-| 2 | 1 | 30284 | aps-fillerends8 | 2 | NA | 15417 | alioth 1 door accent cabinet |
-| — | — | — | — | 3 | NA | 19412 | alvey 1 door apothecary accent cabinet |
-| — | — | — | — | 4 | NA | 26375 | wilder armoire |
-| — | — | — | — | 5 | NA | 33182 | furniture |
-| — | — | — | — | 6 | NA | 22450 | matchett 31.5 '' wide sideboard |
-| — | — | — | — | 7 | NA | 33978 | alluna end table with storage |
-| — | — | — | — | 8 | NA | 7183 | normandie 44 '' console table with one drawer |
-| — | — | — | — | 9 | NA | 8530 | handcarved shaped console with one drawer |
-| — | — | — | — | 10 | NA | 34939 | halvorson wood wall shelf |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 4288 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4288.png" width="72" height="72" loading="lazy" alt="WANDS document 4288 thumbnail"> | brightech skylite led torchiere floor lamp – bright , high lumen uplight for reading in living rooms & offices - 3 way dimmable to 30 % brightness - tall standing pole light - black | 1 | NA | 34939 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34939.png" width="72" height="72" loading="lazy" alt="WANDS document 34939 thumbnail"> | halvorson wood wall shelf |
+| 2 | 1 | 30284 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30284.png" width="72" height="72" loading="lazy" alt="WANDS document 30284 thumbnail"> | aps-fillerends8 | 2 | NA | 15417 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15417.png" width="72" height="72" loading="lazy" alt="WANDS document 15417 thumbnail"> | alioth 1 door accent cabinet |
+| — | — | — | — | — | 3 | NA | 19412 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19412.png" width="72" height="72" loading="lazy" alt="WANDS document 19412 thumbnail"> | alvey 1 door apothecary accent cabinet |
+| — | — | — | — | — | 4 | NA | 26375 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26375.png" width="72" height="72" loading="lazy" alt="WANDS document 26375 thumbnail"> | wilder armoire |
+| — | — | — | — | — | 5 | NA | 33182 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33182.png" width="72" height="72" loading="lazy" alt="WANDS document 33182 thumbnail"> | furniture |
+| — | — | — | — | — | 6 | NA | 22450 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22450.png" width="72" height="72" loading="lazy" alt="WANDS document 22450 thumbnail"> | matchett 31.5 '' wide sideboard |
+| — | — | — | — | — | 7 | NA | 33978 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33978.png" width="72" height="72" loading="lazy" alt="WANDS document 33978 thumbnail"> | alluna end table with storage |
+| — | — | — | — | — | 8 | NA | 7183 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7183.png" width="72" height="72" loading="lazy" alt="WANDS document 7183 thumbnail"> | normandie 44 '' console table with one drawer |
+| — | — | — | — | — | 9 | NA | 8530 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8530.png" width="72" height="72" loading="lazy" alt="WANDS document 8530 thumbnail"> | handcarved shaped console with one drawer |
+| — | — | — | — | — | 10 | NA | 34939 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34939.png" width="72" height="72" loading="lazy" alt="WANDS document 34939 thumbnail"> | halvorson wood wall shelf |
 
 ### 370 — rug for teen room
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 30305 | ajmail geometric purple/gray area rug | 1 | NA | 11839 | teen pink area rug |
-| 2 | 1 | 9138 | delcastillo geometric purple area rug | 2 | NA | 4100 | katie oriental multicolor area rug |
-| 3 | 1 | 18919 | aftan geometric purple/gray area rug | 3 | NA | 4108 | katie oriental light gray/fuchsia area rug |
-| — | — | — | — | 4 | NA | 4096 | katie oriental cream area rug |
-| — | — | — | — | 5 | NA | 15498 | katie oriental gray/navy area rug |
-| — | — | — | — | 6 | NA | 15493 | katie oriental beige / gray area rug |
-| — | — | — | — | 7 | NA | 15491 | katie oriental ivory / blue area rug |
-| — | — | — | — | 8 | NA | 4099 | katie oriental fuchsia area rug |
-| — | — | — | — | 9 | NA | 4106 | katie oriental ivory / navy area rug |
-| — | — | — | — | 10 | NA | 4109 | katie oriental light gray/ fuchsia area rug |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 30305 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30305.png" width="72" height="72" loading="lazy" alt="WANDS document 30305 thumbnail"> | ajmail geometric purple/gray area rug | 1 | NA | 11839 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11839.png" width="72" height="72" loading="lazy" alt="WANDS document 11839 thumbnail"> | teen pink area rug |
+| 2 | 1 | 9138 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9138.png" width="72" height="72" loading="lazy" alt="WANDS document 9138 thumbnail"> | delcastillo geometric purple area rug | 2 | NA | 4100 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4100.png" width="72" height="72" loading="lazy" alt="WANDS document 4100 thumbnail"> | katie oriental multicolor area rug |
+| 3 | 1 | 18919 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18919.png" width="72" height="72" loading="lazy" alt="WANDS document 18919 thumbnail"> | aftan geometric purple/gray area rug | 3 | NA | 4108 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4108.png" width="72" height="72" loading="lazy" alt="WANDS document 4108 thumbnail"> | katie oriental light gray/fuchsia area rug |
+| — | — | — | — | — | 4 | NA | 4096 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4096.png" width="72" height="72" loading="lazy" alt="WANDS document 4096 thumbnail"> | katie oriental cream area rug |
+| — | — | — | — | — | 5 | NA | 15498 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15498.png" width="72" height="72" loading="lazy" alt="WANDS document 15498 thumbnail"> | katie oriental gray/navy area rug |
+| — | — | — | — | — | 6 | NA | 15493 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15493.png" width="72" height="72" loading="lazy" alt="WANDS document 15493 thumbnail"> | katie oriental beige / gray area rug |
+| — | — | — | — | — | 7 | NA | 15491 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15491.png" width="72" height="72" loading="lazy" alt="WANDS document 15491 thumbnail"> | katie oriental ivory / blue area rug |
+| — | — | — | — | — | 8 | NA | 4099 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4099.png" width="72" height="72" loading="lazy" alt="WANDS document 4099 thumbnail"> | katie oriental fuchsia area rug |
+| — | — | — | — | — | 9 | NA | 4106 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4106.png" width="72" height="72" loading="lazy" alt="WANDS document 4106 thumbnail"> | katie oriental ivory / navy area rug |
+| — | — | — | — | — | 10 | NA | 4109 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4109.png" width="72" height="72" loading="lazy" alt="WANDS document 4109 thumbnail"> | katie oriental light gray/ fuchsia area rug |
 
 ### 383 — minnestrista
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 30432 | vieques | 1 | NA | 1920 | minnetrista 72 '' double bathroom vanity set |
-| 2 | 1 | 33008 | vermiculite | 2 | NA | 1921 | minnetrista 30 '' single bathroom vanity set |
-| 3 | 1 | 35925 | flexarm sng | 3 | NA | 25869 | 42 '' single bathroom vanity |
-| — | — | — | — | 4 | NA | 17523 | 60 '' single vanity bathroom vanity base only |
-| — | — | — | — | 5 | NA | 35952 | watqen vanities 24 '' single bathroom vanity set |
-| — | — | — | — | 6 | NA | 17522 | 24 '' single vanity bathroom vanity base only |
-| — | — | — | — | 7 | NA | 17524 | 30 '' single vanity bathroom vanity base only |
-| — | — | — | — | 8 | NA | 20628 | bathroom/vanity mirror |
-| — | — | — | — | 9 | NA | 12988 | langport bathroom/vanity mirror |
-| — | — | — | — | 10 | NA | 20629 | kanisha bathroom/vanity mirror |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 30432 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30432.png" width="72" height="72" loading="lazy" alt="WANDS document 30432 thumbnail"> | vieques | 1 | NA | 1920 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1920.png" width="72" height="72" loading="lazy" alt="WANDS document 1920 thumbnail"> | minnetrista 72 '' double bathroom vanity set |
+| 2 | 1 | 33008 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33008.png" width="72" height="72" loading="lazy" alt="WANDS document 33008 thumbnail"> | vermiculite | 2 | NA | 1921 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1921.png" width="72" height="72" loading="lazy" alt="WANDS document 1921 thumbnail"> | minnetrista 30 '' single bathroom vanity set |
+| 3 | 1 | 35925 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35925.png" width="72" height="72" loading="lazy" alt="WANDS document 35925 thumbnail"> | flexarm sng | 3 | NA | 25869 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/25869.png" width="72" height="72" loading="lazy" alt="WANDS document 25869 thumbnail"> | 42 '' single bathroom vanity |
+| — | — | — | — | — | 4 | NA | 17523 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17523.png" width="72" height="72" loading="lazy" alt="WANDS document 17523 thumbnail"> | 60 '' single vanity bathroom vanity base only |
+| — | — | — | — | — | 5 | NA | 35952 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35952.png" width="72" height="72" loading="lazy" alt="WANDS document 35952 thumbnail"> | watqen vanities 24 '' single bathroom vanity set |
+| — | — | — | — | — | 6 | NA | 17522 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17522.png" width="72" height="72" loading="lazy" alt="WANDS document 17522 thumbnail"> | 24 '' single vanity bathroom vanity base only |
+| — | — | — | — | — | 7 | NA | 17524 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17524.png" width="72" height="72" loading="lazy" alt="WANDS document 17524 thumbnail"> | 30 '' single vanity bathroom vanity base only |
+| — | — | — | — | — | 8 | NA | 20628 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/20628.png" width="72" height="72" loading="lazy" alt="WANDS document 20628 thumbnail"> | bathroom/vanity mirror |
+| — | — | — | — | — | 9 | NA | 12988 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12988.png" width="72" height="72" loading="lazy" alt="WANDS document 12988 thumbnail"> | langport bathroom/vanity mirror |
+| — | — | — | — | — | 10 | NA | 20629 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/20629.png" width="72" height="72" loading="lazy" alt="WANDS document 20629 thumbnail"> | kanisha bathroom/vanity mirror |
 
 ### 419 — living room ideas
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 1076 | allen configurable living room set | 1 | NA | 1879 | allec living room set |
-| 2 | 2 | 1110 | fleck living room 3 piece coffee table set | 2 | NA | 2480 | bethnal living room set |
-| 3 | 2 | 1138 | kendra 2 piece living room set | 3 | NA | 13158 | capel configurable living room set |
-| 4 | 2 | 11937 | ambesonne grunge 2 panel curtain set , geometric pattern antique design elements mosaic style art , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , teal vermilion plum geometric room darkening rod pocket curtain panels | 4 | NA | 38840 | fairlawn living room collection |
-| 5 | 2 | 11950 | ambesonne london 2 panel curtain set , fun colorful sketch royal guard map rain famous country landmarks and stonehenge , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 5 | NA | 1102 | eric configurable living room set |
-| 6 | 2 | 11979 | ambesonne african 2 panel curtain set , inspirations meet with country art design vertical borders , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , cadet blue white | 6 | NA | 9736 | dora configurable living room set |
-| 7 | 2 | 11984 | arber cherry blossom curtains , inspirational seasonal flower garden arrangement in pastel color , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , pale blue redwood pink | 7 | NA | 1108 | carnforth living room coffee table set |
-| 8 | 2 | 11989 | ambesonne aqua 2 panel curtain set , spring flowers on blue backdrop style nature inspired simplistic blooms , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 8 | NA | 7655 | contemporary wall décor |
-| 9 | 2 | 11995 | ambesonne starfish 2 panel curtain set , graphic illustration of summer season inspired aquatic animals tropical climate , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , orange white | 9 | NA | 23741 | kingsburg decorative cotton throw pillow |
-| 10 | 2 | 13781 | fielden configurable living room set | 10 | NA | 39773 | wall decor |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 1076 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1076.png" width="72" height="72" loading="lazy" alt="WANDS document 1076 thumbnail"> | allen configurable living room set | 1 | NA | 1879 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1879.png" width="72" height="72" loading="lazy" alt="WANDS document 1879 thumbnail"> | allec living room set |
+| 2 | 2 | 1110 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1110.png" width="72" height="72" loading="lazy" alt="WANDS document 1110 thumbnail"> | fleck living room 3 piece coffee table set | 2 | NA | 2480 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2480.png" width="72" height="72" loading="lazy" alt="WANDS document 2480 thumbnail"> | bethnal living room set |
+| 3 | 2 | 1138 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1138.png" width="72" height="72" loading="lazy" alt="WANDS document 1138 thumbnail"> | kendra 2 piece living room set | 3 | NA | 13158 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13158.png" width="72" height="72" loading="lazy" alt="WANDS document 13158 thumbnail"> | capel configurable living room set |
+| 4 | 2 | 11937 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11937.png" width="72" height="72" loading="lazy" alt="WANDS document 11937 thumbnail"> | ambesonne grunge 2 panel curtain set , geometric pattern antique design elements mosaic style art , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , teal vermilion plum geometric room darkening rod pocket curtain panels | 4 | NA | 38840 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38840.png" width="72" height="72" loading="lazy" alt="WANDS document 38840 thumbnail"> | fairlawn living room collection |
+| 5 | 2 | 11950 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11950.png" width="72" height="72" loading="lazy" alt="WANDS document 11950 thumbnail"> | ambesonne london 2 panel curtain set , fun colorful sketch royal guard map rain famous country landmarks and stonehenge , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 5 | NA | 1102 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1102.png" width="72" height="72" loading="lazy" alt="WANDS document 1102 thumbnail"> | eric configurable living room set |
+| 6 | 2 | 11979 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11979.png" width="72" height="72" loading="lazy" alt="WANDS document 11979 thumbnail"> | ambesonne african 2 panel curtain set , inspirations meet with country art design vertical borders , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , cadet blue white | 6 | NA | 9736 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9736.png" width="72" height="72" loading="lazy" alt="WANDS document 9736 thumbnail"> | dora configurable living room set |
+| 7 | 2 | 11984 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11984.png" width="72" height="72" loading="lazy" alt="WANDS document 11984 thumbnail"> | arber cherry blossom curtains , inspirational seasonal flower garden arrangement in pastel color , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , pale blue redwood pink | 7 | NA | 1108 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1108.png" width="72" height="72" loading="lazy" alt="WANDS document 1108 thumbnail"> | carnforth living room coffee table set |
+| 8 | 2 | 11989 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11989.png" width="72" height="72" loading="lazy" alt="WANDS document 11989 thumbnail"> | ambesonne aqua 2 panel curtain set , spring flowers on blue backdrop style nature inspired simplistic blooms , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 8 | NA | 7655 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7655.png" width="72" height="72" loading="lazy" alt="WANDS document 7655 thumbnail"> | contemporary wall décor |
+| 9 | 2 | 11995 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11995.png" width="72" height="72" loading="lazy" alt="WANDS document 11995 thumbnail"> | ambesonne starfish 2 panel curtain set , graphic illustration of summer season inspired aquatic animals tropical climate , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , orange white | 9 | NA | 23741 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23741.png" width="72" height="72" loading="lazy" alt="WANDS document 23741 thumbnail"> | kingsburg decorative cotton throw pillow |
+| 10 | 2 | 13781 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13781.png" width="72" height="72" loading="lazy" alt="WANDS document 13781 thumbnail"> | fielden configurable living room set | 10 | NA | 39773 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/39773.png" width="72" height="72" loading="lazy" alt="WANDS document 39773 thumbnail"> | wall decor |
 
 ### 462 — large bases
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 20746 | 10 ft outdoor patio umbrella solar powered led lighted sun shade market waterproof 8 ribs umbrella with crank and cross base for garden deck backyard pool shade outside deck swimming pool -tan | 1 | NA | 18745 | large table base |
-| — | — | — | — | 2 | NA | 12555 | gaige 24 3/4 '' h x 14 3/8 '' w x 2 1/2 '' d large pedestal base |
-| — | — | — | — | 3 | NA | 23058 | 57 '' l maple pedestal base cards table |
-| — | — | — | — | 4 | NA | 22315 | large umbrella weight |
-| — | — | — | — | 5 | NA | 22316 | large universal umbrella weight |
-| — | — | — | — | 6 | NA | 21791 | pedestal table |
-| — | — | — | — | 7 | NA | 16038 | levins 29 '' table base |
-| — | — | — | — | 8 | NA | 5992 | kimbell pedestal base dining table |
-| — | — | — | — | 9 | NA | 6411 | preside base |
-| — | — | — | — | 10 | NA | 7071 | maximizer™ buffet bar base |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 20746 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/20746.png" width="72" height="72" loading="lazy" alt="WANDS document 20746 thumbnail"> | 10 ft outdoor patio umbrella solar powered led lighted sun shade market waterproof 8 ribs umbrella with crank and cross base for garden deck backyard pool shade outside deck swimming pool -tan | 1 | NA | 18745 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18745.png" width="72" height="72" loading="lazy" alt="WANDS document 18745 thumbnail"> | large table base |
+| — | — | — | — | — | 2 | NA | 12555 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12555.png" width="72" height="72" loading="lazy" alt="WANDS document 12555 thumbnail"> | gaige 24 3/4 '' h x 14 3/8 '' w x 2 1/2 '' d large pedestal base |
+| — | — | — | — | — | 3 | NA | 23058 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23058.png" width="72" height="72" loading="lazy" alt="WANDS document 23058 thumbnail"> | 57 '' l maple pedestal base cards table |
+| — | — | — | — | — | 4 | NA | 22315 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22315.png" width="72" height="72" loading="lazy" alt="WANDS document 22315 thumbnail"> | large umbrella weight |
+| — | — | — | — | — | 5 | NA | 22316 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22316.png" width="72" height="72" loading="lazy" alt="WANDS document 22316 thumbnail"> | large universal umbrella weight |
+| — | — | — | — | — | 6 | NA | 21791 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21791.png" width="72" height="72" loading="lazy" alt="WANDS document 21791 thumbnail"> | pedestal table |
+| — | — | — | — | — | 7 | NA | 16038 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16038.png" width="72" height="72" loading="lazy" alt="WANDS document 16038 thumbnail"> | levins 29 '' table base |
+| — | — | — | — | — | 8 | NA | 5992 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5992.png" width="72" height="72" loading="lazy" alt="WANDS document 5992 thumbnail"> | kimbell pedestal base dining table |
+| — | — | — | — | — | 9 | NA | 6411 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6411.png" width="72" height="72" loading="lazy" alt="WANDS document 6411 thumbnail"> | preside base |
+| — | — | — | — | — | 10 | NA | 7071 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7071.png" width="72" height="72" loading="lazy" alt="WANDS document 7071 thumbnail"> | maximizer™ buffet bar base |
 
 ### 465 — white abstract
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 12092 | 2 piece black and white abstract fennel plants with seeds monochrome garden condiment ornament kitchen curtain set | 1 | NA | 34230 | powell white abstract area rug |
-| 2 | 1 | 12695 | quickstand white portable floor recessed projector screen | 2 | NA | 42512 | devante abstract white area rug |
-| — | — | — | — | 3 | NA | 20560 | mittler grey/white abstract rug |
-| — | — | — | — | 4 | NA | 38699 | ahaan abstract white/gray/sunny yellow area rug |
-| — | — | — | — | 5 | NA | 11157 | white abstract i - unframed painting print on paper |
-| — | — | — | — | 6 | NA | 25541 | varnell abstract black/white area rug |
-| — | — | — | — | 7 | NA | 15543 | brillion abstract tufted wool ivory/black area rug |
-| — | — | — | — | 8 | NA | 17291 | abstract tufted wool black/ivory/gray area rug |
-| — | — | — | — | 9 | NA | 26738 | abstract black/ivory area rug |
-| — | — | — | — | 10 | NA | 15575 | estoria abstract tufted wool beige/ivory area rug |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 12092 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12092.png" width="72" height="72" loading="lazy" alt="WANDS document 12092 thumbnail"> | 2 piece black and white abstract fennel plants with seeds monochrome garden condiment ornament kitchen curtain set | 1 | NA | 34230 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34230.png" width="72" height="72" loading="lazy" alt="WANDS document 34230 thumbnail"> | powell white abstract area rug |
+| 2 | 1 | 12695 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12695.png" width="72" height="72" loading="lazy" alt="WANDS document 12695 thumbnail"> | quickstand white portable floor recessed projector screen | 2 | NA | 42512 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42512.png" width="72" height="72" loading="lazy" alt="WANDS document 42512 thumbnail"> | devante abstract white area rug |
+| — | — | — | — | — | 3 | NA | 20560 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/20560.png" width="72" height="72" loading="lazy" alt="WANDS document 20560 thumbnail"> | mittler grey/white abstract rug |
+| — | — | — | — | — | 4 | NA | 38699 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38699.png" width="72" height="72" loading="lazy" alt="WANDS document 38699 thumbnail"> | ahaan abstract white/gray/sunny yellow area rug |
+| — | — | — | — | — | 5 | NA | 11157 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11157.png" width="72" height="72" loading="lazy" alt="WANDS document 11157 thumbnail"> | white abstract i - unframed painting print on paper |
+| — | — | — | — | — | 6 | NA | 25541 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/25541.png" width="72" height="72" loading="lazy" alt="WANDS document 25541 thumbnail"> | varnell abstract black/white area rug |
+| — | — | — | — | — | 7 | NA | 15543 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15543.png" width="72" height="72" loading="lazy" alt="WANDS document 15543 thumbnail"> | brillion abstract tufted wool ivory/black area rug |
+| — | — | — | — | — | 8 | NA | 17291 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17291.png" width="72" height="72" loading="lazy" alt="WANDS document 17291 thumbnail"> | abstract tufted wool black/ivory/gray area rug |
+| — | — | — | — | — | 9 | NA | 26738 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26738.png" width="72" height="72" loading="lazy" alt="WANDS document 26738 thumbnail"> | abstract black/ivory area rug |
+| — | — | — | — | — | 10 | NA | 15575 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15575.png" width="72" height="72" loading="lazy" alt="WANDS document 15575 thumbnail"> | estoria abstract tufted wool beige/ivory area rug |
 
 ### 480 — pictures to hang over fireplace
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 7116 | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture | 1 | NA | 24987 | framed painting print wall art |
-| 2 | 1 | 40171 | giddings family theme wall hanging 8 opening photo sockets picture frame | 2 | NA | 9354 | ashton art & décor large framed painting print |
-| 3 | 1 | 40258 | 2 piece adoria hanging picture frame set | 3 | NA | 18454 | see the light - picture frame painting print |
-| — | — | — | — | 4 | NA | 24355 | regatta at argenteuil by claude monet oil painting print |
-| — | — | — | — | 5 | NA | 26207 | the seine at argenteuil by claude monet framed drawing print |
-| — | — | — | — | 6 | NA | 22896 | fire and brimstone framed painting print on wrapped canvas |
-| — | — | — | — | 7 | NA | 36122 | painting prints wall art on canvas |
-| — | — | — | — | 8 | NA | 41796 | starry night over rhone - picture frame painting print on paper |
-| — | — | — | — | 9 | NA | 22470 | calter 6 piece framed art set - picture frame graphic art print set on paper |
-| — | — | — | — | 10 | NA | 34482 | geometric - picture frame painting print on wood |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 7116 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7116.png" width="72" height="72" loading="lazy" alt="WANDS document 7116 thumbnail"> | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture | 1 | NA | 24987 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24987.png" width="72" height="72" loading="lazy" alt="WANDS document 24987 thumbnail"> | framed painting print wall art |
+| 2 | 1 | 40171 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40171.png" width="72" height="72" loading="lazy" alt="WANDS document 40171 thumbnail"> | giddings family theme wall hanging 8 opening photo sockets picture frame | 2 | NA | 9354 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9354.png" width="72" height="72" loading="lazy" alt="WANDS document 9354 thumbnail"> | ashton art & décor large framed painting print |
+| 3 | 1 | 40258 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40258.png" width="72" height="72" loading="lazy" alt="WANDS document 40258 thumbnail"> | 2 piece adoria hanging picture frame set | 3 | NA | 18454 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18454.png" width="72" height="72" loading="lazy" alt="WANDS document 18454 thumbnail"> | see the light - picture frame painting print |
+| — | — | — | — | — | 4 | NA | 24355 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24355.png" width="72" height="72" loading="lazy" alt="WANDS document 24355 thumbnail"> | regatta at argenteuil by claude monet oil painting print |
+| — | — | — | — | — | 5 | NA | 26207 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26207.png" width="72" height="72" loading="lazy" alt="WANDS document 26207 thumbnail"> | the seine at argenteuil by claude monet framed drawing print |
+| — | — | — | — | — | 6 | NA | 22896 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22896.png" width="72" height="72" loading="lazy" alt="WANDS document 22896 thumbnail"> | fire and brimstone framed painting print on wrapped canvas |
+| — | — | — | — | — | 7 | NA | 36122 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/36122.png" width="72" height="72" loading="lazy" alt="WANDS document 36122 thumbnail"> | painting prints wall art on canvas |
+| — | — | — | — | — | 8 | NA | 41796 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41796.png" width="72" height="72" loading="lazy" alt="WANDS document 41796 thumbnail"> | starry night over rhone - picture frame painting print on paper |
+| — | — | — | — | — | 9 | NA | 22470 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22470.png" width="72" height="72" loading="lazy" alt="WANDS document 22470 thumbnail"> | calter 6 piece framed art set - picture frame graphic art print set on paper |
+| — | — | — | — | — | 10 | NA | 34482 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34482.png" width="72" height="72" loading="lazy" alt="WANDS document 34482 thumbnail"> | geometric - picture frame painting print on wood |
 
 ### 487 — rack glass
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.000 · 46 0.000; mean: **0.000**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 9434 | floyd 24 bottle floor wine bottle and glass rack | 1 | NA | 31758 | stainless steel glass rack storage |
-| 2 | 2 | 42003 | floor 20 pair shoe rack | 2 | NA | 32478 | 16 compartment glass rack |
-| 3 | 1 | 18 | hermoine 5 piece log rack set | 3 | NA | 32475 | 25 compartment glass rack |
-| 4 | 1 | 19 | hermond firewood 5 piece log rack set | 4 | NA | 32476 | 36 compartment glass rack |
-| 5 | 1 | 20 | jenks firewood log rack | 5 | NA | 22194 | wine glass rack |
-| 6 | 1 | 110 | west harptree 34 '' w garment rack | 6 | NA | 7070 | opticlean™ 16 compartment glass rack |
-| 7 | 1 | 285 | 3 shelf movable storage rack | 7 | NA | 7075 | opticlean™ 9 compartment glass rack |
-| 8 | 1 | 573 | 5 - hook freestanding coat rack | 8 | NA | 19328 | hanging wine glass rack |
-| 9 | 1 | 635 | 4 - hook freestanding coat rack | 9 | NA | 13019 | garrow hanging wine glass rack |
-| 10 | 1 | 660 | strine shoe clothing storage rack | 10 | NA | 3744 | catton solid wood wall mounted wine glass rack in brown |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 9434 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9434.png" width="72" height="72" loading="lazy" alt="WANDS document 9434 thumbnail"> | floyd 24 bottle floor wine bottle and glass rack | 1 | NA | 31758 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31758.png" width="72" height="72" loading="lazy" alt="WANDS document 31758 thumbnail"> | stainless steel glass rack storage |
+| 2 | 2 | 42003 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42003.png" width="72" height="72" loading="lazy" alt="WANDS document 42003 thumbnail"> | floor 20 pair shoe rack | 2 | NA | 32478 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32478.png" width="72" height="72" loading="lazy" alt="WANDS document 32478 thumbnail"> | 16 compartment glass rack |
+| 3 | 1 | 18 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18.png" width="72" height="72" loading="lazy" alt="WANDS document 18 thumbnail"> | hermoine 5 piece log rack set | 3 | NA | 32475 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32475.png" width="72" height="72" loading="lazy" alt="WANDS document 32475 thumbnail"> | 25 compartment glass rack |
+| 4 | 1 | 19 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19.png" width="72" height="72" loading="lazy" alt="WANDS document 19 thumbnail"> | hermond firewood 5 piece log rack set | 4 | NA | 32476 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32476.png" width="72" height="72" loading="lazy" alt="WANDS document 32476 thumbnail"> | 36 compartment glass rack |
+| 5 | 1 | 20 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/20.png" width="72" height="72" loading="lazy" alt="WANDS document 20 thumbnail"> | jenks firewood log rack | 5 | NA | 22194 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22194.png" width="72" height="72" loading="lazy" alt="WANDS document 22194 thumbnail"> | wine glass rack |
+| 6 | 1 | 110 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/110.png" width="72" height="72" loading="lazy" alt="WANDS document 110 thumbnail"> | west harptree 34 '' w garment rack | 6 | NA | 7070 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7070.png" width="72" height="72" loading="lazy" alt="WANDS document 7070 thumbnail"> | opticlean™ 16 compartment glass rack |
+| 7 | 1 | 285 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/285.png" width="72" height="72" loading="lazy" alt="WANDS document 285 thumbnail"> | 3 shelf movable storage rack | 7 | NA | 7075 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7075.png" width="72" height="72" loading="lazy" alt="WANDS document 7075 thumbnail"> | opticlean™ 9 compartment glass rack |
+| 8 | 1 | 573 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/573.png" width="72" height="72" loading="lazy" alt="WANDS document 573 thumbnail"> | 5 - hook freestanding coat rack | 8 | NA | 19328 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19328.png" width="72" height="72" loading="lazy" alt="WANDS document 19328 thumbnail"> | hanging wine glass rack |
+| 9 | 1 | 635 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/635.png" width="72" height="72" loading="lazy" alt="WANDS document 635 thumbnail"> | 4 - hook freestanding coat rack | 9 | NA | 13019 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13019.png" width="72" height="72" loading="lazy" alt="WANDS document 13019 thumbnail"> | garrow hanging wine glass rack |
+| 10 | 1 | 660 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/660.png" width="72" height="72" loading="lazy" alt="WANDS document 660 thumbnail"> | strine shoe clothing storage rack | 10 | NA | 3744 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3744.png" width="72" height="72" loading="lazy" alt="WANDS document 3744 thumbnail"> | catton solid wood wall mounted wine glass rack in brown |
 
 ### 395 — pantry grey
 
 NDCG-G by seed: 43 0.000 · 44 0.000 · 45 0.049 · 46 0.000; mean: **0.012**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 555 | abernathy 48 '' kitchen pantry | 1 | NA | 7625 | canora grey kitchen cabinet pantry cupboard freestanding w/adjustable shelves black |
-| 2 | 1 | 17023 | uli 76 '' kitchen pantry | 2 | NA | 29997 | jagoda-ewa 27 '' h x 24 '' w x 16 '' d oak pantry cabinet |
-| 3 | 1 | 17835 | ezara stand 61 '' kitchen pantry | 3 | NA | 36491 | dewhitt 67 '' pantry cabinet |
-| 4 | 1 | 18245 | dubach 70 '' kitchen pantry | 4 | NA | 9925 | elliana storage 50 '' kitchen pantry |
-| 5 | 1 | 18246 | bryaunna 34 '' kitchen pantry | 5 | NA | 15454 | echevarria 41 '' kitchen pantry |
-| 6 | 1 | 21484 | wire baskets for organizing household pantry baskets 4 pack metal baskets for pantry storage fruit drinks wire storage basket freezer pantry storage bins black small wire baskets | 6 | NA | 32995 | halstead 72 '' kitchen pantry |
-| 7 | 1 | 21815 | charliedavid 70.8 '' kitchen pantry | 7 | NA | 36267 | ferryhill 73 '' kitchen pantry |
-| 8 | 1 | 24056 | easy essentials pantry bread box and divided 169 oz . food storage container | 8 | NA | 2414 | olivas 60 '' kitchen pantry |
-| 9 | 1 | 25183 | cockfosters 71 '' kitchen pantry | 9 | NA | 1362 | elinor 60 '' kitchen pantry |
-| 10 | 1 | 26545 | mint pantry fragoza mango wood pineapple cutting board | 10 | NA | 18784 | sorens swanscombe 48 '' kitchen pantry |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 555 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/555.png" width="72" height="72" loading="lazy" alt="WANDS document 555 thumbnail"> | abernathy 48 '' kitchen pantry | 1 | NA | 7625 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7625.png" width="72" height="72" loading="lazy" alt="WANDS document 7625 thumbnail"> | canora grey kitchen cabinet pantry cupboard freestanding w/adjustable shelves black |
+| 2 | 1 | 17023 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17023.png" width="72" height="72" loading="lazy" alt="WANDS document 17023 thumbnail"> | uli 76 '' kitchen pantry | 2 | NA | 29997 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29997.png" width="72" height="72" loading="lazy" alt="WANDS document 29997 thumbnail"> | jagoda-ewa 27 '' h x 24 '' w x 16 '' d oak pantry cabinet |
+| 3 | 1 | 17835 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17835.png" width="72" height="72" loading="lazy" alt="WANDS document 17835 thumbnail"> | ezara stand 61 '' kitchen pantry | 3 | NA | 36491 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/36491.png" width="72" height="72" loading="lazy" alt="WANDS document 36491 thumbnail"> | dewhitt 67 '' pantry cabinet |
+| 4 | 1 | 18245 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18245.png" width="72" height="72" loading="lazy" alt="WANDS document 18245 thumbnail"> | dubach 70 '' kitchen pantry | 4 | NA | 9925 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9925.png" width="72" height="72" loading="lazy" alt="WANDS document 9925 thumbnail"> | elliana storage 50 '' kitchen pantry |
+| 5 | 1 | 18246 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18246.png" width="72" height="72" loading="lazy" alt="WANDS document 18246 thumbnail"> | bryaunna 34 '' kitchen pantry | 5 | NA | 15454 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15454.png" width="72" height="72" loading="lazy" alt="WANDS document 15454 thumbnail"> | echevarria 41 '' kitchen pantry |
+| 6 | 1 | 21484 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21484.png" width="72" height="72" loading="lazy" alt="WANDS document 21484 thumbnail"> | wire baskets for organizing household pantry baskets 4 pack metal baskets for pantry storage fruit drinks wire storage basket freezer pantry storage bins black small wire baskets | 6 | NA | 32995 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32995.png" width="72" height="72" loading="lazy" alt="WANDS document 32995 thumbnail"> | halstead 72 '' kitchen pantry |
+| 7 | 1 | 21815 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21815.png" width="72" height="72" loading="lazy" alt="WANDS document 21815 thumbnail"> | charliedavid 70.8 '' kitchen pantry | 7 | NA | 36267 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/36267.png" width="72" height="72" loading="lazy" alt="WANDS document 36267 thumbnail"> | ferryhill 73 '' kitchen pantry |
+| 8 | 1 | 24056 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24056.png" width="72" height="72" loading="lazy" alt="WANDS document 24056 thumbnail"> | easy essentials pantry bread box and divided 169 oz . food storage container | 8 | NA | 2414 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2414.png" width="72" height="72" loading="lazy" alt="WANDS document 2414 thumbnail"> | olivas 60 '' kitchen pantry |
+| 9 | 1 | 25183 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/25183.png" width="72" height="72" loading="lazy" alt="WANDS document 25183 thumbnail"> | cockfosters 71 '' kitchen pantry | 9 | NA | 1362 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1362.png" width="72" height="72" loading="lazy" alt="WANDS document 1362 thumbnail"> | elinor 60 '' kitchen pantry |
+| 10 | 1 | 26545 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26545.png" width="72" height="72" loading="lazy" alt="WANDS document 26545 thumbnail"> | mint pantry fragoza mango wood pineapple cutting board | 10 | NA | 18784 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18784.png" width="72" height="72" loading="lazy" alt="WANDS document 18784 thumbnail"> | sorens swanscombe 48 '' kitchen pantry |
 
 ### 277 — barstool patio sets
 
 NDCG-G by seed: 43 0.014 · 44 0.057 · 45 0.000 · 46 0.016; mean: **0.022**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 3694 | docklands 30 '' wood patio bar stool with cushion | 1 | NA | 32753 | rochford 7 piece bar height pub table set |
-| 2 | 2 | 4146 | endicott lucrezia wicker 30 '' patio bar stool with cushion | 2 | NA | 32754 | rochford 5 piece bar height pub table set |
-| 3 | 2 | 6301 | carsdale 30.5 '' patio bar stool | 3 | NA | 14735 | outdoor modern industrial 5 piece bar height dining set |
-| 4 | 2 | 8229 | pottstown 28 '' patio bar stool | 4 | NA | 15804 | ermanda 5-piece bar set |
-| 5 | 2 | 8239 | wona 27.5 '' patio bar stool | 5 | NA | 15805 | ermaline 5-piece bar set |
-| 6 | 2 | 9267 | molino 30 '' patio bar stool | 6 | NA | 15834 | treyton 3 piece bar height dining set |
-| 7 | 2 | 9779 | brann-natta 23.5 '' patio bar stool | 7 | NA | 27942 | aiman 3 piece bistro set |
-| 8 | 2 | 10283 | 2 piece outdoor swivel high bar stools , patio chairs furniture , all-weather breathable pvc-coated polyester chairs set for bistro backyard garden backyard | 8 | 1 | 37717 | dextyn patio 3 piece bistro set |
-| 9 | 2 | 13226 | bisen 28.5 '' patio bar stool | 9 | NA | 21932 | acherman 3 piece bar height dining set with cushions |
-| 10 | 2 | 14255 | racette outdoor cast aluminum 29.5 '' patio bar stools ( set of 4 | 10 | NA | 35374 | stapleton 3 piece bar height dining set |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 3694 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3694.png" width="72" height="72" loading="lazy" alt="WANDS document 3694 thumbnail"> | docklands 30 '' wood patio bar stool with cushion | 1 | NA | 32753 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32753.png" width="72" height="72" loading="lazy" alt="WANDS document 32753 thumbnail"> | rochford 7 piece bar height pub table set |
+| 2 | 2 | 4146 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4146.png" width="72" height="72" loading="lazy" alt="WANDS document 4146 thumbnail"> | endicott lucrezia wicker 30 '' patio bar stool with cushion | 2 | NA | 32754 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32754.png" width="72" height="72" loading="lazy" alt="WANDS document 32754 thumbnail"> | rochford 5 piece bar height pub table set |
+| 3 | 2 | 6301 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6301.png" width="72" height="72" loading="lazy" alt="WANDS document 6301 thumbnail"> | carsdale 30.5 '' patio bar stool | 3 | NA | 14735 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14735.png" width="72" height="72" loading="lazy" alt="WANDS document 14735 thumbnail"> | outdoor modern industrial 5 piece bar height dining set |
+| 4 | 2 | 8229 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8229.png" width="72" height="72" loading="lazy" alt="WANDS document 8229 thumbnail"> | pottstown 28 '' patio bar stool | 4 | NA | 15804 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15804.png" width="72" height="72" loading="lazy" alt="WANDS document 15804 thumbnail"> | ermanda 5-piece bar set |
+| 5 | 2 | 8239 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8239.png" width="72" height="72" loading="lazy" alt="WANDS document 8239 thumbnail"> | wona 27.5 '' patio bar stool | 5 | NA | 15805 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15805.png" width="72" height="72" loading="lazy" alt="WANDS document 15805 thumbnail"> | ermaline 5-piece bar set |
+| 6 | 2 | 9267 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9267.png" width="72" height="72" loading="lazy" alt="WANDS document 9267 thumbnail"> | molino 30 '' patio bar stool | 6 | NA | 15834 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15834.png" width="72" height="72" loading="lazy" alt="WANDS document 15834 thumbnail"> | treyton 3 piece bar height dining set |
+| 7 | 2 | 9779 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9779.png" width="72" height="72" loading="lazy" alt="WANDS document 9779 thumbnail"> | brann-natta 23.5 '' patio bar stool | 7 | NA | 27942 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/27942.png" width="72" height="72" loading="lazy" alt="WANDS document 27942 thumbnail"> | aiman 3 piece bistro set |
+| 8 | 2 | 10283 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10283.png" width="72" height="72" loading="lazy" alt="WANDS document 10283 thumbnail"> | 2 piece outdoor swivel high bar stools , patio chairs furniture , all-weather breathable pvc-coated polyester chairs set for bistro backyard garden backyard | 8 | 1 | 37717 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/37717.png" width="72" height="72" loading="lazy" alt="WANDS document 37717 thumbnail"> | dextyn patio 3 piece bistro set |
+| 9 | 2 | 13226 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13226.png" width="72" height="72" loading="lazy" alt="WANDS document 13226 thumbnail"> | bisen 28.5 '' patio bar stool | 9 | NA | 21932 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21932.png" width="72" height="72" loading="lazy" alt="WANDS document 21932 thumbnail"> | acherman 3 piece bar height dining set with cushions |
+| 10 | 2 | 14255 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14255.png" width="72" height="72" loading="lazy" alt="WANDS document 14255 thumbnail"> | racette outdoor cast aluminum 29.5 '' patio bar stools ( set of 4 | 10 | NA | 35374 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35374.png" width="72" height="72" loading="lazy" alt="WANDS document 35374 thumbnail"> | stapleton 3 piece bar height dining set |
 
 ### 219 — trinaic towel rod
 
 NDCG-G by seed: 43 0.034 · 44 0.072 · 45 0.000 · 46 0.000; mean: **0.027**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 1667 | 24 '' wall mounted single rod towel rack | 1 | NA | 6587 | trinsic bathroom 24 '' wall mounted towel bar |
-| 2 | 1 | 1669 | 24 '' wall mounted multi rod towel rack | 2 | NA | 10139 | trinsic bathroom 24 '' wall mounted towel bar |
-| 3 | 1 | 2924 | single rod wall mounted towel rack | 3 | NA | 10183 | trinsic 24 '' wall mounted towel bar |
-| 4 | 1 | 2925 | multi-rod wall mounted towel rack | 4 | NA | 6599 | trinsic 18 '' wall mounted towel bar |
-| 5 | 1 | 2926 | single rod and multi-rod 25 '' fixture mounted towel bar | 5 | NA | 10138 | trinsic 18 '' wall mounted towel bar |
-| 6 | 1 | 2927 | single rod and multi-rod 24 '' fixture mounted towel bar | 6 | NA | 6598 | trinsic 30 '' wall mounted towel bar |
-| 7 | 1 | 4804 | stainless steel towel rack punch-free towel single rod rack bath towel holder | 7 | NA | 10180 | trinsic® 30 '' wall mounted towel bar |
-| 8 | 1 | 4805 | stainless steel painted towel rack punch-free towel single rod rack bath towel holder | 8 | NA | 10187 | trinsic bathroom 12 '' wall mounted towel bar |
-| 9 | 1 | 6037 | open towel ring | 9 | NA | 32776 | trinsic 4 piece bathroom hardware set |
-| 10 | 1 | 6038 | 8500 series open towel ring | 10 | 1 | 42497 | 24 '' wall mounted towel bar |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 1667 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1667.png" width="72" height="72" loading="lazy" alt="WANDS document 1667 thumbnail"> | 24 '' wall mounted single rod towel rack | 1 | NA | 6587 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6587.png" width="72" height="72" loading="lazy" alt="WANDS document 6587 thumbnail"> | trinsic bathroom 24 '' wall mounted towel bar |
+| 2 | 1 | 1669 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1669.png" width="72" height="72" loading="lazy" alt="WANDS document 1669 thumbnail"> | 24 '' wall mounted multi rod towel rack | 2 | NA | 10139 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10139.png" width="72" height="72" loading="lazy" alt="WANDS document 10139 thumbnail"> | trinsic bathroom 24 '' wall mounted towel bar |
+| 3 | 1 | 2924 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2924.png" width="72" height="72" loading="lazy" alt="WANDS document 2924 thumbnail"> | single rod wall mounted towel rack | 3 | NA | 10183 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10183.png" width="72" height="72" loading="lazy" alt="WANDS document 10183 thumbnail"> | trinsic 24 '' wall mounted towel bar |
+| 4 | 1 | 2925 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2925.png" width="72" height="72" loading="lazy" alt="WANDS document 2925 thumbnail"> | multi-rod wall mounted towel rack | 4 | NA | 6599 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6599.png" width="72" height="72" loading="lazy" alt="WANDS document 6599 thumbnail"> | trinsic 18 '' wall mounted towel bar |
+| 5 | 1 | 2926 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2926.png" width="72" height="72" loading="lazy" alt="WANDS document 2926 thumbnail"> | single rod and multi-rod 25 '' fixture mounted towel bar | 5 | NA | 10138 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10138.png" width="72" height="72" loading="lazy" alt="WANDS document 10138 thumbnail"> | trinsic 18 '' wall mounted towel bar |
+| 6 | 1 | 2927 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2927.png" width="72" height="72" loading="lazy" alt="WANDS document 2927 thumbnail"> | single rod and multi-rod 24 '' fixture mounted towel bar | 6 | NA | 6598 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6598.png" width="72" height="72" loading="lazy" alt="WANDS document 6598 thumbnail"> | trinsic 30 '' wall mounted towel bar |
+| 7 | 1 | 4804 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4804.png" width="72" height="72" loading="lazy" alt="WANDS document 4804 thumbnail"> | stainless steel towel rack punch-free towel single rod rack bath towel holder | 7 | NA | 10180 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10180.png" width="72" height="72" loading="lazy" alt="WANDS document 10180 thumbnail"> | trinsic® 30 '' wall mounted towel bar |
+| 8 | 1 | 4805 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4805.png" width="72" height="72" loading="lazy" alt="WANDS document 4805 thumbnail"> | stainless steel painted towel rack punch-free towel single rod rack bath towel holder | 8 | NA | 10187 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10187.png" width="72" height="72" loading="lazy" alt="WANDS document 10187 thumbnail"> | trinsic bathroom 12 '' wall mounted towel bar |
+| 9 | 1 | 6037 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6037.png" width="72" height="72" loading="lazy" alt="WANDS document 6037 thumbnail"> | open towel ring | 9 | NA | 32776 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32776.png" width="72" height="72" loading="lazy" alt="WANDS document 32776 thumbnail"> | trinsic 4 piece bathroom hardware set |
+| 10 | 1 | 6038 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6038.png" width="72" height="72" loading="lazy" alt="WANDS document 6038 thumbnail"> | 8500 series open towel ring | 10 | 1 | 42497 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42497.png" width="72" height="72" loading="lazy" alt="WANDS document 42497 thumbnail"> | 24 '' wall mounted towel bar |
 
 ### 400 — small ladies rocker swivel recliner
 
 NDCG-G by seed: 43 0.000 · 44 0.034 · 45 0.038 · 46 0.034; mean: **0.027**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 2266 | 33.8 '' wide manual swivel recliner | 1 | NA | 16208 | swivel rocker fabric recliner chair |
-| 2 | 1 | 2517 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 2 | NA | 19989 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room |
-| 3 | 1 | 2636 | 25 '' wide faux leather manual swivel standard recliner | 3 | NA | 3184 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( silver ) |
-| 4 | 1 | 9210 | arlo swivel reclining rocking glider | 4 | NA | 5248 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( smoke grey ) |
-| 5 | 1 | 9420 | starr 46 '' wide faux leather manual standard recliner | 5 | NA | 19238 | swivel reclining glider |
-| 6 | 1 | 9492 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 6 | NA | 29457 | hyndi manual rocker standard recliner |
-| 7 | 1 | 11115 | office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 7 | NA | 24873 | angelli 27.6 '' wide manual home theater recliner |
-| 8 | 1 | 11230 | ruby swivel reclining glider | 8 | NA | 2656 | daryana 26.5 '' wide manual rocker standard recliner |
-| 9 | 1 | 14623 | doroteia 36 '' wide manual rocker standard recliner | 9 | NA | 12242 | harrel 25 '' wide manual rocker standard recliner |
-| 10 | 1 | 17222 | ingmari 35 '' wide manual glider standard recliner | 10 | NA | 38437 | abingdon swivel reclining rocking chair glider |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 2266 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2266.png" width="72" height="72" loading="lazy" alt="WANDS document 2266 thumbnail"> | 33.8 '' wide manual swivel recliner | 1 | NA | 16208 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16208.png" width="72" height="72" loading="lazy" alt="WANDS document 16208 thumbnail"> | swivel rocker fabric recliner chair |
+| 2 | 1 | 2517 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2517.png" width="72" height="72" loading="lazy" alt="WANDS document 2517 thumbnail"> | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 2 | NA | 19989 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19989.png" width="72" height="72" loading="lazy" alt="WANDS document 19989 thumbnail"> | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room |
+| 3 | 1 | 2636 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2636.png" width="72" height="72" loading="lazy" alt="WANDS document 2636 thumbnail"> | 25 '' wide faux leather manual swivel standard recliner | 3 | NA | 3184 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3184.png" width="72" height="72" loading="lazy" alt="WANDS document 3184 thumbnail"> | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( silver ) |
+| 4 | 1 | 9210 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9210.png" width="72" height="72" loading="lazy" alt="WANDS document 9210 thumbnail"> | arlo swivel reclining rocking glider | 4 | NA | 5248 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5248.png" width="72" height="72" loading="lazy" alt="WANDS document 5248 thumbnail"> | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( smoke grey ) |
+| 5 | 1 | 9420 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9420.png" width="72" height="72" loading="lazy" alt="WANDS document 9420 thumbnail"> | starr 46 '' wide faux leather manual standard recliner | 5 | NA | 19238 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19238.png" width="72" height="72" loading="lazy" alt="WANDS document 19238 thumbnail"> | swivel reclining glider |
+| 6 | 1 | 9492 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9492.png" width="72" height="72" loading="lazy" alt="WANDS document 9492 thumbnail"> | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 6 | NA | 29457 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29457.png" width="72" height="72" loading="lazy" alt="WANDS document 29457 thumbnail"> | hyndi manual rocker standard recliner |
+| 7 | 1 | 11115 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11115.png" width="72" height="72" loading="lazy" alt="WANDS document 11115 thumbnail"> | office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 7 | NA | 24873 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24873.png" width="72" height="72" loading="lazy" alt="WANDS document 24873 thumbnail"> | angelli 27.6 '' wide manual home theater recliner |
+| 8 | 1 | 11230 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11230.png" width="72" height="72" loading="lazy" alt="WANDS document 11230 thumbnail"> | ruby swivel reclining glider | 8 | NA | 2656 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2656.png" width="72" height="72" loading="lazy" alt="WANDS document 2656 thumbnail"> | daryana 26.5 '' wide manual rocker standard recliner |
+| 9 | 1 | 14623 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14623.png" width="72" height="72" loading="lazy" alt="WANDS document 14623 thumbnail"> | doroteia 36 '' wide manual rocker standard recliner | 9 | NA | 12242 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12242.png" width="72" height="72" loading="lazy" alt="WANDS document 12242 thumbnail"> | harrel 25 '' wide manual rocker standard recliner |
+| 10 | 1 | 17222 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17222.png" width="72" height="72" loading="lazy" alt="WANDS document 17222 thumbnail"> | ingmari 35 '' wide manual glider standard recliner | 10 | NA | 38437 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38437.png" width="72" height="72" loading="lazy" alt="WANDS document 38437 thumbnail"> | abingdon swivel reclining rocking chair glider |
 
 ### 344 — ottoman bed queen
 
 NDCG-G by seed: 43 0.068 · 44 0.000 · 45 0.038 · 46 0.000; mean: **0.027**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 545 | loggins storage ottoman | 1 | NA | 8951 | wadley queen contemporary wood upholstered storage platform bed |
-| 2 | 1 | 998 | karlsefni 37.5 '' wide tufted rectangle standard ottoman | 2 | NA | 5900 | morphis upholstered storage platform bed |
-| 3 | 1 | 1030 | 48 '' tufted rectangle standard ottoman | 3 | NA | 16195 | corso upholstered storage platform bed |
-| 4 | 1 | 1367 | roft 50 '' tufted rectangle storage ottoman | 4 | NA | 33463 | naima queen upholstered storage standard bed |
-| 5 | 1 | 1537 | henninger 25 '' tufted round storage ottoman | 5 | 1 | 41706 | beedle queen upholstered platform bed |
-| 6 | 1 | 1563 | luper 41.75 '' wide tufted rectangle storage ottoman | 6 | NA | 42893 | schreffler upholstered storage platform bed |
-| 7 | 1 | 1730 | tufted storage ottoman | 7 | NA | 13832 | juillac queen tufted upholstered low profile storage platform bed |
-| 8 | 1 | 1753 | camden 28.5 '' wide square folding bed cocktail ottoman | 8 | NA | 30783 | beyhan tufted upholstered low profile storage platform bed |
-| 9 | 1 | 1844 | lampkins 24 '' rectangle standard ottoman | 9 | NA | 19804 | tetrault tufted upholstered storage platform bed |
-| 10 | 1 | 1927 | denali 51.18 '' wide faux leather rectangle storage ottoman | 10 | NA | 16468 | aabha upholstered storage platform bed |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 545 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/545.png" width="72" height="72" loading="lazy" alt="WANDS document 545 thumbnail"> | loggins storage ottoman | 1 | NA | 8951 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8951.png" width="72" height="72" loading="lazy" alt="WANDS document 8951 thumbnail"> | wadley queen contemporary wood upholstered storage platform bed |
+| 2 | 1 | 998 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/998.png" width="72" height="72" loading="lazy" alt="WANDS document 998 thumbnail"> | karlsefni 37.5 '' wide tufted rectangle standard ottoman | 2 | NA | 5900 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5900.png" width="72" height="72" loading="lazy" alt="WANDS document 5900 thumbnail"> | morphis upholstered storage platform bed |
+| 3 | 1 | 1030 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1030.png" width="72" height="72" loading="lazy" alt="WANDS document 1030 thumbnail"> | 48 '' tufted rectangle standard ottoman | 3 | NA | 16195 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16195.png" width="72" height="72" loading="lazy" alt="WANDS document 16195 thumbnail"> | corso upholstered storage platform bed |
+| 4 | 1 | 1367 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1367.png" width="72" height="72" loading="lazy" alt="WANDS document 1367 thumbnail"> | roft 50 '' tufted rectangle storage ottoman | 4 | NA | 33463 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33463.png" width="72" height="72" loading="lazy" alt="WANDS document 33463 thumbnail"> | naima queen upholstered storage standard bed |
+| 5 | 1 | 1537 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1537.png" width="72" height="72" loading="lazy" alt="WANDS document 1537 thumbnail"> | henninger 25 '' tufted round storage ottoman | 5 | 1 | 41706 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41706.png" width="72" height="72" loading="lazy" alt="WANDS document 41706 thumbnail"> | beedle queen upholstered platform bed |
+| 6 | 1 | 1563 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1563.png" width="72" height="72" loading="lazy" alt="WANDS document 1563 thumbnail"> | luper 41.75 '' wide tufted rectangle storage ottoman | 6 | NA | 42893 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42893.png" width="72" height="72" loading="lazy" alt="WANDS document 42893 thumbnail"> | schreffler upholstered storage platform bed |
+| 7 | 1 | 1730 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1730.png" width="72" height="72" loading="lazy" alt="WANDS document 1730 thumbnail"> | tufted storage ottoman | 7 | NA | 13832 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13832.png" width="72" height="72" loading="lazy" alt="WANDS document 13832 thumbnail"> | juillac queen tufted upholstered low profile storage platform bed |
+| 8 | 1 | 1753 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1753.png" width="72" height="72" loading="lazy" alt="WANDS document 1753 thumbnail"> | camden 28.5 '' wide square folding bed cocktail ottoman | 8 | NA | 30783 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30783.png" width="72" height="72" loading="lazy" alt="WANDS document 30783 thumbnail"> | beyhan tufted upholstered low profile storage platform bed |
+| 9 | 1 | 1844 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1844.png" width="72" height="72" loading="lazy" alt="WANDS document 1844 thumbnail"> | lampkins 24 '' rectangle standard ottoman | 9 | NA | 19804 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19804.png" width="72" height="72" loading="lazy" alt="WANDS document 19804 thumbnail"> | tetrault tufted upholstered storage platform bed |
+| 10 | 1 | 1927 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1927.png" width="72" height="72" loading="lazy" alt="WANDS document 1927 thumbnail"> | denali 51.18 '' wide faux leather rectangle storage ottoman | 10 | NA | 16468 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16468.png" width="72" height="72" loading="lazy" alt="WANDS document 16468 thumbnail"> | aabha upholstered storage platform bed |
 
 ### 458 — bubble guppies chair
 
 NDCG-G by seed: 43 0.000 · 44 0.057 · 45 0.000 · 46 0.068; mean: **0.031**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 95 | vasta tdrafting chair | 1 | NA | 8593 | kids chair |
-| 2 | 1 | 246 | real good chair | 2 | NA | 21387 | kids club chair |
-| 3 | 1 | 308 | exectuive chair | 3 | NA | 31300 | flatbush novelty kids chair |
-| 4 | 1 | 451 | olin upholstered side chair | 4 | NA | 31298 | melkon novelty kids chair |
-| 5 | 1 | 1044 | standard 100 % cotton bean bag chair & lounger | 5 | NA | 21312 | thriftykydz® kids chair |
-| 6 | 1 | 1118 | kerensa rocking chair | 6 | NA | 31297 | melik novelty kids chair |
-| 7 | 1 | 1150 | kynaston 34 '' wide balloon chair | 7 | NA | 21388 | crown kids chair |
-| 8 | 1 | 1154 | cardtronics 47 '' wide tufted velvet chesterfield chair | 8 | NA | 29511 | rippy s kids chair |
-| 9 | 1 | 1167 | kassell 43.5 '' wide leather match armchair | 9 | NA | 6633 | peppa pig upholstered chair kids club |
-| 10 | 1 | 2475 | bonifant 32 '' wide linen balloon chair | 10 | NA | 6627 | spongebob squarepants high back upholstered kids desk / activity chair |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 95 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/95.png" width="72" height="72" loading="lazy" alt="WANDS document 95 thumbnail"> | vasta tdrafting chair | 1 | NA | 8593 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8593.png" width="72" height="72" loading="lazy" alt="WANDS document 8593 thumbnail"> | kids chair |
+| 2 | 1 | 246 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/246.png" width="72" height="72" loading="lazy" alt="WANDS document 246 thumbnail"> | real good chair | 2 | NA | 21387 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21387.png" width="72" height="72" loading="lazy" alt="WANDS document 21387 thumbnail"> | kids club chair |
+| 3 | 1 | 308 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/308.png" width="72" height="72" loading="lazy" alt="WANDS document 308 thumbnail"> | exectuive chair | 3 | NA | 31300 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31300.png" width="72" height="72" loading="lazy" alt="WANDS document 31300 thumbnail"> | flatbush novelty kids chair |
+| 4 | 1 | 451 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/451.png" width="72" height="72" loading="lazy" alt="WANDS document 451 thumbnail"> | olin upholstered side chair | 4 | NA | 31298 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31298.png" width="72" height="72" loading="lazy" alt="WANDS document 31298 thumbnail"> | melkon novelty kids chair |
+| 5 | 1 | 1044 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1044.png" width="72" height="72" loading="lazy" alt="WANDS document 1044 thumbnail"> | standard 100 % cotton bean bag chair & lounger | 5 | NA | 21312 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21312.png" width="72" height="72" loading="lazy" alt="WANDS document 21312 thumbnail"> | thriftykydz® kids chair |
+| 6 | 1 | 1118 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1118.png" width="72" height="72" loading="lazy" alt="WANDS document 1118 thumbnail"> | kerensa rocking chair | 6 | NA | 31297 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31297.png" width="72" height="72" loading="lazy" alt="WANDS document 31297 thumbnail"> | melik novelty kids chair |
+| 7 | 1 | 1150 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1150.png" width="72" height="72" loading="lazy" alt="WANDS document 1150 thumbnail"> | kynaston 34 '' wide balloon chair | 7 | NA | 21388 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21388.png" width="72" height="72" loading="lazy" alt="WANDS document 21388 thumbnail"> | crown kids chair |
+| 8 | 1 | 1154 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1154.png" width="72" height="72" loading="lazy" alt="WANDS document 1154 thumbnail"> | cardtronics 47 '' wide tufted velvet chesterfield chair | 8 | NA | 29511 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29511.png" width="72" height="72" loading="lazy" alt="WANDS document 29511 thumbnail"> | rippy s kids chair |
+| 9 | 1 | 1167 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1167.png" width="72" height="72" loading="lazy" alt="WANDS document 1167 thumbnail"> | kassell 43.5 '' wide leather match armchair | 9 | NA | 6633 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6633.png" width="72" height="72" loading="lazy" alt="WANDS document 6633 thumbnail"> | peppa pig upholstered chair kids club |
+| 10 | 1 | 2475 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2475.png" width="72" height="72" loading="lazy" alt="WANDS document 2475 thumbnail"> | bonifant 32 '' wide linen balloon chair | 10 | NA | 6627 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6627.png" width="72" height="72" loading="lazy" alt="WANDS document 6627 thumbnail"> | spongebob squarepants high back upholstered kids desk / activity chair |
 
 ### 485 — pedistole sink
 
 NDCG-G by seed: 43 0.057 · 44 0.049 · 45 0.057 · 46 0.000; mean: **0.041**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 1301 | 33 '' l x 22 '' w farmhouse/apron kitchen sink with basket strainer and drain assembly | 1 | NA | 34457 | monaco 16 '' tall glossy white ceramic circular pedestal bathroom sink with overflow |
-| 2 | 1 | 1303 | 33 '' l x 20 '' w double basin farmhouse/apron kitchen sink with sink grid and basket strainer | 2 | NA | 3790 | sussex vitreous china rectangular pedestal bathroom sink with overflow |
-| 3 | 1 | 1440 | roald bulanka 72 '' double sink bathroom vanity | 3 | NA | 3793 | vicki vitreous china oval pedestal bathroom sink with overflow |
-| 4 | 1 | 2271 | double basin 30 '' l x 22 '' w farmhouse/apron kitchen sink | 4 | NA | 22210 | archer® vitreous china pedestal bathroom sink |
-| 5 | 1 | 2272 | single bowl 33 '' l x 22 '' w farmhouse/apron kitchen sink | 5 | 0 | 18943 | sink leg |
-| 6 | 1 | 2273 | retrofit 27 '' l x 22 '' w farmhouse/apron kitchen sink | 6 | 1 | 23147 | fauceture 25.19 '' single bathroom vanity top in white with sink |
-| 7 | 1 | 2274 | retrofit 30 '' l x 22 '' w farmhouse/apron kitchen sink | 7 | NA | 23148 | edwardian 16 '' wall mounted single bathroom vanity base only |
-| 8 | 1 | 2275 | retrofit 33 '' l x 22 '' w farmhouse/apron kitchen sink | 8 | NA | 23151 | victorian white ceramic rectangular wall mount bathroom sink with overflow |
-| 9 | 1 | 3795 | nepal 33 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 9 | NA | 10942 | white ceramic rectangular wall mount bathroom sink |
-| 10 | 1 | 3796 | apollo 36 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 10 | NA | 10941 | white ceramic rectangular wall mounted bathroom sink |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 1301 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1301.png" width="72" height="72" loading="lazy" alt="WANDS document 1301 thumbnail"> | 33 '' l x 22 '' w farmhouse/apron kitchen sink with basket strainer and drain assembly | 1 | NA | 34457 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34457.png" width="72" height="72" loading="lazy" alt="WANDS document 34457 thumbnail"> | monaco 16 '' tall glossy white ceramic circular pedestal bathroom sink with overflow |
+| 2 | 1 | 1303 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1303.png" width="72" height="72" loading="lazy" alt="WANDS document 1303 thumbnail"> | 33 '' l x 20 '' w double basin farmhouse/apron kitchen sink with sink grid and basket strainer | 2 | NA | 3790 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3790.png" width="72" height="72" loading="lazy" alt="WANDS document 3790 thumbnail"> | sussex vitreous china rectangular pedestal bathroom sink with overflow |
+| 3 | 1 | 1440 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1440.png" width="72" height="72" loading="lazy" alt="WANDS document 1440 thumbnail"> | roald bulanka 72 '' double sink bathroom vanity | 3 | NA | 3793 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3793.png" width="72" height="72" loading="lazy" alt="WANDS document 3793 thumbnail"> | vicki vitreous china oval pedestal bathroom sink with overflow |
+| 4 | 1 | 2271 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2271.png" width="72" height="72" loading="lazy" alt="WANDS document 2271 thumbnail"> | double basin 30 '' l x 22 '' w farmhouse/apron kitchen sink | 4 | NA | 22210 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22210.png" width="72" height="72" loading="lazy" alt="WANDS document 22210 thumbnail"> | archer® vitreous china pedestal bathroom sink |
+| 5 | 1 | 2272 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2272.png" width="72" height="72" loading="lazy" alt="WANDS document 2272 thumbnail"> | single bowl 33 '' l x 22 '' w farmhouse/apron kitchen sink | 5 | 0 | 18943 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18943.png" width="72" height="72" loading="lazy" alt="WANDS document 18943 thumbnail"> | sink leg |
+| 6 | 1 | 2273 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2273.png" width="72" height="72" loading="lazy" alt="WANDS document 2273 thumbnail"> | retrofit 27 '' l x 22 '' w farmhouse/apron kitchen sink | 6 | 1 | 23147 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23147.png" width="72" height="72" loading="lazy" alt="WANDS document 23147 thumbnail"> | fauceture 25.19 '' single bathroom vanity top in white with sink |
+| 7 | 1 | 2274 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2274.png" width="72" height="72" loading="lazy" alt="WANDS document 2274 thumbnail"> | retrofit 30 '' l x 22 '' w farmhouse/apron kitchen sink | 7 | NA | 23148 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23148.png" width="72" height="72" loading="lazy" alt="WANDS document 23148 thumbnail"> | edwardian 16 '' wall mounted single bathroom vanity base only |
+| 8 | 1 | 2275 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2275.png" width="72" height="72" loading="lazy" alt="WANDS document 2275 thumbnail"> | retrofit 33 '' l x 22 '' w farmhouse/apron kitchen sink | 8 | NA | 23151 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23151.png" width="72" height="72" loading="lazy" alt="WANDS document 23151 thumbnail"> | victorian white ceramic rectangular wall mount bathroom sink with overflow |
+| 9 | 1 | 3795 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3795.png" width="72" height="72" loading="lazy" alt="WANDS document 3795 thumbnail"> | nepal 33 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 9 | NA | 10942 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10942.png" width="72" height="72" loading="lazy" alt="WANDS document 10942 thumbnail"> | white ceramic rectangular wall mount bathroom sink |
+| 10 | 1 | 3796 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3796.png" width="72" height="72" loading="lazy" alt="WANDS document 3796 thumbnail"> | apollo 36 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 10 | NA | 10941 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10941.png" width="72" height="72" loading="lazy" alt="WANDS document 10941 thumbnail"> | white ceramic rectangular wall mounted bathroom sink |
 
 ### 301 — circle cabinet pulls
 
 NDCG-G by seed: 43 0.190 · 44 0.000 · 45 0.017 · 46 0.000; mean: **0.052**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 23404 | taryn cabinet ring pull | 1 | 0 | 16409 | 3 1/2 '' round cabinet bar pull |
-| 2 | 2 | 35456 | tableau round 3 '' center to center arch pull | 2 | NA | 16410 | 3 1/2 '' center bar pull multipack |
-| 3 | 1 | 2553 | wire cabinet 3 1/2 '' center to center arch pull | 3 | 2 | 23404 | taryn cabinet ring pull |
-| 4 | 1 | 6726 | super saver 3 '' center to center arch pull | 4 | NA | 23399 | taryn ring pull |
-| 5 | 1 | 6988 | solid cabinet 4 '' center to center bar pull | 5 | NA | 33969 | 1 1/2 '' diameter round knob |
-| 6 | 1 | 6989 | square cabinet 3 3/4 '' center to center bar pull | 6 | NA | 33711 | round knob multipack |
-| 7 | 1 | 6990 | square cabinet 5 '' center to center bar pull | 7 | NA | 14381 | drawer large ring pull |
-| 8 | 1 | 6991 | square cabinet 8 '' center to center bar pull | 8 | 1 | 18945 | cabinet drawer door wrought iron 1 3/4 '' center ring pull multipack |
-| 9 | 1 | 6992 | square cabinet 10 '' center to center bar pull | 9 | NA | 26626 | 1 1/2 '' diameter mushroom knob multipack |
-| 10 | 1 | 6993 | square cabinet 12 1/2 '' center to center bar pull | 10 | NA | 17456 | 1 1/2 '' diameter round knob |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 23404 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23404.png" width="72" height="72" loading="lazy" alt="WANDS document 23404 thumbnail"> | taryn cabinet ring pull | 1 | 0 | 16409 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16409.png" width="72" height="72" loading="lazy" alt="WANDS document 16409 thumbnail"> | 3 1/2 '' round cabinet bar pull |
+| 2 | 2 | 35456 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35456.png" width="72" height="72" loading="lazy" alt="WANDS document 35456 thumbnail"> | tableau round 3 '' center to center arch pull | 2 | NA | 16410 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16410.png" width="72" height="72" loading="lazy" alt="WANDS document 16410 thumbnail"> | 3 1/2 '' center bar pull multipack |
+| 3 | 1 | 2553 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2553.png" width="72" height="72" loading="lazy" alt="WANDS document 2553 thumbnail"> | wire cabinet 3 1/2 '' center to center arch pull | 3 | 2 | 23404 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23404.png" width="72" height="72" loading="lazy" alt="WANDS document 23404 thumbnail"> | taryn cabinet ring pull |
+| 4 | 1 | 6726 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6726.png" width="72" height="72" loading="lazy" alt="WANDS document 6726 thumbnail"> | super saver 3 '' center to center arch pull | 4 | NA | 23399 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23399.png" width="72" height="72" loading="lazy" alt="WANDS document 23399 thumbnail"> | taryn ring pull |
+| 5 | 1 | 6988 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6988.png" width="72" height="72" loading="lazy" alt="WANDS document 6988 thumbnail"> | solid cabinet 4 '' center to center bar pull | 5 | NA | 33969 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33969.png" width="72" height="72" loading="lazy" alt="WANDS document 33969 thumbnail"> | 1 1/2 '' diameter round knob |
+| 6 | 1 | 6989 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6989.png" width="72" height="72" loading="lazy" alt="WANDS document 6989 thumbnail"> | square cabinet 3 3/4 '' center to center bar pull | 6 | NA | 33711 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/33711.png" width="72" height="72" loading="lazy" alt="WANDS document 33711 thumbnail"> | round knob multipack |
+| 7 | 1 | 6990 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6990.png" width="72" height="72" loading="lazy" alt="WANDS document 6990 thumbnail"> | square cabinet 5 '' center to center bar pull | 7 | NA | 14381 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14381.png" width="72" height="72" loading="lazy" alt="WANDS document 14381 thumbnail"> | drawer large ring pull |
+| 8 | 1 | 6991 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6991.png" width="72" height="72" loading="lazy" alt="WANDS document 6991 thumbnail"> | square cabinet 8 '' center to center bar pull | 8 | 1 | 18945 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/18945.png" width="72" height="72" loading="lazy" alt="WANDS document 18945 thumbnail"> | cabinet drawer door wrought iron 1 3/4 '' center ring pull multipack |
+| 9 | 1 | 6992 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6992.png" width="72" height="72" loading="lazy" alt="WANDS document 6992 thumbnail"> | square cabinet 10 '' center to center bar pull | 9 | NA | 26626 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26626.png" width="72" height="72" loading="lazy" alt="WANDS document 26626 thumbnail"> | 1 1/2 '' diameter mushroom knob multipack |
+| 10 | 1 | 6993 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6993.png" width="72" height="72" loading="lazy" alt="WANDS document 6993 thumbnail"> | square cabinet 12 1/2 '' center to center bar pull | 10 | NA | 17456 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17456.png" width="72" height="72" loading="lazy" alt="WANDS document 17456 thumbnail"> | 1 1/2 '' diameter round knob |
 
 ### 45 — 70s inspired furniture
 
 NDCG-G by seed: 43 0.043 · 44 0.048 · 45 0.129 · 46 0.000; mean: **0.055**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 1076 | allen configurable living room set | 1 | NA | 37931 | peggie modern chaise lounge |
-| 2 | 2 | 1202 | baity furniture set | 2 | NA | 637 | cirencester 29 '' wide armchair |
-| 3 | 2 | 2474 | berlinville living room collection | 3 | NA | 4040 | erasmus 75.6 '' velvet square arm sofa |
-| 4 | 2 | 5614 | bersailles living room collection | 4 | NA | 19077 | micheals 42 '' wide top grain leather armchair |
-| 5 | 2 | 6498 | danieli living room collection | 5 | NA | 19078 | micheals 95 '' genuine leather square arm sofa |
-| 6 | 2 | 6499 | de foix living room collection | 6 | NA | 23024 | keomi 34.6 '' wide top grain leather armchair |
-| 7 | 2 | 7851 | boadicea mid century 2 piece living room set | 7 | NA | 6511 | rohrbaugh tufted ottoman |
-| 8 | 2 | 13158 | capel configurable living room set | 8 | 2 | 16752 | jarin 25.38 '' wide armchair |
-| 9 | 2 | 13550 | bellagio configurable living room set | 9 | NA | 16753 | jarin 25.38 '' wide armchair |
-| 10 | 2 | 14595 | clardy mid century 3 piece living room set | 10 | NA | 37307 | wojtala armchair and ottoman |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 1076 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1076.png" width="72" height="72" loading="lazy" alt="WANDS document 1076 thumbnail"> | allen configurable living room set | 1 | NA | 37931 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/37931.png" width="72" height="72" loading="lazy" alt="WANDS document 37931 thumbnail"> | peggie modern chaise lounge |
+| 2 | 2 | 1202 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1202.png" width="72" height="72" loading="lazy" alt="WANDS document 1202 thumbnail"> | baity furniture set | 2 | NA | 637 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/637.png" width="72" height="72" loading="lazy" alt="WANDS document 637 thumbnail"> | cirencester 29 '' wide armchair |
+| 3 | 2 | 2474 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2474.png" width="72" height="72" loading="lazy" alt="WANDS document 2474 thumbnail"> | berlinville living room collection | 3 | NA | 4040 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4040.png" width="72" height="72" loading="lazy" alt="WANDS document 4040 thumbnail"> | erasmus 75.6 '' velvet square arm sofa |
+| 4 | 2 | 5614 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5614.png" width="72" height="72" loading="lazy" alt="WANDS document 5614 thumbnail"> | bersailles living room collection | 4 | NA | 19077 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19077.png" width="72" height="72" loading="lazy" alt="WANDS document 19077 thumbnail"> | micheals 42 '' wide top grain leather armchair |
+| 5 | 2 | 6498 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6498.png" width="72" height="72" loading="lazy" alt="WANDS document 6498 thumbnail"> | danieli living room collection | 5 | NA | 19078 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19078.png" width="72" height="72" loading="lazy" alt="WANDS document 19078 thumbnail"> | micheals 95 '' genuine leather square arm sofa |
+| 6 | 2 | 6499 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6499.png" width="72" height="72" loading="lazy" alt="WANDS document 6499 thumbnail"> | de foix living room collection | 6 | NA | 23024 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23024.png" width="72" height="72" loading="lazy" alt="WANDS document 23024 thumbnail"> | keomi 34.6 '' wide top grain leather armchair |
+| 7 | 2 | 7851 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7851.png" width="72" height="72" loading="lazy" alt="WANDS document 7851 thumbnail"> | boadicea mid century 2 piece living room set | 7 | NA | 6511 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6511.png" width="72" height="72" loading="lazy" alt="WANDS document 6511 thumbnail"> | rohrbaugh tufted ottoman |
+| 8 | 2 | 13158 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13158.png" width="72" height="72" loading="lazy" alt="WANDS document 13158 thumbnail"> | capel configurable living room set | 8 | 2 | 16752 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16752.png" width="72" height="72" loading="lazy" alt="WANDS document 16752 thumbnail"> | jarin 25.38 '' wide armchair |
+| 9 | 2 | 13550 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13550.png" width="72" height="72" loading="lazy" alt="WANDS document 13550 thumbnail"> | bellagio configurable living room set | 9 | NA | 16753 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16753.png" width="72" height="72" loading="lazy" alt="WANDS document 16753 thumbnail"> | jarin 25.38 '' wide armchair |
+| 10 | 2 | 14595 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14595.png" width="72" height="72" loading="lazy" alt="WANDS document 14595 thumbnail"> | clardy mid century 3 piece living room set | 10 | NA | 37307 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/37307.png" width="72" height="72" loading="lazy" alt="WANDS document 37307 thumbnail"> | wojtala armchair and ottoman |
 
 ### 222 — small loving roomtables
 
 NDCG-G by seed: 43 0.000 · 44 0.171 · 45 0.000 · 46 0.057; mean: **0.057**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 3666 | dmitry 2 drawer end table | 1 | NA | 14487 | nesting small end table |
-| 2 | 2 | 4134 | mader solid wood pedestal end table | 2 | NA | 40552 | hamil drum coffee table |
-| 3 | 2 | 4162 | ifrane accent end table | 3 | NA | 17776 | crellin solid wood coffee table |
-| 4 | 2 | 5869 | santa cruz end table with storage | 4 | NA | 14705 | gerrish 3 piece coffee table set |
-| 5 | 2 | 8983 | mervyn end table | 5 | NA | 32105 | delavan c table end table |
-| 6 | 2 | 14611 | encinal end table | 6 | NA | 38055 | kenton petite end table with storage |
-| 7 | 2 | 15241 | gosnold tree stump end table | 7 | NA | 38257 | heenan 2 piece coffee side table |
-| 8 | 2 | 15846 | arsenault end table with storage | 8 | NA | 7525 | nesting end table |
-| 9 | 2 | 15886 | genata 1 - drawer end table and storage | 9 | NA | 42784 | bargas end table |
-| 10 | 2 | 17179 | cainsville 4 legs end table set | 10 | NA | 19200 | maja end table |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 3666 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/3666.png" width="72" height="72" loading="lazy" alt="WANDS document 3666 thumbnail"> | dmitry 2 drawer end table | 1 | NA | 14487 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14487.png" width="72" height="72" loading="lazy" alt="WANDS document 14487 thumbnail"> | nesting small end table |
+| 2 | 2 | 4134 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4134.png" width="72" height="72" loading="lazy" alt="WANDS document 4134 thumbnail"> | mader solid wood pedestal end table | 2 | NA | 40552 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40552.png" width="72" height="72" loading="lazy" alt="WANDS document 40552 thumbnail"> | hamil drum coffee table |
+| 3 | 2 | 4162 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4162.png" width="72" height="72" loading="lazy" alt="WANDS document 4162 thumbnail"> | ifrane accent end table | 3 | NA | 17776 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17776.png" width="72" height="72" loading="lazy" alt="WANDS document 17776 thumbnail"> | crellin solid wood coffee table |
+| 4 | 2 | 5869 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5869.png" width="72" height="72" loading="lazy" alt="WANDS document 5869 thumbnail"> | santa cruz end table with storage | 4 | NA | 14705 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14705.png" width="72" height="72" loading="lazy" alt="WANDS document 14705 thumbnail"> | gerrish 3 piece coffee table set |
+| 5 | 2 | 8983 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/8983.png" width="72" height="72" loading="lazy" alt="WANDS document 8983 thumbnail"> | mervyn end table | 5 | NA | 32105 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/32105.png" width="72" height="72" loading="lazy" alt="WANDS document 32105 thumbnail"> | delavan c table end table |
+| 6 | 2 | 14611 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14611.png" width="72" height="72" loading="lazy" alt="WANDS document 14611 thumbnail"> | encinal end table | 6 | NA | 38055 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38055.png" width="72" height="72" loading="lazy" alt="WANDS document 38055 thumbnail"> | kenton petite end table with storage |
+| 7 | 2 | 15241 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15241.png" width="72" height="72" loading="lazy" alt="WANDS document 15241 thumbnail"> | gosnold tree stump end table | 7 | NA | 38257 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38257.png" width="72" height="72" loading="lazy" alt="WANDS document 38257 thumbnail"> | heenan 2 piece coffee side table |
+| 8 | 2 | 15846 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15846.png" width="72" height="72" loading="lazy" alt="WANDS document 15846 thumbnail"> | arsenault end table with storage | 8 | NA | 7525 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7525.png" width="72" height="72" loading="lazy" alt="WANDS document 7525 thumbnail"> | nesting end table |
+| 9 | 2 | 15886 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/15886.png" width="72" height="72" loading="lazy" alt="WANDS document 15886 thumbnail"> | genata 1 - drawer end table and storage | 9 | NA | 42784 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42784.png" width="72" height="72" loading="lazy" alt="WANDS document 42784 thumbnail"> | bargas end table |
+| 10 | 2 | 17179 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17179.png" width="72" height="72" loading="lazy" alt="WANDS document 17179 thumbnail"> | cainsville 4 legs end table set | 10 | NA | 19200 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19200.png" width="72" height="72" loading="lazy" alt="WANDS document 19200 thumbnail"> | maja end table |
 
 ### 179 — promo codes or discounts
 
 NDCG-G by seed: 43 0.000 · 44 0.200 · 45 0.000 · 46 0.167; mean: **0.092**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 16523 | sp 20 amp interrupter | 1 | NA | 26779 | airbutler steam shower package |
-| — | — | — | — | 2 | NA | 21527 | claremont free standing toilet paper holder |
-| — | — | — | — | 3 | NA | 39313 | whitcher reflections over the door jewelry armoire with mirror |
-| — | — | — | — | 4 | NA | 12501 | plastic belt swing with chains |
-| — | — | — | — | 5 | NA | 28210 | camper sale polyester 138 x 30 in . feather banner |
-| — | — | — | — | 6 | NA | 28211 | camper sale polyester 180 x 30 in . flag set |
-| — | — | — | — | 7 | NA | 6726 | super saver 3 '' center to center arch pull |
-| — | — | — | — | 8 | NA | 42853 | adero value hardware 5 1/16 center to center arch pull |
-| — | — | — | — | 9 | NA | 40728 | quality value series 3 '' x 6 '' glass mosaic subway tile |
-| — | — | — | — | 10 | NA | 40724 | value series 2 '' x 2 '' porcelain honeycomb mosaic wall & floor tile |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 16523 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16523.png" width="72" height="72" loading="lazy" alt="WANDS document 16523 thumbnail"> | sp 20 amp interrupter | 1 | NA | 26779 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26779.png" width="72" height="72" loading="lazy" alt="WANDS document 26779 thumbnail"> | airbutler steam shower package |
+| — | — | — | — | — | 2 | NA | 21527 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/21527.png" width="72" height="72" loading="lazy" alt="WANDS document 21527 thumbnail"> | claremont free standing toilet paper holder |
+| — | — | — | — | — | 3 | NA | 39313 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/39313.png" width="72" height="72" loading="lazy" alt="WANDS document 39313 thumbnail"> | whitcher reflections over the door jewelry armoire with mirror |
+| — | — | — | — | — | 4 | NA | 12501 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/12501.png" width="72" height="72" loading="lazy" alt="WANDS document 12501 thumbnail"> | plastic belt swing with chains |
+| — | — | — | — | — | 5 | NA | 28210 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/28210.png" width="72" height="72" loading="lazy" alt="WANDS document 28210 thumbnail"> | camper sale polyester 138 x 30 in . feather banner |
+| — | — | — | — | — | 6 | NA | 28211 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/28211.png" width="72" height="72" loading="lazy" alt="WANDS document 28211 thumbnail"> | camper sale polyester 180 x 30 in . flag set |
+| — | — | — | — | — | 7 | NA | 6726 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6726.png" width="72" height="72" loading="lazy" alt="WANDS document 6726 thumbnail"> | super saver 3 '' center to center arch pull |
+| — | — | — | — | — | 8 | NA | 42853 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42853.png" width="72" height="72" loading="lazy" alt="WANDS document 42853 thumbnail"> | adero value hardware 5 1/16 center to center arch pull |
+| — | — | — | — | — | 9 | NA | 40728 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40728.png" width="72" height="72" loading="lazy" alt="WANDS document 40728 thumbnail"> | quality value series 3 '' x 6 '' glass mosaic subway tile |
+| — | — | — | — | — | 10 | NA | 40724 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40724.png" width="72" height="72" loading="lazy" alt="WANDS document 40724 thumbnail"> | value series 2 '' x 2 '' porcelain honeycomb mosaic wall & floor tile |
 
 ### 134 — black hanging bookshelf
 
 NDCG-G by seed: 43 0.076 · 44 0.148 · 45 0.167 · 46 0.038; mean: **0.107**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 9941 | home book wall shelf | 1 | NA | 42788 | staats 2 piece tiered shelf |
-| 2 | 2 | 28427 | dawud 64 '' h x 30 '' w metal ladder bookcase | 2 | 1 | 10269 | carl iron pipe wall mount ladder bookcase |
-| 3 | 2 | 38649 | molina 5 piece tiered shelf | 3 | NA | 17041 | gaddis 2 piece tiered shelf |
-| 4 | 1 | 100 | telemark 4 shelf etagere bookcase | 4 | NA | 22499 | bryanna industrial 2 piece metal tiered shelf |
-| 5 | 1 | 1016 | leinbach 65.5 '' h x 40 '' w metal etagere bookcase | 5 | NA | 40266 | gisli 2 piece solid wood tiered shelf |
-| 6 | 1 | 1036 | akilah 40 '' h x 35.5 '' w metal etagere bookcase | 6 | NA | 22510 | portishead floating wood wall shelf |
-| 7 | 1 | 1038 | almada 54.75 '' h x 35.5 '' w metal etagere bookcase | 7 | NA | 38728 | floating wall shelf |
-| 8 | 1 | 1243 | bedard etagere bookcase | 8 | NA | 10416 | wall shelf |
-| 9 | 1 | 1270 | forshee 75 '' h x 49 '' w metal geometric bookcase | 9 | NA | 7575 | wall shelf |
-| 10 | 1 | 1849 | morrell standard bookcase | 10 | NA | 40180 | bovina floating shelf |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 9941 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9941.png" width="72" height="72" loading="lazy" alt="WANDS document 9941 thumbnail"> | home book wall shelf | 1 | NA | 42788 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/42788.png" width="72" height="72" loading="lazy" alt="WANDS document 42788 thumbnail"> | staats 2 piece tiered shelf |
+| 2 | 2 | 28427 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/28427.png" width="72" height="72" loading="lazy" alt="WANDS document 28427 thumbnail"> | dawud 64 '' h x 30 '' w metal ladder bookcase | 2 | 1 | 10269 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10269.png" width="72" height="72" loading="lazy" alt="WANDS document 10269 thumbnail"> | carl iron pipe wall mount ladder bookcase |
+| 3 | 2 | 38649 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38649.png" width="72" height="72" loading="lazy" alt="WANDS document 38649 thumbnail"> | molina 5 piece tiered shelf | 3 | NA | 17041 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17041.png" width="72" height="72" loading="lazy" alt="WANDS document 17041 thumbnail"> | gaddis 2 piece tiered shelf |
+| 4 | 1 | 100 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/100.png" width="72" height="72" loading="lazy" alt="WANDS document 100 thumbnail"> | telemark 4 shelf etagere bookcase | 4 | NA | 22499 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22499.png" width="72" height="72" loading="lazy" alt="WANDS document 22499 thumbnail"> | bryanna industrial 2 piece metal tiered shelf |
+| 5 | 1 | 1016 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1016.png" width="72" height="72" loading="lazy" alt="WANDS document 1016 thumbnail"> | leinbach 65.5 '' h x 40 '' w metal etagere bookcase | 5 | NA | 40266 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40266.png" width="72" height="72" loading="lazy" alt="WANDS document 40266 thumbnail"> | gisli 2 piece solid wood tiered shelf |
+| 6 | 1 | 1036 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1036.png" width="72" height="72" loading="lazy" alt="WANDS document 1036 thumbnail"> | akilah 40 '' h x 35.5 '' w metal etagere bookcase | 6 | NA | 22510 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22510.png" width="72" height="72" loading="lazy" alt="WANDS document 22510 thumbnail"> | portishead floating wood wall shelf |
+| 7 | 1 | 1038 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1038.png" width="72" height="72" loading="lazy" alt="WANDS document 1038 thumbnail"> | almada 54.75 '' h x 35.5 '' w metal etagere bookcase | 7 | NA | 38728 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/38728.png" width="72" height="72" loading="lazy" alt="WANDS document 38728 thumbnail"> | floating wall shelf |
+| 8 | 1 | 1243 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1243.png" width="72" height="72" loading="lazy" alt="WANDS document 1243 thumbnail"> | bedard etagere bookcase | 8 | NA | 10416 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10416.png" width="72" height="72" loading="lazy" alt="WANDS document 10416 thumbnail"> | wall shelf |
+| 9 | 1 | 1270 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1270.png" width="72" height="72" loading="lazy" alt="WANDS document 1270 thumbnail"> | forshee 75 '' h x 49 '' w metal geometric bookcase | 9 | NA | 7575 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7575.png" width="72" height="72" loading="lazy" alt="WANDS document 7575 thumbnail"> | wall shelf |
+| 10 | 1 | 1849 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1849.png" width="72" height="72" loading="lazy" alt="WANDS document 1849 thumbnail"> | morrell standard bookcase | 10 | NA | 40180 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/40180.png" width="72" height="72" loading="lazy" alt="WANDS document 40180 thumbnail"> | bovina floating shelf |
 
 ### 83 — wall art fiji
 
 NDCG-G by seed: 43 0.171 · 44 0.085 · 45 0.171 · 46 0.057; mean: **0.121**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 1659 | shining multi-colored plasma - wrapped canvas graphic art print | 1 | NA | 19427 | watercolour map of the world framed graphic art print on canvas |
-| 2 | 1 | 4181 | colorful world map - graphic art print on canvas | 2 | 1 | 4181 | colorful world map - graphic art print on canvas |
-| 3 | 1 | 4379 | white painted sailboats - print on canvas | 3 | NA | 41794 | world map - wrapped canvas graphic art print |
-| 4 | 1 | 4649 | painted petals xix by tristan scott - wrapped canvas graphic art print | 4 | NA | 9573 | classic world map - wrapped canvas graphic art print |
-| 5 | 1 | 4677 | collection of memories - 3 piece multi-piece image print on canvas | 5 | NA | 13597 | world map canvas art |
-| 6 | 1 | 5902 | cyanotype no.1 by renee w. stramel - picture frame photograph print on paper | 6 | NA | 13582 | world map 2 canvas art |
-| 7 | 1 | 5910 | segments wall décor | 7 | NA | 13583 | world map 4 canvas art |
-| 8 | 1 | 6243 | bourbon street blues iv by robert brasher - picture frame painting print on paper | 8 | NA | 30493 | hawaii graphic art |
-| 9 | 1 | 6649 | couple walking in night lights - print | 9 | 0 | 17378 | historix 1881 oahu hawaii vintage map - 24x36 inch vintage map of oahu hawaii wall art - map of hawaii oahu poster - survey of oahu hawaiian islands - old map oahu - historic oahu print ( 2 sizes ) |
-| 10 | 1 | 6650 | white stained glass art - unframed print | 10 | NA | 13491 | hawaii sunset photographic print on canvas |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 1 | 1659 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1659.png" width="72" height="72" loading="lazy" alt="WANDS document 1659 thumbnail"> | shining multi-colored plasma - wrapped canvas graphic art print | 1 | NA | 19427 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19427.png" width="72" height="72" loading="lazy" alt="WANDS document 19427 thumbnail"> | watercolour map of the world framed graphic art print on canvas |
+| 2 | 1 | 4181 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4181.png" width="72" height="72" loading="lazy" alt="WANDS document 4181 thumbnail"> | colorful world map - graphic art print on canvas | 2 | 1 | 4181 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4181.png" width="72" height="72" loading="lazy" alt="WANDS document 4181 thumbnail"> | colorful world map - graphic art print on canvas |
+| 3 | 1 | 4379 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4379.png" width="72" height="72" loading="lazy" alt="WANDS document 4379 thumbnail"> | white painted sailboats - print on canvas | 3 | NA | 41794 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41794.png" width="72" height="72" loading="lazy" alt="WANDS document 41794 thumbnail"> | world map - wrapped canvas graphic art print |
+| 4 | 1 | 4649 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4649.png" width="72" height="72" loading="lazy" alt="WANDS document 4649 thumbnail"> | painted petals xix by tristan scott - wrapped canvas graphic art print | 4 | NA | 9573 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/9573.png" width="72" height="72" loading="lazy" alt="WANDS document 9573 thumbnail"> | classic world map - wrapped canvas graphic art print |
+| 5 | 1 | 4677 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4677.png" width="72" height="72" loading="lazy" alt="WANDS document 4677 thumbnail"> | collection of memories - 3 piece multi-piece image print on canvas | 5 | NA | 13597 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13597.png" width="72" height="72" loading="lazy" alt="WANDS document 13597 thumbnail"> | world map canvas art |
+| 6 | 1 | 5902 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5902.png" width="72" height="72" loading="lazy" alt="WANDS document 5902 thumbnail"> | cyanotype no.1 by renee w. stramel - picture frame photograph print on paper | 6 | NA | 13582 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13582.png" width="72" height="72" loading="lazy" alt="WANDS document 13582 thumbnail"> | world map 2 canvas art |
+| 7 | 1 | 5910 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5910.png" width="72" height="72" loading="lazy" alt="WANDS document 5910 thumbnail"> | segments wall décor | 7 | NA | 13583 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13583.png" width="72" height="72" loading="lazy" alt="WANDS document 13583 thumbnail"> | world map 4 canvas art |
+| 8 | 1 | 6243 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6243.png" width="72" height="72" loading="lazy" alt="WANDS document 6243 thumbnail"> | bourbon street blues iv by robert brasher - picture frame painting print on paper | 8 | NA | 30493 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/30493.png" width="72" height="72" loading="lazy" alt="WANDS document 30493 thumbnail"> | hawaii graphic art |
+| 9 | 1 | 6649 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6649.png" width="72" height="72" loading="lazy" alt="WANDS document 6649 thumbnail"> | couple walking in night lights - print | 9 | 0 | 17378 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/17378.png" width="72" height="72" loading="lazy" alt="WANDS document 17378 thumbnail"> | historix 1881 oahu hawaii vintage map - 24x36 inch vintage map of oahu hawaii wall art - map of hawaii oahu poster - survey of oahu hawaiian islands - old map oahu - historic oahu print ( 2 sizes ) |
+| 10 | 1 | 6650 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/6650.png" width="72" height="72" loading="lazy" alt="WANDS document 6650 thumbnail"> | white stained glass art - unframed print | 10 | NA | 13491 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/13491.png" width="72" height="72" loading="lazy" alt="WANDS document 13491 thumbnail"> | hawaii sunset photographic print on canvas |
 
 ### 291 — front door cabinet with doors
 
 NDCG-G by seed: 43 0.123 · 44 0.016 · 45 0.171 · 46 0.190; mean: **0.125**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 2890 | jace 2 door accent cabinet | 1 | NA | 31532 | scholl storage cabinet |
-| 2 | 2 | 4188 | bell 2 - door accent cabinet | 2 | 1 | 24509 | kohut 1 door accent cabinet |
-| 3 | 2 | 7557 | storage 2 door accent cabinet | 3 | 1 | 41722 | 2-door wood entryway 8 pair shoe storage cabinet |
-| 4 | 2 | 22799 | ammon 2 door accent cabinet | 4 | 1 | 41723 | 2-door wood entryway 19 pair shoe storage cabinet |
-| 5 | 2 | 23717 | shelby 2 door accent cabinet | 5 | NA | 41718 | entryway 9 pair shoe storage cabinet |
-| 6 | 2 | 23769 | maliha 2 door accent cabinet | 6 | NA | 41716 | entryway 15 pair shoe storage cabinet |
-| 7 | 2 | 24687 | moises 2 door accent cabinet | 7 | NA | 31749 | shoe storage cabinet |
-| 8 | 2 | 29805 | kaysen 2 door mirrored accent cabinet | 8 | NA | 41717 | entryway 20 pair shoe storage cabinet |
-| 9 | 2 | 34519 | chilove 4 door accent cabinet | 9 | NA | 41720 | entryway 18 pair shoe storage cabinet |
-| 10 | 2 | 35493 | bria 2 door accent cabinet | 10 | NA | 41719 | entryway 12 pair shoe storage cabinet |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 2890 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2890.png" width="72" height="72" loading="lazy" alt="WANDS document 2890 thumbnail"> | jace 2 door accent cabinet | 1 | NA | 31532 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31532.png" width="72" height="72" loading="lazy" alt="WANDS document 31532 thumbnail"> | scholl storage cabinet |
+| 2 | 2 | 4188 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4188.png" width="72" height="72" loading="lazy" alt="WANDS document 4188 thumbnail"> | bell 2 - door accent cabinet | 2 | 1 | 24509 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24509.png" width="72" height="72" loading="lazy" alt="WANDS document 24509 thumbnail"> | kohut 1 door accent cabinet |
+| 3 | 2 | 7557 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7557.png" width="72" height="72" loading="lazy" alt="WANDS document 7557 thumbnail"> | storage 2 door accent cabinet | 3 | 1 | 41722 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41722.png" width="72" height="72" loading="lazy" alt="WANDS document 41722 thumbnail"> | 2-door wood entryway 8 pair shoe storage cabinet |
+| 4 | 2 | 22799 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/22799.png" width="72" height="72" loading="lazy" alt="WANDS document 22799 thumbnail"> | ammon 2 door accent cabinet | 4 | 1 | 41723 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41723.png" width="72" height="72" loading="lazy" alt="WANDS document 41723 thumbnail"> | 2-door wood entryway 19 pair shoe storage cabinet |
+| 5 | 2 | 23717 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23717.png" width="72" height="72" loading="lazy" alt="WANDS document 23717 thumbnail"> | shelby 2 door accent cabinet | 5 | NA | 41718 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41718.png" width="72" height="72" loading="lazy" alt="WANDS document 41718 thumbnail"> | entryway 9 pair shoe storage cabinet |
+| 6 | 2 | 23769 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/23769.png" width="72" height="72" loading="lazy" alt="WANDS document 23769 thumbnail"> | maliha 2 door accent cabinet | 6 | NA | 41716 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41716.png" width="72" height="72" loading="lazy" alt="WANDS document 41716 thumbnail"> | entryway 15 pair shoe storage cabinet |
+| 7 | 2 | 24687 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/24687.png" width="72" height="72" loading="lazy" alt="WANDS document 24687 thumbnail"> | moises 2 door accent cabinet | 7 | NA | 31749 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31749.png" width="72" height="72" loading="lazy" alt="WANDS document 31749 thumbnail"> | shoe storage cabinet |
+| 8 | 2 | 29805 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29805.png" width="72" height="72" loading="lazy" alt="WANDS document 29805 thumbnail"> | kaysen 2 door mirrored accent cabinet | 8 | NA | 41717 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41717.png" width="72" height="72" loading="lazy" alt="WANDS document 41717 thumbnail"> | entryway 20 pair shoe storage cabinet |
+| 9 | 2 | 34519 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/34519.png" width="72" height="72" loading="lazy" alt="WANDS document 34519 thumbnail"> | chilove 4 door accent cabinet | 9 | NA | 41720 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41720.png" width="72" height="72" loading="lazy" alt="WANDS document 41720 thumbnail"> | entryway 18 pair shoe storage cabinet |
+| 10 | 2 | 35493 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35493.png" width="72" height="72" loading="lazy" alt="WANDS document 35493 thumbnail"> | bria 2 door accent cabinet | 10 | NA | 41719 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/41719.png" width="72" height="72" loading="lazy" alt="WANDS document 41719 thumbnail"> | entryway 12 pair shoe storage cabinet |
 
 ### 481 — emma headboard
 
 NDCG-G by seed: 43 0.077 · 44 0.179 · 45 0.097 · 46 0.200; mean: **0.138**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 35207 | hirsch twin bookcase headboard | 1 | 0 | 14354 | emma-lea solid wood low profile storage platform bed |
-| 2 | 1 | 817 | deviana bookcase headboard | 2 | NA | 31907 | emmali twin tufted upholstered platform bed |
-| 3 | 1 | 1504 | carlsen upholstered panel headboard | 3 | NA | 31908 | emmalie twin tufted upholstered platform bed |
-| 4 | 1 | 1513 | caswell upholstered panel headboard | 4 | 0 | 14354 | emma-lea solid wood low profile storage platform bed |
-| 5 | 1 | 1898 | hayman king bookcase headboard | 5 | NA | 31907 | emmali twin tufted upholstered platform bed |
-| 6 | 1 | 1948 | legrand bookcase headboard | 6 | NA | 31908 | emmalie twin tufted upholstered platform bed |
-| 7 | 1 | 1956 | alethea upholstered panel headboard | 7 | 1 | 35161 | lilak headboard |
-| 8 | 1 | 1960 | cy upholstered panel headboard | 8 | 1 | 7292 | fitzsimmons panel headboard |
-| 9 | 1 | 2332 | malthe upholstered panel headboard | 9 | 1 | 26467 | delano slat headboard |
-| 10 | 1 | 2416 | grantville bookcase headboard | 10 | NA | 16347 | faulkner panel headboard |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 35207 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35207.png" width="72" height="72" loading="lazy" alt="WANDS document 35207 thumbnail"> | hirsch twin bookcase headboard | 1 | 0 | 14354 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14354.png" width="72" height="72" loading="lazy" alt="WANDS document 14354 thumbnail"> | emma-lea solid wood low profile storage platform bed |
+| 2 | 1 | 817 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/817.png" width="72" height="72" loading="lazy" alt="WANDS document 817 thumbnail"> | deviana bookcase headboard | 2 | NA | 31907 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31907.png" width="72" height="72" loading="lazy" alt="WANDS document 31907 thumbnail"> | emmali twin tufted upholstered platform bed |
+| 3 | 1 | 1504 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1504.png" width="72" height="72" loading="lazy" alt="WANDS document 1504 thumbnail"> | carlsen upholstered panel headboard | 3 | NA | 31908 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31908.png" width="72" height="72" loading="lazy" alt="WANDS document 31908 thumbnail"> | emmalie twin tufted upholstered platform bed |
+| 4 | 1 | 1513 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1513.png" width="72" height="72" loading="lazy" alt="WANDS document 1513 thumbnail"> | caswell upholstered panel headboard | 4 | 0 | 14354 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/14354.png" width="72" height="72" loading="lazy" alt="WANDS document 14354 thumbnail"> | emma-lea solid wood low profile storage platform bed |
+| 5 | 1 | 1898 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1898.png" width="72" height="72" loading="lazy" alt="WANDS document 1898 thumbnail"> | hayman king bookcase headboard | 5 | NA | 31907 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31907.png" width="72" height="72" loading="lazy" alt="WANDS document 31907 thumbnail"> | emmali twin tufted upholstered platform bed |
+| 6 | 1 | 1948 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1948.png" width="72" height="72" loading="lazy" alt="WANDS document 1948 thumbnail"> | legrand bookcase headboard | 6 | NA | 31908 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31908.png" width="72" height="72" loading="lazy" alt="WANDS document 31908 thumbnail"> | emmalie twin tufted upholstered platform bed |
+| 7 | 1 | 1956 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1956.png" width="72" height="72" loading="lazy" alt="WANDS document 1956 thumbnail"> | alethea upholstered panel headboard | 7 | 1 | 35161 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35161.png" width="72" height="72" loading="lazy" alt="WANDS document 35161 thumbnail"> | lilak headboard |
+| 8 | 1 | 1960 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/1960.png" width="72" height="72" loading="lazy" alt="WANDS document 1960 thumbnail"> | cy upholstered panel headboard | 8 | 1 | 7292 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/7292.png" width="72" height="72" loading="lazy" alt="WANDS document 7292 thumbnail"> | fitzsimmons panel headboard |
+| 9 | 1 | 2332 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2332.png" width="72" height="72" loading="lazy" alt="WANDS document 2332 thumbnail"> | malthe upholstered panel headboard | 9 | 1 | 26467 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/26467.png" width="72" height="72" loading="lazy" alt="WANDS document 26467 thumbnail"> | delano slat headboard |
+| 10 | 1 | 2416 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/2416.png" width="72" height="72" loading="lazy" alt="WANDS document 2416 thumbnail"> | grantville bookcase headboard | 10 | NA | 16347 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/16347.png" width="72" height="72" loading="lazy" alt="WANDS document 16347 thumbnail"> | faulkner panel headboard |
 
 ### 173 — bedroom accessories
 
 NDCG-G by seed: 43 0.091 · 44 0.141 · 45 0.194 · 46 0.155; mean: **0.145**.
 
-| Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
-|---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 11214 | akai | 1 | 0 | 4137 | natazhat bohemian bedroom decor boho wall decal |
-| 2 | 2 | 11217 | islay | 2 | 1 | 10948 | yak about it dorm organizer bunk bed accessories |
-| 3 | 2 | 25024 | ishiro decorative 5 piece accessory set | 3 | NA | 35279 | asomatos decorative pillow |
-| 4 | 2 | 29399 | padavano accessory set | 4 | NA | 35278 | asleigh decorative pillow |
-| 5 | 1 | 279 | hippie bohemian psychedelic peacock polyester tapestry with hanging accessories included | 5 | NA | 5824 | duvet cover collection |
-| 6 | 1 | 938 | postell accessory | 6 | NA | 11533 | comforter set |
-| 7 | 1 | 982 | jovanny toothbrush holder | 7 | 1 | 11215 | akai |
-| 8 | 1 | 983 | jovanny tumbler | 8 | NA | 31814 | jewelry cosmetic organizer |
-| 9 | 1 | 988 | ethan 4 piece bathroom accessory set | 9 | NA | 19117 | organizer wall mounted jewelry holder |
-| 10 | 1 | 990 | ethan 3 piece bathroom accessory set | 10 | NA | 19293 | decorative quartz wall clock |
+| Ideal rank | Grade | Doc ID | Thumbnail | Title | Agentic rank | Grade | Doc ID | Thumbnail | Title |
+|---:|---:|---|---|---|---:|---:|---|---|---|
+| 1 | 2 | 11214 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11214.png" width="72" height="72" loading="lazy" alt="WANDS document 11214 thumbnail"> | akai | 1 | 0 | 4137 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/4137.png" width="72" height="72" loading="lazy" alt="WANDS document 4137 thumbnail"> | natazhat bohemian bedroom decor boho wall decal |
+| 2 | 2 | 11217 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11217.png" width="72" height="72" loading="lazy" alt="WANDS document 11217 thumbnail"> | islay | 2 | 1 | 10948 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/10948.png" width="72" height="72" loading="lazy" alt="WANDS document 10948 thumbnail"> | yak about it dorm organizer bunk bed accessories |
+| 3 | 2 | 25024 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/25024.png" width="72" height="72" loading="lazy" alt="WANDS document 25024 thumbnail"> | ishiro decorative 5 piece accessory set | 3 | NA | 35279 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35279.png" width="72" height="72" loading="lazy" alt="WANDS document 35279 thumbnail"> | asomatos decorative pillow |
+| 4 | 2 | 29399 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/29399.png" width="72" height="72" loading="lazy" alt="WANDS document 29399 thumbnail"> | padavano accessory set | 4 | NA | 35278 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/35278.png" width="72" height="72" loading="lazy" alt="WANDS document 35278 thumbnail"> | asleigh decorative pillow |
+| 5 | 1 | 279 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/279.png" width="72" height="72" loading="lazy" alt="WANDS document 279 thumbnail"> | hippie bohemian psychedelic peacock polyester tapestry with hanging accessories included | 5 | NA | 5824 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/5824.png" width="72" height="72" loading="lazy" alt="WANDS document 5824 thumbnail"> | duvet cover collection |
+| 6 | 1 | 938 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/938.png" width="72" height="72" loading="lazy" alt="WANDS document 938 thumbnail"> | postell accessory | 6 | NA | 11533 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11533.png" width="72" height="72" loading="lazy" alt="WANDS document 11533 thumbnail"> | comforter set |
+| 7 | 1 | 982 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/982.png" width="72" height="72" loading="lazy" alt="WANDS document 982 thumbnail"> | jovanny toothbrush holder | 7 | 1 | 11215 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/11215.png" width="72" height="72" loading="lazy" alt="WANDS document 11215 thumbnail"> | akai |
+| 8 | 1 | 983 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/983.png" width="72" height="72" loading="lazy" alt="WANDS document 983 thumbnail"> | jovanny tumbler | 8 | NA | 31814 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/31814.png" width="72" height="72" loading="lazy" alt="WANDS document 31814 thumbnail"> | jewelry cosmetic organizer |
+| 9 | 1 | 988 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/988.png" width="72" height="72" loading="lazy" alt="WANDS document 988 thumbnail"> | ethan 4 piece bathroom accessory set | 9 | NA | 19117 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19117.png" width="72" height="72" loading="lazy" alt="WANDS document 19117 thumbnail"> | organizer wall mounted jewelry holder |
+| 10 | 1 | 990 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/990.png" width="72" height="72" loading="lazy" alt="WANDS document 990 thumbnail"> | ethan 3 piece bathroom accessory set | 10 | NA | 19293 | <img src="https://storage.googleapis.com/product-ai-images/wands/images/19293.png" width="72" height="72" loading="lazy" alt="WANDS document 19293 thumbnail"> | decorative quartz wall clock |
