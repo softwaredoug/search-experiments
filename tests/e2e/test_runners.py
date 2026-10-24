@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from cheat_at_search.search import ndcgs, run_strategy
+from cheat_at_search.strategy import SearchStrategy
 
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
@@ -83,6 +84,48 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert "mean_" in next(iter(result.summary.keys()))
     assert not any(name.startswith("tool_calls_") for name in result.summary)
     assert not any(name.endswith("_resource.tool_calls") for name in result.summary)
+
+
+def test_run_strategy_repeats_cached_query_for_new_seed(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "cheat_at_search.strategy.strategy.ensure_data_subdir",
+        lambda _: tmp_path,
+    )
+    corpus = pd.DataFrame(
+        {"doc_id": [1], "title": ["test document"], "description": ["text"]}
+    )
+    judgments = pd.DataFrame(
+        {"query_id": [1], "query": ["test query"], "doc_id": [1], "grade": [1]}
+    )
+
+    class CountingStrategy(SearchStrategy):
+        @property
+        def cache_key(self):
+            return "seed-cache-test"
+
+        def __init__(self):
+            super().__init__(corpus)
+            self.calls = 0
+
+        def search(self, query, k=10):
+            self.calls += 1
+            return [0], [self.calls]
+
+    strategy = CountingStrategy()
+    results_seed_1 = run_strategy(
+        strategy, judgments, num_queries=1, seed=11, show_progress=False
+    )
+    results_seed_2 = run_strategy(
+        strategy, judgments, num_queries=1, seed=12, show_progress=False
+    )
+    cached_results_seed_2 = run_strategy(
+        strategy, judgments, num_queries=1, seed=12, show_progress=False
+    )
+
+    assert strategy.calls == 2
+    assert results_seed_1["score"].iloc[0] == 1
+    assert results_seed_2["score"].iloc[0] == 2
+    assert cached_results_seed_2["score"].iloc[0] == 2
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):
