@@ -2,7 +2,10 @@ import argparse
 import csv
 import json
 import subprocess
+import uuid
 from pathlib import Path
+
+import pandas as pd
 
 from exps.datasets import DATASET_NAMES
 from exps.runners.run import RunParams, run_benchmark
@@ -41,24 +44,20 @@ def _report_metric(metric_name: str, metric_series, summary: dict[str, float]) -
             print(f"{name}: {value:.4f}")
 
 
-def _write_summary_csv(path: str, *, dataset: str, result) -> None:
+def _current_commit_sha() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+
+
+def _append_csv_rows(path: str, rows: list[dict]) -> None:
+    if not rows:
+        return
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        commit_sha = (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], text=True)
-            .strip()
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        commit_sha = ""
-    row = {
-        "dataset": dataset,
-        "commit_sha": commit_sha,
-        "strategy_name": result.strategy_name,
-        "strategy_params": json.dumps(result.strategy_params, sort_keys=True),
-        "metric_name": result.metric_name,
-        **result.summary,
-    }
 
     file_exists = output_path.exists()
     fieldnames = None
@@ -70,11 +69,13 @@ def _write_summary_csv(path: str, *, dataset: str, result) -> None:
             existing_rows = list(reader)
 
     if not fieldnames:
-        fieldnames = list(row.keys())
+        fieldnames = list(rows[0].keys())
     else:
-        new_fields = [key for key in row if key not in fieldnames]
+        new_fields = [
+            key for row in rows for key in row if key not in fieldnames
+        ]
+        fieldnames.extend(dict.fromkeys(new_fields))
         if new_fields:
-            fieldnames.extend(new_fields)
             with output_path.open("w", newline="", encoding="utf-8") as handle:
                 writer = csv.DictWriter(handle, fieldnames=fieldnames)
                 writer.writeheader()
@@ -85,7 +86,90 @@ def _write_summary_csv(path: str, *, dataset: str, result) -> None:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         if write_header:
             writer.writeheader()
-        writer.writerow(row)
+        writer.writerows(rows)
+
+
+def _write_summary_csv(
+    path: str,
+    *,
+    dataset: str,
+    result,
+    seed: int | None = None,
+    run_id: str = "",
+    commit_sha: str | None = None,
+) -> None:
+    row = {
+        "dataset": dataset,
+        "run_id": run_id,
+        "commit_sha": commit_sha if commit_sha is not None else _current_commit_sha(),
+        "seed": seed if seed is not None else "",
+        "strategy_name": result.strategy_name,
+        "strategy_params": json.dumps(result.strategy_params, sort_keys=True),
+        "metric_name": result.metric_name,
+        **result.summary,
+    }
+    _append_csv_rows(path, [row])
+
+
+def _write_per_query_csv(
+    path: str,
+    *,
+    dataset: str,
+    seed: int,
+    run_id: str,
+    commit_sha: str,
+    result,
+) -> None:
+    graded = result.graded
+    if graded is None or graded.empty:
+        raise ValueError("Per-query CSV output requires graded benchmark results.")
+    query_keys = ["query_id", "query"]
+    missing_query_keys = set(query_keys).difference(graded.columns)
+    if missing_query_keys:
+        raise ValueError(
+            "Per-query results are missing query identifiers: "
+            + ", ".join(sorted(missing_query_keys))
+        )
+
+    metric_columns = [
+        column
+        for column in (
+            "ndcg_m",
+            "ndcg_g",
+            "max_ndcg_m",
+            "mrr",
+            "agreement",
+            "pairwise_agreement",
+        )
+        if column in graded.columns
+    ]
+    resource_columns = sorted(
+        column for column in graded.columns if column.startswith("resource.")
+    )
+    value_columns = [*metric_columns, *resource_columns]
+    grouped = graded.groupby(query_keys, sort=False, dropna=False)
+    for column in value_columns:
+        if grouped[column].nunique(dropna=True).gt(1).any():
+            raise ValueError(f"Per-query field {column!r} varies within a query.")
+    per_query = grouped[value_columns].first().reset_index()
+
+    metadata = {
+        "run_id": run_id,
+        "dataset": dataset,
+        "commit_sha": commit_sha,
+        "seed": seed,
+        "strategy_name": result.strategy_name,
+        "metric_name": result.metric_name or "",
+    }
+    rows = []
+    for _, query_row in per_query.iterrows():
+        row = {**metadata}
+        row.update({key: query_row[key] for key in query_keys})
+        for column in value_columns:
+            value = query_row[column]
+            row[column] = "" if pd.isna(value) else value
+        rows.append(row)
+    _append_csv_rows(path, rows)
 
 
 def main() -> None:
@@ -156,9 +240,15 @@ def main() -> None:
         "--summary-csv",
         help="Write summary stats to CSV (appends if exists).",
     )
+    parser.add_argument(
+        "--per-query-csv",
+        help="Write one row per query with NDCG, relevance, and resource metrics (appends if exists).",
+    )
     args = parser.parse_args()
 
     if args.query:
+        if args.per_query_csv:
+            parser.error("--per-query-csv is only available for full benchmark runs.")
         params = RunParams(
             strategy_path=args.strategy,
             dataset=args.dataset,
@@ -224,8 +314,26 @@ def main() -> None:
         print(f"Strategy artifact: {result.artifact_path}")
         print("")
     _report_metric(result.metric_name, result.metric_series, result.summary)
+    run_id = uuid.uuid4().hex
+    commit_sha = _current_commit_sha()
     if args.summary_csv:
-        _write_summary_csv(args.summary_csv, dataset=args.dataset, result=result)
+        _write_summary_csv(
+            args.summary_csv,
+            dataset=args.dataset,
+            result=result,
+            seed=args.seed,
+            run_id=run_id,
+            commit_sha=commit_sha,
+        )
+    if args.per_query_csv:
+        _write_per_query_csv(
+            args.per_query_csv,
+            dataset=args.dataset,
+            seed=args.seed,
+            run_id=run_id,
+            commit_sha=commit_sha,
+            result=result,
+        )
 
 
 if __name__ == "__main__":

@@ -1,10 +1,16 @@
 import csv
+import sys
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
-from exps.runner import _report_metric, _write_summary_csv
+from exps.runner import (
+    _report_metric,
+    _write_per_query_csv,
+    _write_summary_csv,
+    main,
+)
 from exps.runners.run import (
     _mean_max_ndcg_m,
     _resource_summary,
@@ -153,6 +159,110 @@ def test_summary_csv_adds_resource_columns_to_existing_reports(tmp_path):
     assert rows[0]["mean_max_ndcg_m"] == ""
     assert rows[1]["mean_max_ndcg_m"] == "0.9"
     assert rows[1]["tool_calls_mean"] == ""
+
+
+def _per_query_graded_results():
+    return pd.DataFrame(
+        {
+            "query": ["blue chair", "blue chair", "wood table"],
+            "query_id": [11, 11, 12],
+            "doc_id": [101, 102, 201],
+            "rank": [1, 2, 1],
+            "ndcg_m": [0.8, 0.8, 0.2],
+            "ndcg_g": [0.9, 0.9, 0.4],
+            "max_ndcg_m": [0.95, 0.95, 0.6],
+            "mrr": [1.0, 1.0, 0.0],
+            "agreement": [0.75, 0.75, 0.5],
+            "pairwise_agreement": [0.8, 0.8, 0.5],
+            "resource.input_tokens": [100, 100, 200],
+            "resource.output_tokens": [20, 20, 30],
+            "resource.tool_calls": [2, 2, 3],
+        }
+    )
+
+
+def test_per_query_csv_collapses_document_rows_and_appends_run_metadata(tmp_path):
+    path = tmp_path / "per_query.csv"
+    result = SimpleNamespace(
+        strategy_name="agentic_gpt6_luna_bm25",
+        metric_name="NDCG_M",
+        graded=_per_query_graded_results(),
+    )
+
+    for seed, run_id in ((43, "run-a"), (44, "run-b")):
+        _write_per_query_csv(
+            str(path),
+            dataset="wands",
+            seed=seed,
+            run_id=run_id,
+            commit_sha="abc123",
+            result=result,
+        )
+
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+
+    assert len(rows) == 4
+    assert rows[0]["run_id"] == "run-a"
+    assert rows[0]["seed"] == "43"
+    assert rows[0]["query_id"] == "11"
+    assert rows[0]["query"] == "blue chair"
+    assert rows[0]["ndcg_m"] == "0.8"
+    assert rows[0]["ndcg_g"] == "0.9"
+    assert rows[0]["max_ndcg_m"] == "0.95"
+    assert rows[0]["mrr"] == "1.0"
+    assert rows[0]["resource.tool_calls"] == "2"
+    assert rows[1]["query_id"] == "12"
+    assert rows[2]["run_id"] == "run-b"
+    assert rows[2]["seed"] == "44"
+
+
+def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
+    tmp_path, monkeypatch
+):
+    summary_path = tmp_path / "summary.csv"
+    per_query_path = tmp_path / "per_query.csv"
+    result = SimpleNamespace(
+        strategy_name="agentic_gpt6_luna_bm25",
+        strategy_params={"model": "gpt-6-luna"},
+        metric_name="NDCG_M",
+        metric_series=pd.Series([0.8, 0.2]),
+        summary={"mean_ndcg_m": 0.5},
+        graded=_per_query_graded_results(),
+        codegen_artifact_path=None,
+        artifact_path=None,
+        relevant_examples=None,
+    )
+    monkeypatch.setattr("exps.runner.run_benchmark", lambda params: result)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run",
+            "--strategy",
+            "unused.yml",
+            "--dataset",
+            "wands",
+            "--seed",
+            "43",
+            "--summary-csv",
+            str(summary_path),
+            "--per-query-csv",
+            str(per_query_path),
+        ],
+    )
+
+    main()
+
+    with summary_path.open(newline="", encoding="utf-8") as handle:
+        summary_row = next(csv.DictReader(handle))
+    with per_query_path.open(newline="", encoding="utf-8") as handle:
+        per_query_row = next(csv.DictReader(handle))
+
+    assert summary_row["run_id"] == per_query_row["run_id"]
+    assert summary_row["seed"] == per_query_row["seed"] == "43"
+    assert per_query_row["ndcg_m"] == "0.8"
 
 
 def test_summary_output_includes_generic_resource_statistics(capsys):

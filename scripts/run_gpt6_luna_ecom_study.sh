@@ -3,12 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/research/results/gpt6_luna_ecom_study.csv}"
+PER_QUERY_CSV_DIR="${PER_QUERY_CSV_DIR:-${ROOT_DIR}/research/results/gpt6_luna_ecom_study_per_query}"
 PLOT_OUTPUT_PREFIX="${PLOT_OUTPUT_PREFIX:-${ROOT_DIR}/assets/gpt6_luna_ecom_study}"
+RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)_$$}"
 WORKERS="${WORKERS:-8}"
 MODEL_WORKERS="${MODEL_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
 # Bypass result-cache reads so each seed makes fresh searches; results remain cached per seed.
-NO_CACHE="${NO_CACHE:-true}"
+NO_CACHE="${NO_CACHE:-false}"
 ESCI_NUM_QUERIES="${ESCI_NUM_QUERIES:-1000}"
 WANDS_NUM_QUERIES="${WANDS_NUM_QUERIES:-}"
 read -r -a SEEDS <<< "${RUN_SEEDS:-43 44 45}"
@@ -33,7 +35,10 @@ CONFIGS=(
 )
 DATASETS=("wands" "esci")
 
-mkdir -p "$(dirname "${RESULTS_CSV}")" "$(dirname "${PLOT_OUTPUT_PREFIX}")"
+mkdir -p \
+  "$(dirname "${RESULTS_CSV}")" \
+  "$(dirname "${PLOT_OUTPUT_PREFIX}")" \
+  "${PER_QUERY_CSV_DIR}"
 : > "${RESULTS_CSV}"
 cd "${ROOT_DIR}"
 
@@ -46,6 +51,9 @@ for dataset in "${DATASETS[@]}"; do
 
     for seed in "${SEEDS[@]}"; do
       echo "Running ${config} on ${dataset} with seed ${seed} and ${workers} worker(s)"
+      strategy_name="${config##*/}"
+      strategy_name="${strategy_name%.yml}"
+      per_query_csv="${PER_QUERY_CSV_DIR}/${RUN_ID}_${dataset}_${strategy_name}_seed_${seed}.csv"
       run_args=(
         uv run run
         --strategy "${ROOT_DIR}/${config}"
@@ -53,6 +61,7 @@ for dataset in "${DATASETS[@]}"; do
         --workers "${workers}"
         --seed "${seed}"
         --summary-csv "${RESULTS_CSV}"
+        --per-query-csv "${per_query_csv}"
       )
       if [[ "${NO_CACHE}" == "true" ]]; then
         run_args+=(--no-cache)
