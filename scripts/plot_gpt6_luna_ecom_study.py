@@ -374,9 +374,15 @@ def main() -> None:
     )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output-prefix", type=Path, required=True)
+    parser.add_argument(
+        "--dataset",
+        choices=DATASETS,
+        action="append",
+        help="Dataset to plot; may be repeated. Defaults to all study datasets.",
+    )
     args = parser.parse_args()
     prefix = args.output_prefix.with_suffix("") if args.output_prefix.suffix else args.output_prefix
-    for dataset in DATASETS:
+    for dataset in args.dataset or DATASETS:
         retrieval_output = prefix.parent / f"{prefix.name}_{dataset}.png"
         cost_output = prefix.parent / f"{prefix.name}_cost_pareto_{dataset}.png"
         plot_retrieval(args.input, retrieval_output, dataset)

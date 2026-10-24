@@ -284,3 +284,52 @@ def test_main_writes_retrieval_and_cost_pareto_plots_for_both_datasets(
         assert (
             tmp_path / "plots" / f"gpt6_luna_ecom_study_cost_pareto_{dataset}.png"
         ).is_file()
+
+
+def test_main_can_plot_only_selected_dataset(tmp_path, monkeypatch):
+    summary_path = tmp_path / "summary.csv"
+    fieldnames = [
+        "dataset",
+        "strategy_name",
+        "metric_name",
+        "mean_ndcg_m",
+        "mean_max_ndcg_m",
+        "mean_resource.input_tokens",
+        "mean_resource.output_tokens",
+    ]
+    with summary_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for seed, score in enumerate((0.51, 0.53, 0.55)):
+            writer.writerow(
+                {
+                    "dataset": "wands",
+                    "strategy_name": "agentic_gpt6_luna_bm25_e5",
+                    "metric_name": "NDCG_M",
+                    "mean_ndcg_m": score,
+                    "mean_max_ndcg_m": 0.8,
+                    "mean_resource.input_tokens": 1000 + seed,
+                    "mean_resource.output_tokens": 200 + seed,
+                }
+            )
+
+    output_prefix = tmp_path / "plots" / "focused_study"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "plot_gpt6_luna_ecom_study.py",
+            "--input",
+            str(summary_path),
+            "--output-prefix",
+            str(output_prefix),
+            "--dataset",
+            "wands",
+        ],
+    )
+
+    main()
+
+    assert (tmp_path / "plots" / "focused_study_wands.png").is_file()
+    assert (tmp_path / "plots" / "focused_study_cost_pareto_wands.png").is_file()
+    assert not (tmp_path / "plots" / "focused_study_esci.png").exists()

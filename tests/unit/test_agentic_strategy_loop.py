@@ -22,6 +22,14 @@ class _FakeOpenAIAgent:
         self.calls = 0
         _FakeOpenAIAgent.last_instance = self
 
+    def _ranked_results_for_schema(self):
+        ranked_schema = self.response_model.model_json_schema()["properties"][
+            "ranked_results"
+        ]
+        max_length = ranked_schema.get("maxItems")
+        ranked_results = list(self.result_ids)
+        return ranked_results[:max_length] if max_length is not None else ranked_results
+
     def loop(self, inputs=None, agent_state=None, logger=None):
         if inputs is None:
             inputs = []
@@ -35,7 +43,9 @@ class _FakeOpenAIAgent:
                 agent_state.get("resource.output_tokens", 0) + 4
             )
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
-        result = self.response_model(ranked_results=list(self.result_ids))
+        result = self.response_model(
+            ranked_results=self._ranked_results_for_schema()
+        )
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -83,9 +93,13 @@ class _FakeOpenAIAgentWithResults(_FakeOpenAIAgent):
             agent_state["num_tool_calls"] = agent_state.get("num_tool_calls", 0) + 1
         inputs.append({"type": "function_call_output", "output": {"ok": True}})
         if self.calls == 1:
-            result = self.response_model(ranked_results=list(self.result_ids))
+            result = self.response_model(
+                ranked_results=self._ranked_results_for_schema()
+            )
         else:
-            result = self.response_model(ranked_results=list(self.result_ids))
+            result = self.response_model(
+                ranked_results=self._ranked_results_for_schema()
+            )
         resp = type("Resp", (), {"output_parsed": result})
         self.last_inputs = inputs
         self.last_agent_state = agent_state
@@ -136,6 +150,9 @@ def test_agentic_stop_iterations_prompt_appends(tmp_path):
     strategy.search("query", k=2)
 
     assert strategy.agent.response_model is agent_mod.SearchResults
+    schema = _FakeOpenAIAgent.last_instance.response_model.model_json_schema()
+    assert schema["properties"]["ranked_results"]["minItems"] == 2
+    assert schema["properties"]["ranked_results"]["maxItems"] == 2
     inputs = _FakeOpenAIAgent.last_instance.last_inputs
     reprompt_count = sum(
         1

@@ -12,6 +12,7 @@ from exps.agentic.agent import (
     SUBAGENT_SYSTEM_PROMPT,
     _normalize_agents_for_cache,
     _normalize_search_tools_for_cache,
+    search_results_model_for_k,
     trace_logger,
 )
 from exps.agentic.examples import append_few_shot_examples
@@ -111,6 +112,7 @@ class AgenticSearchStrategy(SearchStrategy):
     def search(self, query: str, k: int = 10):
         if self.trace_path is None:
             raise ValueError("AgenticSearchStrategy requires trace_path to record traces.")
+        requested_k = min(max(k, 0), len(self.corpus))
         query_dir = self.query_path(query)
         with trace_logger(query_dir) as (logger, trace_path):
             run_result = self.agent.run(
@@ -118,11 +120,17 @@ class AgenticSearchStrategy(SearchStrategy):
                 trace_dir=query_dir,
                 logger=logger,
                 trace_path=trace_path,
-                k=k,
+                k=requested_k,
+                response_model=search_results_model_for_k(requested_k),
             )
         ranked_results = run_result.output if isinstance(run_result.output, list) else []
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
+        if len(ranked_results) != requested_k:
+            raise ValueError(
+                f"Agent returned {len(ranked_results)} valid result IDs for query "
+                f"{query!r}; expected exactly {requested_k}."
+            )
         self.traces[query] = str(run_result.trace_path)
         return ranked_results, [1.0] * len(ranked_results), run_result.resources
 
@@ -160,6 +168,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "validators": self.validators,
             "max_loops": self.max_loops,
             "ranked_results_model": f"{SearchResults.__module__}.{SearchResults.__qualname__}",
+            "ranked_results_length": "exact_requested_k_v1",
             "embeddings_device": self.embeddings_device,
             "resource_schema": 2,
         }

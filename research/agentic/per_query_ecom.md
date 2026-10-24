@@ -12,6 +12,8 @@ The summary metrics are means across all 18 agentic runs. The BM25 column is the
 
 The ideal side lists positive-grade WANDS judgments ordered by grade descending (document ID breaks ties), up to 10. It is not padded with grade-0 documents. The agentic side preserves the returned rank order. A displayed `NA` means the document has no WANDS judgment; grade 0 is reserved for documents explicitly judged irrelevant. The Parquet exports retain this distinction in nullable `grade` and boolean `judged` columns.
 
+These saved rankings predate the exact-length `SearchResults` schema constraint, so some historical agentic outputs contain fewer than 10 documents. New agentic runs require exactly the requested number of valid result IDs (up to corpus size); the changed cache key prevents reuse of the unconstrained cached rankings.
+
 ## Selected queries
 
 | Query ID | Query | Mean agentic NDCG_M | Mean agentic NDCG_G | Mean judged ceiling | BM25 NDCG_M | Poor agentic runs |

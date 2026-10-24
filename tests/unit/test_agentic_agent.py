@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from cheat_at_search.agent.sid_tools import build_sid2_tool_config
 
@@ -74,6 +75,17 @@ def _build_fake_agent(*args, **kwargs):
 
 def _build_fake_agent_no_tools(*args, **kwargs):
     return _FakeOpenAIAgentNoTools(*args, **kwargs)
+
+
+def test_search_results_model_requires_exact_requested_length():
+    model = agent_mod.search_results_model_for_k(10)
+    ranked_results_schema = model.model_json_schema()["properties"]["ranked_results"]
+
+    assert ranked_results_schema["minItems"] == 10
+    assert ranked_results_schema["maxItems"] == 10
+    assert len(model(ranked_results=[str(i) for i in range(10)]).ranked_results) == 10
+    with pytest.raises(ValidationError):
+        model(ranked_results=[str(i) for i in range(9)])
 
 
 @patch("exps.agentic.agent.build_search_tools", new=lambda *args, **kwargs: [])

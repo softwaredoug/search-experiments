@@ -5,7 +5,7 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from functools import wraps
+from functools import lru_cache, wraps
 from pathlib import Path
 from time import monotonic
 from typing import Any, Type
@@ -14,7 +14,7 @@ from cheat_at_search.agent.openai_agent import OpenAIAgent
 from cheat_at_search.agent.search_client import SearchResults
 from cheat_at_search.agent.sid_agent import SIDAgent
 from cheat_at_search.agent.sid_legacy_agent import SIDLegacyAgent
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, create_model
 
 from exps.agentic.conditions import (
     Condition,
@@ -50,6 +50,25 @@ Here are some examples of products and relevant / irrelevant results
 
 
 SUBAGENT_SYSTEM_PROMPT = "You help with tasks searchinging / finding content as instructed"
+
+
+@lru_cache(maxsize=None)
+def search_results_model_for_k(k: int) -> Type[BaseModel]:
+    """Build a SearchResults schema requiring exactly k ranked document IDs."""
+    if k < 1:
+        return SearchResults
+    return create_model(
+        f"SearchResultsForK{k}",
+        __base__=SearchResults,
+        ranked_results=(
+            list[str],
+            Field(
+                min_length=k,
+                max_length=k,
+                description=SearchResults.model_fields["ranked_results"].description,
+            ),
+        ),
+    )
 
 
 @dataclass
@@ -351,6 +370,7 @@ class Agent:
         stops: list[Condition],
         validators: list[Condition],
         logger,
+        response_model: Type[BaseModel] | None = None,
     ):
         _replace_system_prompt(inputs, system_prompt)
         inputs.append({"role": "user", "content": user_prompt})
@@ -399,7 +419,9 @@ class Agent:
             agent = build_openai_agent(
                 tools=step_tools_list,
                 model=f"openai/{self.model}" if not separator else self.model,
-                response_model=self.response_model,
+                response_model=(
+                    self.response_model if response_model is None else response_model
+                ),
                 reasoning_level=self.reasoning,
                 images=self.images,
             )
@@ -574,6 +596,7 @@ class Agent:
         validators: list[Condition],
         logger,
         format_params: dict[str, Any],
+        response_model: Type[BaseModel] | None,
     ):
         resp = None
         for step_index, step in enumerate(self._plan_steps, start=1):
@@ -594,6 +617,7 @@ class Agent:
                 stops=stops,
                 validators=validators,
                 logger=logger,
+                response_model=response_model,
             )
         return resp, inputs
 
@@ -607,6 +631,7 @@ class Agent:
         k: int = 10,
         format_params: dict[str, Any] | None = None,
         agent_state: dict | None = None,
+        response_model: Type[BaseModel] | None = None,
     ) -> AgentResponse:
         inputs = [{"role": "system", "content": self.system_prompt}]
         if agent_state is None:
@@ -636,6 +661,9 @@ class Agent:
                 validators=validators,
                 logger=logger,
                 format_params=format_payload,
+                response_model=(
+                    self.response_model if response_model is None else response_model
+                ),
             )
         logger.info("agentic_output %s", resp.output_parsed if resp else None)
         if resp and hasattr(resp.output_parsed, "ranked_results"):
