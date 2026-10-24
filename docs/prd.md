@@ -76,7 +76,8 @@ Then you use `run_strategy` as follows:
 
 1. A strategy is setup, with a corpus and whatever other params
 2. You call run_strategy w/ judgments. Producing a dataframe of every query's search results, concatt'd. Also labeled from the judgments. No label for a doc implies irrelevance.
-3. A helper `ndcgs` that takes these results, and gives per-query NDCG
+3. A helper `ndcgs` that takes these results, and gives per-query NDCG. The runner reports both
+   `ndcg_m` (normalized by max-grade ideal DCG) and `ndcg_g` (normalized by judged-document ideal DCG).
 4. A helper `mrr` that takes these results, and gives per-query MRR
 
 ## Configurable strategies
@@ -264,6 +265,10 @@ Graphs are intended to be some kind of line graph. And we should generate a coup
 
 A retrieval graph should be a single graph, X-axis being variants, Y-axis being retrieval metric (ie NDCG) and
 if multiple datasets are present, each dataset should get its own graph.
+
+A retrieval graph should have a dotted line on the Y-axis that takes the mean of `max_ndcg_m` of the query set
+to show the maximum possible `ndcg_m` for this population of queries in this dataset. (`ndcg_m=1` is not
+necessarily attainable because it is normalized by the max-grade ideal DCG.)
 
 Graphs should add points and labels for each variant to name each one.
 

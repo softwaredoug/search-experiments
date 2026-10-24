@@ -141,7 +141,7 @@ strategy:
         result = run_benchmark(params)
 
     assert result.strategy_name == "query_understanding_dummy_fixture"
-    assert result.metric_name == "NDCG"
+    assert result.metric_name == "NDCG_M"
     assert result.metric_series is not None
     assert len(result.metric_series) == 2
     assert result.summary["mean_resource.model_calls"] == 0.0

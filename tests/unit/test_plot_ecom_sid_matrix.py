@@ -14,7 +14,10 @@ from scripts.plot_ecom_sid_matrix import (
     main,
     plot_results,
 )
-from scripts._plot_helpers import read_mean_max_ndcg
+from scripts._plot_helpers import (
+    mean_max_ndcg_m_by_dataset,
+    read_mean_max_ndcg_m,
+)
 
 
 def test_matrix_includes_all_model_variants():
@@ -50,7 +53,7 @@ def test_read_mean_ndcg_averages_runs_and_ignores_other_metrics(tmp_path):
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg_m"],
         )
         writer.writeheader()
         for dataset in ("wands", "esci"):
@@ -59,16 +62,16 @@ def test_read_mean_ndcg_averages_runs_and_ignores_other_metrics(tmp_path):
                     {
                         "dataset": dataset,
                         "strategy_name": strategy,
-                        "metric_name": "NDCG",
-                        "mean_ndcg": 0.2,
+                        "metric_name": "NDCG_M",
+                        "mean_ndcg_m": 0.2,
                     }
                 )
         writer.writerow(
             {
                 "dataset": "wands",
                 "strategy_name": "bm25",
-                "metric_name": "NDCG",
-                "mean_ndcg": 0.4,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": 0.4,
             }
         )
         writer.writerow(
@@ -76,7 +79,7 @@ def test_read_mean_ndcg_averages_runs_and_ignores_other_metrics(tmp_path):
                 "dataset": "wands",
                 "strategy_name": "bm25",
                 "metric_name": "MRR",
-                "mean_ndcg": 0.9,
+                "mean_ndcg_m": 0.9,
             }
         )
 
@@ -92,15 +95,15 @@ def test_read_mean_ndcg_reports_missing_strategy_results(tmp_path):
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg_m"],
         )
         writer.writeheader()
         writer.writerow(
             {
                 "dataset": "wands",
                 "strategy_name": "bm25",
-                "metric_name": "NDCG",
-                "mean_ndcg": 0.3,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": 0.3,
             }
         )
 
@@ -108,12 +111,12 @@ def test_read_mean_ndcg_reports_missing_strategy_results(tmp_path):
         _read_mean_ndcg(summary_path)
 
 
-def test_read_mean_max_ndcg_averages_dataset_ceiling_and_ignores_other_metrics(tmp_path):
+def test_read_mean_max_ndcg_m_averages_dataset_ceiling_and_ignores_other_metrics(tmp_path):
     summary_path = tmp_path / "summary.csv"
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_max_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_max_ndcg_m"],
         )
         writer.writeheader()
         writer.writerows(
@@ -121,25 +124,37 @@ def test_read_mean_max_ndcg_averages_dataset_ceiling_and_ignores_other_metrics(t
                 {
                     "dataset": "wands",
                     "strategy_name": "bm25",
-                    "metric_name": "NDCG",
-                    "mean_max_ndcg": 0.72,
+                    "metric_name": "NDCG_M",
+                    "mean_max_ndcg_m": 0.72,
                 },
                 {
                     "dataset": "wands",
                     "strategy_name": "agentic_ecom_sid_bm25_low",
-                    "metric_name": "NDCG",
-                    "mean_max_ndcg": 0.76,
+                    "metric_name": "NDCG_M",
+                    "mean_max_ndcg_m": 0.76,
                 },
                 {
                     "dataset": "wands",
                     "strategy_name": "bm25",
                     "metric_name": "MRR",
-                    "mean_max_ndcg": 1.0,
+                    "mean_max_ndcg_m": 1.0,
                 },
             ]
         )
 
-    assert read_mean_max_ndcg(summary_path) == {"wands": pytest.approx(0.74)}
+    assert read_mean_max_ndcg_m(summary_path) == {"wands": pytest.approx(0.74)}
+
+
+def test_mean_max_ndcg_m_reads_legacy_summary_column():
+    rows = [
+        {
+            "dataset": "wands",
+            "metric_name": "NDCG",
+            "mean_max_ndcg": "0.74",
+        }
+    ]
+
+    assert mean_max_ndcg_m_by_dataset(rows) == {"wands": pytest.approx(0.74)}
 
 
 def test_retrieval_plot_draws_dotted_mean_max_ndcg_reference(tmp_path, monkeypatch):
@@ -153,8 +168,8 @@ def test_retrieval_plot_draws_dotted_mean_max_ndcg_reference(tmp_path, monkeypat
                 "dataset",
                 "strategy_name",
                 "metric_name",
-                "mean_ndcg",
-                "mean_max_ndcg",
+                "mean_ndcg_m",
+                "mean_max_ndcg_m",
             ],
         )
         writer.writeheader()
@@ -162,9 +177,9 @@ def test_retrieval_plot_draws_dotted_mean_max_ndcg_reference(tmp_path, monkeypat
             {
                 "dataset": "wands",
                 "strategy_name": "bm25",
-                "metric_name": "NDCG",
-                "mean_ndcg": 0.54,
-                "mean_max_ndcg": 0.78,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": 0.54,
+                "mean_max_ndcg_m": 0.78,
             }
         )
 
@@ -199,7 +214,7 @@ def test_read_mean_output_tokens_ignores_missing_resource_values(tmp_path):
             {
                 "dataset": "wands",
                 "strategy_name": "bm25",
-                "metric_name": "NDCG",
+                "metric_name": "NDCG_M",
                 "mean_resource.output_tokens": "",
             }
         )
@@ -207,7 +222,7 @@ def test_read_mean_output_tokens_ignores_missing_resource_values(tmp_path):
             {
                 "dataset": "wands",
                 "strategy_name": "agentic_ecom_sid_bm25_medium",
-                "metric_name": "NDCG",
+                "metric_name": "NDCG_M",
                 "mean_resource.output_tokens": "256",
             }
         )
@@ -248,7 +263,7 @@ def test_read_mean_token_cost_uses_model_rates_and_cached_input_when_available(
             {
                 "dataset": "wands",
                 "strategy_name": "agentic_bm25_ecommerce_gpt6_luna",
-                "metric_name": "NDCG",
+                "metric_name": "NDCG_M",
                 "mean_resource.input_tokens": 2_000_000,
                 "mean_resource.cached_input_tokens": 1_000_000,
                 "mean_resource.output_tokens": 1_000_000,
@@ -258,7 +273,7 @@ def test_read_mean_token_cost_uses_model_rates_and_cached_input_when_available(
             {
                 "dataset": "wands",
                 "strategy_name": "agentic_ecom_sid_bm25_medium",
-                "metric_name": "NDCG",
+                "metric_name": "NDCG_M",
                 "mean_resource.input_tokens": 2_000_000,
                 "mean_resource.cached_input_tokens": 1_000_000,
                 "mean_resource.output_tokens": 1_000_000,
@@ -309,11 +324,11 @@ def test_read_mean_token_cost_assumes_uncached_input_when_cache_usage_is_missing
 
 def test_pareto_front_uses_higher_quality_and_lower_output_tokens():
     points = [
-        {"strategy": "a", "mean_ndcg": 0.5, "mean_resource.output_tokens": 100.0},
-        {"strategy": "b", "mean_ndcg": 0.6, "mean_resource.output_tokens": 300.0},
-        {"strategy": "c", "mean_ndcg": 0.7, "mean_resource.output_tokens": 200.0},
-        {"strategy": "d", "mean_ndcg": 0.4, "mean_resource.output_tokens": 400.0},
-        {"strategy": "e", "mean_ndcg": 0.5, "mean_resource.output_tokens": 200.0},
+        {"strategy": "a", "mean_ndcg_m": 0.5, "mean_resource.output_tokens": 100.0},
+        {"strategy": "b", "mean_ndcg_m": 0.6, "mean_resource.output_tokens": 300.0},
+        {"strategy": "c", "mean_ndcg_m": 0.7, "mean_resource.output_tokens": 200.0},
+        {"strategy": "d", "mean_ndcg_m": 0.4, "mean_resource.output_tokens": 400.0},
+        {"strategy": "e", "mean_ndcg_m": 0.5, "mean_resource.output_tokens": 200.0},
     ]
 
     assert [point["strategy"] for point in _pareto_front(points)] == ["a", "c"]
@@ -321,9 +336,9 @@ def test_pareto_front_uses_higher_quality_and_lower_output_tokens():
 
 def test_pareto_front_can_use_estimated_token_cost():
     points = [
-        {"strategy": "a", "mean_ndcg": 0.5, "mean_token_cost_usd": 0.003},
-        {"strategy": "b", "mean_ndcg": 0.6, "mean_token_cost_usd": 0.005},
-        {"strategy": "c", "mean_ndcg": 0.7, "mean_token_cost_usd": 0.004},
+        {"strategy": "a", "mean_ndcg_m": 0.5, "mean_token_cost_usd": 0.003},
+        {"strategy": "b", "mean_ndcg_m": 0.6, "mean_token_cost_usd": 0.005},
+        {"strategy": "c", "mean_ndcg_m": 0.7, "mean_token_cost_usd": 0.004},
     ]
 
     assert [
@@ -343,8 +358,8 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                 "dataset",
                 "strategy_name",
                 "metric_name",
-                "mean_ndcg",
-                "mean_max_ndcg",
+                "mean_ndcg_m",
+                "mean_max_ndcg_m",
                 "mean_resource.input_tokens",
                 "mean_resource.output_tokens",
             ],
@@ -356,9 +371,9 @@ def test_main_writes_separate_retrieval_and_pareto_images_per_dataset(
                     {
                         "dataset": dataset,
                         "strategy_name": strategy,
-                        "metric_name": "NDCG",
-                        "mean_ndcg": 0.3,
-                        "mean_max_ndcg": 0.75,
+                        "metric_name": "NDCG_M",
+                        "mean_ndcg_m": 0.3,
+                        "mean_max_ndcg_m": 0.75,
                         "mean_resource.input_tokens": 100,
                         "mean_resource.output_tokens": 200,
                     }

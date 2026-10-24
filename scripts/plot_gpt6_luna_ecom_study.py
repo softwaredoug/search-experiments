@@ -7,9 +7,19 @@ from collections import defaultdict
 from pathlib import Path
 
 try:
-    from ._plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+    from ._plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_ndcg_m_value,
+        read_mean_max_ndcg_m,
+    )
 except ImportError:  # Script execution from the scripts directory.
-    from _plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+    from _plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_ndcg_m_value,
+        read_mean_max_ndcg_m,
+    )
 
 
 DATASETS = ("wands", "esci")
@@ -48,24 +58,26 @@ def _read_ndcg_runs(path: Path) -> dict[tuple[str, str], list[float]]:
     strategy_names = {strategy for strategy, _ in STRATEGIES}
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        required = {"dataset", "strategy_name", "metric_name", "mean_ndcg"}
+        required = {"dataset", "strategy_name", "metric_name"}
         if not reader.fieldnames or not required.issubset(reader.fieldnames):
             raise ValueError(f"{path} must contain {', '.join(sorted(required))} columns.")
+        if not {"mean_ndcg_m", "mean_ndcg"}.intersection(reader.fieldnames):
+            raise ValueError(f"{path} must contain mean_ndcg_m or legacy mean_ndcg.")
         for row in reader:
             dataset = row["dataset"]
             strategy = row["strategy_name"]
             if (
                 dataset not in DATASETS
                 or strategy not in strategy_names
-                or row["metric_name"].lower() != "ndcg"
-                or not row["mean_ndcg"]
+                or not is_ndcg_m_row(row)
+                or not mean_ndcg_m_value(row)
             ):
                 continue
             try:
-                totals[(dataset, strategy)].append(float(row["mean_ndcg"]))
+                totals[(dataset, strategy)].append(float(mean_ndcg_m_value(row)))
             except (TypeError, ValueError) as exc:
                 raise ValueError(
-                    f"Invalid mean_ndcg for dataset={dataset!r}, strategy={strategy!r}."
+                    f"Invalid mean_ndcg_m for dataset={dataset!r}, strategy={strategy!r}."
                 ) from exc
 
     return dict(totals)
@@ -101,7 +113,7 @@ def _read_token_cost_runs_usd(path: Path) -> dict[tuple[str, str], list[float]]:
             output_tokens = row["mean_resource.output_tokens"]
             if (
                 dataset not in DATASETS
-                or row["metric_name"].lower() != "ndcg"
+                or not is_ndcg_m_row(row)
                 or model is None
                 or not input_tokens
                 or not output_tokens
@@ -147,13 +159,13 @@ def _pareto_front(points: list[dict[str, float | str]]) -> list[dict[str, float 
     """Return points not dominated on retrieval (higher) and token cost (lower)."""
     frontier = []
     for point in points:
-        ndcg = float(point["mean_ndcg"])
+        ndcg = float(point["mean_ndcg_m"])
         cost = float(point["mean_token_cost_usd"])
         dominated = any(
-            float(other["mean_ndcg"]) >= ndcg
+            float(other["mean_ndcg_m"]) >= ndcg
             and float(other["mean_token_cost_usd"]) <= cost
             and (
-                float(other["mean_ndcg"]) > ndcg
+                float(other["mean_ndcg_m"]) > ndcg
                 or float(other["mean_token_cost_usd"]) < cost
             )
             for other in points
@@ -227,9 +239,9 @@ def plot_retrieval(input_path: Path, output_path: Path, dataset: str) -> None:
     )
     ax.set_ylim(0, 1)
     ax.set_ylabel("Mean NDCG@10")
-    ceiling = read_mean_max_ndcg(input_path)
+    ceiling = read_mean_max_ndcg_m(input_path)
     if dataset in ceiling:
-        add_mean_max_ndcg_line(ax, ceiling[dataset])
+        add_mean_max_ndcg_m_line(ax, ceiling[dataset])
     ax.legend(loc="best", fontsize=8)
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
@@ -267,7 +279,7 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
         points.append(
             {
                 "strategy": strategy,
-                "mean_ndcg": sum(ndcgs) / len(ndcgs),
+                "mean_ndcg_m": sum(ndcgs) / len(ndcgs),
                 "mean_token_cost_usd": sum(costs) / len(costs),
             }
         )
@@ -298,7 +310,7 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
         label = labels[strategy]
         is_frontier = strategy in frontier_names
         cost = float(point["mean_token_cost_usd"])
-        ndcg = float(point["mean_ndcg"])
+        ndcg = float(point["mean_ndcg_m"])
         ax.scatter(
             cost,
             ndcg,
@@ -327,7 +339,7 @@ def plot_cost_pareto(input_path: Path, output_path: Path, dataset: str) -> None:
     if frontier:
         ax.plot(
             [float(point["mean_token_cost_usd"]) for point in frontier],
-            [float(point["mean_ndcg"]) for point in frontier],
+            [float(point["mean_ndcg_m"]) for point in frontier],
             color="#F58518",
             linewidth=2,
             marker="o",

@@ -82,7 +82,7 @@ def test_read_mean_token_cost_uses_gpt5_mini_and_luna_rates(tmp_path):
                 {
                     "dataset": "wands",
                     "strategy_name": strategy,
-                    "metric_name": "NDCG",
+                    "metric_name": "NDCG_M",
                     "mean_resource.input_tokens": 2_000_000,
                     "mean_resource.cached_input_tokens": 500_000,
                     "mean_resource.output_tokens": 1_000_000,
@@ -100,15 +100,15 @@ def test_read_ndcg_runs_preserves_each_seeded_run(tmp_path):
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg_m"],
         )
         writer.writeheader()
         writer.writerows(
             {
                 "dataset": "wands",
                 "strategy_name": "agentic_gpt6_luna_bm25",
-                "metric_name": "NDCG",
-                "mean_ndcg": score,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": score,
             }
             for score in (0.5, 0.6, 0.7)
         )
@@ -127,7 +127,7 @@ def test_retrieval_plot_connects_variant_means_and_shows_each_run(tmp_path, monk
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg_m"],
         )
         writer.writeheader()
         for strategy, scores in (
@@ -139,8 +139,8 @@ def test_retrieval_plot_connects_variant_means_and_shows_each_run(tmp_path, monk
                     {
                         "dataset": "wands",
                         "strategy_name": strategy,
-                        "metric_name": "NDCG",
-                        "mean_ndcg": score,
+                        "metric_name": "NDCG_M",
+                        "mean_ndcg_m": score,
                     }
                 )
 
@@ -177,8 +177,8 @@ def test_cost_pareto_omits_judged_ndcg_ceiling_line(tmp_path, monkeypatch):
         "dataset",
         "strategy_name",
         "metric_name",
-        "mean_ndcg",
-        "mean_max_ndcg",
+        "mean_ndcg_m",
+        "mean_max_ndcg_m",
         "mean_resource.input_tokens",
         "mean_resource.output_tokens",
     ]
@@ -191,9 +191,9 @@ def test_cost_pareto_omits_judged_ndcg_ceiling_line(tmp_path, monkeypatch):
                     {
                         "dataset": "wands",
                         "strategy_name": strategy,
-                        "metric_name": "NDCG",
-                        "mean_ndcg": 0.4 + index / 10 + run_index / 100,
-                        "mean_max_ndcg": 0.8,
+                        "metric_name": "NDCG_M",
+                        "mean_ndcg_m": 0.4 + index / 10 + run_index / 100,
+                        "mean_max_ndcg_m": 0.8,
                         "mean_resource.input_tokens": 1000 + run_index * 100,
                         "mean_resource.output_tokens": 200 + run_index * 50,
                     }
@@ -232,8 +232,8 @@ def test_main_writes_retrieval_and_cost_pareto_plots_for_both_datasets(
         "dataset",
         "strategy_name",
         "metric_name",
-        "mean_ndcg",
-        "mean_max_ndcg",
+        "mean_ndcg_m",
+        "mean_max_ndcg_m",
         "mean_resource.input_tokens",
         "mean_resource.cached_input_tokens",
         "mean_resource.output_tokens",
@@ -249,9 +249,9 @@ def test_main_writes_retrieval_and_cost_pareto_plots_for_both_datasets(
                         {
                             "dataset": dataset,
                             "strategy_name": strategy,
-                            "metric_name": "NDCG",
-                            "mean_ndcg": 0.3 + index / 20 + run_index / 100,
-                            "mean_max_ndcg": 0.8,
+                            "metric_name": "NDCG_M",
+                            "mean_ndcg_m": 0.3 + index / 20 + run_index / 100,
+                            "mean_max_ndcg_m": 0.8,
                             "mean_resource.input_tokens": 1000 + run_index
                             if is_agentic
                             else "",

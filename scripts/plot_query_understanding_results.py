@@ -6,9 +6,19 @@ import csv
 from pathlib import Path
 
 try:
-    from ._plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+    from ._plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_max_ndcg_m_by_dataset,
+        mean_ndcg_m_value,
+    )
 except ImportError:  # Script execution from the scripts directory.
-    from _plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+    from _plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_max_ndcg_m_by_dataset,
+        mean_ndcg_m_value,
+    )
 
 EXPECTED_STRATEGIES = {
     "ecom_qu_category_bm25_filtered_llm_single",
@@ -62,7 +72,7 @@ def _load_ndcg_rows(path: Path) -> list[dict[str, str]]:
             row
             for row in csv.DictReader(handle)
             if row.get("dataset") == "wands"
-            and row.get("metric_name", "").lower() == "ndcg"
+            and is_ndcg_m_row(row)
         ]
     latest = {row["strategy_name"]: row for row in rows}
     missing = EXPECTED_NDCG_STRATEGIES - latest.keys()
@@ -70,7 +80,7 @@ def _load_ndcg_rows(path: Path) -> list[dict[str, str]]:
         raise ValueError(f"Missing WANDS NDCG results for: {', '.join(sorted(missing))}")
     return sorted(
         latest.values(),
-        key=lambda row: float(row["mean_ndcg"] or 0),
+        key=lambda row: float(mean_ndcg_m_value(row) or 0),
     )
 
 
@@ -128,8 +138,8 @@ def _plot_ndcg(rows: list[dict[str, str]], output_path: Path) -> None:
     import matplotlib.pyplot as plt
 
     labels = [_short_label(row["strategy_name"]) for row in rows]
-    ndcgs = [float(row["mean_ndcg"] or 0) for row in rows]
-    max_ndcg = mean_max_ndcg_by_dataset(rows).get("wands")
+    ndcgs = [float(mean_ndcg_m_value(row) or 0) for row in rows]
+    max_ndcg = mean_max_ndcg_m_by_dataset(rows).get("wands")
     x_values = range(len(rows))
 
     fig, ax = plt.subplots(figsize=(15, 7))
@@ -146,7 +156,7 @@ def _plot_ndcg(rows: list[dict[str, str]], output_path: Path) -> None:
     ax.set_title("WANDS Query Understanding Retrieval")
     ax.set_ylabel("Mean NDCG")
     if max_ndcg is not None:
-        add_mean_max_ndcg_line(ax, max_ndcg)
+        add_mean_max_ndcg_m_line(ax, max_ndcg)
         ax.legend(loc="best", fontsize=8)
     ax.set_ylim(min(ndcgs) - 0.05, max(max(ndcgs), max_ndcg or 0) + 0.05)
     ax.set_xticks(list(x_values))

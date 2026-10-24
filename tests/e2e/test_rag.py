@@ -50,7 +50,7 @@ strategy:
         )
 
     assert result.strategy_name == "rag_fixture"
-    assert result.summary["mean_ndcg"] > 0
+    assert result.summary["mean_ndcg_m"] > 0
     assert result.summary["mean_resource.input_tokens"] == 8
     assert result.summary["mean_resource.output_tokens"] == 3
     assert result.graded.iloc[0]["doc_id"] == 1

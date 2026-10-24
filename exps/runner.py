@@ -23,8 +23,8 @@ def _report_metric(metric_name: str, metric_series, summary: dict[str, float]) -
             "median_resource."
         ) and not name.startswith("std_resource."):
             label = (
-                "mean_max_ndcg (judged ceiling)"
-                if name == "mean_max_ndcg"
+                "mean_max_ndcg_m (judged ceiling)"
+                if name == "mean_max_ndcg_m"
                 else name
             )
             print(f"{label}: {value:.4f}")

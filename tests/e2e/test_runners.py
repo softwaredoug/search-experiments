@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from cheat_at_search.search import run_strategy
+from cheat_at_search.search import ndcgs, run_strategy
 
 from exps.datasets import get_dataset
 from exps.metrics import metric_for_dataset
@@ -71,8 +71,15 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert isinstance(result.metric_series, pd.Series)
     assert result.metric_series.index.name == "query"
     assert not result.metric_series.empty
-    assert "mean_max_ndcg" in result.summary
-    assert result.summary["mean_max_ndcg"] >= result.summary["mean_ndcg"]
+    assert result.metric_name == "NDCG_M"
+    assert {"mean_ndcg_g", "mean_ndcg_m", "mean_max_ndcg_m"}.issubset(
+        result.summary
+    )
+    assert result.summary["mean_ndcg_m"] == result.metric_series.mean()
+    assert result.summary["mean_ndcg_g"] == ndcgs(
+        result.graded, ideal="global"
+    ).mean()
+    assert result.summary["mean_max_ndcg_m"] >= result.summary["mean_ndcg_m"]
     assert "mean_" in next(iter(result.summary.keys()))
     assert not any(name.startswith("tool_calls_") for name in result.summary)
     assert not any(name.endswith("_resource.tool_calls") for name in result.summary)

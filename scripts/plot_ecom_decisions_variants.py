@@ -7,9 +7,19 @@ from collections import defaultdict
 from pathlib import Path
 
 try:
-    from ._plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+    from ._plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_ndcg_m_value,
+        read_mean_max_ndcg_m,
+    )
 except ImportError:  # Script execution from the scripts directory.
-    from _plot_helpers import add_mean_max_ndcg_line, read_mean_max_ndcg
+    from _plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_ndcg_m_value,
+        read_mean_max_ndcg_m,
+    )
 
 DATASETS = ("wands", "esci")
 STRATEGIES = (
@@ -23,7 +33,7 @@ def _read_mean_ndcg(path: Path) -> dict[tuple[str, str], float]:
     values: dict[tuple[str, str], list[float]] = defaultdict(list)
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        required = {"dataset", "strategy_name", "metric_name", "mean_ndcg"}
+        required = {"dataset", "strategy_name", "metric_name"}
         if not reader.fieldnames or not required.issubset(reader.fieldnames):
             raise ValueError(
                 f"{path} must contain {', '.join(sorted(required))} columns."
@@ -36,15 +46,15 @@ def _read_mean_ndcg(path: Path) -> dict[tuple[str, str], float]:
                 or strategy not in {name for name, _ in STRATEGIES}
             ):
                 continue
-            if row["metric_name"].lower() != "ndcg":
+            if not is_ndcg_m_row(row):
                 raise ValueError(
                     f"Expected NDCG for {dataset}/{strategy}, got {row['metric_name']!r}."
                 )
             try:
-                values[(dataset, strategy)].append(float(row["mean_ndcg"]))
+                values[(dataset, strategy)].append(float(mean_ndcg_m_value(row)))
             except (TypeError, ValueError) as exc:
                 raise ValueError(
-                    f"Invalid mean_ndcg for dataset={dataset!r}, strategy={strategy!r}."
+                    f"Invalid mean_ndcg_m for dataset={dataset!r}, strategy={strategy!r}."
                 ) from exc
 
     means = {}
@@ -72,7 +82,7 @@ def plot_results(input_path: Path, output_path: Path) -> None:
     import matplotlib.pyplot as plt
 
     means = _read_mean_ndcg(input_path)
-    max_ndcg_by_dataset = read_mean_max_ndcg(input_path)
+    max_ndcg_by_dataset = read_mean_max_ndcg_m(input_path)
     labels = [label for _, label in STRATEGIES]
     positions = list(range(len(STRATEGIES)))
     colors = {"wands": "#4C78A8", "esci": "#F58518"}
@@ -100,7 +110,7 @@ def plot_results(input_path: Path, output_path: Path) -> None:
                 color=colors[dataset],
             )
         if dataset in max_ndcg_by_dataset:
-            add_mean_max_ndcg_line(axis, max_ndcg_by_dataset[dataset])
+            add_mean_max_ndcg_m_line(axis, max_ndcg_by_dataset[dataset])
 
     axis.set_xticks(positions)
     axis.set_xticklabels(labels)

@@ -17,7 +17,7 @@ def test_pareto_points_use_only_resource_summary(tmp_path):
                 "dataset",
                 "strategy_name",
                 "metric_name",
-                "mean_ndcg",
+                "mean_ndcg_m",
                 "mean_resource.tool_calls",
                 "tool_calls_mean",
             ],
@@ -28,16 +28,16 @@ def test_pareto_points_use_only_resource_summary(tmp_path):
                 {
                     "dataset": "esci",
                     "strategy_name": "bm25",
-                    "metric_name": "NDCG",
-                    "mean_ndcg": 0.3,
+                    "metric_name": "NDCG_M",
+                    "mean_ndcg_m": 0.3,
                     "mean_resource.tool_calls": "",
                     "tool_calls_mean": 1,
                 },
                 {
                     "dataset": "esci",
                     "strategy_name": "agentic_ecom_bm25_fewshot_judge",
-                    "metric_name": "NDCG",
-                    "mean_ndcg": 0.45,
+                    "metric_name": "NDCG_M",
+                    "mean_ndcg_m": 0.45,
                     "mean_resource.tool_calls": 4,
                     "tool_calls_mean": 0,
                 },
@@ -52,7 +52,7 @@ def test_pareto_points_use_only_resource_summary(tmp_path):
         if point["strategy"] == "agentic_ecom_bm25_fewshot_judge"
     )
     assert judge_point["mean_resource.tool_calls"] == 4
-    assert judge_point["mean_ndcg"] == 0.45
+    assert judge_point["mean_ndcg_m"] == 0.45
     assert {point["strategy"] for point in points} == {
         "agentic_ecom_bm25_fewshot_judge",
     }
@@ -60,10 +60,10 @@ def test_pareto_points_use_only_resource_summary(tmp_path):
 
 def test_pareto_front_keeps_lower_call_higher_ndcg_points():
     points = [
-        {"strategy": "a", "mean_resource.tool_calls": 1, "mean_ndcg": 0.3},
-        {"strategy": "b", "mean_resource.tool_calls": 2, "mean_ndcg": 0.4},
-        {"strategy": "c", "mean_resource.tool_calls": 3, "mean_ndcg": 0.35},
-        {"strategy": "d", "mean_resource.tool_calls": 4, "mean_ndcg": 0.5},
+        {"strategy": "a", "mean_resource.tool_calls": 1, "mean_ndcg_m": 0.3},
+        {"strategy": "b", "mean_resource.tool_calls": 2, "mean_ndcg_m": 0.4},
+        {"strategy": "c", "mean_resource.tool_calls": 3, "mean_ndcg_m": 0.35},
+        {"strategy": "d", "mean_resource.tool_calls": 4, "mean_ndcg_m": 0.5},
     ]
 
     frontier = _pareto_front(points)
@@ -80,7 +80,7 @@ def test_plot_pareto_results_writes_an_image(tmp_path):
                 "dataset",
                 "strategy_name",
                 "metric_name",
-                "mean_ndcg",
+                "mean_ndcg_m",
                 "mean_resource.tool_calls",
             ],
         )
@@ -89,8 +89,8 @@ def test_plot_pareto_results_writes_an_image(tmp_path):
             {
                 "dataset": "esci",
                 "strategy_name": "agentic_ecom_bm25_fewshot_judge",
-                "metric_name": "NDCG",
-                "mean_ndcg": 0.3,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": 0.3,
                 "mean_resource.tool_calls": 2,
             }
         )

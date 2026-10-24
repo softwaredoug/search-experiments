@@ -32,16 +32,16 @@ with path.open(newline="", encoding="utf-8") as handle:
 if not rows:
     raise SystemExit("No rows in results CSV.")
 
-def pick_ndcg(row: dict) -> tuple[str | None, str | None]:
-    for key in row:
-        if "ndcg" in key.lower():
+def pick_ndcg_m(row: dict) -> tuple[str | None, str | None]:
+    for key in ("mean_ndcg_m", "mean_ndcg"):
+        if key in row:
             return key, row.get(key)
     return None, None
 
-print("seed\tndcg")
+print("seed\tndcg_m")
 for row in rows:
     seed = row.get("seed") or ""
-    key, value = pick_ndcg(row)
+    key, value = pick_ndcg_m(row)
     if value is None:
         value = ""
     print(f"{seed}\t{value}")

@@ -8,6 +8,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+try:
+    from ._plot_helpers import is_ndcg_m_row, mean_ndcg_m_value
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import is_ndcg_m_row, mean_ndcg_m_value
+
 DATASETS = ["esci", "wands"]
 GPT5_STRATEGY = "agentic_bm25_e5_ecommerce_gpt5"
 PARETO_STRATEGIES = {
@@ -50,7 +55,7 @@ def _include_in_pareto(row: dict[str, str]) -> bool:
 def _load_ndcg(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]:
     agg: dict[tuple[str, str], dict[str, float]] = defaultdict(lambda: {"sum": 0.0, "count": 0.0})
     for row in rows:
-        if row.get("metric_name", "").lower() != "ndcg":
+        if not is_ndcg_m_row(row):
             continue
         if not _include_in_pareto(row):
             continue
@@ -59,7 +64,7 @@ def _load_ndcg(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]:
         if not dataset or not strategy:
             continue
         key = (dataset, strategy)
-        agg[key]["sum"] += float(row.get("mean_ndcg", 0.0))
+        agg[key]["sum"] += float(mean_ndcg_m_value(row) or 0.0)
         agg[key]["count"] += 1.0
 
     ndcg = {}
@@ -72,7 +77,7 @@ def _load_ndcg(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]:
 def _load_tool_calls(rows: list[dict[str, str]]) -> dict[tuple[str, str], float]:
     agg: dict[tuple[str, str], dict[str, float]] = defaultdict(lambda: {"sum": 0.0, "count": 0.0})
     for row in rows:
-        if row.get("metric_name", "").lower() != "ndcg":
+        if not is_ndcg_m_row(row):
             continue
         if not _include_in_pareto(row):
             continue
@@ -100,13 +105,13 @@ def _pareto_front(
         points,
         key=lambda row: (
             row["mean_resource.tool_calls"],
-            -row["mean_ndcg"],
+            -row["mean_ndcg_m"],
         ),
     )
     frontier = []
     best_ndcg = -1.0
     for row in ordered:
-        ndcg = float(row["mean_ndcg"])
+        ndcg = float(row["mean_ndcg_m"])
         if ndcg > best_ndcg:
             frontier.append(row)
             best_ndcg = ndcg
@@ -124,14 +129,14 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
 
     fig, ax = plt.subplots(figsize=(7.5, 5))
     x_vals = [row["mean_resource.tool_calls"] for row in frontier]
-    y_vals = [row["mean_ndcg"] for row in frontier]
+    y_vals = [row["mean_ndcg_m"] for row in frontier]
     ax.scatter(x_vals, y_vals, color="#F58518", s=60, zorder=2)
 
     for row in frontier:
         label = LABEL_MAP.get(str(row["strategy"]), str(row["strategy"]))
         ax.annotate(
             label,
-            (row["mean_resource.tool_calls"], row["mean_ndcg"]),
+            (row["mean_resource.tool_calls"], row["mean_ndcg_m"]),
             textcoords="offset points",
             xytext=(0, -12),
             ha="center",
@@ -140,7 +145,7 @@ def _plot_dataset(rows: list[dict[str, float | str]], dataset: str, output_path:
         )
 
     fx = [row["mean_resource.tool_calls"] for row in frontier]
-    fy = [row["mean_ndcg"] for row in frontier]
+    fy = [row["mean_ndcg_m"] for row in frontier]
     ax.plot(fx, fy, color="#F58518", linewidth=2, marker="o", zorder=3)
 
     ax.set_title(f"{dataset.upper()} - GPT-5-mini Pareto (Tool Calls vs NDCG)")
@@ -174,7 +179,7 @@ def main() -> None:
             {
                 "dataset": dataset,
                 "strategy": strategy,
-                "mean_ndcg": mean_ndcg,
+                "mean_ndcg_m": mean_ndcg,
                 "mean_resource.tool_calls": resource_mean,
             }
         )

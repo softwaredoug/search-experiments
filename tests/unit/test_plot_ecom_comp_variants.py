@@ -10,7 +10,7 @@ def test_read_mean_ndcg_averages_runs_for_each_dataset_and_strategy(tmp_path):
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg"],
+            fieldnames=["dataset", "strategy_name", "metric_name", "mean_ndcg_m"],
         )
         writer.writeheader()
         for dataset in ("esci", "wands"):
@@ -19,16 +19,16 @@ def test_read_mean_ndcg_averages_runs_for_each_dataset_and_strategy(tmp_path):
                     {
                         "dataset": dataset,
                         "strategy_name": strategy,
-                        "metric_name": "NDCG",
-                        "mean_ndcg": 0.2,
+                        "metric_name": "NDCG_M",
+                        "mean_ndcg_m": 0.2,
                     }
                 )
         writer.writerow(
             {
                 "dataset": "esci",
                 "strategy_name": "bm25",
-                "metric_name": "NDCG",
-                "mean_ndcg": 0.4,
+                "metric_name": "NDCG_M",
+                "mean_ndcg_m": 0.4,
             }
         )
         writer.writerow(
@@ -36,7 +36,7 @@ def test_read_mean_ndcg_averages_runs_for_each_dataset_and_strategy(tmp_path):
                 "dataset": "esci",
                 "strategy_name": "bm25",
                 "metric_name": "MRR",
-                "mean_ndcg": 0.9,
+                "mean_ndcg_m": 0.9,
             }
         )
 

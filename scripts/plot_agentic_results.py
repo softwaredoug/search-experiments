@@ -11,9 +11,19 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 try:
-    from ._plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+    from ._plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_max_ndcg_m_by_dataset,
+        mean_ndcg_m_value,
+    )
 except ImportError:  # Script execution from the scripts directory.
-    from _plot_helpers import add_mean_max_ndcg_line, mean_max_ndcg_by_dataset
+    from _plot_helpers import (
+        add_mean_max_ndcg_m_line,
+        is_ndcg_m_row,
+        mean_max_ndcg_m_by_dataset,
+        mean_ndcg_m_value,
+    )
 
 
 BASELINES = ["bm25", "bm25_strong_title", "embedding_e5"]
@@ -68,9 +78,11 @@ def _include_in_ndcg_plot(row: dict[str, str]) -> bool:
 def _aggregate(rows: list[dict[str, str]]):
     agg = defaultdict(lambda: {"sum": 0.0, "count": 0})
     for row in rows:
+        if not is_ndcg_m_row(row):
+            continue
         strategy_name = STRATEGY_ALIASES.get(row["strategy_name"], row["strategy_name"])
         key = (row["dataset"], strategy_name)
-        agg[key]["sum"] += float(row["mean_ndcg"])
+        agg[key]["sum"] += float(mean_ndcg_m_value(row))
         agg[key]["count"] += 1
     aggregated = []
     for (dataset, strategy), vals in agg.items():
@@ -122,7 +134,7 @@ def _plot_dataset(
     ax.set_xticklabels(strategies, rotation=30, ha="right")
     y_min = 0.2 if dataset == "wands" else 0
     if max_ndcg is not None:
-        add_mean_max_ndcg_line(ax, max_ndcg)
+        add_mean_max_ndcg_m_line(ax, max_ndcg)
         ax.legend(loc="best", fontsize=8)
     ax.set_ylim(y_min, max(max(means) * 1.1 if means else 1, (max_ndcg or 0) * 1.05))
     ax.grid(axis="y", linestyle="--", alpha=0.4)
@@ -150,7 +162,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rows = [row for row in _load_results(results_path) if _include_in_ndcg_plot(row)]
-    max_ndcg_by_dataset = mean_max_ndcg_by_dataset(rows)
+    max_ndcg_by_dataset = mean_max_ndcg_m_by_dataset(rows)
     aggregated = _aggregate(rows)
     for dataset, mean_ndcg in GPT5_HARDCODED_NDCG.items():
         if any(

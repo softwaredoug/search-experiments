@@ -6,6 +6,11 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from ._plot_helpers import is_ndcg_m_row
+except ImportError:  # Script execution from the scripts directory.
+    from _plot_helpers import is_ndcg_m_row
+
 STRATEGIES = (
     ("wands_pointwise_judge_gpt5_mini", "GPT-5-mini pointwise"),
     ("wands_pointwise_judge_gpt5", "GPT-5 pointwise"),
@@ -32,9 +37,9 @@ def _read_agreement_means(path: Path) -> dict[tuple[str, str], float]:
                 raise ValueError(
                     f"Expected only WANDS judge rows; got {dataset}/{strategy}."
                 )
-            if row["metric_name"].lower() != "ndcg":
+            if not is_ndcg_m_row(row):
                 raise ValueError(
-                    f"Expected NDCG as the ranking metric for {strategy}, "
+                    f"Expected NDCG_M as the ranking metric for {strategy}, "
                     f"got {row['metric_name']!r}."
                 )
             for field in AGREEMENT_FIELDS:

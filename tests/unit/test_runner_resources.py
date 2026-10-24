@@ -5,7 +5,11 @@ import pandas as pd
 import pytest
 
 from exps.runner import _report_metric, _write_summary_csv
-from exps.runners.run import _mean_max_ndcg, _resource_summary, _resource_values_by_query
+from exps.runners.run import (
+    _mean_max_ndcg_m,
+    _resource_summary,
+    _resource_values_by_query,
+)
 
 
 def test_resource_summary_rolls_up_once_per_query_and_ignores_missing_values():
@@ -57,24 +61,24 @@ def test_resource_values_reject_non_numeric_data():
         _resource_values_by_query(graded)
 
 
-def test_mean_max_ndcg_averages_once_per_query():
+def test_mean_max_ndcg_m_averages_once_per_query():
     graded = pd.DataFrame(
         {
             "query": ["first", "first", "second"],
             "query_id": [1, 1, 2],
             "rank": [1, 2, 1],
-            "max_ndcg": [0.8, 0.8, 0.4],
+            "max_ndcg_m": [0.8, 0.8, 0.4],
         }
     )
 
-    assert _mean_max_ndcg(graded) == pytest.approx(0.6)
+    assert _mean_max_ndcg_m(graded) == pytest.approx(0.6)
 
 
-def test_mean_max_ndcg_requires_metric_from_cheat_at_search():
+def test_mean_max_ndcg_m_requires_metric_from_cheat_at_search():
     graded = pd.DataFrame({"query": ["query"], "query_id": [1]})
 
-    with pytest.raises(ValueError, match="missing max_ndcg"):
-        _mean_max_ndcg(graded)
+    with pytest.raises(ValueError, match="missing max_ndcg_m"):
+        _mean_max_ndcg_m(graded)
 
 
 def test_resource_summary_ignores_non_resource_columns():
@@ -117,10 +121,13 @@ def test_summary_csv_adds_resource_columns_to_existing_reports(tmp_path):
         result=SimpleNamespace(
             strategy_name="agentic",
             strategy_params={},
-            metric_name="NDCG",
+            metric_name="NDCG_M",
             summary={
-                "mean_ndcg": 0.4,
-                "mean_max_ndcg": 0.9,
+                "mean_ndcg_g": 0.35,
+                "median_ndcg_g": 0.35,
+                "mean_ndcg_m": 0.4,
+                "median_ndcg_m": 0.4,
+                "mean_max_ndcg_m": 0.9,
                 "mean_resource.tool_calls": 3,
             },
         ),
@@ -131,22 +138,33 @@ def test_summary_csv_adds_resource_columns_to_existing_reports(tmp_path):
         rows = list(reader)
 
     assert "mean_resource.tool_calls" in reader.fieldnames
-    assert "mean_max_ndcg" in reader.fieldnames
+    assert rows[1]["metric_name"] == "NDCG_M"
+    assert "mean_ndcg_g" in reader.fieldnames
+    assert "median_ndcg_g" in reader.fieldnames
+    assert "mean_ndcg_m" in reader.fieldnames
+    assert "median_ndcg_m" in reader.fieldnames
+    assert "mean_max_ndcg_m" in reader.fieldnames
     assert rows[0]["mean_resource.tool_calls"] == ""
     assert rows[1]["mean_resource.tool_calls"] == "3"
-    assert rows[0]["mean_max_ndcg"] == ""
-    assert rows[1]["mean_max_ndcg"] == "0.9"
+    assert rows[0]["mean_ndcg_g"] == ""
+    assert rows[1]["mean_ndcg_g"] == "0.35"
+    assert rows[0]["mean_ndcg_m"] == ""
+    assert rows[1]["mean_ndcg_m"] == "0.4"
+    assert rows[0]["mean_max_ndcg_m"] == ""
+    assert rows[1]["mean_max_ndcg_m"] == "0.9"
     assert rows[1]["tool_calls_mean"] == ""
 
 
 def test_summary_output_includes_generic_resource_statistics(capsys):
     _report_metric(
-        "NDCG",
+        "NDCG_M",
         pd.Series([0.3, 0.5]),
         {
-            "mean_ndcg": 0.4,
-            "median_ndcg": 0.4,
-            "mean_max_ndcg": 0.9,
+            "mean_ndcg_g": 0.3,
+            "median_ndcg_g": 0.3,
+            "mean_ndcg_m": 0.4,
+            "median_ndcg_m": 0.4,
+            "mean_max_ndcg_m": 0.9,
             "mean_agreement": 0.8,
             "mean_pairwise_agreement": 0.9,
             "mean_resource.tool_calls": 2.0,
@@ -159,8 +177,11 @@ def test_summary_output_includes_generic_resource_statistics(capsys):
     output = capsys.readouterr().out
     assert "# Summary" in output
     assert "Retrieval Metrics:" in output
-    assert "mean_ndcg: 0.4000" in output
-    assert "mean_max_ndcg (judged ceiling): 0.9000" in output
+    assert "mean_ndcg_g: 0.3000" in output
+    assert "median_ndcg_g: 0.3000" in output
+    assert "mean_ndcg_m: 0.4000" in output
+    assert "median_ndcg_m: 0.4000" in output
+    assert "mean_max_ndcg_m (judged ceiling): 0.9000" in output
     assert "mean_agreement: 0.8000" in output
     assert "# Resources" in output
     assert "mean_tool_calls: 2.0000" in output

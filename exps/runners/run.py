@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import pandas as pd
-from cheat_at_search.search import run_strategy
+from cheat_at_search.search import ndcgs, run_strategy
 from pydantic import BaseModel, ConfigDict
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
@@ -166,19 +166,21 @@ def _resource_summary(resources: dict[str, pd.Series]) -> dict[str, float]:
     return summary
 
 
-def _mean_max_ndcg(graded: pd.DataFrame) -> float:
+def _mean_max_ndcg_m(graded: pd.DataFrame) -> float:
     if graded.empty:
         return 0.0
-    if "max_ndcg" not in graded.columns:
+    if "max_ndcg_m" not in graded.columns:
         raise ValueError(
-            "Search results are missing max_ndcg; update cheat-at-search."
+            "Search results are missing max_ndcg_m; update cheat-at-search."
         )
     query_keys = [column for column in ("query", "query_id") if column in graded]
     if not query_keys:
-        raise ValueError("Search results must include query identifiers for max_ndcg.")
-    grouped = graded.groupby(query_keys, sort=False)["max_ndcg"]
+        raise ValueError(
+            "Search results must include query identifiers for max_ndcg_m."
+        )
+    grouped = graded.groupby(query_keys, sort=False)["max_ndcg_m"]
     if grouped.nunique(dropna=True).gt(1).any():
-        raise ValueError("max_ndcg must have one value per query.")
+        raise ValueError("max_ndcg_m must have one value per query.")
     values = pd.to_numeric(grouped.first(), errors="raise").dropna()
     return float(values.mean()) if not values.empty else 0.0
 
@@ -304,13 +306,19 @@ def run_benchmark(params: RunParams) -> RunResult:
         raise ValueError(
             f"Runner expected {num_queries} metric values but found {len(metric_series)}."
         )
-    metric_key = metric_name.lower()
+    ndcg_g_series = ndcgs(graded, ideal="global")
+    ndcg_m_series = ndcgs(graded, ideal="max")
     resource_values = _resource_values_by_query(graded)
     summary = {
-        f"mean_{metric_key}": float(metric_series.mean()) if not metric_series.empty else 0.0,
-        f"median_{metric_key}": float(metric_series.median()) if not metric_series.empty else 0.0,
-        "mean_max_ndcg": _mean_max_ndcg(graded),
+        "mean_ndcg_g": float(ndcg_g_series.mean()) if not ndcg_g_series.empty else 0.0,
+        "median_ndcg_g": float(ndcg_g_series.median()) if not ndcg_g_series.empty else 0.0,
+        "mean_ndcg_m": float(ndcg_m_series.mean()) if not ndcg_m_series.empty else 0.0,
+        "median_ndcg_m": float(ndcg_m_series.median()) if not ndcg_m_series.empty else 0.0,
+        "mean_max_ndcg_m": _mean_max_ndcg_m(graded),
     }
+    if metric_name == "MRR":
+        summary["mean_mrr"] = float(metric_series.mean()) if not metric_series.empty else 0.0
+        summary["median_mrr"] = float(metric_series.median()) if not metric_series.empty else 0.0
     summary.update(_resource_summary(resource_values))
     if not graded.empty:
         query_agreement = graded.groupby(["query", "query_id"], sort=False)

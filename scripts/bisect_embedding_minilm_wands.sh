@@ -18,7 +18,7 @@ import re
 import sys
 
 output = os.environ.get("OUTPUT", "")
-match = re.search(r"mean_ndcg=([0-9]*\.[0-9]+)", output)
+match = re.search(r"mean_ndcg_m=([0-9]*\.[0-9]+)", output)
 if not match:
     sys.exit(125)
 

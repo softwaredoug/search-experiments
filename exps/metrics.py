@@ -10,7 +10,7 @@ except ImportError:  # pragma: no cover - fallback when dependency lacks MRR
 def metric_for_dataset(dataset_name: str):
     if dataset_name in {"msmarco", "minimarco"}:
         return "MRR", mrrs
-    return "NDCG", ndcgs
+    return "NDCG_M", ndcgs
 
 
 def mrrs(graded: pd.DataFrame) -> pd.Series:
@@ -63,4 +63,3 @@ def _grade_column(df: pd.DataFrame) -> str | None:
         if col in df.columns:
             return col
     return None
-
