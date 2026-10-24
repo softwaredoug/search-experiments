@@ -209,6 +209,17 @@ def _query_results(
     return results, grade_col
 
 
+def _mark_judged_results(
+    graded: pd.DataFrame, judgments: pd.DataFrame
+) -> pd.DataFrame:
+    keys = ["query_id", "query", "doc_id"]
+    judged_docs = pd.MultiIndex.from_frame(judgments[keys].drop_duplicates())
+    result_docs = pd.MultiIndex.from_frame(graded[keys])
+    output = graded.copy()
+    output["judged"] = result_docs.isin(judged_docs)
+    return output
+
+
 def run_benchmark(params: RunParams) -> RunResult:
     strategy_config, strategy_params, requires_bm25 = load_strategy(
         params.strategy_path, device=params.device, base_path=params.base_path
@@ -283,6 +294,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         include_agreement=True,
         include_pairwise_agreement=True,
     )
+    graded = _mark_judged_results(graded, judgments)
     if trace_path is not None:
         query_dirs = (
             [path for path in trace_path.iterdir() if path.is_dir()]

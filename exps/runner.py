@@ -184,7 +184,7 @@ def _write_full_results_parquet(
     graded = result.graded
     if graded is None or graded.empty:
         raise ValueError("Full-results Parquet output requires graded benchmark results.")
-    required_columns = {"query_id", "query", "doc_id", "rank"}
+    required_columns = {"query_id", "query", "doc_id", "rank", "grade", "judged"}
     missing_columns = required_columns.difference(graded.columns)
     if missing_columns:
         raise ValueError(
@@ -194,6 +194,9 @@ def _write_full_results_parquet(
 
     output = graded.loc[graded["rank"] <= 10].copy()
     output["doc_id"] = output["doc_id"].astype("string")
+    output["judged"] = output["judged"].astype(bool)
+    output["grade"] = pd.to_numeric(output["grade"], errors="raise").astype("Float64")
+    output.loc[~output["judged"], "grade"] = pd.NA
     output["dataset"] = dataset
     output["run_id"] = run_id
     output["commit_sha"] = commit_sha

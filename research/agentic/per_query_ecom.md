@@ -10,7 +10,7 @@ A query is consistently poor when its `NDCG_M` is below 0.30 in all 18 agentic r
 
 The summary metrics are means across all 18 agentic runs. The BM25 column is the mean across its three seeds. For the detailed rankings, the same representative variant is used throughout: `agentic_gpt6_luna_bm25`, seed 43.
 
-The ideal side lists positive-grade WANDS judgments ordered by grade descending (document ID breaks ties), up to 10. It is not padded with grade-0 documents. The agentic side preserves the returned rank order; unjudged results have grade 0.
+The ideal side lists positive-grade WANDS judgments ordered by grade descending (document ID breaks ties), up to 10. It is not padded with grade-0 documents. The agentic side preserves the returned rank order. A displayed `NA` means the document has no WANDS judgment; grade 0 is reserved for documents explicitly judged irrelevant. The Parquet exports retain this distinction in nullable `grade` and boolean `judged` columns.
 
 ## Selected queries
 
@@ -62,13 +62,13 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 4797 | wolak 6 drawer double dresser | 1 | 0 | 14542 | merlyn 6- piece outdoor garden patio furniture |
-| 2 | 1 | 8531 | open console with 6 drawers | 2 | 0 | 30335 | merlyn 6-piece outdoor garden patio furniture |
-| 3 | 1 | 8817 | jehova 6 drawer chest | 3 | 0 | 35606 | merlyn 6 piece sofa seating group with cushions |
-| 4 | 1 | 9877 | chon 6 drawer chest | 4 | 0 | 35589 | merlyn 6 piece sectional seating group with cushions |
-| 5 | 1 | 10039 | patino 6 drawer storage chest | 5 | 0 | 35590 | merlyn 6 piece rattan sectional seating group with cushions |
-| 6 | 1 | 10746 | loree 6 drawer double dresser | 6 | 0 | 30336 | merlyn 6-piece patio furniture set corner sofa set with thick removable cushions |
-| 7 | 1 | 11433 | 6 piece free form etagere plant stand set | 7 | 0 | 35566 | merlyn 6 piece rattan sofa seating group with cushions |
+| 1 | 1 | 4797 | wolak 6 drawer double dresser | 1 | NA | 14542 | merlyn 6- piece outdoor garden patio furniture |
+| 2 | 1 | 8531 | open console with 6 drawers | 2 | NA | 30335 | merlyn 6-piece outdoor garden patio furniture |
+| 3 | 1 | 8817 | jehova 6 drawer chest | 3 | NA | 35606 | merlyn 6 piece sofa seating group with cushions |
+| 4 | 1 | 9877 | chon 6 drawer chest | 4 | NA | 35589 | merlyn 6 piece sectional seating group with cushions |
+| 5 | 1 | 10039 | patino 6 drawer storage chest | 5 | NA | 35590 | merlyn 6 piece rattan sectional seating group with cushions |
+| 6 | 1 | 10746 | loree 6 drawer double dresser | 6 | NA | 30336 | merlyn 6-piece patio furniture set corner sofa set with thick removable cushions |
+| 7 | 1 | 11433 | 6 piece free form etagere plant stand set | 7 | NA | 35566 | merlyn 6 piece rattan sofa seating group with cushions |
 | 8 | 1 | 12649 | shell 6 3/4 '' h x 96 '' w x 5 1/2 '' d crown molding | — | — | — | — |
 | 9 | 1 | 12802 | biarritz series 3 '' x 6 '' ceramic brick look subway tile | — | — | — | — |
 | 10 | 1 | 15270 | aderyn outdoor 6 piece sofa seating group with cushions | — | — | — | — |
@@ -79,8 +79,8 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 4288 | brightech skylite led torchiere floor lamp – bright , high lumen uplight for reading in living rooms & offices - 3 way dimmable to 30 % brightness - tall standing pole light - black | 1 | 0 | 22087 | window film one way privacy glass reflective anti uv solar blockingtint foil |
-| 2 | 1 | 30284 | aps-fillerends8 | 2 | 0 | 3993 | non-adhesive privacy window film |
+| 1 | 1 | 4288 | brightech skylite led torchiere floor lamp – bright , high lumen uplight for reading in living rooms & offices - 3 way dimmable to 30 % brightness - tall standing pole light - black | 1 | NA | 22087 | window film one way privacy glass reflective anti uv solar blockingtint foil |
+| 2 | 1 | 30284 | aps-fillerends8 | 2 | NA | 3993 | non-adhesive privacy window film |
 | — | — | — | — | — | — | — | — |
 | — | — | — | — | — | — | — | — |
 | — | — | — | — | — | — | — | — |
@@ -96,16 +96,16 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 30305 | ajmail geometric purple/gray area rug | 1 | 0 | 15498 | katie oriental gray/navy area rug |
-| 2 | 1 | 9138 | delcastillo geometric purple area rug | 2 | 0 | 15491 | katie oriental ivory / blue area rug |
-| 3 | 1 | 18919 | aftan geometric purple/gray area rug | 3 | 0 | 15492 | katie oriental blue/ivory area rug |
-| — | — | — | — | 4 | 0 | 15493 | katie oriental beige / gray area rug |
-| — | — | — | — | 5 | 0 | 4100 | katie oriental multicolor area rug |
-| — | — | — | — | 6 | 0 | 4099 | katie oriental fuchsia area rug |
-| — | — | — | — | 7 | 0 | 4096 | katie oriental cream area rug |
-| — | — | — | — | 8 | 0 | 11839 | teen pink area rug |
-| — | — | — | — | 9 | 0 | 2560 | purple area rug |
-| — | — | — | — | 10 | 0 | 21693 | multi area rug |
+| 1 | 2 | 30305 | ajmail geometric purple/gray area rug | 1 | NA | 15498 | katie oriental gray/navy area rug |
+| 2 | 1 | 9138 | delcastillo geometric purple area rug | 2 | NA | 15491 | katie oriental ivory / blue area rug |
+| 3 | 1 | 18919 | aftan geometric purple/gray area rug | 3 | NA | 15492 | katie oriental blue/ivory area rug |
+| — | — | — | — | 4 | NA | 15493 | katie oriental beige / gray area rug |
+| — | — | — | — | 5 | NA | 4100 | katie oriental multicolor area rug |
+| — | — | — | — | 6 | NA | 4099 | katie oriental fuchsia area rug |
+| — | — | — | — | 7 | NA | 4096 | katie oriental cream area rug |
+| — | — | — | — | 8 | NA | 11839 | teen pink area rug |
+| — | — | — | — | 9 | NA | 2560 | purple area rug |
+| — | — | — | — | 10 | NA | 21693 | multi area rug |
 
 ### 383 — minnestrista
 
@@ -113,7 +113,7 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 30432 | vieques | 1 | 0 | 29416 | minnesota swivel adjustable height bar stool |
+| 1 | 1 | 30432 | vieques | 1 | NA | 29416 | minnesota swivel adjustable height bar stool |
 | 2 | 1 | 33008 | vermiculite | — | — | — | — |
 | 3 | 1 | 35925 | flexarm sng | — | — | — | — |
 | — | — | — | — | — | — | — | — |
@@ -130,16 +130,16 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 20746 | 10 ft outdoor patio umbrella solar powered led lighted sun shade market waterproof 8 ribs umbrella with crank and cross base for garden deck backyard pool shade outside deck swimming pool -tan | 1 | 0 | 18745 | large table base |
-| — | — | — | — | 2 | 0 | 16038 | levins 29 '' table base |
-| — | — | — | — | 3 | 0 | 21791 | pedestal table |
-| — | — | — | — | 4 | 0 | 23058 | 57 '' l maple pedestal base cards table |
-| — | — | — | — | 5 | 0 | 12555 | gaige 24 3/4 '' h x 14 3/8 '' w x 2 1/2 '' d large pedestal base |
-| — | — | — | — | 6 | 0 | 5992 | kimbell pedestal base dining table |
-| — | — | — | — | 7 | 0 | 22315 | large umbrella weight |
-| — | — | — | — | 8 | 0 | 495 | monmouth free standing umbrella base |
-| — | — | — | — | 9 | 0 | 8115 | steel free standing umbrella base |
-| — | — | — | — | 10 | 0 | 551 | resin free standing umbrella base |
+| 1 | 1 | 20746 | 10 ft outdoor patio umbrella solar powered led lighted sun shade market waterproof 8 ribs umbrella with crank and cross base for garden deck backyard pool shade outside deck swimming pool -tan | 1 | NA | 18745 | large table base |
+| — | — | — | — | 2 | NA | 16038 | levins 29 '' table base |
+| — | — | — | — | 3 | NA | 21791 | pedestal table |
+| — | — | — | — | 4 | NA | 23058 | 57 '' l maple pedestal base cards table |
+| — | — | — | — | 5 | NA | 12555 | gaige 24 3/4 '' h x 14 3/8 '' w x 2 1/2 '' d large pedestal base |
+| — | — | — | — | 6 | NA | 5992 | kimbell pedestal base dining table |
+| — | — | — | — | 7 | NA | 22315 | large umbrella weight |
+| — | — | — | — | 8 | NA | 495 | monmouth free standing umbrella base |
+| — | — | — | — | 9 | NA | 8115 | steel free standing umbrella base |
+| — | — | — | — | 10 | NA | 551 | resin free standing umbrella base |
 
 ### 465 — white abstract
 
@@ -147,16 +147,16 @@ Mean `NDCG_M` across agentic runs: **0.000**; mean `NDCG_G`: **0.000**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 12092 | 2 piece black and white abstract fennel plants with seeds monochrome garden condiment ornament kitchen curtain set | 1 | 0 | 34230 | powell white abstract area rug |
-| 2 | 1 | 12695 | quickstand white portable floor recessed projector screen | 2 | 0 | 20560 | mittler grey/white abstract rug |
-| — | — | — | — | 3 | 0 | 42512 | devante abstract white area rug |
-| — | — | — | — | 4 | 0 | 25541 | varnell abstract black/white area rug |
-| — | — | — | — | 5 | 0 | 38699 | ahaan abstract white/gray/sunny yellow area rug |
-| — | — | — | — | 6 | 0 | 17291 | abstract tufted wool black/ivory/gray area rug |
-| — | — | — | — | 7 | 0 | 26738 | abstract black/ivory area rug |
-| — | — | — | — | 8 | 0 | 20584 | mccampbell abstract navy blue/white/gray area rug |
-| — | — | — | — | 9 | 0 | 41867 | burnstad abstract navy/aqua/light gray/white area rug |
-| — | — | — | — | 10 | 0 | 38285 | coughlin abstract ivory/blue/gold area rug |
+| 1 | 2 | 12092 | 2 piece black and white abstract fennel plants with seeds monochrome garden condiment ornament kitchen curtain set | 1 | NA | 34230 | powell white abstract area rug |
+| 2 | 1 | 12695 | quickstand white portable floor recessed projector screen | 2 | NA | 20560 | mittler grey/white abstract rug |
+| — | — | — | — | 3 | NA | 42512 | devante abstract white area rug |
+| — | — | — | — | 4 | NA | 25541 | varnell abstract black/white area rug |
+| — | — | — | — | 5 | NA | 38699 | ahaan abstract white/gray/sunny yellow area rug |
+| — | — | — | — | 6 | NA | 17291 | abstract tufted wool black/ivory/gray area rug |
+| — | — | — | — | 7 | NA | 26738 | abstract black/ivory area rug |
+| — | — | — | — | 8 | NA | 20584 | mccampbell abstract navy blue/white/gray area rug |
+| — | — | — | — | 9 | NA | 41867 | burnstad abstract navy/aqua/light gray/white area rug |
+| — | — | — | — | 10 | NA | 38285 | coughlin abstract ivory/blue/gold area rug |
 
 ### 207 — dull bed with shirt head board
 
@@ -164,16 +164,16 @@ Mean `NDCG_M` across agentic runs: **0.002**; mean `NDCG_G`: **0.005**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 779 | chavis slat headboard | 1 | 0 | 17765 | full/double upholstered low profile sleigh bed |
-| 2 | 1 | 907 | gadji full/queen open-frame headboard | 2 | 0 | 17766 | full/double low profile sleigh bed |
-| 3 | 1 | 1898 | hayman king bookcase headboard | 3 | 0 | 33525 | brancaccio full low profile sleigh bed |
-| 4 | 1 | 3526 | graham panel headboard | 4 | 0 | 22063 | vita full upholstered low profile standard bed |
-| 5 | 1 | 4342 | jayson double panel metal slat headboard | 5 | 0 | 29042 | 17 stories full size bed frame with headboard |
-| 6 | 1 | 4343 | aldo upholstered wingback headboard | 6 | 0 | 34833 | upholstered low profile platform bed |
-| 7 | 1 | 4351 | eva-mae upholstered panel headboard | 7 | 0 | 42936 | rick upholstered low profile platform bed |
-| 8 | 1 | 5953 | idylberry upholstered panel headboard | 8 | 0 | 42889 | kira low profile platform bed |
-| 9 | 1 | 8351 | bridget upholstered panel headboard | 9 | 0 | 42891 | tara low profile platform bed |
-| 10 | 1 | 11813 | cartoon queen upholstered panel headboard | 10 | 0 | 30173 | benevides low profile platform bed |
+| 1 | 1 | 779 | chavis slat headboard | 1 | NA | 17765 | full/double upholstered low profile sleigh bed |
+| 2 | 1 | 907 | gadji full/queen open-frame headboard | 2 | NA | 17766 | full/double low profile sleigh bed |
+| 3 | 1 | 1898 | hayman king bookcase headboard | 3 | NA | 33525 | brancaccio full low profile sleigh bed |
+| 4 | 1 | 3526 | graham panel headboard | 4 | NA | 22063 | vita full upholstered low profile standard bed |
+| 5 | 1 | 4342 | jayson double panel metal slat headboard | 5 | NA | 29042 | 17 stories full size bed frame with headboard |
+| 6 | 1 | 4343 | aldo upholstered wingback headboard | 6 | NA | 34833 | upholstered low profile platform bed |
+| 7 | 1 | 4351 | eva-mae upholstered panel headboard | 7 | NA | 42936 | rick upholstered low profile platform bed |
+| 8 | 1 | 5953 | idylberry upholstered panel headboard | 8 | NA | 42889 | kira low profile platform bed |
+| 9 | 1 | 8351 | bridget upholstered panel headboard | 9 | NA | 42891 | tara low profile platform bed |
+| 10 | 1 | 11813 | cartoon queen upholstered panel headboard | 10 | NA | 30173 | benevides low profile platform bed |
 
 ### 485 — pedistole sink
 
@@ -181,16 +181,16 @@ Mean `NDCG_M` across agentic runs: **0.002**; mean `NDCG_G`: **0.007**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 1301 | 33 '' l x 22 '' w farmhouse/apron kitchen sink with basket strainer and drain assembly | 1 | 0 | 22210 | archer® vitreous china pedestal bathroom sink |
-| 2 | 1 | 1303 | 33 '' l x 20 '' w double basin farmhouse/apron kitchen sink with sink grid and basket strainer | 2 | 0 | 3790 | sussex vitreous china rectangular pedestal bathroom sink with overflow |
-| 3 | 1 | 1440 | roald bulanka 72 '' double sink bathroom vanity | 3 | 0 | 3793 | vicki vitreous china oval pedestal bathroom sink with overflow |
-| 4 | 1 | 2271 | double basin 30 '' l x 22 '' w farmhouse/apron kitchen sink | 4 | 0 | 34457 | monaco 16 '' tall glossy white ceramic circular pedestal bathroom sink with overflow |
-| 5 | 1 | 2272 | single bowl 33 '' l x 22 '' w farmhouse/apron kitchen sink | 5 | 0 | 41480 | rectangular undermount lavatory sink |
-| 6 | 1 | 2273 | retrofit 27 '' l x 22 '' w farmhouse/apron kitchen sink | 6 | 0 | 11034 | boyter stone rectangular wall mount bathroom sink |
-| 7 | 1 | 2274 | retrofit 30 '' l x 22 '' w farmhouse/apron kitchen sink | 7 | 0 | 26706 | rectangular undermount bathroom sink with overflow |
-| 8 | 1 | 2275 | retrofit 33 '' l x 22 '' w farmhouse/apron kitchen sink | 8 | 0 | 28227 | white oval undermount bathroom sink |
-| 9 | 1 | 3795 | nepal 33 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 9 | 0 | 34892 | westmere white oval undermount bathroom sink |
-| 10 | 1 | 3796 | apollo 36 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 10 | 0 | 10942 | white ceramic rectangular wall mount bathroom sink |
+| 1 | 1 | 1301 | 33 '' l x 22 '' w farmhouse/apron kitchen sink with basket strainer and drain assembly | 1 | NA | 22210 | archer® vitreous china pedestal bathroom sink |
+| 2 | 1 | 1303 | 33 '' l x 20 '' w double basin farmhouse/apron kitchen sink with sink grid and basket strainer | 2 | NA | 3790 | sussex vitreous china rectangular pedestal bathroom sink with overflow |
+| 3 | 1 | 1440 | roald bulanka 72 '' double sink bathroom vanity | 3 | NA | 3793 | vicki vitreous china oval pedestal bathroom sink with overflow |
+| 4 | 1 | 2271 | double basin 30 '' l x 22 '' w farmhouse/apron kitchen sink | 4 | NA | 34457 | monaco 16 '' tall glossy white ceramic circular pedestal bathroom sink with overflow |
+| 5 | 1 | 2272 | single bowl 33 '' l x 22 '' w farmhouse/apron kitchen sink | 5 | NA | 41480 | rectangular undermount lavatory sink |
+| 6 | 1 | 2273 | retrofit 27 '' l x 22 '' w farmhouse/apron kitchen sink | 6 | NA | 11034 | boyter stone rectangular wall mount bathroom sink |
+| 7 | 1 | 2274 | retrofit 30 '' l x 22 '' w farmhouse/apron kitchen sink | 7 | NA | 26706 | rectangular undermount bathroom sink with overflow |
+| 8 | 1 | 2275 | retrofit 33 '' l x 22 '' w farmhouse/apron kitchen sink | 8 | NA | 28227 | white oval undermount bathroom sink |
+| 9 | 1 | 3795 | nepal 33 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 9 | NA | 34892 | westmere white oval undermount bathroom sink |
+| 10 | 1 | 3796 | apollo 36 '' l x 19 '' w farmhouse/apron kitchen sink with sink grid and strainer | 10 | NA | 10942 | white ceramic rectangular wall mount bathroom sink |
 
 ### 179 — promo codes or discounts
 
@@ -198,13 +198,13 @@ Mean `NDCG_M` across agentic runs: **0.003**; mean `NDCG_G`: **0.027**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 16523 | sp 20 amp interrupter | 1 | 0 | 26779 | airbutler steam shower package |
-| — | — | — | — | 2 | 0 | 21527 | claremont free standing toilet paper holder |
-| — | — | — | — | 3 | 0 | 1200 | breccan patio furniture on clearance 7 piece rattan sectional seating group with cushions |
-| — | — | — | — | 4 | 0 | 1208 | halla patio furniture on clearance 7 piece rattan sectional seating group with cushions |
-| — | — | — | — | 5 | 0 | 39313 | whitcher reflections over the door jewelry armoire with mirror |
-| — | — | — | — | 6 | 0 | 33447 | mabe power loom red/gold/beige/black rug |
-| — | — | — | — | 7 | 0 | 12501 | plastic belt swing with chains |
+| 1 | 1 | 16523 | sp 20 amp interrupter | 1 | NA | 26779 | airbutler steam shower package |
+| — | — | — | — | 2 | NA | 21527 | claremont free standing toilet paper holder |
+| — | — | — | — | 3 | NA | 1200 | breccan patio furniture on clearance 7 piece rattan sectional seating group with cushions |
+| — | — | — | — | 4 | NA | 1208 | halla patio furniture on clearance 7 piece rattan sectional seating group with cushions |
+| — | — | — | — | 5 | NA | 39313 | whitcher reflections over the door jewelry armoire with mirror |
+| — | — | — | — | 6 | NA | 33447 | mabe power loom red/gold/beige/black rug |
+| — | — | — | — | 7 | NA | 12501 | plastic belt swing with chains |
 | — | — | — | — | — | — | — | — |
 | — | — | — | — | — | — | — | — |
 | — | — | — | — | — | — | — | — |
@@ -215,16 +215,16 @@ Mean `NDCG_M` across agentic runs: **0.003**; mean `NDCG_G`: **0.005**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 9434 | floyd 24 bottle floor wine bottle and glass rack | 1 | 0 | 32478 | 16 compartment glass rack |
-| 2 | 2 | 42003 | floor 20 pair shoe rack | 2 | 0 | 32475 | 25 compartment glass rack |
-| 3 | 1 | 18 | hermoine 5 piece log rack set | 3 | 0 | 32476 | 36 compartment glass rack |
-| 4 | 1 | 19 | hermond firewood 5 piece log rack set | 4 | 0 | 22194 | wine glass rack |
-| 5 | 1 | 20 | jenks firewood log rack | 5 | 0 | 7070 | opticlean™ 16 compartment glass rack |
-| 6 | 1 | 110 | west harptree 34 '' w garment rack | 6 | 0 | 7066 | opticlean™ 25 compartment glass rack |
-| 7 | 1 | 285 | 3 shelf movable storage rack | 7 | 0 | 7067 | opticlean™ 36 compartment glass rack |
-| 8 | 1 | 573 | 5 - hook freestanding coat rack | 8 | 0 | 7075 | opticlean™ 9 compartment glass rack |
-| 9 | 1 | 635 | 4 - hook freestanding coat rack | 9 | 0 | 19328 | hanging wine glass rack |
-| 10 | 1 | 660 | strine shoe clothing storage rack | 10 | 0 | 32473 | 16 compartment glass extender rack |
+| 1 | 2 | 9434 | floyd 24 bottle floor wine bottle and glass rack | 1 | NA | 32478 | 16 compartment glass rack |
+| 2 | 2 | 42003 | floor 20 pair shoe rack | 2 | NA | 32475 | 25 compartment glass rack |
+| 3 | 1 | 18 | hermoine 5 piece log rack set | 3 | NA | 32476 | 36 compartment glass rack |
+| 4 | 1 | 19 | hermond firewood 5 piece log rack set | 4 | NA | 22194 | wine glass rack |
+| 5 | 1 | 20 | jenks firewood log rack | 5 | NA | 7070 | opticlean™ 16 compartment glass rack |
+| 6 | 1 | 110 | west harptree 34 '' w garment rack | 6 | NA | 7066 | opticlean™ 25 compartment glass rack |
+| 7 | 1 | 285 | 3 shelf movable storage rack | 7 | NA | 7067 | opticlean™ 36 compartment glass rack |
+| 8 | 1 | 573 | 5 - hook freestanding coat rack | 8 | NA | 7075 | opticlean™ 9 compartment glass rack |
+| 9 | 1 | 635 | 4 - hook freestanding coat rack | 9 | NA | 19328 | hanging wine glass rack |
+| 10 | 1 | 660 | strine shoe clothing storage rack | 10 | NA | 32473 | 16 compartment glass extender rack |
 
 ### 480 — pictures to hang over fireplace
 
@@ -232,16 +232,16 @@ Mean `NDCG_M` across agentic runs: **0.006**; mean `NDCG_G`: **0.027**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 7116 | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture | 1 | 0 | 24987 | framed painting print wall art |
-| 2 | 1 | 40171 | giddings family theme wall hanging 8 opening photo sockets picture frame | 2 | 0 | 40859 | cumulus landscape ii by emma scarvey - wrapped canvas painting print |
-| 3 | 1 | 40258 | 2 piece adoria hanging picture frame set | 3 | 0 | 41796 | starry night over rhone - picture frame painting print on paper |
-| — | — | — | — | 4 | 0 | 36122 | painting prints wall art on canvas |
-| — | — | — | — | 5 | 0 | 9354 | ashton art & décor large framed painting print |
-| — | — | — | — | 6 | 0 | 29935 | autumn at argenteuil by claude monet - picture frame painting on canvas |
-| — | — | — | — | 7 | 0 | 8244 | autumn at argenteuil by claude monet - picture frame painting print on canvas |
-| — | — | — | — | 8 | 0 | 29940 | autumn on the seine at argenteuil by claude monet - picture frame painting print on canvas |
-| — | — | — | — | 9 | 0 | 34482 | geometric - picture frame painting print on wood |
-| — | — | — | — | 10 | 0 | 25662 | abstract smoke on the water paint strokes - picture frame graphic art print on canvas |
+| 1 | 1 | 7116 | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture | 1 | NA | 24987 | framed painting print wall art |
+| 2 | 1 | 40171 | giddings family theme wall hanging 8 opening photo sockets picture frame | 2 | NA | 40859 | cumulus landscape ii by emma scarvey - wrapped canvas painting print |
+| 3 | 1 | 40258 | 2 piece adoria hanging picture frame set | 3 | NA | 41796 | starry night over rhone - picture frame painting print on paper |
+| — | — | — | — | 4 | NA | 36122 | painting prints wall art on canvas |
+| — | — | — | — | 5 | NA | 9354 | ashton art & décor large framed painting print |
+| — | — | — | — | 6 | NA | 29935 | autumn at argenteuil by claude monet - picture frame painting on canvas |
+| — | — | — | — | 7 | NA | 8244 | autumn at argenteuil by claude monet - picture frame painting print on canvas |
+| — | — | — | — | 8 | NA | 29940 | autumn on the seine at argenteuil by claude monet - picture frame painting print on canvas |
+| — | — | — | — | 9 | NA | 34482 | geometric - picture frame painting print on wood |
+| — | — | — | — | 10 | NA | 25662 | abstract smoke on the water paint strokes - picture frame graphic art print on canvas |
 
 ### 395 — pantry grey
 
@@ -249,16 +249,16 @@ Mean `NDCG_M` across agentic runs: **0.007**; mean `NDCG_G`: **0.022**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 555 | abernathy 48 '' kitchen pantry | 1 | 0 | 7625 | canora grey kitchen cabinet pantry cupboard freestanding w/adjustable shelves black |
-| 2 | 1 | 17023 | uli 76 '' kitchen pantry | 2 | 0 | 36491 | dewhitt 67 '' pantry cabinet |
-| 3 | 1 | 17835 | ezara stand 61 '' kitchen pantry | 3 | 0 | 32995 | halstead 72 '' kitchen pantry |
-| 4 | 1 | 18245 | dubach 70 '' kitchen pantry | 4 | 0 | 9924 | hythe 35 '' kitchen pantry |
-| 5 | 1 | 18246 | bryaunna 34 '' kitchen pantry | 5 | 0 | 2414 | olivas 60 '' kitchen pantry |
-| 6 | 1 | 21484 | wire baskets for organizing household pantry baskets 4 pack metal baskets for pantry storage fruit drinks wire storage basket freezer pantry storage bins black small wire baskets | 6 | 0 | 36490 | assent 78 '' kitchen pantry |
-| 7 | 1 | 21815 | charliedavid 70.8 '' kitchen pantry | 7 | 0 | 18234 | anie 66 '' kitchen pantry |
-| 8 | 1 | 24056 | easy essentials pantry bread box and divided 169 oz . food storage container | 8 | 0 | 1804 | garretson 72 '' kitchen pantry |
-| 9 | 1 | 25183 | cockfosters 71 '' kitchen pantry | 9 | 0 | 2891 | salina 63 '' kitchen pantry |
-| 10 | 1 | 26545 | mint pantry fragoza mango wood pineapple cutting board | 10 | 0 | 18608 | renteria 72 '' kitchen pantry |
+| 1 | 1 | 555 | abernathy 48 '' kitchen pantry | 1 | NA | 7625 | canora grey kitchen cabinet pantry cupboard freestanding w/adjustable shelves black |
+| 2 | 1 | 17023 | uli 76 '' kitchen pantry | 2 | NA | 36491 | dewhitt 67 '' pantry cabinet |
+| 3 | 1 | 17835 | ezara stand 61 '' kitchen pantry | 3 | NA | 32995 | halstead 72 '' kitchen pantry |
+| 4 | 1 | 18245 | dubach 70 '' kitchen pantry | 4 | NA | 9924 | hythe 35 '' kitchen pantry |
+| 5 | 1 | 18246 | bryaunna 34 '' kitchen pantry | 5 | NA | 2414 | olivas 60 '' kitchen pantry |
+| 6 | 1 | 21484 | wire baskets for organizing household pantry baskets 4 pack metal baskets for pantry storage fruit drinks wire storage basket freezer pantry storage bins black small wire baskets | 6 | NA | 36490 | assent 78 '' kitchen pantry |
+| 7 | 1 | 21815 | charliedavid 70.8 '' kitchen pantry | 7 | NA | 18234 | anie 66 '' kitchen pantry |
+| 8 | 1 | 24056 | easy essentials pantry bread box and divided 169 oz . food storage container | 8 | NA | 1804 | garretson 72 '' kitchen pantry |
+| 9 | 1 | 25183 | cockfosters 71 '' kitchen pantry | 9 | NA | 2891 | salina 63 '' kitchen pantry |
+| 10 | 1 | 26545 | mint pantry fragoza mango wood pineapple cutting board | 10 | NA | 18608 | renteria 72 '' kitchen pantry |
 
 ### 419 — living room ideas
 
@@ -266,16 +266,16 @@ Mean `NDCG_M` across agentic runs: **0.011**; mean `NDCG_G`: **0.011**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 1076 | allen configurable living room set | 1 | 0 | 1879 | allec living room set |
-| 2 | 2 | 1110 | fleck living room 3 piece coffee table set | 2 | 0 | 4691 | modern sun-inspired wall decor |
-| 3 | 2 | 1138 | kendra 2 piece living room set | 3 | 0 | 26113 | modern floral inspired round pine wall decor |
-| 4 | 2 | 11937 | ambesonne grunge 2 panel curtain set , geometric pattern antique design elements mosaic style art , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , teal vermilion plum geometric room darkening rod pocket curtain panels | 4 | 0 | 7116 | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture |
-| 5 | 2 | 11950 | ambesonne london 2 panel curtain set , fun colorful sketch royal guard map rain famous country landmarks and stonehenge , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 5 | 0 | 19525 | steel decorative wall accent |
-| 6 | 2 | 11979 | ambesonne african 2 panel curtain set , inspirations meet with country art design vertical borders , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , cadet blue white | 6 | 0 | 41193 | rocell living room set |
-| 7 | 2 | 11984 | arber cherry blossom curtains , inspirational seasonal flower garden arrangement in pastel color , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , pale blue redwood pink | 7 | 0 | 41407 | accent chair living room/bed room , modern leisure chair pink |
-| 8 | 2 | 11989 | ambesonne aqua 2 panel curtain set , spring flowers on blue backdrop style nature inspired simplistic blooms , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 8 | 0 | 30382 | accent chair living room/bed room , modern leisure chair teal |
-| 9 | 2 | 11995 | ambesonne starfish 2 panel curtain set , graphic illustration of summer season inspired aquatic animals tropical climate , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , orange white | 9 | 0 | 5614 | bersailles living room collection |
-| 10 | 2 | 13781 | fielden configurable living room set | 10 | 0 | 2480 | bethnal living room set |
+| 1 | 2 | 1076 | allen configurable living room set | 1 | NA | 1879 | allec living room set |
+| 2 | 2 | 1110 | fleck living room 3 piece coffee table set | 2 | NA | 4691 | modern sun-inspired wall decor |
+| 3 | 2 | 1138 | kendra 2 piece living room set | 3 | NA | 26113 | modern floral inspired round pine wall decor |
+| 4 | 2 | 11937 | ambesonne grunge 2 panel curtain set , geometric pattern antique design elements mosaic style art , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , teal vermilion plum geometric room darkening rod pocket curtain panels | 4 | NA | 7116 | ebern designs paris canvas decor eiffel tower framed pictures housewarming decor gifts ideas stylish home decor french wall decor paris wall art eiffel tower modern artwork ready to hang picture |
+| 5 | 2 | 11950 | ambesonne london 2 panel curtain set , fun colorful sketch royal guard map rain famous country landmarks and stonehenge , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 5 | NA | 19525 | steel decorative wall accent |
+| 6 | 2 | 11979 | ambesonne african 2 panel curtain set , inspirations meet with country art design vertical borders , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , cadet blue white | 6 | NA | 41193 | rocell living room set |
+| 7 | 2 | 11984 | arber cherry blossom curtains , inspirational seasonal flower garden arrangement in pastel color , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , pale blue redwood pink | 7 | NA | 41407 | accent chair living room/bed room , modern leisure chair pink |
+| 8 | 2 | 11989 | ambesonne aqua 2 panel curtain set , spring flowers on blue backdrop style nature inspired simplistic blooms , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , multicolor | 8 | NA | 30382 | accent chair living room/bed room , modern leisure chair teal |
+| 9 | 2 | 11995 | ambesonne starfish 2 panel curtain set , graphic illustration of summer season inspired aquatic animals tropical climate , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , orange white | 9 | NA | 5614 | bersailles living room collection |
+| 10 | 2 | 13781 | fielden configurable living room set | 10 | NA | 2480 | bethnal living room set |
 
 ### 458 — bubble guppies chair
 
@@ -283,16 +283,16 @@ Mean `NDCG_M` across agentic runs: **0.015**; mean `NDCG_G`: **0.045**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 95 | vasta tdrafting chair | 1 | 0 | 28473 | shopkins kids saucer chair |
-| 2 | 1 | 246 | real good chair | 2 | 0 | 6633 | peppa pig upholstered chair kids club |
-| 3 | 1 | 308 | exectuive chair | 3 | 0 | 6629 | upholstered kids desk / activity chair |
-| 4 | 1 | 451 | olin upholstered side chair | 4 | 0 | 25328 | kids foam chair |
-| 5 | 1 | 1044 | standard 100 % cotton bean bag chair & lounger | 5 | 0 | 13199 | kids vinyl padded folding chair |
-| 6 | 1 | 1118 | kerensa rocking chair | 6 | 0 | 2351 | starla whale tales kids chair |
-| 7 | 1 | 1150 | kynaston 34 '' wide balloon chair | 7 | 0 | 8445 | single armrest kids club chair |
-| 8 | 1 | 1154 | cardtronics 47 '' wide tufted velvet chesterfield chair | 8 | 0 | 13231 | kids novelty chair |
-| 9 | 1 | 1167 | kassell 43.5 '' wide leather match armchair | 9 | 0 | 14923 | kids cotton chair |
-| 10 | 1 | 2475 | bonifant 32 '' wide linen balloon chair | 10 | 0 | 42534 | essonne kids chair |
+| 1 | 1 | 95 | vasta tdrafting chair | 1 | NA | 28473 | shopkins kids saucer chair |
+| 2 | 1 | 246 | real good chair | 2 | NA | 6633 | peppa pig upholstered chair kids club |
+| 3 | 1 | 308 | exectuive chair | 3 | NA | 6629 | upholstered kids desk / activity chair |
+| 4 | 1 | 451 | olin upholstered side chair | 4 | NA | 25328 | kids foam chair |
+| 5 | 1 | 1044 | standard 100 % cotton bean bag chair & lounger | 5 | NA | 13199 | kids vinyl padded folding chair |
+| 6 | 1 | 1118 | kerensa rocking chair | 6 | NA | 2351 | starla whale tales kids chair |
+| 7 | 1 | 1150 | kynaston 34 '' wide balloon chair | 7 | NA | 8445 | single armrest kids club chair |
+| 8 | 1 | 1154 | cardtronics 47 '' wide tufted velvet chesterfield chair | 8 | NA | 13231 | kids novelty chair |
+| 9 | 1 | 1167 | kassell 43.5 '' wide leather match armchair | 9 | NA | 14923 | kids cotton chair |
+| 10 | 1 | 2475 | bonifant 32 '' wide linen balloon chair | 10 | NA | 42534 | essonne kids chair |
 
 ### 400 — small ladies rocker swivel recliner
 
@@ -300,16 +300,16 @@ Mean `NDCG_M` across agentic runs: **0.021**; mean `NDCG_G`: **0.063**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 2266 | 33.8 '' wide manual swivel recliner | 1 | 0 | 16208 | swivel rocker fabric recliner chair |
-| 2 | 1 | 2517 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 2 | 0 | 19989 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room |
-| 3 | 1 | 2636 | 25 '' wide faux leather manual swivel standard recliner | 3 | 0 | 3184 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( silver ) |
-| 4 | 1 | 9210 | arlo swivel reclining rocking glider | 4 | 0 | 5248 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( smoke grey ) |
-| 5 | 1 | 9420 | starr 46 '' wide faux leather manual standard recliner | 5 | 0 | 19238 | swivel reclining glider |
-| 6 | 1 | 9492 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 6 | 0 | 29457 | hyndi manual rocker standard recliner |
-| 7 | 1 | 11115 | office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 7 | 0 | 12242 | harrel 25 '' wide manual rocker standard recliner |
-| 8 | 1 | 11230 | ruby swivel reclining glider | 8 | 0 | 25260 | 33 '' wide manual rocker standard recliner |
-| 9 | 1 | 14623 | doroteia 36 '' wide manual rocker standard recliner | 9 | 0 | 38437 | abingdon swivel reclining rocking chair glider |
-| 10 | 1 | 17222 | ingmari 35 '' wide manual glider standard recliner | 10 | 0 | 38456 | ann swivel reclining glider |
+| 1 | 1 | 2266 | 33.8 '' wide manual swivel recliner | 1 | NA | 16208 | swivel rocker fabric recliner chair |
+| 2 | 1 | 2517 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 2 | NA | 19989 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room |
+| 3 | 1 | 2636 | 25 '' wide faux leather manual swivel standard recliner | 3 | NA | 3184 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( silver ) |
+| 4 | 1 | 9210 | arlo swivel reclining rocking glider | 4 | NA | 5248 | swivel rocker fabric recliner chair - reclining chair manual , single modern sofa home theater seating for living room ( smoke grey ) |
+| 5 | 1 | 9420 | starr 46 '' wide faux leather manual standard recliner | 5 | NA | 19238 | swivel reclining glider |
+| 6 | 1 | 9492 | home office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 6 | NA | 29457 | hyndi manual rocker standard recliner |
+| 7 | 1 | 11115 | office chair ——ergonomic mesh chair computer chair home executive desk chair comfortable reclining swivel chair and , mid back with wheels for teens/adults ( pink ) | 7 | NA | 12242 | harrel 25 '' wide manual rocker standard recliner |
+| 8 | 1 | 11230 | ruby swivel reclining glider | 8 | NA | 25260 | 33 '' wide manual rocker standard recliner |
+| 9 | 1 | 14623 | doroteia 36 '' wide manual rocker standard recliner | 9 | NA | 38437 | abingdon swivel reclining rocking chair glider |
+| 10 | 1 | 17222 | ingmari 35 '' wide manual glider standard recliner | 10 | NA | 38456 | ann swivel reclining glider |
 
 ### 344 — ottoman bed queen
 
@@ -317,16 +317,16 @@ Mean `NDCG_M` across agentic runs: **0.031**; mean `NDCG_G`: **0.093**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 1 | 545 | loggins storage ottoman | 1 | 0 | 8951 | wadley queen contemporary wood upholstered storage platform bed |
-| 2 | 1 | 998 | karlsefni 37.5 '' wide tufted rectangle standard ottoman | 2 | 0 | 5900 | morphis upholstered storage platform bed |
-| 3 | 1 | 1030 | 48 '' tufted rectangle standard ottoman | 3 | 0 | 16195 | corso upholstered storage platform bed |
-| 4 | 1 | 1367 | roft 50 '' tufted rectangle storage ottoman | 4 | 0 | 16189 | toxey upholstered storage platform bed |
-| 5 | 1 | 1537 | henninger 25 '' tufted round storage ottoman | 5 | 0 | 21175 | dicle upholstered storage platform bed |
-| 6 | 1 | 1563 | luper 41.75 '' wide tufted rectangle storage ottoman | 6 | 0 | 26209 | emberlynn upholstered storage platform bed |
-| 7 | 1 | 1730 | tufted storage ottoman | 7 | 0 | 13832 | juillac queen tufted upholstered low profile storage platform bed |
-| 8 | 1 | 1753 | camden 28.5 '' wide square folding bed cocktail ottoman | 8 | 0 | 33463 | naima queen upholstered storage standard bed |
+| 1 | 1 | 545 | loggins storage ottoman | 1 | NA | 8951 | wadley queen contemporary wood upholstered storage platform bed |
+| 2 | 1 | 998 | karlsefni 37.5 '' wide tufted rectangle standard ottoman | 2 | NA | 5900 | morphis upholstered storage platform bed |
+| 3 | 1 | 1030 | 48 '' tufted rectangle standard ottoman | 3 | NA | 16195 | corso upholstered storage platform bed |
+| 4 | 1 | 1367 | roft 50 '' tufted rectangle storage ottoman | 4 | NA | 16189 | toxey upholstered storage platform bed |
+| 5 | 1 | 1537 | henninger 25 '' tufted round storage ottoman | 5 | NA | 21175 | dicle upholstered storage platform bed |
+| 6 | 1 | 1563 | luper 41.75 '' wide tufted rectangle storage ottoman | 6 | NA | 26209 | emberlynn upholstered storage platform bed |
+| 7 | 1 | 1730 | tufted storage ottoman | 7 | NA | 13832 | juillac queen tufted upholstered low profile storage platform bed |
+| 8 | 1 | 1753 | camden 28.5 '' wide square folding bed cocktail ottoman | 8 | NA | 33463 | naima queen upholstered storage standard bed |
 | 9 | 1 | 1844 | lampkins 24 '' rectangle standard ottoman | 9 | 1 | 41706 | beedle queen upholstered platform bed |
-| 10 | 1 | 1927 | denali 51.18 '' wide faux leather rectangle storage ottoman | 10 | 0 | 42893 | schreffler upholstered storage platform bed |
+| 10 | 1 | 1927 | denali 51.18 '' wide faux leather rectangle storage ottoman | 10 | NA | 42893 | schreffler upholstered storage platform bed |
 
 ### 45 — 70s inspired furniture
 
@@ -334,16 +334,16 @@ Mean `NDCG_M` across agentic runs: **0.042**; mean `NDCG_G`: **0.042**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 1076 | allen configurable living room set | 1 | 0 | 31339 | retro home side chair |
+| 1 | 2 | 1076 | allen configurable living room set | 1 | NA | 31339 | retro home side chair |
 | 2 | 2 | 1202 | baity furniture set | 2 | 1 | 16719 | doty mid century modern upholstered 3 piece living room set |
-| 3 | 2 | 2474 | berlinville living room collection | 3 | 0 | 23551 | siple mid-century modern retro 26.5 '' bar stool |
-| 4 | 2 | 5614 | bersailles living room collection | 4 | 0 | 6389 | rinehart mid century modern dining chair |
-| 5 | 2 | 6498 | danieli living room collection | 5 | 0 | 27029 | james mid-century dining chair |
-| 6 | 2 | 6499 | de foix living room collection | 6 | 0 | 41749 | mcinturff mid-century modern walnut finished coffee table |
-| 7 | 2 | 7851 | boadicea mid century 2 piece living room set | 7 | 0 | 41750 | cutshall mid-century modern walnut finished coffee table |
-| 8 | 2 | 13158 | capel configurable living room set | 8 | 0 | 1441 | caudell mid-century modern fabric loveseat |
-| 9 | 2 | 13550 | bellagio configurable living room set | 9 | 0 | 14692 | markson mid-century modern server |
-| 10 | 2 | 14595 | clardy mid century 3 piece living room set | 10 | 0 | 26446 | vacacion mid century modern buffet table |
+| 3 | 2 | 2474 | berlinville living room collection | 3 | NA | 23551 | siple mid-century modern retro 26.5 '' bar stool |
+| 4 | 2 | 5614 | bersailles living room collection | 4 | NA | 6389 | rinehart mid century modern dining chair |
+| 5 | 2 | 6498 | danieli living room collection | 5 | NA | 27029 | james mid-century dining chair |
+| 6 | 2 | 6499 | de foix living room collection | 6 | NA | 41749 | mcinturff mid-century modern walnut finished coffee table |
+| 7 | 2 | 7851 | boadicea mid century 2 piece living room set | 7 | NA | 41750 | cutshall mid-century modern walnut finished coffee table |
+| 8 | 2 | 13158 | capel configurable living room set | 8 | NA | 1441 | caudell mid-century modern fabric loveseat |
+| 9 | 2 | 13550 | bellagio configurable living room set | 9 | NA | 14692 | markson mid-century modern server |
+| 10 | 2 | 14595 | clardy mid century 3 piece living room set | 10 | NA | 26446 | vacacion mid century modern buffet table |
 
 ### 222 — small loving roomtables
 
@@ -351,16 +351,16 @@ Mean `NDCG_M` across agentic runs: **0.045**; mean `NDCG_G`: **0.045**; BM25 `ND
 
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
-| 1 | 2 | 3666 | dmitry 2 drawer end table | 1 | 0 | 14487 | nesting small end table |
-| 2 | 2 | 4134 | mader solid wood pedestal end table | 2 | 0 | 7525 | nesting end table |
+| 1 | 2 | 3666 | dmitry 2 drawer end table | 1 | NA | 14487 | nesting small end table |
+| 2 | 2 | 4134 | mader solid wood pedestal end table | 2 | NA | 7525 | nesting end table |
 | 3 | 2 | 4162 | ifrane accent end table | 3 | 2 | 24660 | vikki c table nesting tables |
-| 4 | 2 | 5869 | santa cruz end table with storage | 4 | 0 | 25170 | caire frame nesting tables |
-| 5 | 2 | 8983 | mervyn end table | 5 | 0 | 5885 | eastville c table nesting tables |
-| 6 | 2 | 14611 | encinal end table | 6 | 0 | 4313 | 3-tier end table , small book shelf , accent side , and end table |
-| 7 | 2 | 15241 | gosnold tree stump end table | 7 | 0 | 39782 | pomona sled nesting tables |
-| 8 | 2 | 15846 | arsenault end table with storage | 8 | 0 | 25647 | leblanc c table nesting tables |
-| 9 | 2 | 15886 | genata 1 - drawer end table and storage | 9 | 0 | 1108 | carnforth living room coffee table set |
-| 10 | 2 | 17179 | cainsville 4 legs end table set | 10 | 0 | 22479 | pringle chic small wooden console table |
+| 4 | 2 | 5869 | santa cruz end table with storage | 4 | NA | 25170 | caire frame nesting tables |
+| 5 | 2 | 8983 | mervyn end table | 5 | NA | 5885 | eastville c table nesting tables |
+| 6 | 2 | 14611 | encinal end table | 6 | NA | 4313 | 3-tier end table , small book shelf , accent side , and end table |
+| 7 | 2 | 15241 | gosnold tree stump end table | 7 | NA | 39782 | pomona sled nesting tables |
+| 8 | 2 | 15846 | arsenault end table with storage | 8 | NA | 25647 | leblanc c table nesting tables |
+| 9 | 2 | 15886 | genata 1 - drawer end table and storage | 9 | NA | 1108 | carnforth living room coffee table set |
+| 10 | 2 | 17179 | cainsville 4 legs end table set | 10 | NA | 22479 | pringle chic small wooden console table |
 
 ### 173 — bedroom accessories
 
@@ -369,12 +369,12 @@ Mean `NDCG_M` across agentic runs: **0.049**; mean `NDCG_G`: **0.061**; BM25 `ND
 | Ideal rank | Grade | Doc ID | Title | Agentic rank | Grade | Doc ID | Title |
 |---:|---:|---|---|---:|---:|---|---|
 | 1 | 2 | 11214 | akai | 1 | 0 | 4137 | natazhat bohemian bedroom decor boho wall decal |
-| 2 | 2 | 11217 | islay | 2 | 0 | 21029 | anchors away decorative accent cotton throw pillow |
-| 3 | 2 | 25024 | ishiro decorative 5 piece accessory set | 3 | 0 | 7499 | ambrose cute owl decorative cotton throw pillow |
-| 4 | 2 | 29399 | padavano accessory set | 4 | 0 | 23741 | kingsburg decorative cotton throw pillow |
-| 5 | 1 | 279 | hippie bohemian psychedelic peacock polyester tapestry with hanging accessories included | 5 | 0 | 2306 | stegner decorative pillow covers |
-| 6 | 1 | 938 | postell accessory | 6 | 0 | 2307 | steib decorative pillow covers |
-| 7 | 1 | 982 | jovanny toothbrush holder | 7 | 0 | 2303 | sellner decorative pillow covers |
+| 2 | 2 | 11217 | islay | 2 | NA | 21029 | anchors away decorative accent cotton throw pillow |
+| 3 | 2 | 25024 | ishiro decorative 5 piece accessory set | 3 | NA | 7499 | ambrose cute owl decorative cotton throw pillow |
+| 4 | 2 | 29399 | padavano accessory set | 4 | NA | 23741 | kingsburg decorative cotton throw pillow |
+| 5 | 1 | 279 | hippie bohemian psychedelic peacock polyester tapestry with hanging accessories included | 5 | NA | 2306 | stegner decorative pillow covers |
+| 6 | 1 | 938 | postell accessory | 6 | NA | 2307 | steib decorative pillow covers |
+| 7 | 1 | 982 | jovanny toothbrush holder | 7 | NA | 2303 | sellner decorative pillow covers |
 | 8 | 1 | 983 | jovanny tumbler | 8 | 0 | 11965 | ambesonne green leaf 2 panel curtain set , watercolor style olive branch mediterranean tree , lightweight window treatment living room bedroom decor , 56 '' x 63 '' , avocado green |
 | 9 | 1 | 988 | ethan 4 piece bathroom accessory set | 9 | 0 | 11947 | ambesonne asian curtains , oriental antique pattern foliage inspirations geometrical design , window treatments 2 panel set for living room bedroom decor , 56 '' x 63 '' , yellow purple |
 | 10 | 1 | 990 | ethan 3 piece bathroom accessory set | 10 | 0 | 11964 | ambesonne moroccan 2 panel curtain set , circles pattern inspired floral arrangements geometric rectangles , lightweight window treatment living room bedroom decor , 56 '' x 95 '' , aqua orange ruby |

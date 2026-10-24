@@ -14,6 +14,7 @@ from exps.runner import (
 )
 from exps.runners.run import (
     _mean_max_ndcg_m,
+    _mark_judged_results,
     _resource_summary,
     _resource_values_by_query,
 )
@@ -86,6 +87,30 @@ def test_mean_max_ndcg_m_requires_metric_from_cheat_at_search():
 
     with pytest.raises(ValueError, match="missing max_ndcg_m"):
         _mean_max_ndcg_m(graded)
+
+
+def test_mark_judged_results_distinguishes_unjudged_from_grade_zero():
+    graded = pd.DataFrame(
+        {
+            "query_id": [1, 1, 2],
+            "query": ["chair", "chair", "table"],
+            "doc_id": [10, 11, 20],
+            "grade": [0.0, 0.0, 1.0],
+        }
+    )
+    judgments = pd.DataFrame(
+        {
+            "query_id": [1, 2],
+            "query": ["chair", "table"],
+            "doc_id": [10, 20],
+            "grade": [0.0, 1.0],
+        }
+    )
+
+    marked = _mark_judged_results(graded, judgments)
+
+    assert marked["judged"].tolist() == [True, False, True]
+    assert marked["grade"].tolist() == [0.0, 0.0, 1.0]
 
 
 def test_resource_summary_ignores_non_resource_columns():
@@ -169,6 +194,8 @@ def _per_query_graded_results():
             "query_id": [11, 11, 12],
             "doc_id": [101, 102, 201],
             "rank": [1, 2, 1],
+            "grade": [1, 0, 1],
+            "judged": [True, False, True],
             "ndcg_m": [0.8, 0.8, 0.2],
             "ndcg_g": [0.9, 0.9, 0.4],
             "max_ndcg_m": [0.95, 0.95, 0.6],
@@ -223,7 +250,8 @@ def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
     path = tmp_path / "full_results.parquet"
     graded = _per_query_graded_results().assign(
         score=[0.9, 0.8, 0.7],
-        grade=[4, 2, 1],
+        grade=[4, 0, 0],
+        judged=[True, False, True],
         title=["Blue chair A", "Blue chair B", "Wood table"],
         description=["First", "Second", "Third"],
     )
@@ -253,7 +281,10 @@ def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
     assert rows["rank"].tolist() == [1, 2, 1]
     assert rows["doc_id"].tolist() == ["101", "ESCI-102", "201"]
     assert rows["title"].tolist() == ["Blue chair A", "Blue chair B", "Wood table"]
-    assert rows["grade"].tolist() == [4, 2, 1]
+    assert rows["judged"].tolist() == [True, False, True]
+    assert rows["grade"].iloc[0] == 4
+    assert pd.isna(rows["grade"].iloc[1])
+    assert rows["grade"].iloc[2] == 0
     assert rows["dataset"].tolist() == ["wands"] * 3
     assert rows["seed"].tolist() == [43] * 3
     assert rows["run_id"].tolist() == ["run-a"] * 3
