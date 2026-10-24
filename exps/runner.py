@@ -193,6 +193,7 @@ def _write_full_results_parquet(
         )
 
     output = graded.loc[graded["rank"] <= 10].copy()
+    output["doc_id"] = output["doc_id"].astype("string")
     output["dataset"] = dataset
     output["run_id"] = run_id
     output["commit_sha"] = commit_sha

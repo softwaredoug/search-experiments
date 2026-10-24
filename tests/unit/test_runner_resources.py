@@ -227,6 +227,7 @@ def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
         title=["Blue chair A", "Blue chair B", "Wood table"],
         description=["First", "Second", "Third"],
     )
+    graded["doc_id"] = pd.Series([101, "ESCI-102", 201], dtype=object)
     graded = pd.concat(
         [graded, graded.iloc[[0]].assign(rank=11)], ignore_index=True
     )
@@ -250,6 +251,7 @@ def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
     assert len(rows) == 3
     assert rows["query_id"].tolist() == [11, 11, 12]
     assert rows["rank"].tolist() == [1, 2, 1]
+    assert rows["doc_id"].tolist() == ["101", "ESCI-102", "201"]
     assert rows["title"].tolist() == ["Blue chair A", "Blue chair B", "Wood table"]
     assert rows["grade"].tolist() == [4, 2, 1]
     assert rows["dataset"].tolist() == ["wands"] * 3
