@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.plot_gpt6_luna_ecom_study import (
+from scripts.per_query_ecom.plot_gpt6_luna_ecom_study import (
     MODEL_BY_STRATEGY,
     STRATEGIES,
     _read_ndcg_runs,
@@ -269,7 +269,7 @@ def test_main_writes_retrieval_and_cost_pareto_plots_for_both_datasets(
         sys,
         "argv",
         [
-            "plot_gpt6_luna_ecom_study.py",
+            "scripts/per_query_ecom/plot_gpt6_luna_ecom_study.py",
             "--input",
             str(summary_path),
             "--output-prefix",
@@ -318,7 +318,7 @@ def test_main_can_plot_only_selected_dataset(tmp_path, monkeypatch):
         sys,
         "argv",
         [
-            "plot_gpt6_luna_ecom_study.py",
+            "scripts/per_query_ecom/plot_gpt6_luna_ecom_study.py",
             "--input",
             str(summary_path),
             "--output-prefix",

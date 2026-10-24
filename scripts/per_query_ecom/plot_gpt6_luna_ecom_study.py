@@ -7,14 +7,17 @@ from collections import defaultdict
 from pathlib import Path
 
 try:
-    from ._plot_helpers import (
+    from .._plot_helpers import (
         add_mean_max_ndcg_m_line,
         is_ndcg_m_row,
         mean_ndcg_m_value,
         read_mean_max_ndcg_m,
     )
-except ImportError:  # Script execution from the scripts directory.
-    from _plot_helpers import (
+except ImportError:  # Direct script execution from the repository root.
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from scripts._plot_helpers import (
         add_mean_max_ndcg_m_line,
         is_ndcg_m_row,
         mean_ndcg_m_value,

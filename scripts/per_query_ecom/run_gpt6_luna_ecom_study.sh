@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESULTS_CSV="${RESULTS_CSV:-${ROOT_DIR}/research/results/gpt6_luna_wands_bm25_e5_study.csv}"
 PER_QUERY_CSV_DIR="${PER_QUERY_CSV_DIR:-${ROOT_DIR}/research/results/gpt6_luna_wands_bm25_e5_study_per_query}"
 FULL_RESULTS_PARQUET_DIR="${FULL_RESULTS_PARQUET_DIR:-${TMPDIR:-/tmp}/search-experiments/gpt6_luna_wands_bm25_e5_study_full_results}"
@@ -73,7 +73,7 @@ for dataset in "${DATASETS[@]}"; do
   done
 done
 
-uv run python "${ROOT_DIR}/scripts/plot_gpt6_luna_ecom_study.py" \
+uv run python "${ROOT_DIR}/scripts/per_query_ecom/plot_gpt6_luna_ecom_study.py" \
   --input "${RESULTS_CSV}" \
   --output-prefix "${PLOT_OUTPUT_PREFIX}" \
   --dataset "wands"
