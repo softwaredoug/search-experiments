@@ -176,6 +176,10 @@ def main() -> None:
             "BM25 indices or embeddings)."
         ),
     )
+    parser.add_argument(
+        "--cache-salt",
+        help="Optional string included in the strategy-results cache key.",
+    )
     args = parser.parse_args()
 
     if args.query:
@@ -250,6 +254,7 @@ def main() -> None:
         binary_relevance=args.binary_relevance,
         device=args.device,
         no_cache=args.no_cache,
+        cache_salt=args.cache_salt,
     )
     result = diff_benchmark(params)
 

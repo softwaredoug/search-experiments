@@ -230,7 +230,7 @@ def test_benchmark_reports_are_written_under_unique_artifact_run_dirs(tmp_path, 
     assert full_results["run_id"].unique().tolist() == [first.run_id]
 
 
-def test_run_cli_forwards_summary_csv_to_backend(monkeypatch, capsys):
+def test_run_cli_forwards_summary_csv_and_cache_salt_to_backend(monkeypatch, capsys):
     captured = {}
     result = SimpleNamespace(
         metric_name="NDCG_M",
@@ -255,12 +255,15 @@ def test_run_cli_forwards_summary_csv_to_backend(monkeypatch, capsys):
             "unused.yml",
             "--summary-csv",
             "results.csv",
+            "--cache-salt",
+            "round-2",
         ],
     )
 
     main()
 
     assert captured["params"].summary_csv == "results.csv"
+    assert captured["params"].cache_salt == "round-2"
     assert "Reports: /tmp/reports/run-1" in capsys.readouterr().out
 
 

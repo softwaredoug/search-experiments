@@ -66,6 +66,7 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
         workers=1,
         binary_relevance="title",
         device=None,
+        cache_salt="report-round-1",
         summary_csv=str(tmp_path / "results.csv"),
     )
     result = run_benchmark(params)
@@ -95,9 +96,10 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     summary_row = pd.read_csv(tmp_path / "results.csv").iloc[0]
     assert summary_row["run_id"] == result.run_id
     assert summary_row["reports_path"] == str(reports_path)
+    assert summary_row["cache_salt"] == "report-round-1"
 
 
-def test_run_strategy_repeats_cached_query_for_new_seed(tmp_path, monkeypatch):
+def test_run_strategy_cache_ignores_seed_and_uses_cache_salt(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "cheat_at_search.strategy.strategy.ensure_data_subdir",
         lambda _: tmp_path,
@@ -123,20 +125,34 @@ def test_run_strategy_repeats_cached_query_for_new_seed(tmp_path, monkeypatch):
             return [0], [self.calls]
 
     strategy = CountingStrategy()
-    results_seed_1 = run_strategy(
+    results_first_seed = run_strategy(
         strategy, judgments, num_queries=1, seed=11, show_progress=False
     )
-    results_seed_2 = run_strategy(
+    cached_results_new_seed = run_strategy(
         strategy, judgments, num_queries=1, seed=12, show_progress=False
     )
-    cached_results_seed_2 = run_strategy(
-        strategy, judgments, num_queries=1, seed=12, show_progress=False
+    results_new_salt = run_strategy(
+        strategy,
+        judgments,
+        num_queries=1,
+        seed=12,
+        cache_salt="round-2",
+        show_progress=False,
+    )
+    cached_results_new_salt = run_strategy(
+        strategy,
+        judgments,
+        num_queries=1,
+        seed=11,
+        cache_salt="round-2",
+        show_progress=False,
     )
 
     assert strategy.calls == 2
-    assert results_seed_1["score"].iloc[0] == 1
-    assert results_seed_2["score"].iloc[0] == 2
-    assert cached_results_seed_2["score"].iloc[0] == 2
+    assert results_first_seed["score"].iloc[0] == 1
+    assert cached_results_new_seed["score"].iloc[0] == 1
+    assert results_new_salt["score"].iloc[0] == 2
+    assert cached_results_new_salt["score"].iloc[0] == 2
 
 
 def test_diff_benchmark_wands_bm25_all_params(tmp_path):

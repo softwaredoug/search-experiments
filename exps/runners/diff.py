@@ -30,6 +30,7 @@ class DiffParams(BaseModel):
     binary_relevance: str | None = None
     device: str | None = None
     no_cache: bool = False
+    cache_salt: str | None = None
 
 
 class DiffResult(BaseModel):
@@ -66,14 +67,20 @@ def _query_text_map(judgments: pd.DataFrame) -> dict:
 
 
 def _metric_for_query(
-    strategy, judgments: pd.DataFrame, query: str, metric_fn, *, cache: bool
+    strategy,
+    judgments: pd.DataFrame,
+    query: str,
+    metric_fn,
+    *,
+    cache: bool,
+    cache_salt: str | None,
 ) -> float | None:
     if "query" not in judgments.columns:
         return None
     subset = judgments[judgments["query"] == query]
     if subset.empty:
         return None
-    graded = run_strategy(strategy, subset, cache=cache)
+    graded = run_strategy(strategy, subset, cache=cache, cache_salt=cache_salt)
     series = metric_fn(graded)
     if series.empty:
         return None
@@ -191,10 +198,20 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
             strategy_b, corpus, judgments, params.query, params.k
         )
         query_metric_a = _metric_for_query(
-            strategy_a, judgments, params.query, metric_fn, cache=not params.no_cache
+            strategy_a,
+            judgments,
+            params.query,
+            metric_fn,
+            cache=not params.no_cache,
+            cache_salt=params.cache_salt,
         )
         query_metric_b = _metric_for_query(
-            strategy_b, judgments, params.query, metric_fn, cache=not params.no_cache
+            strategy_b,
+            judgments,
+            params.query,
+            metric_fn,
+            cache=not params.no_cache,
+            cache_salt=params.cache_salt,
         )
 
     available_queries = judgments[["query", "query_id"]].drop_duplicates()
@@ -209,6 +226,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         queries=queries,
         seed=params.seed,
         cache=not params.no_cache,
+        cache_salt=params.cache_salt,
     )
     graded_b = run_strategy(
         strategy_b,
@@ -216,6 +234,7 @@ def diff_benchmark(params: DiffParams) -> DiffResult:
         queries=queries,
         seed=params.seed,
         cache=not params.no_cache,
+        cache_salt=params.cache_salt,
     )
     metric_a = metric_fn(graded_a)
     metric_b = metric_fn(graded_b)

@@ -160,6 +160,8 @@ When a strategy is run on a dataset, the results might cached to disk by run_str
 
 You can force the cache to be bypassed with cache=False to run_strategy. The user controls with --no-cache (this only affects run_strategy results, not BM25 indices or embeddings).
 
+The query-sampling `--seed` does not affect the result-cache key. Use `--cache-salt` to separate repeated stochastic runs that use the same queries, such as replay rounds. Keep the seed fixed to sample the same query subset and change the cache salt for each replay.
+
 ## Run / train working folders
 
 All runners use a shared utility to create working folders for each strategy run.
@@ -179,6 +181,7 @@ Where appropriate, we should expect these params:
 --dataset       # The dataset being run on the strategy ie wands, msmarco, etc
 --num-queries   # Number of queries to run as a subset (for faster analysis) 
 --seed          # Random seed for query sampling when num-queries is set
+--cache-salt    # Optional string to distinguish cached stochastic replays
 --workers       # Number of workers to use for parallel processing when applicable
 --no-cache      # Bypass run_strategy cache only (does not affect BM25 indices or embeddings)
 

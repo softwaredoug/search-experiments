@@ -7,17 +7,18 @@ PLOT_OUTPUT_PREFIX="${PLOT_OUTPUT_PREFIX:-${ROOT_DIR}/assets/gpt6_luna_wands_bm2
 WORKERS="${WORKERS:-8}"
 MODEL_WORKERS="${MODEL_WORKERS:-24}"
 DEVICE="${DEVICE:-mps}"
-# Bypass result-cache reads so each seed makes fresh searches; results remain cached per seed.
+# Keep query selection fixed and give each stochastic replay its own result cache.
+SEED="${SEED:-42}"
 NO_CACHE="${NO_CACHE:-false}"
-read -r -a SEEDS <<< "${RUN_SEEDS:-43 44 45 46 47 48 49 50 51}"
-if [[ "${#SEEDS[@]}" -ne 9 ]]; then
-  echo "RUN_SEEDS must contain exactly nine distinct seeds." >&2
+read -r -a CACHE_SALTS <<< "${CACHE_SALTS:-round-1 round-2 round-3 round-4 round-5 round-6 round-7 round-8 round-9}"
+if [[ "${#CACHE_SALTS[@]}" -ne 9 ]]; then
+  echo "CACHE_SALTS must contain exactly nine distinct values." >&2
   exit 2
 fi
-for ((i = 0; i < ${#SEEDS[@]}; i++)); do
-  for ((j = i + 1; j < ${#SEEDS[@]}; j++)); do
-    if [[ "${SEEDS[i]}" == "${SEEDS[j]}" ]]; then
-      echo "RUN_SEEDS must contain exactly nine distinct seeds." >&2
+for ((i = 0; i < ${#CACHE_SALTS[@]}; i++)); do
+  for ((j = i + 1; j < ${#CACHE_SALTS[@]}; j++)); do
+    if [[ "${CACHE_SALTS[i]}" == "${CACHE_SALTS[j]}" ]]; then
+      echo "CACHE_SALTS must contain exactly nine distinct values." >&2
       exit 2
     fi
   done
@@ -41,14 +42,15 @@ for dataset in "${DATASETS[@]}"; do
       workers="${MODEL_WORKERS}"
     fi
 
-    for seed in "${SEEDS[@]}"; do
-      echo "Running ${config} on ${dataset} with seed ${seed} and ${workers} worker(s)"
+    for cache_salt in "${CACHE_SALTS[@]}"; do
+      echo "Running ${config} on ${dataset} with seed ${SEED}, cache salt ${cache_salt}, and ${workers} worker(s)"
       run_args=(
         uv run run
         --strategy "${ROOT_DIR}/${config}"
         --dataset "${dataset}"
         --workers "${workers}"
-        --seed "${seed}"
+        --seed "${SEED}"
+        --cache-salt "${cache_salt}"
         --summary-csv "${RESULTS_CSV}"
       )
       if [[ "${NO_CACHE}" == "true" ]]; then

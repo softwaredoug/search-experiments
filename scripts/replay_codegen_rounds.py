@@ -84,6 +84,7 @@ def main() -> None:
                 codegen_run_round=round_num,
                 num_queries=args.num_queries,
                 seed=args.seed,
+                cache_salt=f"codegen-round-{round_num}",
                 workers=args.workers,
                 device=args.device,
                 no_cache=args.no_cache,

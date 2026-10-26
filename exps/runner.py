@@ -102,6 +102,13 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--cache-salt",
+        help=(
+            "Optional string included in the strategy-results cache key. Use a new "
+            "salt for each replay while keeping --seed fixed."
+        ),
+    )
+    parser.add_argument(
         "--summary-csv",
         help="Write summary stats to CSV (appends if exists).",
     )
@@ -119,6 +126,7 @@ def main() -> None:
             binary_relevance=args.binary_relevance,
             device=args.device,
             no_cache=args.no_cache,
+            cache_salt=args.cache_salt,
         )
         result = run_benchmark(params)
         if result.codegen_artifact_path:
@@ -164,6 +172,7 @@ def main() -> None:
         binary_relevance=args.binary_relevance,
         device=args.device,
         no_cache=args.no_cache,
+        cache_salt=args.cache_salt,
         summary_csv=args.summary_csv,
     )
     result = run_benchmark(params)

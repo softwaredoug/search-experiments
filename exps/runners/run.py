@@ -28,6 +28,7 @@ class RunParams(BaseModel):
     binary_relevance: str | None = None
     device: str | None = None
     no_cache: bool = False
+    cache_salt: str | None = None
     summary_csv: str | None = None
 
 
@@ -294,6 +295,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         num_queries=num_queries,
         seed=params.seed,
         cache=not params.no_cache,
+        cache_salt=params.cache_salt,
         batch_size=batch_size,
         include_agreement=True,
         include_pairwise_agreement=True,
@@ -364,6 +366,7 @@ def run_benchmark(params: RunParams) -> RunResult:
         dataset=params.dataset,
         seed=params.seed,
         artifact_path=artifact_path,
+        cache_salt=params.cache_salt,
         summary_csv=params.summary_csv,
     )
     result.run_id = reports.run_id
