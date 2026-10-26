@@ -80,6 +80,12 @@ Then you use `run_strategy` as follows:
    `ndcg_m` (normalized by max-grade ideal DCG) and `ndcg_g` (normalized by judged-document ideal DCG).
 4. A helper `mrr` that takes these results, and gives per-query MRR
 
+Full benchmark runs automatically write `per_query.csv` and `full_results.parquet`
+under `<artifact_path>/reports/<run_id>`. Strategies without an artifact path use a
+temporary run directory. `RunResult.reports_path` and the optional `--summary-csv`
+aggregate both identify the report directory so downstream analysis can locate the
+per-query and document-level data.
+
 ## Configurable strategies
 
 Every strategy class should be able to be configurable via a yml config file. The yml file looks like:

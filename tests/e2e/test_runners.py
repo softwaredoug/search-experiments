@@ -3,6 +3,7 @@
 See docs/runner_tests_prd.md for requirements.
 """
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -65,6 +66,7 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
         workers=1,
         binary_relevance="title",
         device=None,
+        summary_csv=str(tmp_path / "results.csv"),
     )
     result = run_benchmark(params)
 
@@ -84,6 +86,15 @@ def test_run_benchmark_wands_bm25_all_params(tmp_path):
     assert "mean_" in next(iter(result.summary.keys()))
     assert not any(name.startswith("tool_calls_") for name in result.summary)
     assert not any(name.endswith("_resource.tool_calls") for name in result.summary)
+    reports_path = Path(result.reports_path)
+    assert reports_path.parent.name == "reports"
+    assert result.artifact_path is None
+    assert (reports_path / "per_query.csv").exists()
+    full_results = pd.read_parquet(reports_path / "full_results.parquet")
+    assert not full_results.empty
+    summary_row = pd.read_csv(tmp_path / "results.csv").iloc[0]
+    assert summary_row["run_id"] == result.run_id
+    assert summary_row["reports_path"] == str(reports_path)
 
 
 def test_run_strategy_repeats_cached_query_for_new_seed(tmp_path, monkeypatch):

@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from exps.runner import _write_summary_csv
 from exps.runners.run import RunParams, run_benchmark
 
 
@@ -93,6 +92,7 @@ strategy:
         encoding="utf-8",
     )
 
+    report_path = tmp_path / "wands_judge_summary.csv"
     with (
         patch("exps.runners.run.get_dataset", return_value=dataset),
         patch("exps.judge.engines.llm_pointwise.AutoEnricher", ScriptedJudgeEnricher),
@@ -103,6 +103,7 @@ strategy:
                 dataset="doug_blog",
                 num_queries=1,
                 no_cache=True,
+                summary_csv=str(report_path),
             )
         )
 
@@ -116,8 +117,6 @@ strategy:
     assert result.summary["mean_pairwise_agreement"] == 1.0
     assert result.summary["mean_resource.model_calls"] == 9.0
 
-    report_path = tmp_path / "wands_judge_summary.csv"
-    _write_summary_csv(str(report_path), dataset="wands", result=result)
     with report_path.open(encoding="utf-8", newline="") as handle:
         report_row = next(csv.DictReader(handle))
     assert report_row["mean_agreement"] == "1.0"

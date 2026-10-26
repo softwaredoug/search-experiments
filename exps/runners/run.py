@@ -7,6 +7,7 @@ from cheat_at_search.search import ndcgs, run_strategy
 from pydantic import BaseModel, ConfigDict
 from exps.datasets import DatasetName, get_dataset
 from exps.metrics import metric_for_dataset
+from exps.reporting import write_benchmark_reports
 from exps.strategy_factory import create_strategy, load_strategy
 from exps.trace_utils import build_agentic_trace_root
 
@@ -27,6 +28,7 @@ class RunParams(BaseModel):
     binary_relevance: str | None = None
     device: str | None = None
     no_cache: bool = False
+    summary_csv: str | None = None
 
 
 class RunResult(BaseModel):
@@ -44,6 +46,8 @@ class RunResult(BaseModel):
     most_relevant_grade_col: str | None = None
     relevant_examples: list[dict] | None = None
     artifact_path: str | None = None
+    run_id: str | None = None
+    reports_path: str | None = None
     # Retained as a compatibility alias for codegen run consumers.
     codegen_artifact_path: str | None = None
 
@@ -343,7 +347,7 @@ def run_benchmark(params: RunParams) -> RunResult:
     else:
         summary["mean_agreement"] = 0.0
         summary["mean_pairwise_agreement"] = 0.0
-    return RunResult(
+    result = RunResult(
         strategy_name=strategy_config.name,
         strategy_params=dict(strategy_config.params),
         metric_name=metric_name,
@@ -355,3 +359,13 @@ def run_benchmark(params: RunParams) -> RunResult:
             artifact_path if strategy_config.type == "codegen" else None
         ),
     )
+    reports = write_benchmark_reports(
+        result,
+        dataset=params.dataset,
+        seed=params.seed,
+        artifact_path=artifact_path,
+        summary_csv=params.summary_csv,
+    )
+    result.run_id = reports.run_id
+    result.reports_path = str(reports.reports_path)
+    return result

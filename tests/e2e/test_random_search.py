@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -145,5 +146,8 @@ def test_random_search_training_continuation_and_runtime(
         )
     )
     assert run_result.artifact_path == continued.artifact_path
+    assert Path(run_result.reports_path).parent == (
+        Path(continued.artifact_path) / "reports"
+    ).resolve()
     assert run_result.metric_series is not None
     assert len(run_result.metric_series) == 6

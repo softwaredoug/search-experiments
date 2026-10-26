@@ -5,13 +5,8 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from exps.runner import (
-    _report_metric,
-    _write_full_results_parquet,
-    _write_per_query_csv,
-    _write_summary_csv,
-    main,
-)
+from exps.reporting import write_benchmark_reports
+from exps.runner import _report_metric, main
 from exps.runners.run import (
     _mean_max_ndcg_m,
     _mark_judged_results,
@@ -130,63 +125,6 @@ def test_resource_summary_ignores_non_resource_columns():
     }
 
 
-def test_summary_csv_adds_resource_columns_to_existing_reports(tmp_path):
-    path = tmp_path / "summary.csv"
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=["dataset", "strategy_name", "mean_ndcg", "tool_calls_mean"],
-        )
-        writer.writeheader()
-        writer.writerow(
-            {
-                "dataset": "esci",
-                "strategy_name": "old_run",
-                "mean_ndcg": 0.3,
-                "tool_calls_mean": 1,
-            }
-        )
-
-    _write_summary_csv(
-        str(path),
-        dataset="esci",
-        result=SimpleNamespace(
-            strategy_name="agentic",
-            strategy_params={},
-            metric_name="NDCG_M",
-            summary={
-                "mean_ndcg_g": 0.35,
-                "median_ndcg_g": 0.35,
-                "mean_ndcg_m": 0.4,
-                "median_ndcg_m": 0.4,
-                "mean_max_ndcg_m": 0.9,
-                "mean_resource.tool_calls": 3,
-            },
-        ),
-    )
-
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        rows = list(reader)
-
-    assert "mean_resource.tool_calls" in reader.fieldnames
-    assert rows[1]["metric_name"] == "NDCG_M"
-    assert "mean_ndcg_g" in reader.fieldnames
-    assert "median_ndcg_g" in reader.fieldnames
-    assert "mean_ndcg_m" in reader.fieldnames
-    assert "median_ndcg_m" in reader.fieldnames
-    assert "mean_max_ndcg_m" in reader.fieldnames
-    assert rows[0]["mean_resource.tool_calls"] == ""
-    assert rows[1]["mean_resource.tool_calls"] == "3"
-    assert rows[0]["mean_ndcg_g"] == ""
-    assert rows[1]["mean_ndcg_g"] == "0.35"
-    assert rows[0]["mean_ndcg_m"] == ""
-    assert rows[1]["mean_ndcg_m"] == "0.4"
-    assert rows[0]["mean_max_ndcg_m"] == ""
-    assert rows[1]["mean_max_ndcg_m"] == "0.9"
-    assert rows[1]["tool_calls_mean"] == ""
-
-
 def _per_query_graded_results():
     return pd.DataFrame(
         {
@@ -209,45 +147,7 @@ def _per_query_graded_results():
     )
 
 
-def test_per_query_csv_collapses_document_rows_and_appends_run_metadata(tmp_path):
-    path = tmp_path / "per_query.csv"
-    result = SimpleNamespace(
-        strategy_name="agentic_gpt6_luna_bm25",
-        metric_name="NDCG_M",
-        graded=_per_query_graded_results(),
-    )
-
-    for seed, run_id in ((43, "run-a"), (44, "run-b")):
-        _write_per_query_csv(
-            str(path),
-            dataset="wands",
-            seed=seed,
-            run_id=run_id,
-            commit_sha="abc123",
-            result=result,
-        )
-
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        rows = list(reader)
-
-    assert len(rows) == 4
-    assert rows[0]["run_id"] == "run-a"
-    assert rows[0]["seed"] == "43"
-    assert rows[0]["query_id"] == "11"
-    assert rows[0]["query"] == "blue chair"
-    assert rows[0]["ndcg_m"] == "0.8"
-    assert rows[0]["ndcg_g"] == "0.9"
-    assert rows[0]["max_ndcg_m"] == "0.95"
-    assert rows[0]["mrr"] == "1.0"
-    assert rows[0]["resource.tool_calls"] == "2"
-    assert rows[1]["query_id"] == "12"
-    assert rows[2]["run_id"] == "run-b"
-    assert rows[2]["seed"] == "44"
-
-
-def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
-    path = tmp_path / "full_results.parquet"
+def _report_result():
     graded = _per_query_graded_results().assign(
         score=[0.9, 0.8, 0.7],
         grade=[4, 0, 0],
@@ -259,57 +159,93 @@ def test_full_results_parquet_writes_document_rows_and_run_metadata(tmp_path):
     graded = pd.concat(
         [graded, graded.iloc[[0]].assign(rank=11)], ignore_index=True
     )
-    result = SimpleNamespace(
+    return SimpleNamespace(
         strategy_name="agentic_gpt6_luna_bm25",
         strategy_params={"model": "gpt-6-luna"},
         metric_name="NDCG_M",
+        summary={"mean_ndcg_m": 0.5, "mean_resource.tool_calls": 2.5},
         graded=graded,
     )
 
-    _write_full_results_parquet(
-        str(path),
+
+def test_benchmark_reports_are_written_under_unique_artifact_run_dirs(tmp_path, monkeypatch):
+    monkeypatch.setattr("exps.reporting._current_commit_sha", lambda: "abc123")
+    artifact_path = tmp_path / "strategy-artifact"
+    summary_csv = tmp_path / "results.csv"
+    summary_csv.write_text(
+        "dataset,strategy_name,mean_ndcg\nwands,previous_run,0.4\n",
+        encoding="utf-8",
+    )
+    result = _report_result()
+
+    first = write_benchmark_reports(
+        result,
         dataset="wands",
         seed=43,
-        run_id="run-a",
-        commit_sha="abc123",
-        result=result,
+        artifact_path=artifact_path,
+        summary_csv=summary_csv,
+    )
+    second = write_benchmark_reports(
+        result,
+        dataset="wands",
+        seed=44,
+        artifact_path=artifact_path,
+        summary_csv=summary_csv,
     )
 
-    rows = pd.read_parquet(path)
-    assert len(rows) == 3
-    assert rows["query_id"].tolist() == [11, 11, 12]
-    assert rows["rank"].tolist() == [1, 2, 1]
-    assert rows["doc_id"].tolist() == ["101", "ESCI-102", "201"]
-    assert rows["title"].tolist() == ["Blue chair A", "Blue chair B", "Wood table"]
-    assert rows["judged"].tolist() == [True, False, True]
-    assert rows["grade"].iloc[0] == 4
-    assert pd.isna(rows["grade"].iloc[1])
-    assert rows["grade"].iloc[2] == 0
-    assert rows["dataset"].tolist() == ["wands"] * 3
-    assert rows["seed"].tolist() == [43] * 3
-    assert rows["run_id"].tolist() == ["run-a"] * 3
-    assert rows["commit_sha"].tolist() == ["abc123"] * 3
-    assert rows["strategy_params"].tolist() == ['{"model": "gpt-6-luna"}'] * 3
+    assert first.reports_path == artifact_path / "reports" / first.run_id
+    assert second.reports_path == artifact_path / "reports" / second.run_id
+    assert first.reports_path != second.reports_path
+    for reports_path in (first.reports_path, second.reports_path):
+        assert (reports_path / "per_query.csv").exists()
+        assert (reports_path / "full_results.parquet").exists()
+
+    with summary_csv.open(newline="", encoding="utf-8") as handle:
+        summary_rows = list(csv.DictReader(handle))
+    assert len(summary_rows) == 3
+    assert summary_rows[0]["reports_path"] == ""
+    assert summary_rows[1]["reports_path"] == str(first.reports_path)
+    assert summary_rows[2]["reports_path"] == str(second.reports_path)
+    assert summary_rows[1]["mean_resource.tool_calls"] == "2.5"
+
+    with (first.reports_path / "per_query.csv").open(
+        newline="", encoding="utf-8"
+    ) as handle:
+        per_query_rows = list(csv.DictReader(handle))
+    assert len(per_query_rows) == 2
+    assert per_query_rows[0]["run_id"] == first.run_id
+    assert per_query_rows[0]["reports_path"] == str(first.reports_path)
+    assert per_query_rows[0]["query_id"] == "11"
+    assert per_query_rows[0]["ndcg_m"] == "0.8"
+
+    full_results = pd.read_parquet(first.reports_path / "full_results.parquet")
+    assert len(full_results) == 3
+    assert full_results["query_id"].tolist() == [11, 11, 12]
+    assert full_results["rank"].tolist() == [1, 2, 1]
+    assert full_results["doc_id"].tolist() == ["101", "ESCI-102", "201"]
+    assert full_results["judged"].tolist() == [True, False, True]
+    assert full_results["grade"].iloc[0] == 4
+    assert pd.isna(full_results["grade"].iloc[1])
+    assert full_results["grade"].iloc[2] == 0
+    assert full_results["run_id"].unique().tolist() == [first.run_id]
 
 
-def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
-    tmp_path, monkeypatch
-):
-    summary_path = tmp_path / "summary.csv"
-    per_query_path = tmp_path / "per_query.csv"
-    full_results_path = tmp_path / "full_results.parquet"
+def test_run_cli_forwards_summary_csv_to_backend(monkeypatch, capsys):
+    captured = {}
     result = SimpleNamespace(
-        strategy_name="agentic_gpt6_luna_bm25",
-        strategy_params={"model": "gpt-6-luna"},
         metric_name="NDCG_M",
-        metric_series=pd.Series([0.8, 0.2]),
+        metric_series=pd.Series([0.5]),
         summary={"mean_ndcg_m": 0.5},
-        graded=_per_query_graded_results(),
         codegen_artifact_path=None,
         artifact_path=None,
-        relevant_examples=None,
+        reports_path="/tmp/reports/run-1",
     )
-    monkeypatch.setattr("exps.runner.run_benchmark", lambda params: result)
+
+    def fake_run_benchmark(params):
+        captured["params"] = params
+        return result
+
+    monkeypatch.setattr("exps.runner.run_benchmark", fake_run_benchmark)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -317,51 +253,15 @@ def test_run_cli_writes_per_query_csv_with_summary_run_metadata(
             "run",
             "--strategy",
             "unused.yml",
-            "--dataset",
-            "wands",
-            "--seed",
-            "43",
             "--summary-csv",
-            str(summary_path),
-            "--per-query-csv",
-            str(per_query_path),
-            "--full-results-parquet",
-            str(full_results_path),
+            "results.csv",
         ],
     )
 
     main()
 
-    with summary_path.open(newline="", encoding="utf-8") as handle:
-        summary_row = next(csv.DictReader(handle))
-    with per_query_path.open(newline="", encoding="utf-8") as handle:
-        per_query_row = next(csv.DictReader(handle))
-    full_results = pd.read_parquet(full_results_path)
-
-    assert summary_row["run_id"] == per_query_row["run_id"]
-    assert summary_row["seed"] == per_query_row["seed"] == "43"
-    assert per_query_row["ndcg_m"] == "0.8"
-    assert full_results["run_id"].unique().tolist() == [summary_row["run_id"]]
-    assert full_results["seed"].unique().tolist() == [43]
-
-
-def test_run_cli_rejects_full_results_for_single_query(monkeypatch):
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "run",
-            "--strategy",
-            "unused.yml",
-            "--query",
-            "blue chair",
-            "--full-results-parquet",
-            "full_results.parquet",
-        ],
-    )
-
-    with pytest.raises(SystemExit, match="2"):
-        main()
+    assert captured["params"].summary_csv == "results.csv"
+    assert "Reports: /tmp/reports/run-1" in capsys.readouterr().out
 
 
 def test_summary_output_includes_generic_resource_statistics(capsys):
