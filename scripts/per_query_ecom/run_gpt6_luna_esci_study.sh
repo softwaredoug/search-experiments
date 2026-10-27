@@ -57,7 +57,17 @@ uv run python "${ROOT_DIR}/scripts/per_query_ecom/plot_gpt6_luna_ecom_study.py" 
 
 uv run python "${ROOT_DIR}/scripts/per_query_ecom/analyze_gpt6_luna_esci_study.py" \
   --input "${RESULTS_CSV}" \
+  --query-language en \
   --by-quartile 0.25 \
   --by-quartile-num-rounds 9
+
+uv run python "${ROOT_DIR}/scripts/per_query_ecom/analyze_gpt6_luna_esci_study.py" \
+  --input "${RESULTS_CSV}" \
+  --query-language en \
+  --by-variance 30
+
+uv run python "${ROOT_DIR}/scripts/per_query_ecom/analyze_gpt6_luna_esci_study.py" \
+  --input "${RESULTS_CSV}" \
+  --write-report
 
 echo "Wrote ${RESULTS_CSV}"

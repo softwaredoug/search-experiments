@@ -1,7 +1,10 @@
 import pandas as pd
 import pytest
 
-from scripts.per_query_ecom.analyze_gpt6_luna_esci_study import generate_analysis
+from scripts.per_query_ecom.analyze_gpt6_luna_esci_study import (
+    generate_analysis,
+    write_markdown_report,
+)
 
 
 STRATEGY_NAME = "agentic_gpt6_luna_bm25_e5"
@@ -23,12 +26,20 @@ def _write_study_runs(tmp_path, score_runs):
                 "query": query,
                 "ndcg_g": score_runs[query][run_index],
             }
-            for query_id, query in ((1, "query one"), (2, "query two"), (3, "no ideal"))
+            for query_id, query in (
+                (1, "query one"),
+                (2, "query two"),
+                (3, "non-English"),
+            )
         ]
         pd.DataFrame(per_query).to_csv(reports_path / "per_query.csv", index=False)
 
         result_rows = []
-        for query_id, query in ((1, "query one"), (2, "query two"), (3, "no ideal")):
+        for query_id, query in (
+            (1, "query one"),
+            (2, "query two"),
+            (3, "non-English"),
+        ):
             doc_id = f"actual-{query_id}-{run_index}"
             result_rows.append(
                 {
@@ -64,9 +75,10 @@ def _write_study_runs(tmp_path, score_runs):
     judgments = pd.DataFrame(
         {
             "query_id": [1, 1, 2, 3],
-            "query": ["query one", "query one", "query two", "no ideal"],
+            "query": ["query one", "query one", "query two", "non-English"],
             "doc_id": ["ideal-1", "ideal-2", "ideal-1", "ideal-1"],
-            "grade": [2, 3, 1, 0],
+            "grade": [2, 3, 1, 1],
+            "product_locale": ["us", "us", "us", "jp"],
         }
     )
     corpus = pd.DataFrame(corpus_rows)
@@ -79,7 +91,7 @@ def test_quartile_selection_is_inclusive_and_requires_n_of_n_runs(tmp_path):
         {
             "query one": [0.25] * 9,
             "query two": [0.1] * 8 + [0.3],
-            "no ideal": [0.0] * 9,
+            "non-English": [0.0] * 9,
         },
     )
 
@@ -115,7 +127,7 @@ def test_variance_selection_exports_ideal_worst_and_best_runs(tmp_path):
         {
             "query one": [0.0, 0.8, 0.1, 0.7, 0.2, 0.6, 0.3, 0.5, 0.4],
             "query two": [0.3, 0.5, 0.35, 0.45, 0.4, 0.4, 0.38, 0.42, 0.4],
-            "no ideal": [0.4] * 9,
+            "non-English": [0.4] * 9,
         },
     )
 
@@ -141,3 +153,46 @@ def test_variance_selection_exports_ideal_worst_and_best_runs(tmp_path):
     assert paired["best_ndcg_g"].unique().tolist() == [0.8]
     assert paired["best_doc_id"].iloc[0] == "actual-1-1"
     assert paired["ideal_doc_id"].tolist() == ["ideal-2", "ideal-1"]
+
+
+def test_markdown_report_contains_both_populations_and_hover_descriptions(tmp_path):
+    input_path, judgments, corpus = _write_study_runs(
+        tmp_path,
+        {
+            "query one": [0.1] * 9,
+            "query two": [0.0, 0.8, 0.1, 0.7, 0.2, 0.6, 0.3, 0.5, 0.4],
+            "non-English": [0.4] * 9,
+        },
+    )
+    output_dir = tmp_path / "analysis"
+    generate_analysis(
+        input_path=input_path,
+        output_dir=output_dir,
+        judgments=judgments,
+        corpus=corpus,
+        by_quartile=0.25,
+        by_quartile_num_rounds=9,
+    )
+    generate_analysis(
+        input_path=input_path,
+        output_dir=output_dir,
+        judgments=judgments,
+        corpus=corpus,
+        by_variance=1,
+    )
+
+    report_path = write_markdown_report(
+        input_path=input_path,
+        output_dir=output_dir,
+        report_path=tmp_path / "per_query_esci.md",
+    )
+    report = report_path.read_text(encoding="utf-8")
+
+    assert "## Confidently Wrong" in report
+    assert "## All over the place" in report
+    assert "Ideal rank" in report
+    assert "Worst run rank" in report
+    assert "Best run rank" in report
+    assert 'title="Full description from run 0"' in report
+    assert "<img" not in report
+    assert "en-NDCG" not in report
