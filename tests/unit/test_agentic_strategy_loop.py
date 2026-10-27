@@ -236,6 +236,24 @@ def test_agentic_strategy_does_not_enable_valid_doc_ids_automatically(tmp_path):
 
 @patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
 @patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
+def test_agentic_strategy_removes_repeated_document_ids(tmp_path):
+    with patch.object(_FakeOpenAIAgent, "result_ids", ["101", "202", "101"]):
+        strategy = agentic_mod.AgenticSearchStrategy(
+            _sample_corpus(),
+            workers=1,
+            model="gpt-5-mini",
+            search_tools=[],
+            trace_path=tmp_path,
+        )
+
+        ranked_results, scores, _resources = strategy.search("query", k=3)
+
+    assert ranked_results == [0, 1]
+    assert scores == [1.0, 1.0]
+
+
+@patch.object(agent_mod, "build_openai_agent", _build_fake_agent)
+@patch.object(agent_mod, "build_search_tools", lambda *args, **kwargs: [])
 def test_agentic_stop_tool_calls(tmp_path):
     strategy = agentic_mod.AgenticSearchStrategy(
         _sample_corpus(),

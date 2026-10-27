@@ -3,6 +3,18 @@ from __future__ import annotations
 from typing import Iterable
 
 
+def deduplicate_doc_ids(doc_ids: Iterable[int | str]) -> list[int | str]:
+    """Keep the first occurrence of each document ID, comparing IDs as strings."""
+    unique: list[int | str] = []
+    seen: set[str] = set()
+    for doc_id in doc_ids:
+        normalized_id = str(doc_id)
+        if normalized_id not in seen:
+            seen.add(normalized_id)
+            unique.append(doc_id)
+    return unique
+
+
 def build_doc_id_lookup(corpus) -> dict[str, int]:
     if "doc_id" not in corpus.columns:
         return {}

@@ -16,7 +16,7 @@ from exps.agentic.agent import (
     trace_logger,
 )
 from exps.agentic.examples import append_few_shot_examples
-from exps.mapping import doc_ids_to_indices
+from exps.mapping import deduplicate_doc_ids, doc_ids_to_indices
 from exps.paths import dataset_from_trace_path, slugify
 from exps.tools import normalize_search_tools
 
@@ -126,7 +126,7 @@ class AgenticSearchStrategy(SearchStrategy):
         raw_doc_ids = (
             run_result.output if isinstance(run_result.output, list) else []
         )
-        ranked_results = raw_doc_ids
+        ranked_results = deduplicate_doc_ids(raw_doc_ids)
         if self.agent.lookup:
             ranked_results = doc_ids_to_indices(ranked_results, self.agent.lookup)
         self.traces[query] = str(run_result.trace_path)
@@ -167,6 +167,7 @@ class AgenticSearchStrategy(SearchStrategy):
             "max_loops": self.max_loops,
             "ranked_results_model": f"{SearchResults.__module__}.{SearchResults.__qualname__}",
             "ranked_results_length": "exact_requested_k_v1",
+            "ranked_results_deduplication": "first_occurrence_v1",
             "embeddings_device": self.embeddings_device,
             "resource_schema": 2,
         }

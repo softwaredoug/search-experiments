@@ -8,7 +8,7 @@ from cheat_at_search.strategy import SearchStrategy
 from pydantic import BaseModel, Field
 
 from exps.agentic.agent import Agent, SearchResults, SUBAGENT_SYSTEM_PROMPT, trace_logger
-from exps.mapping import build_doc_id_lookup, doc_ids_to_indices
+from exps.mapping import build_doc_id_lookup, deduplicate_doc_ids, doc_ids_to_indices
 from exps.paths import slugify
 from exps.resource_tracking import resources_from_agent_state
 from exps.tools import normalize_search_tools_for_cache
@@ -323,7 +323,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
         ranked_results: list[str] = []
         if isinstance(gather_response.output, list):
             ranked_results = list(gather_response.output)
-        ranked_results = ranked_results[:10]
+        ranked_results = deduplicate_doc_ids(ranked_results)[:10]
         gather_summary = gather_dir / "summary.json"
         gather_summary.write_text(
             json.dumps({"step": "gather", "doc_ids": ranked_results}, indent=2)
@@ -408,6 +408,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             )
             if self._lookup:
                 ranked_results = doc_ids_to_indices(ranked_results, self._lookup)
+            ranked_results = deduplicate_doc_ids(ranked_results)
             print(f"{query} DONE")
             ranked_results = ranked_results[:k]
             return (
@@ -459,6 +460,7 @@ class ScatterGatherWandsStrategy(SearchStrategy):
             "stop": self.stop,
             "validators": self.validators,
             "max_loops": self.max_loops,
+            "ranked_results_deduplication": "first_occurrence_v1",
             "embeddings_device": self.embeddings_device,
             "category_column": self._category_column,
             "resource_schema": 2,
